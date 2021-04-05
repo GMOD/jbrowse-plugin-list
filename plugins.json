@@ -1,4 +1,12 @@
 {
   "plugins": [
+    {
+      "name": "msaview",
+      "author": "Colin Diesh",
+      "description": "multiple sequence alignment browser plugin for JBrowse 2",
+      "location": "https://github.com/GMOD/jbrowse-plugin-msaview",
+      "license": "Apache License 2.0",
+      "image": ""
+    }
   ]
 }
