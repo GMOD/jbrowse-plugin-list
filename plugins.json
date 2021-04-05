@@ -25,10 +25,34 @@
       "image": ""
     },
     {
-      "name": "quantseq",
-      "authors": ["Elliot Hershberg"],
-      "description": "External JB2 plugin implementing a QuantitativeSequence track for displaying base-resolution models.",
-      "location": "https://github.com/GMOD/jbrowse-plugin-quantseq",
+      "name": "gwas",
+      "authors": ["Colin Diesh"],
+      "description": "Plugin for displaying GWAS results such as manhattan plot renderings",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-gwas",
+      "license": "NONE",
+      "image": ""
+    },
+    {
+      "name": "ucsc-api",
+      "authors": ["Colin Diesh"],
+      "description": "A JBrowse 2 plugin for accessing the UCSC API",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-ucsc-api",
+      "license": "NONE",
+      "image": ""
+    },
+    {
+      "name": "biothings-api",
+      "authors": ["Colin Diesh"],
+      "description": "Adapts to APIs like mygene.info to get super rich gene annotations",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-biothings-api",
+      "license": "NONE",
+      "image": ""
+    },
+    {
+      "name": "ideogram",
+      "authors": ["Colin Diesh"],
+      "description": "JBrowse 2 plugin for rendering ideograms",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
       "license": "Apache License 2.0",
       "image": ""
     }
