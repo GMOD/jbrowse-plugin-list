@@ -2,9 +2,33 @@
   "plugins": [
     {
       "name": "msaview",
-      "author": "Colin Diesh",
+      "authors": ["Colin Diesh"],
       "description": "multiple sequence alignment browser plugin for JBrowse 2",
       "location": "https://github.com/GMOD/jbrowse-plugin-msaview",
+      "license": "Apache License 2.0",
+      "image": ""
+    },
+    {
+      "name": "gdc",
+      "authors": ["Garrett Stevens", "Colin Diesh", "Rob Buels"],
+      "description": "JBrowse 2 plugin for integrating with GDC resources",
+      "location": "https://github.com/GMOD/jbrowse-plugin-gdc",
+      "license": "NONE",
+      "image": ""
+    },
+    {
+      "name": "quantseq",
+      "authors": ["Elliot Hershberg"],
+      "description": "External JB2 plugin implementing a QuantitativeSequence track for displaying base-resolution models.",
+      "location": "https://github.com/GMOD/jbrowse-plugin-quantseq",
+      "license": "Apache License 2.0",
+      "image": ""
+    },
+    {
+      "name": "quantseq",
+      "authors": ["Elliot Hershberg"],
+      "description": "External JB2 plugin implementing a QuantitativeSequence track for displaying base-resolution models.",
+      "location": "https://github.com/GMOD/jbrowse-plugin-quantseq",
       "license": "Apache License 2.0",
       "image": ""
     }
