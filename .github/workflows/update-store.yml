@@ -19,5 +19,4 @@ update:
         aws-region: us-east-1
     - name: Copy JSON file to S3
       run: |
-      aws s3 sync --delete plugins.json s3://jbrowse.org/plugin-store/plugins.json
-
+        aws s3 sync --delete plugins.json s3://jbrowse.org/plugin-store/plugins.json
