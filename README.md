@@ -10,7 +10,7 @@ and submit a PR to this repository.
 
 A plugin is described with the following data:
 
-- **name:** the name of the plugin
+- **name:** the name of the plugin (this should have the same format as what should appear in the `config.json`)
 - **authors:** an array of the names of the authors of the plugin
 - **description:** a short description of the functionality provided by the plugin
 - **location:** the URL for the repository containing the plugin source code.
