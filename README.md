@@ -22,6 +22,5 @@ For example the URL for the `msaview` plugin is `https://unpkg.com/jbrowse-plugi
 - **license:** the type of software license that your code is provided under.
 If you haven't specified a value, specify `"NONE"`.
 - **image (optional):** if you would like an image of your plugin to be displayed in the store,
-please provide a URL for an 800 x 200 screenshot of the feature you want to show. For creating
-a URL, we recommend [imgbox.com](https://imgbox.com/), which doesn't require an account or any
-setup to use.
+please provide an 800 x 200 screenshot of the feature you want to show to the img directory. Please provide the
+download URL for that file in your plugin entry. Examples can be found in the existing entries.
