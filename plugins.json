@@ -15,7 +15,7 @@
       "description": "JBrowse 2 plugin for integrating with GDC resources",
       "location": "https://github.com/GMOD/jbrowse-plugin-gdc",
       "url": "https://unpkg.com/jbrowse-plugin-gdc/dist/jbrowse-plugin-gdc.umd.production.min.js",
-      "license": "NONE",
+      "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/gdc-screenshot-fs8.png"
     },
     {
@@ -33,7 +33,7 @@
       "description": "Plugin for displaying GWAS results such as manhattan plot renderings",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-gwas",
       "url": "https://unpkg.com/jbrowse-plugin-gwas/dist/jbrowse-plugin-gwas.umd.production.min.js",
-      "license": "NONE",
+      "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/gwas-screenshot-fs8.png"
     },
     {
@@ -42,7 +42,7 @@
       "description": "A JBrowse 2 plugin for accessing the UCSC API",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-ucsc-api",
       "url": "https://unpkg.com/jbrowse-plugin-ucsc/dist/jbrowse-plugin-ucsc.umd.production.min.js",
-      "license": "NONE",
+      "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ucsc-screenshot-fs8.png"
     },
     {
@@ -51,7 +51,7 @@
       "description": "Adapts to APIs like mygene.info to get super rich gene annotations",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-biothings-api",
       "url": "https://unpkg.com/jbrowse-plugin-biothings/dist/jbrowse-plugin-biothings.umd.production.min.js",
-      "license": "NONE",
+      "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/biothings-screenshot-fs8.png"
     },
     {
