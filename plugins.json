@@ -67,8 +67,8 @@
       "name": "CIVIC",
       "authors": ["Colin Diesh"],
       "description": "JBrowse 2 plugin for fetching data from the CIVIC clinical interpretation of cancer variants",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-civic",
-      "url": "https://unpkg.com/jbrowse-plugin-civc/dist/jbrowse-plugin-civic.umd.production.min.js",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-civic-api",
+      "url": "https://unpkg.com/jbrowse-plugin-civic/dist/jbrowse-plugin-civic.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/civic-screenshot-fs8.png"
     }
