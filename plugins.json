@@ -71,6 +71,15 @@
       "url": "https://unpkg.com/jbrowse-plugin-civic/dist/jbrowse-plugin-civic.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/civic-screenshot-fs8.png"
+    },
+    {
+      "name": "NucContent",
+      "authors": ["John Rozewicki"],
+      "description": "JBrowse 2 plugin for calculating statistical information from sequence (e.g. GC content, hardmask/softmask coverage...)",
+      "location": "https://github.com/jjrozewicki/jbrowse2-plugin-nuccontent",
+      "url": "https://unpkg.com/jbrowse2-plugin-nuccontent/dist/jbrowsepluginnuccontent.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/nuccontent-screenshot-fs8.png"
     }
   ]
 }
