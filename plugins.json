@@ -71,6 +71,15 @@
       "url": "https://unpkg.com/jbrowse-plugin-civic/dist/jbrowse-plugin-civic.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/civic-screenshot-fs8.png"
+    },
+    {
+      "name": "ICGC",
+      "authors": ["Caroline Bridge"],
+      "description": "JBrowse 2 plugin to integrate resources from the ICGC",
+      "location": "https://github.com/GMOD/jbrowse-plugin-icgc",
+      "url": "https://unpkg.com/jbrowse-plugin-icgc/dist/jbrowse-plugin-icgc.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/icgc-screenshot-fs8.png"
     }
   ]
 }
