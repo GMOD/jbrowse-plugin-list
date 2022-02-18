@@ -11,7 +11,12 @@
     },
     {
       "name": "GDC",
-      "authors": ["Garrett Stevens", "Colin Diesh", "Rob Buels"],
+      "authors": [
+        "Garrett Stevens",
+        "Colin Diesh",
+        "Rob Buels",
+        "Caroline Bridge"
+      ],
       "description": "JBrowse 2 plugin for integrating with GDC resources",
       "location": "https://github.com/GMOD/jbrowse-plugin-gdc",
       "url": "https://unpkg.com/jbrowse-plugin-gdc/dist/jbrowse-plugin-gdc.umd.production.min.js",
@@ -56,7 +61,7 @@
     },
     {
       "name": "Ideogram",
-      "authors": ["Colin Diesh"],
+      "authors": ["Colin Diesh", "Caroline Bridge"],
       "description": "JBrowse 2 plugin for rendering ideograms",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
       "url": "https://unpkg.com/jbrowse-plugin-ideogram/dist/jbrowse-plugin-ideogram.umd.production.min.js",
@@ -80,6 +85,15 @@
       "url": "https://unpkg.com/jbrowse-plugin-icgc/dist/jbrowse-plugin-icgc.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/icgc-screenshot-fs8.png"
+    },
+    {
+      "name": "Reactome",
+      "authors": ["Caroline Bridge"],
+      "description": "JBrowse 2 plugin to integrate resources from Reactome",
+      "location": "https://github.com/GMOD/jbrowse-plugin-reactome",
+      "url": "https://unpkg.com/jbrowse-plugin-reactome/dist/jbrowse-plugin-reactome.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/reactome-screenshot-fs8.png"
     }
   ]
 }
