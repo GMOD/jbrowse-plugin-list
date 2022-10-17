@@ -94,6 +94,15 @@
       "url": "https://unpkg.com/jbrowse-plugin-reactome/dist/jbrowse-plugin-reactome.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/reactome-screenshot-fs8.png"
+    },
+    {
+      "name": "Multilevel Linear View",
+      "authors": ["Caroline Bridge"],
+      "description": "JBrowse 2 plugin  that adds a linear genome view that can show multiple zoom levels",
+      "location": "https://github.com/GMOD/jbrowse-plugin-multilevel-linear-view",
+      "url": "https://unpkg.com/jbrowse-plugin-multilevel-linear-view/dist/jbrowse-plugin-multilevel-linear-view.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mllv-screenshot-fs8.png"
     }
   ]
 }
