@@ -98,11 +98,20 @@
     {
       "name": "Multilevel Linear View",
       "authors": ["Caroline Bridge"],
-      "description": "JBrowse 2 plugin  that adds a linear genome view that can show multiple zoom levels",
+      "description": "JBrowse 2 plugin that adds a linear genome view that can show multiple zoom levels",
       "location": "https://github.com/GMOD/jbrowse-plugin-multilevel-linear-view",
       "url": "https://unpkg.com/jbrowse-plugin-multilevel-linear-view/dist/jbrowse-plugin-multilevel-linear-view.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mllv-screenshot-fs8.png"
+    },
+    {
+      "name": "Trackhub Registry",
+      "authors": ["Colin Diesh"],
+      "description": "JBrowse 2 plugin that adds ability to connect to hubs from the trackhub registry. Note: only for use with v2.3.0 or greater",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-trackhub-registry",
+      "url": "https://unpkg.com/jbrowse-plugin-trackhub-registry/dist/jbrowse-plugin-trackhub-registry.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/trackhub-fs8.png"
     }
   ]
 }
