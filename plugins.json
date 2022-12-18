@@ -112,6 +112,14 @@
       "url": "https://unpkg.com/jbrowse-plugin-trackhub-registry/dist/jbrowse-plugin-trackhub-registry.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/trackhub-fs8.png"
+    },
+    {
+      "name": "RefGet API",
+      "authors": ["Emilio Righi"],
+      "description": "JBrowse 2 plugin that adds ability to retrieve sequences from refget API compliant servers",
+      "location": "https://github.com/emiliorighi/jbrowse-plugin-refget-api",
+      "url": "https://unpkg.com/jbrowse-plugin-refget-api/dist/jbrowse-plugin-refget-api.umd.production.min.js",
+      "license": "ISC"
     }
   ]
 }
