@@ -96,7 +96,7 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/reactome-screenshot-fs8.png"
     },
     {
-      "name": "Multilevel Linear View",
+      "name": "MultilevelLinearView",
       "authors": ["Caroline Bridge"],
       "description": "JBrowse 2 plugin that adds a linear genome view that can show multiple zoom levels",
       "location": "https://github.com/GMOD/jbrowse-plugin-multilevel-linear-view",
@@ -105,7 +105,7 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mllv-screenshot-fs8.png"
     },
     {
-      "name": "Trackhub Registry",
+      "name": "TrackHubRegistry",
       "authors": ["Colin Diesh"],
       "description": "JBrowse 2 plugin that adds ability to connect to hubs from the trackhub registry. Note: only for use with v2.3.0 or greater",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-trackhub-registry",
@@ -114,7 +114,7 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/trackhub-fs8.png"
     },
     {
-      "name": "RefGet API",
+      "name": "RefGet",
       "authors": ["Emilio Righi"],
       "description": "JBrowse 2 plugin that adds ability to retrieve sequences from refget API compliant servers",
       "location": "https://github.com/emiliorighi/jbrowse-plugin-refget-api",
