@@ -120,6 +120,15 @@
       "location": "https://github.com/emiliorighi/jbrowse-plugin-refget-api",
       "url": "https://unpkg.com/jbrowse-plugin-refget-api/dist/jbrowse-plugin-refget-api.umd.production.min.js",
       "license": "ISC"
+    },
+    {
+      "name": "Linkout",
+      "authors": ["NAL-i5K"],
+      "description": "JBrowse 2 plugin that links out to feature page based on dbxref",
+      "location": "https://github.com/NAL-i5K/jbrowse-plugin-linkout",
+      "url": "https://unpkg.com/jbrowse-plugin-linkout/dist/jbrowse-plugin-linkout.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/linkout-screenshot-fs8.png"
     }
   ]
 }
