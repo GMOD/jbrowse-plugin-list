@@ -129,6 +129,15 @@
       "url": "https://unpkg.com/jbrowse-plugin-linkout/dist/jbrowse-plugin-linkout.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/linkout-screenshot-fs8.png"
+    },
+    {
+      "name": "MafViewer",
+      "authors": ["Colin Diesh"],
+      "description": "View multiple alignment format (MAF) files as tracks",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-mafviewer",
+      "license": "MIT",
+      "url": "https://unpkg.com/jbrowse-plugin-mafviewer/dist/jbrowse-plugin-mafviewer.umd.production.min.js",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mafviewer.png"
     }
   ]
 }
