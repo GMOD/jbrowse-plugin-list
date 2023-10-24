@@ -129,6 +129,15 @@
       "url": "https://unpkg.com/jbrowse-plugin-linkout/dist/jbrowse-plugin-linkout.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/linkout-screenshot-fs8.png"
+    },
+    {
+      "name": "JBrowseSiteSpecificHelp",
+      "authors": ["Scott Cain"],
+      "description": "A JBrowse 2 plugin to make a site specific help widget",
+      "location": "https://github.com/scottcain/jbrowse-site-specific-help",
+      "url": "https://unpkg.com/jbrowse-site-specific-help/dist/jbrowse-site-specific-help.umd.development.js",
+      "license": "MIT",
+      "image": "https://raw.githubusercontent.com/scottcain/jbrowse-site-specific-help/main/img/JBrowseSiteSpecificHelp_cropped.png" 
     }
   ]
 }
