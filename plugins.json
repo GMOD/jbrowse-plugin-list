@@ -138,6 +138,15 @@
       "license": "MIT",
       "url": "https://unpkg.com/jbrowse-plugin-mafviewer/dist/jbrowse-plugin-mafviewer.umd.production.min.js",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mafviewer.png"
+    },
+    {
+      "name": "Protein3d",
+      "authors": ["Colin Diesh"],
+      "description": "View 3-D protein structures in JBrowse 2",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-protein3d",
+      "license": "MIT",
+      "url": "https://unpkg.com/jbrowse-plugin-protein3d/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png"
     }
   ]
 }
