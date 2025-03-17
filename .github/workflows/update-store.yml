@@ -1,6 +1,6 @@
 name: Update store
 
-on: 
+on:
   push:
     branches:
       - main
