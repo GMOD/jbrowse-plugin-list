@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "download": "node download-plugins.js",
+    "generate": "node generate-plugins.js",
+    "sync": "aws s3 sync dist s3://jbrowse.org/plugins/",
+    "deploy": "yarn download && && yarn generate && yarn sync",
+    "postdeploy": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E12EBG02P68TDO --paths \"/plugins/*\""
+  },
   "dependencies": {
     "prettier": "^3.5.3"
   }
