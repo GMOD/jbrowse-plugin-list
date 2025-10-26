@@ -58,24 +58,25 @@ async function downloadPlugins(): Promise<void> {
     const url = plugin.url;
     const pluginName = plugin.name;
 
-    // Extract the filename from the URL
-    const urlParts = url.split('/');
-    const filename = urlParts[urlParts.length - 1];
-    const packageDir = url.match(/unpkg\.com\/([^\/]+)/)?.[1];
+    // Extract the package name and the rest of the path after it
+    const match = url.match(/unpkg\.com\/([^\/]+)\/(.*)/);
 
-    if (!packageDir) {
+    if (!match || !match[1]) {
       console.error(`✗ Could not extract package name from ${url}`);
       continue;
     }
 
-    const pluginDir = path.join(outputDir, packageDir);
+    const packageName = match[1];
+    const restOfPath = match[2];
 
-    // Create plugin directory
-    if (!fs.existsSync(pluginDir)) {
-      fs.mkdirSync(pluginDir, { recursive: true });
+    const pluginDir = path.join(outputDir, packageName);
+    const filePath = path.join(pluginDir, restOfPath);
+
+    // Create all necessary directories
+    const fileDir = path.dirname(filePath);
+    if (!fs.existsSync(fileDir)) {
+      fs.mkdirSync(fileDir, { recursive: true });
     }
-
-    const filePath = path.join(pluginDir, filename);
 
     try {
       console.log(`Downloading ${pluginName}...`);
