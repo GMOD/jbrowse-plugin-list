@@ -4,7 +4,7 @@
   "scripts": {
     "download": "node download-plugins.ts",
     "generate": "node generate-plugins.ts",
-    "sync": "aws s3 sync dist s3://jbrowse.org/plugins/ && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins.json",
+    "sync": "aws s3 sync dist s3://jbrowse.org/plugins/ && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json",
     "deploy": "yarn download && yarn generate && yarn sync",
     "postdeploy": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E12EBG02P68TDO --paths \"/plugins/*\""
   },
