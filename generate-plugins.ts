@@ -23,14 +23,18 @@ const pluginsData: PluginsData = JSON.parse(
 )
 
 // Transform plugin URLs from unpkg to S3/jbrowse.org URLs
+// Remove packageName and umdFile fields as they're only needed for download scripts
 const newPlugins: PluginsData = {
-  plugins: pluginsData.plugins.map(plugin => ({
-    ...plugin,
-    url: plugin.url.replace(
-      /https:\/\/unpkg\.com\//,
-      'https://jbrowse.org/plugins/',
-    ),
-  })),
+  plugins: pluginsData.plugins.map(plugin => {
+    const { packageName, umdFile, ...rest } = plugin
+    return {
+      ...rest,
+      url: plugin.url.replace(
+        /https:\/\/unpkg\.com\//,
+        'https://jbrowse.org/plugins/',
+      ),
+    }
+  }),
 }
 
 fs.writeFileSync(outputFile, JSON.stringify(newPlugins, null, 2) + '\n')
