@@ -2,6 +2,8 @@
   "plugins": [
     {
       "name": "MsaView",
+      "packageName": "jbrowse-plugin-msaview",
+      "umdFile": "dist/jbrowse-plugin-msaview.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "multiple sequence alignment browser plugin for JBrowse 2",
       "location": "https://github.com/GMOD/jbrowse-plugin-msaview",
@@ -12,6 +14,8 @@
     },
     {
       "name": "GDC",
+      "packageName": "jbrowse-plugin-gdc",
+      "umdFile": "dist/jbrowse-plugin-gdc.umd.production.min.js",
       "authors": [
         "Garrett Stevens",
         "Colin Diesh",
@@ -27,6 +31,8 @@
     },
     {
       "name": "Quantseq",
+      "packageName": "jbrowse-plugin-quantseq",
+      "umdFile": "dist/jbrowse-plugin-quantseq.umd.production.min.js",
       "authors": ["Elliot Hershberg"],
       "description": "External JB2 plugin implementing a QuantitativeSequence track for displaying base-resolution models.",
       "location": "https://github.com/GMOD/jbrowse-plugin-quantseq",
@@ -37,6 +43,8 @@
     },
     {
       "name": "GWAS",
+      "packageName": "jbrowse-plugin-gwas",
+      "umdFile": "dist/jbrowse-plugin-gwas.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "Plugin for displaying GWAS results such as manhattan plot renderings",
       "plug_n_play": 1,
@@ -47,6 +55,8 @@
     },
     {
       "name": "UCSC",
+      "packageName": "jbrowse-plugin-ucsc",
+      "umdFile": "dist/jbrowse-plugin-ucsc.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "A JBrowse 2 plugin for accessing the UCSC API",
       "plug_n_play": 0,
@@ -57,6 +67,8 @@
     },
     {
       "name": "Biothings",
+      "packageName": "jbrowse-plugin-biothings",
+      "umdFile": "dist/jbrowse-plugin-biothings.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "Adapts to APIs like mygene.info to get super rich gene annotations",
       "plug_n_play": 2,
@@ -67,6 +79,8 @@
     },
     {
       "name": "Ideogram",
+      "packageName": "jbrowse-plugin-ideogram",
+      "umdFile": "dist/jbrowse-plugin-ideogram.umd.production.min.js",
       "authors": ["Colin Diesh", "Caroline Bridge"],
       "description": "JBrowse 2 plugin for rendering ideograms",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
@@ -77,6 +91,8 @@
     },
     {
       "name": "CIVIC",
+      "packageName": "jbrowse-plugin-civic",
+      "umdFile": "dist/jbrowseplugincivic.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "JBrowse 2 plugin for fetching data from the CIVIC clinical interpretation of cancer variants",
       "plug_n_play": 2,
@@ -87,6 +103,8 @@
     },
     {
       "name": "ICGC",
+      "packageName": "jbrowse-plugin-icgc",
+      "umdFile": "dist/jbrowse-plugin-icgc.umd.production.min.js",
       "authors": ["Caroline Bridge"],
       "description": "JBrowse 2 plugin to integrate resources from the ICGC",
       "plug_n_play": 2,
@@ -97,6 +115,8 @@
     },
     {
       "name": "Reactome",
+      "packageName": "jbrowse-plugin-reactome",
+      "umdFile": "dist/jbrowse-plugin-reactome.umd.production.min.js",
       "authors": ["Caroline Bridge"],
       "description": "JBrowse 2 plugin to integrate resources from Reactome",
       "plug_n_play": 2,
@@ -107,6 +127,8 @@
     },
     {
       "name": "MultilevelLinearView",
+      "packageName": "jbrowse-plugin-multilevel-linear-view2",
+      "umdFile": "dist/jbrowse-plugin-multilevel-linear-view2.umd.production.min.js",
       "authors": ["Caroline Bridge"],
       "description": "JBrowse 2 plugin that adds a linear genome view that can show multiple zoom levels",
       "plug_n_play": 2,
@@ -117,6 +139,8 @@
     },
     {
       "name": "TrackHubRegistry",
+      "packageName": "jbrowse-plugin-trackhub-registry",
+      "umdFile": "dist/jbrowse-plugin-trackhub-registry.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "plug_n_play": 2,
       "description": "JBrowse 2 plugin that adds ability to connect to hubs from the trackhub registry",
@@ -127,6 +151,8 @@
     },
     {
       "name": "RefGet",
+      "packageName": "jbrowse-plugin-refget-api",
+      "umdFile": "dist/jbrowse-plugin-refget-api.umd.production.min.js",
       "authors": ["Emilio Righi"],
       "plug_n_play": 0,
       "description": "JBrowse 2 plugin that adds ability to retrieve sequences from refget API compliant servers",
@@ -136,6 +162,8 @@
     },
     {
       "name": "Linkout",
+      "packageName": "jbrowse-plugin-linkout",
+      "umdFile": "dist/jbrowse-plugin-linkout.umd.production.min.js",
       "authors": ["NAL-i5K"],
       "description": "JBrowse 2 plugin that links out to feature page based on dbxref",
       "plug_n_play": 0,
@@ -146,6 +174,8 @@
     },
     {
       "name": "MafViewer",
+      "packageName": "jbrowse-plugin-mafviewer",
+      "umdFile": "dist/jbrowse-plugin-mafviewer.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "plug_n_play": 1,
       "description": "View multiple alignment format (MAF) files as tracks",
@@ -156,6 +186,8 @@
     },
     {
       "name": "Protein3d",
+      "packageName": "jbrowse-plugin-protein3d",
+      "umdFile": "dist/jbrowse-plugin-protein3d.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "View 3-D protein structures in JBrowse 2",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-protein3d",
@@ -165,6 +197,8 @@
     },
     {
       "name": "Hubs",
+      "packageName": "@cmdcolin/jbrowse-plugin-hubs",
+      "umdFile": "dist/jbrowse-plugin-hubs.umd.production.min.js",
       "authors": ["Colin Diesh"],
       "description": "Automatically load jbrowse hubs as a connection",
       "plug_n_play": 0,

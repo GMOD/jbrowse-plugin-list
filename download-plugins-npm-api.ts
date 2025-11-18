@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Readable } from 'stream';
-import { pipeline } from 'stream/promises';
 import { createGunzip } from 'zlib';
 import * as tar from 'tar';
 
@@ -24,6 +23,8 @@ const pluginsData = JSON.parse(fs.readFileSync(pluginsFile, 'utf8'));
 interface Plugin {
   url: string;
   name: string;
+  packageName: string;
+  umdFile: string;
 }
 
 interface NpmPackageMetadata {
@@ -145,19 +146,9 @@ async function downloadPlugins(): Promise<void> {
   const plugins: Plugin[] = pluginsData.plugins;
 
   for (const plugin of plugins) {
-    const url = plugin.url;
     const pluginName = plugin.name;
-
-    // Extract the package name and the rest of the path after it
-    const match = url.match(/unpkg\.com\/([^\/]+)\/(.*)/);
-
-    if (!match || !match[1]) {
-      console.error(`✗ Could not extract package name from ${url}`);
-      continue;
-    }
-
-    const packageName = match[1];
-    const restOfPath = match[2];
+    const packageName = plugin.packageName;
+    const umdFile = plugin.umdFile;
 
     try {
       console.log(`Fetching ${pluginName} from npm registry...`);
@@ -171,14 +162,14 @@ async function downloadPlugins(): Promise<void> {
       console.log(`  Downloading tarball...`);
 
       // Destination paths in dist
-      const destPath = path.join(outputDir, packageName, restOfPath);
+      const destPath = path.join(outputDir, packageName, umdFile);
       const packageJsonDestPath = path.join(outputDir, packageName, 'package.json');
 
       // Download and extract the specific file and package.json from tarball
       await downloadAndExtractTarball(
         tarballUrl,
         packageName,
-        restOfPath,
+        umdFile,
         destPath,
         packageJsonDestPath,
       );
