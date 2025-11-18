@@ -1,0 +1,70 @@
+{
+  "version": "0.0.14",
+  "name": "jbrowse-plugin-protein3d",
+  "keywords": [
+    "jbrowse",
+    "jbrowse2"
+  ],
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest",
+    "clean": "rimraf dist",
+    "format": "prettier --write .",
+    "prebuild": "npm run clean",
+    "start": "node esbuild-watch.mjs",
+    "build": "tsc && NODE_ENV=production node esbuild.mjs",
+    "lint": "eslint --report-unused-disable-directives --max-warnings 0",
+    "prepack": "npm run build",
+    "postversion": "git push --follow-tags"
+  },
+  "dependencies": {
+    "@mui/icons-material": "^7.0.1",
+    "buffer": "^6.0.3",
+    "clustal-js": "^2.0.1",
+    "g2p_mapper": "^1.0.3",
+    "molstar": "^5.0.0",
+    "swr": "^2.2.5"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.13.0",
+    "@eslint/compat": "^1.1.1",
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@jbrowse/core": "^3.0.1",
+    "@jbrowse/plugin-linear-genome-view": "^3.0.1",
+    "@mui/material": "^7.0.1",
+    "@mui/system": "^7.0.1",
+    "@mui/x-data-grid": "^8.1.0",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.29.1",
+    "@typescript-eslint/parser": "^8.29.1",
+    "esbuild": "^0.25.2",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-react": "^7.20.3",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint-plugin-react-refresh": "^0.4.11",
+    "eslint-plugin-unicorn": "^61.0.2",
+    "fp-ts": "^2.16.9",
+    "mobx": "^6.0.0",
+    "mobx-react": "^9.0.1",
+    "mobx-state-tree": "^5.4.2",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.2.5",
+    "pretty-bytes": "^7.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rimraf": "^6.0.1",
+    "rxjs": "^7.0.0",
+    "tss-react": "^4.9.4",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.29.1",
+    "vitest": "^4.0.3"
+  },
+  "author": "Colin <colin.diesh@gmail.com>",
+  "license": "MIT"
+}

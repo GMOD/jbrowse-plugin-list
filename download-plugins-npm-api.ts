@@ -59,6 +59,7 @@ async function downloadAndExtractTarball(
   packageName: string,
   filePathInPackage: string,
   destPath: string,
+  packageJsonDestPath: string,
 ): Promise<void> {
   const response = await fetch(tarballUrl);
 
@@ -72,16 +73,28 @@ async function downloadAndExtractTarball(
     throw new Error('No response body');
   }
 
-  // Create destination directory
+  // Create destination directories
   const destDir = path.dirname(destPath);
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
 
-  // The file path in the tarball is prefixed with "package/"
-  const tarballFilePath = `package/${filePathInPackage}`;
+  const packageJsonDir = path.dirname(packageJsonDestPath);
+  if (!fs.existsSync(packageJsonDir)) {
+    fs.mkdirSync(packageJsonDir, { recursive: true });
+  }
 
-  let fileFound = false;
+  // The file paths in the tarball are prefixed with "package/"
+  const tarballFilePath = `package/${filePathInPackage}`;
+  const tarballPackageJsonPath = 'package/package.json';
+
+  const filesToExtract = new Map([
+    [tarballFilePath, destPath],
+    [tarballPackageJsonPath, packageJsonDestPath],
+  ]);
+
+  const foundFiles = new Set<string>();
+  const pendingWrites: Promise<void>[] = [];
 
   return new Promise((resolve, reject) => {
     Readable.fromWeb(response.body as any)
@@ -89,25 +102,39 @@ async function downloadAndExtractTarball(
       .pipe(
         tar.t({
           onentry: (entry) => {
-            if (entry.path === tarballFilePath) {
-              fileFound = true;
-              const writeStream = fs.createWriteStream(destPath);
-              entry.pipe(writeStream);
-              writeStream.on('finish', () => {
-                resolve();
+            const destFilePath = filesToExtract.get(entry.path);
+            if (destFilePath) {
+              foundFiles.add(entry.path);
+              const writeStream = fs.createWriteStream(destFilePath);
+
+              const writePromise = new Promise<void>((resolveWrite, rejectWrite) => {
+                writeStream.on('finish', resolveWrite);
+                writeStream.on('error', rejectWrite);
               });
-              writeStream.on('error', reject);
+
+              pendingWrites.push(writePromise);
+              entry.pipe(writeStream);
             }
           },
         }),
       )
-      .on('finish', () => {
-        if (!fileFound) {
-          reject(
-            new Error(
-              `File ${filePathInPackage} not found in package tarball`,
-            ),
-          );
+      .on('finish', async () => {
+        try {
+          await Promise.all(pendingWrites);
+
+          if (!foundFiles.has(tarballFilePath)) {
+            reject(
+              new Error(
+                `File ${filePathInPackage} not found in package tarball`,
+              ),
+            );
+          } else if (!foundFiles.has(tarballPackageJsonPath)) {
+            reject(new Error('package.json not found in package tarball'));
+          } else {
+            resolve();
+          }
+        } catch (error) {
+          reject(error);
         }
       })
       .on('error', reject);
@@ -143,15 +170,17 @@ async function downloadPlugins(): Promise<void> {
       console.log(`  Latest version: ${latestVersion}`);
       console.log(`  Downloading tarball...`);
 
-      // Destination path in dist
+      // Destination paths in dist
       const destPath = path.join(outputDir, packageName, restOfPath);
+      const packageJsonDestPath = path.join(outputDir, packageName, 'package.json');
 
-      // Download and extract the specific file from tarball
+      // Download and extract the specific file and package.json from tarball
       await downloadAndExtractTarball(
         tarballUrl,
         packageName,
         restOfPath,
         destPath,
+        packageJsonDestPath,
       );
 
       console.log(`✓ Downloaded ${pluginName}`);
