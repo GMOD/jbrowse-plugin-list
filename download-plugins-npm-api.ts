@@ -159,11 +159,23 @@ async function downloadPlugins(): Promise<void> {
       const tarballUrl = metadata.versions[latestVersion].dist.tarball;
 
       console.log(`  Latest version: ${latestVersion}`);
-      console.log(`  Downloading tarball...`);
 
       // Destination paths in dist
       const destPath = path.join(outputDir, packageName, umdFile);
       const packageJsonDestPath = path.join(outputDir, packageName, 'package.json');
+
+      // Check if package.json already exists and has the same version
+      if (fs.existsSync(packageJsonDestPath)) {
+        const existingPackageJson = JSON.parse(fs.readFileSync(packageJsonDestPath, 'utf8'));
+        if (existingPackageJson.version === latestVersion) {
+          console.log(`  Already up to date (v${latestVersion})`);
+          console.log(`✓ Skipped ${pluginName}`);
+          continue;
+        }
+        console.log(`  Updating from v${existingPackageJson.version} to v${latestVersion}`);
+      }
+
+      console.log(`  Downloading tarball...`);
 
       // Download and extract the specific file and package.json from tarball
       await downloadAndExtractTarball(
