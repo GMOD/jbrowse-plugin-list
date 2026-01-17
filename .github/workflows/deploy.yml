@@ -1,0 +1,27 @@
+name: Deploy to S3
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Deploy to S3
+        run: yarn deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

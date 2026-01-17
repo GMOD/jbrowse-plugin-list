@@ -10,15 +10,6 @@
     "postdeploy": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E12EBG02P68TDO --paths \"/plugins/*\""
   },
   "dependencies": {
-    "jbrowse-plugin-biothings": "^1.1.1",
-    "jbrowse-plugin-civic": "^1.0.8",
-    "jbrowse-plugin-gdc": "^2.3.1",
-    "jbrowse-plugin-gwas": "^2.2.0",
-    "jbrowse-plugin-icgc": "^1.0.2",
-    "jbrowse-plugin-ideogram": "^1.2.3",
-    "jbrowse-plugin-msaview": "^2.2.3",
-    "jbrowse-plugin-quantseq": "^0.0.6",
-    "jbrowse-plugin-ucsc": "^1.0.3",
     "prettier": "^3.5.3",
     "tar": "^7.5.2"
   },
