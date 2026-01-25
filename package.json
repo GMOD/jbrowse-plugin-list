@@ -3,18 +3,19 @@
   "license": "MIT",
   "scripts": {
     "download": "node download-plugins-npm-api.ts",
+    "format": "prettier --write .",
     "generate": "node generate-plugins.ts",
     "update": "yarn download && yarn generate",
-    "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json",
-    "deploy": "yarn update && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && yarn upload",
-    "postupload": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E12EBG02P68TDO --paths \"/plugins/*\"",
+    "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ --cache-control 'no-cache, must-revalidate' && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json --cache-control 'no-cache, must-revalidate'",
+    "invalidate": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E13LGELJOT4GQO --paths \"/plugins/*\" \"/plugin-store/*\"",
+    "deploy": "yarn update && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && yarn upload && yarn invalidate",
     "postdeploy": "git push --follow-tags"
   },
   "dependencies": {
-    "prettier": "^3.5.3",
-    "tar": "^7.5.2"
+    "prettier": "^3.8.1",
+    "tar": "^7.5.6"
   },
   "devDependencies": {
-    "@types/node": "^24.9.1"
+    "@types/node": "^25.0.10"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "version": "0.0.18",
+  "version": "0.0.19",
   "name": "jbrowse-plugin-protein3d",
   "keywords": [
     "jbrowse",
@@ -32,7 +32,6 @@
   "dependencies": {
     "@jbrowse/plugin-linear-genome-view": "^4.1.1",
     "@mui/icons-material": "^7.0.1",
-    "buffer": "^6.0.3",
     "clustal-js": "^2.0.11",
     "g2p_mapper": "^2.0.0",
     "molstar": "^5.6.1",
@@ -41,6 +40,7 @@
   "devDependencies": {
     "@emotion/react": "^11.13.0",
     "@eslint/compat": "^2.0.0",
+    "@eslint/js": "^9.39.2",
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@jbrowse/core": "^4.1.1",
     "@jbrowse/mobx-state-tree": "^5.4.2",
@@ -54,11 +54,9 @@
     "eslint-plugin-react": "^7.20.3",
     "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-react-refresh": "^0.4.11",
-    "eslint-plugin-unicorn": "^62.0.0",
-    "fp-ts": "^2.16.9",
+    "fp-ts": "^2.16.11",
     "mobx": "^6.0.0",
     "mobx-react": "^9.0.1",
-    "npm-run-all": "^4.1.5",
     "prettier": "^3.8.1",
     "pretty-bytes": "^7.0.0",
     "puppeteer": "^24.36.0",
