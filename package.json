@@ -7,7 +7,8 @@
     "update": "yarn download && yarn generate",
     "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json",
     "deploy": "yarn update && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && yarn upload",
-    "postupload": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E12EBG02P68TDO --paths \"/plugins/*\""
+    "postupload": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E12EBG02P68TDO --paths \"/plugins/*\"",
+    "postdeploy": "git push --follow-tags"
   },
   "dependencies": {
     "prettier": "^3.5.3",
