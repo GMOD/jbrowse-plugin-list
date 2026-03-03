@@ -1,0 +1,57 @@
+import type { SequenceSearchType } from './useAlphaFoldSequenceSearch';
+import type { LookupMode } from '../components/UniProtIdInput';
+import type { Feature } from '@jbrowse/core/util';
+import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
+export default function useAlphaFoldDBSearch({ feature, view, }: {
+    feature: Feature;
+    view: LinearGenomeViewModel;
+}): {
+    lookupMode: LookupMode;
+    setLookupMode: import("react").Dispatch<import("react").SetStateAction<LookupMode>>;
+    manualUniprotId: string;
+    setManualUniprotId: import("react").Dispatch<import("react").SetStateAction<string>>;
+    selectedQueryId: string;
+    setSelectedQueryId: import("react").Dispatch<import("react").SetStateAction<string>>;
+    sequenceSearchType: SequenceSearchType;
+    setSequenceSearchType: import("react").Dispatch<import("react").SetStateAction<SequenceSearchType>>;
+    selectedUniprotId: string | undefined;
+    setSelectedUniprotId: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
+    userSelection: string | undefined;
+    setUserSelection: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
+    transcriptOptions: Feature[];
+    selectedTranscript: Feature | undefined;
+    isoformSequences: Record<string, {
+        feature: Feature;
+        seq: string;
+    }> | undefined;
+    userSelectedProteinSequence: {
+        feature: Feature;
+        seq: string;
+    } | undefined;
+    uniprotEntries: import("../services/lookupMethods").UniProtEntry[];
+    predictions: import("./useAlphaFoldUrl").AlphaFoldPrediction[] | undefined;
+    selectedEntryIndex: number;
+    setSelectedEntryIndex: import("react").Dispatch<import("react").SetStateAction<number>>;
+    recognizedIds: string[];
+    geneName: string | undefined;
+    featureUniprotId: string | undefined;
+    uniprotId: string | undefined;
+    url: string | undefined;
+    confidenceUrl: string | undefined;
+    structureSequence: string | undefined;
+    error: any;
+    loadingStatuses: string[];
+    isSequenceSearchLoading: boolean;
+    showIdentifierSelector: boolean;
+    showStructureSelectors: boolean;
+    sequencesMatch: boolean | undefined;
+    searchDescription: string;
+    searchDescriptionOr: string;
+    selectedTableAccession: string | undefined;
+    showUniprotResults: boolean;
+    showNoResults: boolean;
+    showAlphaFoldEntrySelector: boolean;
+    showSequenceSearchStatus: boolean;
+    showAlphaFoldDBSearchStatus: boolean;
+    isLoading: boolean;
+};

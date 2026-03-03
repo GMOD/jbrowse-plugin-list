@@ -1,0 +1,297 @@
+{
+  "plugins": [
+    {
+      "name": "Biothings",
+
+      "url": "https://unpkg.com/jbrowse-plugin-biothings/dist/jbrowse-plugin-biothings.umd.production.min.js"
+    }
+  ],
+  "assemblies": [
+    {
+      "name": "hg38",
+      "aliases": ["GRCh38"],
+      "sequence": {
+        "type": "ReferenceSequenceTrack",
+        "trackId": "P6R5xbRqRr",
+        "adapter": {
+          "type": "BgzipFastaAdapter",
+          "fastaLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz"
+          },
+          "faiLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz.fai"
+          },
+          "gziLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz.gzi"
+          }
+        }
+      },
+      "refNameAliases": {
+        "adapter": {
+          "type": "RefNameAliasAdapter",
+          "location": {
+            "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/hg38_aliases.txt"
+          }
+        }
+      }
+    },
+
+    {
+      "name": "hg19",
+      "aliases": ["GRCh37"],
+      "sequence": {
+        "type": "ReferenceSequenceTrack",
+        "trackId": "Pd8Wh30ei9R",
+        "adapter": {
+          "type": "BgzipFastaAdapter",
+          "fastaLocation": {
+            "uri": "https://jbrowse.org/genomes/hg19/fasta/hg19.fa.gz",
+            "locationType": "UriLocation"
+          },
+          "faiLocation": {
+            "uri": "https://jbrowse.org/genomes/hg19/fasta/hg19.fa.gz.fai",
+            "locationType": "UriLocation"
+          },
+          "gziLocation": {
+            "uri": "https://jbrowse.org/genomes/hg19/fasta/hg19.fa.gz.gzi",
+            "locationType": "UriLocation"
+          }
+        }
+      },
+      "refNameAliases": {
+        "adapter": {
+          "type": "RefNameAliasAdapter",
+          "location": {
+            "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/hg19/hg19_aliases.txt",
+            "locationType": "UriLocation"
+          }
+        }
+      },
+      "cytobands": {
+        "adapter": {
+          "type": "CytobandAdapter",
+          "cytobandLocation": {
+            "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/hg19/cytoBand.txt"
+          }
+        }
+      }
+    }
+  ],
+  "tracks": [
+    {
+      "type": "FeatureTrack",
+      "trackId": "mygene_hg38",
+      "name": "MyGene v3",
+      "assemblyNames": ["hg38"],
+      "category": ["Annotation"],
+      "adapter": {
+        "baseUrl": "https://mygene.info/v3/query?q={ref}:{start}-{end}&size=1000&fields=all&size=1000&species=human&email=colin.diesh@gmail.com",
+        "type": "MyGeneV3Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "mygene_hg19",
+      "name": "MyGene v3",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "baseUrl": "https://mygene.info/v3/query?q=hg19.{ref}:{start}-{end}&fields=all&size=1000&email=colin.diesh@gmail.com",
+        "type": "MyGeneV3Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19",
+      "name": "MyVariant v1",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end}&size=1000&fields=all&size=1000&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_cadd",
+      "name": "MyVariant v1 (CADD)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:cadd&size=1000&size=1000&fields=cadd&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_grasp",
+      "name": "MyVariant v1 (grasp)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:grasp&size=1000&size=1000&fields=grasp&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_exac",
+      "name": "MyVariant v1 (exac)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:exac&size=1000&size=1000&fields=exac&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_wellderly",
+      "name": "MyVariant v1 (wellderly)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:wellderly&size=1000&size=1000&fields=wellderly&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_dbsnp",
+      "name": "MyVariant v1 (dbsnp)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:dbsnp&size=1000&size=1000&fields=dbsnp&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_dbsnfp",
+      "name": "MyVariant v1 (dbsnfp)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:dbsnfp&size=1000&size=1000&fields=dbsnfp&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_clinvar",
+      "name": "MyVariant v1 (clinvar)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:clinvar&size=1000&size=1000&fields=clinvar&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_snpedia",
+      "name": "MyVariant v1 (snpedia)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:snpedia&size=1000&size=1000&fields=snpedia&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_docm",
+      "name": "MyVariant v1 (docm)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:docm&size=1000&size=1000&fields=docm&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_emv",
+      "name": "MyVariant v1 (emv)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:emv&size=1000&size=1000&fields=emv&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_snpeff",
+      "name": "MyVariant v1 (snpeff)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:snpeff&size=1000&size=1000&fields=snpeff&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_mutdb",
+      "name": "MyVariant v1 (mutdb)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:mutdb&size=1000&size=1000&fields=mutdb&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_cosmic",
+      "name": "MyVariant v1 (cosmic)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:cosmic&size=1000&size=1000&fields=cosmic&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_gwassnps",
+      "name": "MyVariant v1 (gwassnps)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:gwassnps&size=1000&size=1000&fields=gwassnps&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter",
+        "chunkSize": 1000000
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "myvariant_hg19_evs",
+      "name": "MyVariant v1 (evs)",
+      "assemblyNames": ["hg19"],
+      "category": ["Annotation"],
+      "adapter": {
+        "query": "query?q={ref}:{start}-{end} AND _exists_:evs&size=1000&size=1000&fields=gwassnps&email=colin.diesh@gmail.com",
+        "baseUrl": "https://myvariant.info/v1/",
+        "type": "MyVariantV1Adapter"
+      }
+    }
+  ]
+}

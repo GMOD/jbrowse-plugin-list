@@ -1,0 +1,64 @@
+import React, { useCallback, useMemo } from 'react';
+import { observer } from 'mobx-react';
+const hitboxStyle = {
+    pointerEvents: 'all',
+    cursor: 'pointer',
+    strokeWidth: 8,
+    stroke: 'transparent',
+};
+const Tree = observer(function ({ model }) {
+    const { 
+    // rowHeight is needed for redrawing after zoom change
+    // eslint-disable-next-line  @typescript-eslint/no-unused-vars
+    rowHeight: _rowHeight, treeAreaWidth, hierarchy, showBranchLen, nodeDescendantNames, } = model;
+    const clearHighlight = useCallback(() => {
+        model.setHighlightedRowNames(undefined);
+    }, [model]);
+    const nodeHandlers = useMemo(() => {
+        const handlers = new Map();
+        if (hierarchy) {
+            for (const node of hierarchy.descendants()) {
+                const names = nodeDescendantNames.get(node);
+                handlers.set(node, {
+                    onMouseEnter: () => {
+                        model.setHighlightedRowNames(names, {
+                            x: node.x,
+                            y: node.y,
+                        });
+                    },
+                    onClick: (event) => {
+                        event.preventDefault();
+                        if (names && names.length > 0) {
+                            model.setTreeMenuAnchor({
+                                x: event.clientX,
+                                y: event.clientY,
+                                names,
+                            });
+                        }
+                    },
+                });
+            }
+        }
+        return handlers;
+    }, [model, hierarchy, nodeDescendantNames, treeAreaWidth]);
+    return (React.createElement(React.Fragment, null, hierarchy
+        ? [...hierarchy.links()].map(link => {
+            const { source, target } = link;
+            const sy = source.x;
+            const ty = target.x;
+            // @ts-expect-error
+            const tx = showBranchLen ? target.len : target.y;
+            // @ts-expect-error
+            const sx = showBranchLen ? source.len : source.y;
+            const sourceHandlers = nodeHandlers.get(source);
+            const targetHandlers = nodeHandlers.get(target);
+            return (React.createElement(React.Fragment, { key: `${treeAreaWidth}-${sy}-${ty}-${tx}-${sx}` },
+                React.createElement("line", { stroke: "black", x1: sx, y1: sy, x2: sx, y2: ty }),
+                React.createElement("line", { stroke: "black", x1: sx, y1: ty, x2: tx, y2: ty }),
+                React.createElement("line", { x1: sx, y1: sy, x2: sx, y2: ty, style: hitboxStyle, onMouseEnter: sourceHandlers?.onMouseEnter, onMouseLeave: clearHighlight, onClick: sourceHandlers?.onClick }),
+                React.createElement("line", { x1: sx, y1: ty, x2: tx, y2: ty, style: hitboxStyle, onMouseEnter: targetHandlers?.onMouseEnter, onMouseLeave: clearHighlight, onClick: targetHandlers?.onClick })));
+        })
+        : null));
+});
+export default Tree;
+//# sourceMappingURL=Tree.js.map

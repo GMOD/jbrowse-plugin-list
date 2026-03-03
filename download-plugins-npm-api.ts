@@ -57,10 +57,7 @@ async function fetchPackageMetadata(
 
 async function downloadAndExtractTarball(
   tarballUrl: string,
-  packageName: string,
-  filePathInPackage: string,
-  destPath: string,
-  packageJsonDestPath: string,
+  destDir: string,
 ): Promise<void> {
   const response = await fetch(tarballUrl);
 
@@ -74,27 +71,10 @@ async function downloadAndExtractTarball(
     throw new Error('No response body');
   }
 
-  // Create destination directories
-  const destDir = path.dirname(destPath);
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
 
-  const packageJsonDir = path.dirname(packageJsonDestPath);
-  if (!fs.existsSync(packageJsonDir)) {
-    fs.mkdirSync(packageJsonDir, { recursive: true });
-  }
-
-  // The file paths in the tarball are prefixed with "package/"
-  const tarballFilePath = `package/${filePathInPackage}`;
-  const tarballPackageJsonPath = 'package/package.json';
-
-  const filesToExtract = new Map([
-    [tarballFilePath, destPath],
-    [tarballPackageJsonPath, packageJsonDestPath],
-  ]);
-
-  const foundFiles = new Set<string>();
   const pendingWrites: Promise<void>[] = [];
 
   return new Promise((resolve, reject) => {
@@ -103,37 +83,33 @@ async function downloadAndExtractTarball(
       .pipe(
         tar.t({
           onentry: (entry) => {
-            const destFilePath = filesToExtract.get(entry.path);
-            if (destFilePath) {
-              foundFiles.add(entry.path);
-              const writeStream = fs.createWriteStream(destFilePath);
-
-              const writePromise = new Promise<void>((resolveWrite, rejectWrite) => {
-                writeStream.on('finish', resolveWrite);
-                writeStream.on('error', rejectWrite);
-              });
-
-              pendingWrites.push(writePromise);
-              entry.pipe(writeStream);
+            // Tarball entries are prefixed with "package/"
+            if (!entry.path.startsWith('package/')) {
+              return;
             }
+            const relativePath = entry.path.slice('package/'.length);
+            if (!relativePath || entry.type === 'Directory') {
+              return;
+            }
+            const destPath = path.join(destDir, relativePath);
+            const dir = path.dirname(destPath);
+            if (!fs.existsSync(dir)) {
+              fs.mkdirSync(dir, { recursive: true });
+            }
+            const writeStream = fs.createWriteStream(destPath);
+            const writePromise = new Promise<void>((resolveWrite, rejectWrite) => {
+              writeStream.on('finish', resolveWrite);
+              writeStream.on('error', rejectWrite);
+            });
+            pendingWrites.push(writePromise);
+            entry.pipe(writeStream);
           },
         }),
       )
       .on('finish', async () => {
         try {
           await Promise.all(pendingWrites);
-
-          if (!foundFiles.has(tarballFilePath)) {
-            reject(
-              new Error(
-                `File ${filePathInPackage} not found in package tarball`,
-              ),
-            );
-          } else if (!foundFiles.has(tarballPackageJsonPath)) {
-            reject(new Error('package.json not found in package tarball'));
-          } else {
-            resolve();
-          }
+          resolve();
         } catch (error) {
           reject(error);
         }
@@ -148,21 +124,18 @@ async function downloadPlugins(): Promise<void> {
   for (const plugin of plugins) {
     const pluginName = plugin.name;
     const packageName = plugin.packageName;
-    const umdFile = plugin.umdFile;
 
     try {
       console.log(`Fetching ${pluginName} from npm registry...`);
 
-      // Fetch package metadata from npm registry
       const metadata = await fetchPackageMetadata(packageName);
       const latestVersion = metadata['dist-tags'].latest;
       const tarballUrl = metadata.versions[latestVersion].dist.tarball;
 
       console.log(`  Latest version: ${latestVersion}`);
 
-      // Destination paths in dist
-      const destPath = path.join(outputDir, packageName, umdFile);
-      const packageJsonDestPath = path.join(outputDir, packageName, 'package.json');
+      const pluginDestDir = path.join(outputDir, packageName);
+      const packageJsonDestPath = path.join(pluginDestDir, 'package.json');
 
       // Check if package.json already exists and has the same version
       if (fs.existsSync(packageJsonDestPath)) {
@@ -177,14 +150,7 @@ async function downloadPlugins(): Promise<void> {
 
       console.log(`  Downloading tarball...`);
 
-      // Download and extract the specific file and package.json from tarball
-      await downloadAndExtractTarball(
-        tarballUrl,
-        packageName,
-        umdFile,
-        destPath,
-        packageJsonDestPath,
-      );
+      await downloadAndExtractTarball(tarballUrl, pluginDestDir);
 
       console.log(`✓ Downloaded ${pluginName}`);
     } catch (error) {

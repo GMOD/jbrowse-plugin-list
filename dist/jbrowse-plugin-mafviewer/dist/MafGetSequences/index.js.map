@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/MafGetSequences/index.ts"],"names":[],"mappings":"AAEA,OAAO,eAAe,MAAM,mBAAmB,CAAA;AAE/C,MAAM,CAAC,OAAO,UAAU,gBAAgB,CAAC,aAA4B;IACnE,aAAa,CAAC,YAAY,CAAC,GAAG,EAAE;QAC9B,OAAO,IAAI,eAAe,CAAC,aAAa,CAAC,CAAA;IAC3C,CAAC,CAAC,CAAA;AACJ,CAAC"}

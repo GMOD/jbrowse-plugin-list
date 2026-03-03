@@ -1,0 +1,55 @@
+import { Instance } from 'mobx-state-tree';
+import { MenuItem } from '@jbrowse/core/ui';
+import PluginManager from '@jbrowse/core/PluginManager';
+import { FileLocation } from '@jbrowse/core/util/types';
+export default function IdeogramView(pluginManager: PluginManager): import("mobx-state-tree").IModelType<{
+    type: import("mobx-state-tree").ISimpleType<"IdeogramView">;
+    displayName: import("mobx-state-tree").IMaybe<import("mobx-state-tree").ISimpleType<string>>;
+    id: import("mobx-state-tree").IOptionalIType<import("mobx-state-tree").ISimpleType<string>, [undefined]>;
+    sex: import("mobx-state-tree").IType<string | undefined, string, string>;
+    orientation: import("mobx-state-tree").IType<string | undefined, string, string>;
+    region: import("mobx-state-tree").IType<string | undefined, string, string>;
+    assembly: import("mobx-state-tree").IType<string | undefined, string, string>;
+    selectedAnnot: import("mobx-state-tree").IType<string | undefined, string, string>;
+    ideogramId: import("mobx-state-tree").IType<string | undefined, string, string>;
+    allRegions: import("mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    showImportForm: import("mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    showAnnotations: import("mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    withReactome: import("mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    showLoading: import("mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    isAnalysisResults: import("mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    annotationsLocation: import("mobx-state-tree").IOptionalIType<import("mobx-state-tree").IType<any, any, any>, [undefined]>;
+}, {
+    widgetAnnotations: object;
+    ideoAnnotations: object;
+    pathways: object;
+    highlightedAnnots: object[];
+} & {
+    setWidth(n: number): void;
+    setDisplayName(str: string): void;
+    setRegion(chr: string): void;
+    setAssembly(asm: string): void;
+    setAllRegions(toggle: boolean): void;
+    setOrientation(ori: string): void;
+    setShowImportForm(toggle: boolean): void;
+    setAnnotationsLocation(loc: FileLocation): void;
+    setWidgetAnnotations(obj: any): void;
+    setIdeoAnnotations(obj: any): void;
+    setWithReactome(toggle: boolean): void;
+    setShowLoading(toggle: boolean): void;
+    setPathways(obj: any): void;
+    setIsAnalysisResults(toggle: boolean): void;
+    setSelectedAnnot(item: string): void;
+    setHighlightedAnnots(arr: any): void;
+    setIdeogramId(id: string): void;
+    applyHighlighting(): void;
+    toggleAllRegions(toggle: boolean): void;
+    toggleOrientation(): void;
+    toggleSex(): void;
+    toggleAnnotations(): void;
+    refreshTable(): void;
+} & {
+    menuItems(): MenuItem[];
+}, import("mobx-state-tree")._NotCustomized, import("mobx-state-tree")._NotCustomized>;
+export declare type IdeogramViewStateModel = ReturnType<typeof IdeogramView>;
+export declare type IdeogramViewModel = Instance<IdeogramViewStateModel>;

@@ -1,0 +1,238 @@
+{
+  "plugins": [
+    {
+      "name": "GDC",
+      "url": "https://unpkg.com/jbrowse-plugin-gdc/dist/jbrowse-plugin-gdc.umd.production.min.js"
+    }
+  ],
+  "assemblies": [
+    {
+      "name": "hg38",
+      "aliases": ["GRCh38"],
+      "sequence": {
+        "type": "ReferenceSequenceTrack",
+        "trackId": "P6R5xbRqRr",
+        "adapter": {
+          "type": "BgzipFastaAdapter",
+          "fastaLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz",
+            "locationType": "UriLocation"
+          },
+          "faiLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz.fai",
+            "locationType": "UriLocation"
+          },
+          "gziLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz.gzi",
+            "locationType": "UriLocation"
+          }
+        }
+      },
+      "refNameAliases": {
+        "adapter": {
+          "type": "RefNameAliasAdapter",
+          "location": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/hg38_aliases.txt",
+            "locationType": "UriLocation"
+          }
+        }
+      }
+    }
+  ],
+  "tracks": [
+    {
+      "type": "FeatureTrack",
+      "trackId": "ncbi_refseq_109_hg38_latest",
+      "name": "NCBI RefSeq (GFF3Tabix)",
+      "assemblyNames": ["hg38"],
+      "category": ["Annotation"],
+      "adapter": {
+        "type": "Gff3TabixAdapter",
+        "gffGzLocation": {
+          "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/ncbi_refseq/GRCh38_latest_genomic.sort.gff.gz",
+          "locationType": "UriLocation"
+        },
+        "index": {
+          "location": {
+            "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/ncbi_refseq/GRCh38_latest_genomic.sort.gff.gz.tbi",
+            "locationType": "UriLocation"
+          }
+        }
+      }
+    },
+    {
+      "type": "GDCTrack",
+      "trackId": "gdc_plugin_track",
+      "name": "GDC Explore",
+      "assemblyNames": ["hg38"],
+      "category": ["Annotation"],
+      "adapter": {
+        "GDCAdapterId": "DefaultGDCAdapter",
+        "type": "GDCAdapter"
+      },
+      "displays": [
+        {
+          "type": "LinearGDCDisplay",
+          "displayId": "gdc_plugin_track_linear",
+          "renderer": {
+            "color1": "jexl:cast({LOW: 'blue', MODIFIER: 'goldenrod', MODERATE: 'green', HIGH: 'red'})[get(feature,'consequence').hits.edges[.node.transcript.is_canonical == true][0].node.transcript.annotation.vep_impact] || 'lightgray'",
+            "labels": {
+              "name": "jexl:get(feature,'genomicDnaChange')"
+            },
+            "type": "SvgFeatureRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "gencode_nclist_hg38",
+      "name": "Gencode v32",
+      "assemblyNames": ["hg38"],
+      "category": ["Annotation"],
+      "adapter": {
+        "type": "NCListAdapter",
+        "rootUrlTemplate": {
+          "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/gencode/{refseq}/trackData.jsonz",
+          "locationType": "UriLocation"
+        },
+        "refNames": [
+          "chr1",
+          "chr2",
+          "chr3",
+          "chr4",
+          "chr5",
+          "chr6",
+          "chr7",
+          "chr8",
+          "chr9",
+          "chr10",
+          "chr11",
+          "chr12",
+          "chr13",
+          "chr14",
+          "chr15",
+          "chr16",
+          "chr17",
+          "chr18",
+          "chr19",
+          "chr20",
+          "chr21",
+          "chr22",
+          "chr23",
+          "chrX",
+          "chrY",
+          "chrMT"
+        ]
+      },
+      "displays": [
+        {
+          "type": "LinearBasicDisplay",
+          "displayId": "gencode_nclist_hg38_linear",
+          "renderer": {
+            "type": "SvgFeatureRenderer",
+            "labels": {
+              "description": "jexl:get(feature,'gene_name')"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "defaultSession": {
+    "name": "Human Example (hg38)",
+    "width": 1850,
+    "drawerWidth": 384,
+    "views": [
+      {
+        "id": "MiDMyyWpp",
+        "type": "LinearGenomeView",
+        "width": 800,
+        "displayName": "GDC",
+        "trackSelectorType": "hierarchical",
+        "offsetPx": 12490000,
+        "bpPerPx": 10,
+        "displayedRegions": [
+          {
+            "refName": "3",
+            "start": 0,
+            "end": 186700647,
+            "assemblyName": "hg38"
+          }
+        ],
+        "tracks": [
+          {
+            "type": "FeatureTrack",
+            "configuration": "gencode_nclist_hg38",
+            "displays": [
+              {
+                "type": "LinearBasicDisplay",
+                "configuration": "gencode_nclist_hg38_linear",
+                "height": 150
+              }
+            ]
+          },
+          {
+            "type": "GDCTrack",
+            "configuration": "gdc_plugin_track",
+            "displays": [
+              {
+                "type": "LinearGDCDisplay",
+                "configuration": "gdc_plugin_track_linear"
+              }
+            ]
+          }
+        ],
+        "controlsWidth": 120,
+        "minimumBlockWidth": 20
+      }
+    ]
+  },
+  "internetAccounts": [
+    {
+      "type": "GDCInternetAccount",
+      "internetAccountId": "GDCExternalToken",
+      "name": "GDC",
+      "description": "GDC External Token",
+      "domains": ["portal.gdc.cancer.gov", "api.gdc.cancer.gov"],
+      "customEndpoint": "http://localhost:8010/proxy"
+    }
+  ],
+
+  "aggregateTextSearchAdapters": [
+    {
+      "type": "TrixTextSearchAdapter",
+      "textSearchAdapterId": "hg19-index",
+      "ixFilePath": {
+        "uri": "https://jbrowse.org/genomes/hg19/trix/hg19.ix",
+        "locationType": "UriLocation"
+      },
+      "ixxFilePath": {
+        "uri": "https://jbrowse.org/genomes/hg19/trix/hg19.ixx",
+        "locationType": "UriLocation"
+      },
+      "metaFilePath": {
+        "uri": "https://jbrowse.org/genomes/hg19/trix/meta.json",
+        "locationType": "UriLocation"
+      },
+      "assemblyNames": ["hg19"]
+    },
+    {
+      "type": "TrixTextSearchAdapter",
+      "textSearchAdapterId": "hg38-index",
+      "ixFilePath": {
+        "uri": "https://jbrowse.org/genomes/GRCh38/trix/hg38.ix",
+        "locationType": "UriLocation"
+      },
+      "ixxFilePath": {
+        "uri": "https://jbrowse.org/genomes/GRCh38/trix/hg38.ixx",
+        "locationType": "UriLocation"
+      },
+      "metaFilePath": {
+        "uri": "https://jbrowse.org/genomes/GRCh38/trix/meta.json",
+        "locationType": "UriLocation"
+      },
+      "assemblyNames": ["hg38"]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"types.js","sourceRoot":"","sources":["../../src/ProteinView/types.ts"],"names":[],"mappings":"AAEA,MAAM,CAAC,MAAM,oBAAoB,GAAG;IAClC,gBAAgB,EAAE,kBAAkB;IACpC,cAAc,EAAE,gBAAgB;CACxB,CAAA;AAEV,MAAM,CAAC,MAAM,2BAA2B,GAAuB,gBAAgB,CAAA;AAE/E,MAAM,CAAC,MAAM,0BAA0B,GAA2B;IAChE,gBAAgB,EAAE,kBAAkB;IACpC,cAAc,EAAE,gBAAgB;CACjC,CAAA"}

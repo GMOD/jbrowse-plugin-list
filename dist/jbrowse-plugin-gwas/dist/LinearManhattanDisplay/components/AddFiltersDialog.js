@@ -1,0 +1,74 @@
+import React, { useEffect, useState } from 'react';
+import { Dialog } from '@jbrowse/core/ui';
+import { stringToJexlExpression } from '@jbrowse/core/util/jexlStrings';
+import { Button, DialogActions, DialogContent, TextField } from '@mui/material';
+import { observer } from 'mobx-react';
+import { makeStyles } from 'tss-react/mui';
+const useStyles = makeStyles()({
+    dialogContent: {
+        width: '80em',
+    },
+    textAreaFont: {
+        fontFamily: 'Courier New',
+    },
+    error: {
+        color: 'red',
+        fontSize: '0.8em',
+    },
+});
+const AddFiltersDialog = observer(function ({ model, handleClose, }) {
+    const { classes } = useStyles();
+    const { activeFilters } = model;
+    const [data, setData] = useState(activeFilters.join('\n'));
+    const [error, setError] = useState();
+    useEffect(() => {
+        try {
+            for (const line of data.split('\n')) {
+                const trimmed = line.trim();
+                if (trimmed) {
+                    stringToJexlExpression(trimmed);
+                }
+            }
+            setError(undefined);
+        }
+        catch (e) {
+            console.error(e);
+            setError(e);
+        }
+    }, [data]);
+    return (React.createElement(Dialog, { maxWidth: "xl", open: true, onClose: handleClose, title: "Add track filters" },
+        React.createElement(DialogContent, null,
+            React.createElement("div", null,
+                "Add filters, in jexl format, one per line, starting with the string jexl:. Examples:",
+                ' ',
+                React.createElement("ul", null,
+                    React.createElement("li", null,
+                        React.createElement("code", null, "jexl:get(feature,'name')=='BRCA1'"),
+                        " - show only feature where the name attribute is BRCA1"),
+                    React.createElement("li", null,
+                        React.createElement("code", null, "jexl:get(feature,'type')=='gene'"),
+                        " - show only gene type features in a GFF that has many other feature types"),
+                    React.createElement("li", null,
+                        React.createElement("code", null, "jexl:get(feature,'score') > 400"),
+                        " - show only features that have a score greater than 400"))),
+            error ? React.createElement("p", { className: classes.error }, `${error}`) : null,
+            React.createElement(TextField, { variant: "outlined", multiline: true, minRows: 5, maxRows: 10, className: classes.dialogContent, fullWidth: true, value: data, onChange: event => {
+                    setData(event.target.value);
+                }, slotProps: {
+                    input: {
+                        classes: {
+                            input: classes.textAreaFont,
+                        },
+                    },
+                } })),
+        React.createElement(DialogActions, null,
+            React.createElement(Button, { variant: "contained", color: "primary", type: "submit", autoFocus: true, disabled: !!error, onClick: () => {
+                    model.setJexlFilters(data.split('\n'));
+                    handleClose();
+                } }, "Submit"),
+            React.createElement(Button, { variant: "contained", color: "secondary", onClick: () => {
+                    handleClose();
+                } }, "Cancel"))));
+});
+export default AddFiltersDialog;
+//# sourceMappingURL=AddFiltersDialog.js.map

@@ -1,0 +1,244 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`adapter can fetch features from the icgc 1`] = `
+Array [
+  "chr1",
+  "chr10",
+  "chr11",
+  "chr12",
+  "chr13",
+  "chr14",
+  "chr15",
+  "chr16",
+  "chr17",
+  "chr18",
+  "chr19",
+  "chr2",
+  "chr20",
+  "chr21",
+  "chr22",
+  "chr3",
+  "chr4",
+  "chr5",
+  "chr6",
+  "chr7",
+  "chr8",
+  "chr9",
+  "chrX",
+  "chrY",
+]
+`;
+
+exports[`adapter can fetch features from the icgc 2`] = `
+Array [
+  Object {
+    "affectedDonorCountFiltered": 2,
+    "affectedDonorCountTotal": 6,
+    "affectedProjectCount": 1,
+    "assemblyVersion": "GRCh37",
+    "chromosome": "3",
+    "end": 124921497,
+    "functionalImpact": Array [
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+    ],
+    "id": "MU89172348",
+    "mutation": "->AAAAAAA",
+    "refName": "3",
+    "referenceGenomeAllele": "-",
+    "start": 124921497,
+    "study": Array [],
+    "testedDonorCount": 67,
+    "transcripts": Array [
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000314584",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000393469",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000423114",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000469902",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "downstream_gene_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000481760",
+      },
+    ],
+    "type": "insertion of <=200bp",
+    "uniqueId": "MU89172348",
+  },
+  Object {
+    "affectedDonorCountFiltered": 2,
+    "affectedDonorCountTotal": 2,
+    "affectedProjectCount": 2,
+    "assemblyVersion": "GRCh37",
+    "chromosome": "3",
+    "end": 124918162,
+    "functionalImpact": Array [
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+    ],
+    "id": "MU30653737",
+    "mutation": "C>T",
+    "refName": "3",
+    "referenceGenomeAllele": "C",
+    "start": 124918162,
+    "study": Array [
+      "PCAWG",
+    ],
+    "testedDonorCount": 137,
+    "transcripts": Array [
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000314584",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000393469",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000423114",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000469902",
+      },
+    ],
+    "type": "single base substitution",
+    "uniqueId": "MU30653737",
+  },
+  Object {
+    "affectedDonorCountFiltered": 1,
+    "affectedDonorCountTotal": 1,
+    "affectedProjectCount": 1,
+    "assemblyVersion": "GRCh37",
+    "chromosome": "3",
+    "end": 124897024,
+    "functionalImpact": Array [
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown",
+    ],
+    "id": "MU30416030",
+    "mutation": "A>T",
+    "refName": "3",
+    "referenceGenomeAllele": "A",
+    "start": 124897024,
+    "study": Array [],
+    "testedDonorCount": 140,
+    "transcripts": Array [
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000314584",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000393469",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000423114",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000462437",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000469902",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000473262",
+      },
+      Object {
+        "consequence": Object {
+          "functionalImpact": "Unknown",
+          "type": "intron_variant",
+        },
+        "functionalImpact": "Unknown",
+        "id": "ENST00000479826",
+      },
+    ],
+    "type": "single base substitution",
+    "uniqueId": "MU30416030",
+  },
+]
+`;

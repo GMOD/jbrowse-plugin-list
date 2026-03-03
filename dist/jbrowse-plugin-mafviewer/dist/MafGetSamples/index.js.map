@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../src/MafGetSamples/index.ts"],"names":[],"mappings":"AAAA,OAAO,aAAa,MAAM,iBAAiB,CAAA;AAI3C,MAAM,CAAC,OAAO,UAAU,cAAc,CAAC,aAA4B;IACjE,aAAa,CAAC,YAAY,CAAC,GAAG,EAAE;QAC9B,OAAO,IAAI,aAAa,CAAC,aAAa,CAAC,CAAA;IACzC,CAAC,CAAC,CAAA;AACJ,CAAC"}
