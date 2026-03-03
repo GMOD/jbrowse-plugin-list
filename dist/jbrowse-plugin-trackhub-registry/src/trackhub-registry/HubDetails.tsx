@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { openLocation } from '@jbrowse/core/util/io'
+
 import { HubFile } from '@gmod/ucsc-hub'
+import { SanitizedHTML } from '@jbrowse/core/ui'
+import { openLocation } from '@jbrowse/core/util/io'
+import EmailIcon from '@mui/icons-material/Email'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import {
   Card,
   CardActions,
@@ -10,14 +14,11 @@ import {
   LinearProgress,
   Typography,
 } from '@mui/material'
-import EmailIcon from '@mui/icons-material/Email'
-import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import { SanitizedHTML } from '@jbrowse/core/ui'
 
 function HubDetails(props: {
   hub: { url: string; longLabel: string; shortLabel: string }
 }) {
-  const [hubFile, setHubFile] = useState<Map<string, string>>()
+  const [hubFile, setHubFile] = useState<HubFile>()
   const [error, setError] = useState<unknown>()
 
   const { hub } = props
@@ -33,8 +34,7 @@ function HubDetails(props: {
           locationType: 'UriLocation',
         })
         const hubTxt = await hubHandle.readFile('utf8')
-        const newHubFile = new HubFile(hubTxt)
-        setHubFile(newHubFile)
+        setHubFile(new HubFile(hubTxt))
       } catch (error) {
         console.error(error)
         setError(error)
@@ -52,6 +52,8 @@ function HubDetails(props: {
     )
   }
   if (hubFile) {
+    const email = hubFile.data.email
+    const descriptionUrl = hubFile.data.descriptionUrl
     return (
       <Card>
         <CardHeader title={shortLabel} />
@@ -60,19 +62,16 @@ function HubDetails(props: {
         </CardContent>
         <CardActions>
           <IconButton
-            href={`mailto:${hubFile.get('email')}`}
+            href={`mailto:${email}`}
             rel="noopener noreferrer"
             target="_blank"
             color="secondary"
           >
             <EmailIcon />
           </IconButton>
-          {hubFile.get('descriptionUrl') ? (
+          {descriptionUrl ? (
             <IconButton
-              href={
-                new URL(hubFile.get('descriptionUrl') || '', new URL(hubUrl))
-                  .href
-              }
+              href={new URL(descriptionUrl, new URL(hubUrl)).href}
               rel="noopener noreferrer"
               target="_blank"
             >

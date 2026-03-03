@@ -1,4 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type React from 'react'
+
+import { SanitizedHTML } from '@jbrowse/core/ui'
+import { isAbortException } from '@jbrowse/core/util'
 import { openLocation } from '@jbrowse/core/util/io'
 import {
   FormControl,
@@ -11,14 +15,12 @@ import {
   Typography,
 } from '@mui/material'
 import { makeStyles } from 'tss-react/mui'
-import { AbstractSessionModel, isAbortException } from '@jbrowse/core/util'
-import { AnyConfigurationModel } from '@jbrowse/core/configuration'
-import { AssemblySelector, SanitizedHTML } from '@jbrowse/core/ui'
 
-// locals
 import HubDetails from './HubDetails'
 import SelectBox from './SelectBox'
 import { mfetch, post_with_params } from './util'
+
+import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 
 function QueryStatus({ status }: { status: string }) {
   return (
@@ -41,7 +43,7 @@ function Wire({
   return children(props)
 }
 
-const useStyles = makeStyles()(theme => ({
+const useStyles = makeStyles()((theme) => ({
   hubList: {
     maxHeight: 400,
     overflowY: 'auto',
@@ -191,7 +193,7 @@ function TrackHubRegistrySelect({ model }: { model: AnyConfigurationModel }) {
       key="speciesSelect"
       selectList={speciesList}
       selectedItem={selectedSpecies}
-      handleSelect={event => {
+      handleSelect={(event) => {
         setSelectedSpecies(event.target.value)
         setSelectedTrackhubAssembly('')
         setHubs(new Map())
@@ -206,14 +208,14 @@ function TrackHubRegistrySelect({ model }: { model: AnyConfigurationModel }) {
   if (selectedSpecies) {
     // trackhubregistry has this nonsense hg19 with alias hg38 entry, filter it out
     const ret = assemblies[selectedSpecies].filter(
-      s => !(s.name === 'GRCh37' && s.synonyms[0] === 'hg38'),
+      (s) => !(s.name === 'GRCh37' && s.synonyms[0] === 'hg38'),
     )
     renderItems.push(
       <SelectBox
         key="assemblySelect"
         selectList={ret}
         selectedItem={selectedTrackhubAssembly}
-        handleSelect={event => {
+        handleSelect={(event) => {
           setSelectedTrackhubAssembly(event.target.value)
           setHubs(new Map())
           setSelectedHub('')
@@ -239,7 +241,7 @@ function TrackHubRegistrySelect({ model }: { model: AnyConfigurationModel }) {
           <div className={classes.hubList}>
             <RadioGroup
               value={selectedHub}
-              onChange={event => {
+              onChange={(event) => {
                 const newHub = event.target.value
                 setSelectedHub(newHub)
                 console.log({ newHub }, hubs)
@@ -256,12 +258,12 @@ function TrackHubRegistrySelect({ model }: { model: AnyConfigurationModel }) {
                     assembly.name === selectedTrackhubAssembly ||
                     assembly.synonyms.includes(selectedTrackhubAssembly),
                 )
-                .map(h => {
+                .map((h) => {
                   const { error, trackdb_id, hub } = h
                   const { shortLabel, longLabel } = hub
                   return (
                     <Wire key={trackdb_id} value={trackdb_id}>
-                      {formControlProps => (
+                      {(formControlProps) => (
                         <Tooltip
                           title={error || <SanitizedHTML html={longLabel} />}
                           placement="left"

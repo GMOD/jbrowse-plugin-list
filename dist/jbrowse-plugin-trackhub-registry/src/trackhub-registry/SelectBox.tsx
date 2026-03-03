@@ -1,16 +1,17 @@
 import React from 'react'
+
 import {
   FormControl,
-  InputLabel,
   FormHelperText,
+  InputLabel,
   MenuItem,
   Select,
-  SelectChangeEvent,
 } from '@mui/material'
-
 import { makeStyles } from 'tss-react/mui'
 
-const useStyles = makeStyles()(theme => ({
+import type { SelectChangeEvent } from '@mui/material'
+
+const useStyles = makeStyles()((theme) => ({
   formControl: {
     minWidth: 192,
     marginLeft: theme.spacing(2),
@@ -25,9 +26,8 @@ function SelectBox({
   label,
   helpText,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectList: any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   selectedItem: any
   label: string
   helpText: string
@@ -38,7 +38,7 @@ function SelectBox({
     <FormControl className={classes.formControl}>
       <InputLabel>{label}</InputLabel>
       <Select value={selectedItem} onChange={handleSelect} label={helpText}>
-        {selectList.map(item => {
+        {selectList.map((item) => {
           let value
           let description
           if (item.name) {

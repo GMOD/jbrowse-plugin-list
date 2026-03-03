@@ -1,10 +1,11 @@
-import ConnectionType from '@jbrowse/core/pluggableElementTypes/ConnectionType'
 import Plugin from '@jbrowse/core/Plugin'
-import PluginManager from '@jbrowse/core/PluginManager'
+import ConnectionType from '@jbrowse/core/pluggableElementTypes/ConnectionType'
 
 // locals
 import { configSchema, modelFactory } from './trackhub-registry'
 import configEditorComponent from './trackhub-registry/TrackHubRegistrySelect'
+
+import type PluginManager from '@jbrowse/core/PluginManager'
 
 export default class TrackHubRegistryPlugin extends Plugin {
   name = 'TrackHubRegistryPlugin'

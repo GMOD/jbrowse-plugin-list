@@ -4,5 +4,5 @@ declare function HubDetails(props: {
         longLabel: string;
         shortLabel: string;
     };
-}): JSX.Element;
+}): import("react/jsx-runtime").JSX.Element;
 export default HubDetails;

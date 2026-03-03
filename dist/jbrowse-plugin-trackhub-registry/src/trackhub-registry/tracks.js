@@ -3,24 +3,21 @@ import { generateUnsupportedTrackConf } from '@jbrowse/core/util/tracks'
 
 function getSubtracks(track, trackPath = []) {
   if (track.members) {
-    return Object.values(track.members)
-      .map(subTrack =>
-        getSubtracks(
-          subTrack,
-          track.shortLabel ? trackPath.concat([track.shortLabel]) : trackPath,
-        ),
-      )
-      .flat()
+    return Object.values(track.members).flatMap((subTrack) =>
+      getSubtracks(
+        subTrack,
+        track.shortLabel ? trackPath.concat([track.shortLabel]) : trackPath,
+      ),
+    )
   }
   track.categories = trackPath
   return [track]
 }
 
 export function generateTracks(trackDb, assemblyName, sequenceAdapter) {
-  // eslint-disable-next-line no-underscore-dangle
   const { configuration } = trackDb
   const subTracks = getSubtracks({ members: configuration })
-  return subTracks.map(subTrack => {
+  return subTracks.map((subTrack) => {
     const ret = makeTrackConfig(subTrack, trackDb.hub.url, sequenceAdapter)
     return {
       ...makeTrackConfig(subTrack, trackDb.hub.url, sequenceAdapter),

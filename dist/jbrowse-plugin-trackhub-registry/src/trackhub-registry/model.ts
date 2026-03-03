@@ -1,35 +1,33 @@
 import {
-  AnyConfigurationModel,
   ConfigurationReference,
-  readConfObject,
   getConf,
+  readConfObject,
 } from '@jbrowse/core/configuration'
 import { BaseConnectionModelFactory } from '@jbrowse/core/pluggableElementTypes/models'
-import PluginManager from '@jbrowse/core/PluginManager'
 import { getSession } from '@jbrowse/core/util'
-import { types, Instance } from 'mobx-state-tree'
+import { types } from '@jbrowse/mobx-state-tree'
 
 // locals
 import configSchema from './configSchema'
 import { generateTracks } from './tracks'
 import { mfetch } from './util'
 
+import type PluginManager from '@jbrowse/core/PluginManager'
+import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { Instance } from '@jbrowse/mobx-state-tree'
+
 export default function stateModelFactory(pluginManager: PluginManager) {
-  return types
-    .compose(
-      'TheTrackHubRegistryConnection',
-      BaseConnectionModelFactory(pluginManager),
-      types.model({
-        type: types.literal('TheTrackHubRegistryConnection'),
-        configuration: ConfigurationReference(configSchema),
-      }),
-    )
+  return BaseConnectionModelFactory(pluginManager)
+    .named('TheTrackHubRegistryConnection')
+    .props({
+      type: types.literal('TheTrackHubRegistryConnection'),
+      configuration: ConfigurationReference(configSchema),
+    })
     .volatile(() => ({
       error: undefined as unknown,
     }))
-    .actions(self => ({
+    .actions((self) => ({
       async connect(connectionConf: AnyConfigurationModel) {
-        // @ts-ignore
         self.clear()
         const trackDbId = readConfObject(connectionConf, 'trackDbId')
         try {

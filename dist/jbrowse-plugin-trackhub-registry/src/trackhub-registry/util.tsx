@@ -16,7 +16,7 @@ export async function post_with_params(
   options = {} as RequestInit,
 ) {
   const urlParams = Object.keys(params)
-    .map(param => `${param}=${params[param]}`)
+    .map((param) => `${param}=${params[param]}`)
     .join('&')
   return mfetch(`${url}${urlParams ? `?${urlParams}` : ''}`, {
     ...options,

@@ -1,5 +1,5 @@
-import { AnyConfigurationModel } from '@jbrowse/core/configuration';
+import type { AnyConfigurationModel } from '@jbrowse/core/configuration';
 declare function TrackHubRegistrySelect({ model }: {
     model: AnyConfigurationModel;
-}): JSX.Element;
+}): import("react/jsx-runtime").JSX.Element;
 export default TrackHubRegistrySelect;

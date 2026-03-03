@@ -1,10 +1,5 @@
-import { baseConnectionConfig } from '@jbrowse/core/pluggableElementTypes/models'
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
-
-/**
- * #config TheTrackHubRegistryConnection
- */
-function x() {} // eslint-disable-line @typescript-eslint/no-unused-vars
+import { baseConnectionConfig } from '@jbrowse/core/pluggableElementTypes/models'
 
 export default ConfigurationSchema(
   'TheTrackHubRegistryConnection',
