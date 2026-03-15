@@ -1,5 +1,5 @@
 import type PluginManager from '@jbrowse/core/PluginManager';
-export declare function configSchemaFactory(pluginManager: PluginManager): import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+export declare function configSchemaFactory(pluginManager: PluginManager): import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
     mouseover: {
         type: string;
         defaultValue: string;
@@ -37,7 +37,34 @@ export declare function configSchemaFactory(pluginManager: PluginManager): impor
         description: string;
         defaultValue: boolean;
     };
-    renderers: import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+    renderers: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         LinearManhattanRenderer: import("@jbrowse/core/configuration").AnyConfigurationSchemaType;
-    }, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
-}, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<any, undefined>>;
+    }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
+    maxFeatureScreenDensity: {
+        type: string;
+        description: string;
+        defaultValue: number;
+    };
+    fetchSizeLimit: {
+        type: string;
+        defaultValue: number;
+        description: string;
+    };
+    height: {
+        type: string;
+        defaultValue: number;
+        description: string;
+    };
+    mouseover: {
+        type: string;
+        description: string;
+        defaultValue: string;
+        contextVariable: string[];
+    };
+    jexlFilters: {
+        type: string;
+        description: string;
+        defaultValue: never[];
+    };
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "displayId">>, undefined>>;
