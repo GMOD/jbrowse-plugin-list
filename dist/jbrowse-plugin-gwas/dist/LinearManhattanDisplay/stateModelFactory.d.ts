@@ -35,6 +35,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                 statusMessage?: string;
                 reactElement?: React.ReactElement;
                 isRenderingPending?: boolean;
+                displayHeight?: number;
             };
         }) => import("react/jsx-runtime").JSX.Element;
         renderProps: any;
@@ -53,10 +54,11 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
         beforeDestroy(): void;
     } & {
         readonly statusMessage: any;
+        readonly displayHeight: number | undefined;
     } & {
         afterAttach(): void;
     }, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
-    configuration: import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaType<{
+    configuration: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         maxFeatureScreenDensity: {
             type: string;
             description: string;
@@ -83,7 +85,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
             description: string;
             defaultValue: never[];
         };
-    }, import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaOptions<undefined, "displayId">>;
+    }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "displayId">>;
     showLegend: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
     showTooltips: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
 } & {
@@ -405,6 +407,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                         statusMessage?: string;
                         reactElement?: React.ReactElement;
                         isRenderingPending?: boolean;
+                        displayHeight?: number;
                     };
                 }) => import("react/jsx-runtime").JSX.Element;
                 renderProps: any;
@@ -423,6 +426,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                 beforeDestroy(): void;
             } & {
                 readonly statusMessage: any;
+                readonly displayHeight: number | undefined;
             } & {
                 afterAttach(): void;
             }, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>> & import("@jbrowse/mobx-state-tree").IStateTreeNode<import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").IModelType<{
@@ -449,6 +453,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                         statusMessage?: string;
                         reactElement?: React.ReactElement;
                         isRenderingPending?: boolean;
+                        displayHeight?: number;
                     };
                 }) => import("react/jsx-runtime").JSX.Element;
                 renderProps: any;
@@ -467,6 +472,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                 beforeDestroy(): void;
             } & {
                 readonly statusMessage: any;
+                readonly displayHeight: number | undefined;
             } & {
                 afterAttach(): void;
             }, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>>;
@@ -480,7 +486,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                         [x: string]: any;
                     } & import("@jbrowse/mobx-state-tree/dist/internal").NonEmptyObject & any & import("@jbrowse/mobx-state-tree").IStateTreeNode<AnyConfigurationSchemaType>);
                 } & import("@jbrowse/mobx-state-tree").IStateTreeNode<AnyConfigurationSchemaType>);
-            } & import("@jbrowse/mobx-state-tree").IStateTreeNode<import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaType<{
+            } & import("@jbrowse/mobx-state-tree").IStateTreeNode<import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
                 maxFeatureScreenDensity: {
                     type: string;
                     description: string;
@@ -507,7 +513,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                     description: string;
                     defaultValue: never[];
                 };
-            }, import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaOptions<undefined, "displayId">>>;
+            }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "displayId">>>;
             showLegend: boolean | undefined;
             showTooltips: boolean | undefined;
         } & import("@jbrowse/mobx-state-tree/dist/internal").NonEmptyObject & {
@@ -797,6 +803,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                         statusMessage?: string;
                         reactElement?: React.ReactElement;
                         isRenderingPending?: boolean;
+                        displayHeight?: number;
                     };
                 }) => import("react/jsx-runtime").JSX.Element;
                 renderProps: any;
@@ -815,10 +822,11 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                 beforeDestroy(): void;
             } & {
                 readonly statusMessage: any;
+                readonly displayHeight: number | undefined;
             } & {
                 afterAttach(): void;
             }, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
-            configuration: import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaType<{
+            configuration: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
                 maxFeatureScreenDensity: {
                     type: string;
                     description: string;
@@ -845,7 +853,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
                     description: string;
                     defaultValue: never[];
                 };
-            }, import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaOptions<undefined, "displayId">>;
+            }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "displayId">>;
             showLegend: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
             showTooltips: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
         }, {
@@ -1116,6 +1124,8 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
         currStatsBpPerPx: number;
         scoreMin: number;
         scoreMax: number;
+        scoreMeanMin?: number;
+        scoreMeanMax?: number;
         statsRegion?: string;
     } | undefined;
     statsFetchInProgress: undefined | import("@jbrowse/core/util").StopToken;
@@ -1124,6 +1134,8 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
         currStatsBpPerPx: number;
         scoreMin: number;
         scoreMax: number;
+        scoreMeanMin?: number;
+        scoreMeanMax?: number;
     }, statsRegion?: string): void;
     setColor(color?: string): void;
     setPosColor(color?: string): void;
@@ -1172,6 +1184,8 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
             currStatsBpPerPx: number;
             scoreMin: number;
             scoreMax: number;
+            scoreMeanMin?: number;
+            scoreMeanMax?: number;
             statsRegion?: string;
         } | undefined;
         autoscaleType: string;
@@ -1395,34 +1409,7 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
         isLeftEndOfDisplayedRegion: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
         isRightEndOfDisplayedRegion: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     }>>;
-    configuration: import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaType<{
-        maxFeatureScreenDensity: {
-            type: string;
-            description: string;
-            defaultValue: number;
-        };
-        fetchSizeLimit: {
-            type: string;
-            defaultValue: number;
-            description: string;
-        };
-        height: {
-            type: string;
-            defaultValue: number;
-            description: string;
-        };
-        mouseover: {
-            type: string;
-            description: string;
-            defaultValue: string;
-            contextVariable: string[];
-        };
-        jexlFilters: {
-            type: string;
-            description: string;
-            defaultValue: never[];
-        };
-    }, import("node_modules/@jbrowse/core/src/configuration/configurationSchema.ts").ConfigurationSchemaOptions<undefined, "displayId">>;
+    configuration: import("@jbrowse/mobx-state-tree").ModelSnapshotType<Record<string, any>>;
     showLegend: boolean | undefined;
     showTooltips: boolean | undefined;
     selectedRendering: string;
