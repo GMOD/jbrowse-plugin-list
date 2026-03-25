@@ -540,6 +540,12 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     seqPosToGlobalCol(rowName: string, seqPos: number): number;
     seqPosToVisibleCol(rowName: string, seqPos: number): number | undefined;
 } & {
+    readonly hoveredCell: {
+        rowName: string;
+        col: number;
+        base: string | undefined;
+        seqPos: number | undefined;
+    } | undefined;
     readonly msaAreaHeight: number;
     readonly totalTrackAreaHeight: number;
     readonly tidyInterProAnnotationTypes: Map<string, import("react-msaview").Accession>;
