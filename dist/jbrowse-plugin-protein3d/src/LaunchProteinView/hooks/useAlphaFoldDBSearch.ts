@@ -91,6 +91,7 @@ export default function useAlphaFoldDBSearch({
     uniprotId: isSequenceMode ? undefined : uniprotId,
   })
 
+  // SYNC: src/LaunchProteinView/hooks/useTranscriptSelection.ts (same pattern)
   // Auto-select transcript synchronously — avoids a useEffect that would
   // leave a one-frame gap where isLoading is false but no transcript is
   // selected yet

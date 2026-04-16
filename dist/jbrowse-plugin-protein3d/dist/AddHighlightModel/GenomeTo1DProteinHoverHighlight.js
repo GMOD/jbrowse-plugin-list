@@ -3,16 +3,8 @@ import { SimpleFeature, getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
 import Highlight from './Highlight';
 import { protein1DViewRegistry } from '../Protein1DViewRegistry';
+import { checkHovered } from '../ProteinView/util';
 import { genomeToTranscriptSeqMapping } from '../mappings';
-function checkHoveredPosition(hovered) {
-    return (!!hovered &&
-        typeof hovered === 'object' &&
-        'hoverPosition' in hovered &&
-        !!hovered.hoverPosition &&
-        typeof hovered.hoverPosition === 'object' &&
-        'coord' in hovered.hoverPosition &&
-        'refName' in hovered.hoverPosition);
-}
 const GenomeTo1DProteinHoverHighlight = observer(function GenomeTo1DProteinHoverHighlight({ model, }) {
     const session = getSession(model);
     const { hovered } = session;
@@ -25,7 +17,7 @@ const GenomeTo1DProteinHoverHighlight = observer(function GenomeTo1DProteinHover
     if (!protein1DInfo) {
         return null;
     }
-    if (!checkHoveredPosition(hovered)) {
+    if (!checkHovered(hovered)) {
         return null;
     }
     const { coord } = hovered.hoverPosition;

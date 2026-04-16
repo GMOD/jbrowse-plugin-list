@@ -2,9 +2,12 @@ import loadMolstar from './loadMolstar';
 import { proteinAbbreviationMapping } from './proteinAbbreviationMapping';
 export function checkHovered(hovered) {
     return (!!hovered &&
-        typeof hovered == 'object' &&
-        'hoverFeature' in hovered &&
-        'hoverPosition' in hovered);
+        typeof hovered === 'object' &&
+        'hoverPosition' in hovered &&
+        !!hovered.hoverPosition &&
+        typeof hovered.hoverPosition === 'object' &&
+        'coord' in hovered.hoverPosition &&
+        'refName' in hovered.hoverPosition);
 }
 export async function getMolstarStructureSelection({ structure, selectedResidue, }) {
     const { Script } = await loadMolstar();
@@ -28,8 +31,6 @@ export function toStr({ chain, code, structureSeqPos, }) {
         .join(', ');
 }
 export function invertMap(arg) {
-    return Object.fromEntries(Object.entries(arg)
-        .map(([a, b]) => [b, +a])
-        .filter(f => f[0] !== undefined));
+    return Object.fromEntries(Object.entries(arg).map(([a, b]) => [b, +a]));
 }
 //# sourceMappingURL=util.js.map

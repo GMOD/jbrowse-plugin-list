@@ -1,4 +1,4 @@
-import { Feature } from '@jbrowse/core/util';
+import type { Feature } from '@jbrowse/core/util';
 export declare function stripStopCodon(seq: string): string;
 export declare function getTranscriptFeatures(feature: Feature): Feature[];
 export declare function stripTrailingVersion(s?: string): string | undefined;

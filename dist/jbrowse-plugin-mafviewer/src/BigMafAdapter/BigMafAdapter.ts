@@ -1,17 +1,15 @@
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
-import { openLocation } from '@jbrowse/core/util/io'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import { getSnapshot } from '@jbrowse/mobx-state-tree'
 
 import MafFeature from '../MafFeature'
-import parseNewick from '../parseNewick'
-import { normalize } from '../util'
 import { subscribeToObservable } from '../util/observableUtils'
 import { parseAssemblyAndChrSimple } from '../util/parseAssemblyName'
+import { getSamplesFromConfig } from '../util/getSamples'
 
-import type { AlignmentRecord } from '../types'
-import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
+import type { AlignmentRecord, MafAdapterOptions } from '../types'
 import type { Feature, Region } from '@jbrowse/core/util'
+
 export default class BigMafAdapter extends BaseFeatureDataAdapter {
   public setupP?: Promise<{ adapter: BaseFeatureDataAdapter }>
 
@@ -37,20 +35,24 @@ export default class BigMafAdapter extends BaseFeatureDataAdapter {
   }
 
   async getRefNames() {
-    const { adapter } = await this.setup()
+    const { adapter } = await this.setupPre()
     return adapter.getRefNames()
   }
 
   async getHeader() {
-    const { adapter } = await this.setup()
+    const { adapter } = await this.setupPre()
     return adapter.getHeader()
   }
 
-  getFeatures(query: Region, opts?: BaseOptions) {
+  getFeatures(query: Region, opts?: MafAdapterOptions) {
     const WHITESPACE_REGEX = / +/
 
     return ObservableCreate<Feature>(async observer => {
       const { adapter } = await this.setupPre()
+
+      const sampleFilter = opts?.samples
+        ? new Set(opts.samples.map(s => s.id))
+        : undefined
 
       await subscribeToObservable(adapter.getFeatures(query, opts), feature => {
         const maf = feature.get('mafBlock') as string
@@ -64,12 +66,16 @@ export default class BigMafAdapter extends BaseFeatureDataAdapter {
             const sequence = parts[6]!
             const organismChr = parts[1]!
 
+            const { assemblyName: org, chr } =
+              parseAssemblyAndChrSimple(organismChr)
+
             if (referenceSeq === undefined) {
               referenceSeq = sequence
             }
 
-            const { assemblyName: org, chr } =
-              parseAssemblyAndChrSimple(organismChr)
+            if (sampleFilter && !sampleFilter.has(org)) {
+              continue
+            }
 
             alignments[org] = {
               chr,
@@ -100,18 +106,7 @@ export default class BigMafAdapter extends BaseFeatureDataAdapter {
   }
 
   async getSamples(_query: Region) {
-    const nhLoc = this.getConf('nhLocation')
-    const nh =
-      nhLoc.uri === '/path/to/my.nh'
-        ? undefined
-        : await openLocation(nhLoc).readFile('utf8')
-
-    // TODO: we may need to resolve the exact set of rows in the visible region
-    // here
-    return {
-      samples: normalize(this.getConf('samples')),
-      tree: nh ? parseNewick(nh) : undefined,
-    }
+    return getSamplesFromConfig(this.getConf.bind(this))
   }
 
   freeResources(): void {}

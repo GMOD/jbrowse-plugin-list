@@ -1,5 +1,5 @@
 import { readConfObject } from '@jbrowse/core/configuration';
-import { BaseAdapter, } from '@jbrowse/core/data_adapters/BaseAdapter';
+import { BaseAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
 import { firstValueFrom, toArray } from 'rxjs';
 export default class BgzipFastaMsaAdapter extends BaseAdapter {
     async configurePre() {

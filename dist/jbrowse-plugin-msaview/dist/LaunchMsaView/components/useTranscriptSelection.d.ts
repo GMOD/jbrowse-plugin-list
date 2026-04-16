@@ -12,5 +12,5 @@ export declare function useTranscriptSelection({ feature, view, validIds, }: {
     selectedTranscript: Feature | undefined;
     proteinSequence: string;
     error: any;
-    validSet: Set<string> | undefined;
+    validIds: string[] | undefined;
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { selectBestTranscript } from '../utils/util'
 
@@ -15,16 +15,20 @@ export default function useTranscriptSelection({
 }) {
   const [userSelection, setUserSelection] = useState<string>()
 
-  useEffect(() => {
+  // SYNC: src/LaunchProteinView/hooks/useAlphaFoldDBSearch.ts (same pattern)
+  // Auto-select synchronously to avoid render gap
+  const autoSelection = useMemo(() => {
     if (isoformSequences !== undefined && userSelection === undefined) {
-      const best = selectBestTranscript({
+      return selectBestTranscript({
         options,
         isoformSequences,
         structureSequence,
-      })
-      setUserSelection(best?.id())
+      })?.id()
     }
+    return undefined
   }, [options, structureSequence, isoformSequences, userSelection])
 
-  return { userSelection, setUserSelection }
+  const effectiveSelection = userSelection ?? autoSelection
+
+  return { userSelection: effectiveSelection, setUserSelection }
 }

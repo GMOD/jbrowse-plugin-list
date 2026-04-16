@@ -13,10 +13,7 @@ import {
 } from '@mui/material'
 
 import AlignmentSettingsButton from './AlignmentSettingsButton'
-import {
-  ALIGNMENT_ALGORITHM_LABELS,
-  AlignmentAlgorithm,
-} from '../../ProteinView/types'
+import { ALIGNMENT_ALGORITHM_LABELS } from '../../ProteinView/types'
 import {
   hasMsaViewPlugin,
   launch1DProteinView,
@@ -25,6 +22,7 @@ import {
   launchMsaView,
 } from '../utils/launchViewUtils'
 
+import type { AlignmentAlgorithm } from '../../ProteinView/types'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 

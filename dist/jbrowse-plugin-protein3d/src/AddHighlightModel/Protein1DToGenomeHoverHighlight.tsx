@@ -5,27 +5,9 @@ import { observer } from 'mobx-react'
 
 import Highlight from './Highlight'
 import { protein1DViewRegistry } from '../Protein1DViewRegistry'
+import { checkHovered } from '../ProteinView/util'
 
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
-
-interface HoveredState {
-  hoverPosition: {
-    coord: number
-    refName: string
-  }
-}
-
-function checkHoveredPosition(hovered: unknown): hovered is HoveredState {
-  return (
-    !!hovered &&
-    typeof hovered === 'object' &&
-    'hoverPosition' in hovered &&
-    !!hovered.hoverPosition &&
-    typeof hovered.hoverPosition === 'object' &&
-    'coord' in hovered.hoverPosition &&
-    'refName' in hovered.hoverPosition
-  )
-}
 
 const Protein1DToGenomeHoverHighlight = observer(
   function Protein1DToGenomeHoverHighlight({
@@ -37,7 +19,7 @@ const Protein1DToGenomeHoverHighlight = observer(
     const { hovered } = session
     const { assemblyNames, id: viewId } = model
 
-    if (!checkHoveredPosition(hovered)) {
+    if (!checkHovered(hovered)) {
       return null
     }
 

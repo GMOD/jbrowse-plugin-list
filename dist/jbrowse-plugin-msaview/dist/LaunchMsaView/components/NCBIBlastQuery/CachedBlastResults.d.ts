@@ -1,6 +1,5 @@
 import React from 'react';
-import { Feature } from '@jbrowse/core/util';
-import type { AbstractTrackModel } from '@jbrowse/core/util';
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
 declare const CachedBlastResults: ({ model, handleClose, feature, }: {
     model: AbstractTrackModel;
     handleClose: () => void;

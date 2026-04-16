@@ -5,8 +5,10 @@ import { observer } from 'mobx-react'
 import GenomeMouseoverHighlight from './GenomeMouseoverHighlight'
 import GenomeTo1DProteinHoverHighlight from './GenomeTo1DProteinHoverHighlight'
 import Protein1DToGenomeHoverHighlight from './Protein1DToGenomeHoverHighlight'
-import ProteinToGenomeClickHighlight from './ProteinToGenomeClickHighlight'
-import ProteinToGenomeHoverHighlight from './ProteinToGenomeHoverHighlight'
+import {
+  ProteinToGenomeClickHighlight,
+  ProteinToGenomeHoverHighlight,
+} from './ProteinToGenomeHighlight'
 import ProteinToMsaHoverSync from './ProteinToMsaHoverSync'
 
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'

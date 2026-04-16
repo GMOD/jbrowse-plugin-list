@@ -64,4 +64,14 @@ export function getSortedTranscriptFeatures(feature) {
 export function cleanProteinSequence(seq) {
     return seq.replaceAll('*', '').replaceAll('&', '');
 }
+export function getGeneIdentifiers(feature) {
+    const ids = [
+        feature.id(),
+        feature.get('id'),
+        feature.get('name'),
+        feature.get('gene_id'),
+        feature.get('gene_name'),
+    ].filter((id) => !!id);
+    return [...new Set(ids)];
+}
 //# sourceMappingURL=util.js.map

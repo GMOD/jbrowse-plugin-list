@@ -1,4 +1,6 @@
-let cached: Promise<typeof import('./molstarExports')> | undefined
+import type * as MolstarExports from './molstarExports'
+
+let cached: Promise<typeof MolstarExports> | undefined
 
 export default function loadMolstar() {
   cached ??= import('./molstarExports')

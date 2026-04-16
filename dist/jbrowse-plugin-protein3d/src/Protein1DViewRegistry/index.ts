@@ -1,8 +1,10 @@
-import { SimpleFeature, SimpleFeatureSerialized } from '@jbrowse/core/util'
+import { SimpleFeature } from '@jbrowse/core/util'
 import { getCodonRange } from 'g2p_mapper'
 import { action, computed, makeObservable, observable } from 'mobx'
 
 import { genomeToTranscriptSeqMapping } from '../mappings'
+
+import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 
 export interface Protein1DViewInfo {
   viewId: string

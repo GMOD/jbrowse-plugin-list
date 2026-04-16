@@ -8,17 +8,17 @@ import { openLocation } from '@jbrowse/core/util/io'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
 import VirtualOffset from './virtualOffset'
-import parseNewick from '../parseNewick'
-import { normalize } from '../util'
 import {
   filterFirstLineInstructions,
   parseRowInstructions,
 } from './rowInstructions'
 import MafFeature from '../MafFeature'
 import { parseAssemblyAndChrSimple } from '../util/parseAssemblyName'
+import { getSamplesFromConfig } from '../util/getSamples'
 
 import type { RowInstruction } from './rowInstructions'
 import type { AlignmentRecord, IndexData } from './types'
+import type { MafAdapterOptions } from '../types'
 
 // Represents a row in the alignment (like Alignment_Row in C)
 interface RowState {
@@ -50,7 +50,9 @@ interface TafFeature {
   seq: string
 }
 
-// Binary search to find the index of the first element >= target
+/**
+ * Binary search to find the index of the first element >= target
+ */
 function lowerBound<T>(arr: T[], target: number, getKey: (item: T) => number) {
   let lo = 0
   let hi = arr.length
@@ -65,6 +67,12 @@ function lowerBound<T>(arr: T[], target: number, getKey: (item: T) => number) {
   return lo
 }
 
+/**
+ * Adapter for TAF (Taffy Alignment Format) files compressed with BGZIP
+ * Implements streaming parsing of TAF blocks into MAF features
+ *
+ * TAF Format: https://github.com/ComparativeGenomicsToolkit/taffy
+ */
 export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
   public setupP?: Promise<SetupData>
 
@@ -159,6 +167,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
   *parseTafBlocksStreaming(
     buffer: Uint8Array,
     runLengthEncodeBases: boolean,
+    sampleFilter?: Set<string>,
   ): Generator<TafFeature> {
     let pBlock: AlignmentBlock | undefined
     let currentBlock: AlignmentBlock | undefined
@@ -182,7 +191,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         // If we have a current block with columns, finalize and yield it
         if (currentBlock && columns.length > 0) {
           this.finalizeBlock(currentBlock, columns)
-          const feature = this.blockToFeature(currentBlock)
+          const feature = this.blockToFeature(currentBlock, sampleFilter)
           if (feature) {
             yield feature
           }
@@ -234,7 +243,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
     // Finalize and yield last block
     if (currentBlock && columns.length > 0) {
       this.finalizeBlock(currentBlock, columns)
-      const feature = this.blockToFeature(currentBlock)
+      const feature = this.blockToFeature(currentBlock, sampleFilter)
       if (feature) {
         yield feature
       }
@@ -246,8 +255,15 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
     buffer: Uint8Array,
     runLengthEncodeBases: boolean,
     _opts?: BaseOptions,
+    sampleFilter?: Set<string>,
   ): TafFeature[] {
-    return [...this.parseTafBlocksStreaming(buffer, runLengthEncodeBases)]
+    return [
+      ...this.parseTafBlocksStreaming(
+        buffer,
+        runLengthEncodeBases,
+        sampleFilter,
+      ),
+    ]
   }
 
   // TextDecoder for efficient string building from typed array
@@ -280,7 +296,10 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
     }
   }
 
-  blockToFeature(block: AlignmentBlock): TafFeature | undefined {
+  blockToFeature(
+    block: AlignmentBlock,
+    sampleFilter?: Set<string>,
+  ): TafFeature | undefined {
     if (block.rows.length === 0 || block.columnNumber === 0) {
       return undefined
     }
@@ -290,6 +309,9 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
 
     for (const row of block.rows) {
       const { assemblyName, chr } = parseAssemblyAndChrSimple(row.sequenceName)
+      if (sampleFilter && !sampleFilter.has(assemblyName)) {
+        continue
+      }
       alignments[assemblyName] = {
         chr,
         start: row.start,
@@ -392,11 +414,15 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
     return entries
   }
 
-  getFeatures(query: Region, opts?: BaseOptions) {
+  getFeatures(query: Region, opts?: MafAdapterOptions) {
     const { statusCallback = () => {} } = opts || {}
     return ObservableCreate<Feature>(async observer => {
       try {
         const { index, runLengthEncodeBases } = await this.setup(opts)
+
+        const sampleFilter = opts?.samples
+          ? new Set(opts.samples.map(s => s.id))
+          : undefined
 
         // Get byte range for this query
         const records = index[query.refName]
@@ -447,6 +473,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         for (const feat of this.parseTafBlocksStreaming(
           slice,
           runLengthEncodeBases,
+          sampleFilter,
         )) {
           // Filter features that overlap with query region
           if (feat.end > query.start && feat.start < query.end) {
@@ -473,16 +500,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
   }
 
   async getSamples(_query: Region) {
-    const nhLoc = this.getConf('nhLocation')
-    const nh =
-      nhLoc.uri === '/path/to/my.nh'
-        ? undefined
-        : await openLocation(nhLoc).readFile('utf8')
-
-    return {
-      samples: normalize(this.getConf('samples')),
-      tree: nh ? parseNewick(nh) : undefined,
-    }
+    return getSamplesFromConfig(this.getConf.bind(this))
   }
 
   freeResources(): void {}

@@ -1,8 +1,8 @@
-import { SimpleFeatureSerialized } from '@jbrowse/core/util';
-import { Region as IRegion } from '@jbrowse/core/util/types';
 import { type Instance } from '@jbrowse/mobx-state-tree';
-import { AlignmentAlgorithm } from './types';
-import { PairwiseAlignment } from '../mappings';
+import type { PairwiseAlignment } from '../mappings';
+import type { AlignmentAlgorithm } from './types';
+import type { SimpleFeatureSerialized } from '@jbrowse/core/util';
+import type { Region as IRegion } from '@jbrowse/core/util/types';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 import type { PluginContext } from 'molstar/lib/mol-plugin/context';
 type LGV = LinearGenomeViewModel;
@@ -218,6 +218,13 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      * Extracts UniProt ID from AlphaFold URL if available
      */
     readonly uniprotId: string | undefined;
+    /**
+     * #getter
+     */
+    readonly structureTranscriptMaps: {
+        structureSeqToTranscriptSeqPosition: Record<number, number>;
+        transcriptSeqToStructureSeqPosition: Record<number, number>;
+    } | undefined;
     /**
      * #getter
      */

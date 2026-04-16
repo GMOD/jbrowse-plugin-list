@@ -1,4 +1,4 @@
-import { JBrowsePluginMsaViewModel } from './model';
+import type { JBrowsePluginMsaViewModel } from './model';
 export declare function doLaunchBlast({ self, }: {
     self: JBrowsePluginMsaViewModel;
 }): Promise<{

@@ -1,6 +1,6 @@
 import React from 'react';
-import { FeatureTrackData } from '../hooks/useProteinFeatureTrackData';
-import { JBrowsePluginProteinStructureModel } from '../model';
+import type { FeatureTrackData } from '../hooks/useProteinFeatureTrackData';
+import type { JBrowsePluginProteinStructureModel } from '../model';
 export declare const ProteinFeatureTrackLabels: ({ data, labelWidth, model, }: {
     data: FeatureTrackData;
     labelWidth: number;

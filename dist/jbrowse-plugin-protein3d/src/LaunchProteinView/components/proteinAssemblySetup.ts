@@ -1,4 +1,4 @@
-import { SessionWithAddTracks } from '@jbrowse/core/util'
+import type { SessionWithAddTracks } from '@jbrowse/core/util'
 
 /**
  * Sets up a temporary assembly for a protein sequence from UniProt

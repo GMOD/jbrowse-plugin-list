@@ -1,9 +1,4 @@
-import {
-  SimpleFeature,
-  SimpleFeatureSerialized,
-  getSession,
-} from '@jbrowse/core/util'
-import { Region as IRegion } from '@jbrowse/core/util/types'
+import { SimpleFeature, getSession } from '@jbrowse/core/util'
 import {
   type Instance,
   addDisposer,
@@ -22,18 +17,20 @@ import {
   hoverProteinToGenome,
 } from './proteinToGenomeMapping'
 import selectResidue from './selectResidue'
-import { AlignmentAlgorithm } from './types'
 import { checkHovered, invertMap, toStr } from './util'
 import { getUniprotIdFromAlphaFoldTarget } from '../LaunchProteinView/utils/launchViewUtils'
 import { stripStopCodon } from '../LaunchProteinView/utils/util'
 import {
-  PairwiseAlignment,
   genomeToTranscriptSeqMapping,
   structurePositionToAlignmentMap,
   structureSeqVsTranscriptSeqMap,
   transcriptPositionToAlignmentMap,
 } from '../mappings'
 
+import type { PairwiseAlignment } from '../mappings'
+import type { AlignmentAlgorithm } from './types'
+import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
+import type { Region as IRegion } from '@jbrowse/core/util/types'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
@@ -322,20 +319,22 @@ const Structure = types
     /**
      * #getter
      */
-    get structureSeqToTranscriptSeqPosition() {
+    get structureTranscriptMaps() {
       return self.pairwiseAlignment
         ? structureSeqVsTranscriptSeqMap(self.pairwiseAlignment)
-            .structureSeqToTranscriptSeqPosition
         : undefined
     },
     /**
      * #getter
      */
+    get structureSeqToTranscriptSeqPosition() {
+      return this.structureTranscriptMaps?.structureSeqToTranscriptSeqPosition
+    },
+    /**
+     * #getter
+     */
     get transcriptSeqToStructureSeqPosition() {
-      return self.pairwiseAlignment
-        ? structureSeqVsTranscriptSeqMap(self.pairwiseAlignment)
-            .transcriptSeqToStructureSeqPosition
-        : undefined
+      return this.structureTranscriptMaps?.transcriptSeqToStructureSeqPosition
     },
     /**
      * #getter
@@ -615,13 +614,8 @@ const Structure = types
             const r1 = stripStopCodon(seq1)
             const r2 = stripStopCodon(seq2)
             if (exactMatch) {
-              let consensus = ''
-              // eslint-disable-next-line @typescript-eslint/prefer-for-of
-              for (let i = 0; i < r1.length; i++) {
-                consensus += '|'
-              }
               self.setAlignment({
-                consensus,
+                consensus: '|'.repeat(r1.length),
                 alns: [
                   { id: 'seq1', seq: r1 },
                   { id: 'seq2', seq: r2 },

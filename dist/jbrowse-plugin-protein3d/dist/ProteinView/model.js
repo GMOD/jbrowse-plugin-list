@@ -12,6 +12,13 @@ import Structure from './structureModel';
 import { superposeStructures } from './superposeStructures';
 import { DEFAULT_ALIGNMENT_ALGORITHM } from './types';
 const SETTINGS_KEY = 'proteinView-settings';
+const PERSISTED_SETTINGS = [
+    'showAlignment',
+    'showProteinTracks',
+    'showHighlight',
+    'zoomToBaseLevel',
+    'autoScrollAlignment',
+];
 /**
  * #stateModel Protein3dViewPlugin
  * extends
@@ -254,20 +261,10 @@ function stateModelFactory() {
                 const stored = localStorage.getItem(SETTINGS_KEY);
                 if (stored) {
                     const settings = JSON.parse(stored);
-                    if (settings.showAlignment !== undefined) {
-                        self.setShowAlignment(settings.showAlignment);
-                    }
-                    if (settings.showProteinTracks !== undefined) {
-                        self.setShowProteinTracks(settings.showProteinTracks);
-                    }
-                    if (settings.showHighlight !== undefined) {
-                        self.setShowHighlight(settings.showHighlight);
-                    }
-                    if (settings.zoomToBaseLevel !== undefined) {
-                        self.setZoomToBaseLevel(settings.zoomToBaseLevel);
-                    }
-                    if (settings.autoScrollAlignment !== undefined) {
-                        self.setAutoScrollAlignment(settings.autoScrollAlignment);
+                    for (const key of PERSISTED_SETTINGS) {
+                        if (settings[key] !== undefined) {
+                            self[key] = settings[key];
+                        }
                     }
                 }
             }
@@ -276,15 +273,12 @@ function stateModelFactory() {
             }
             // save settings to localStorage when they change
             addDisposer(self, autorun(() => {
-                const { showAlignment, showProteinTracks, showHighlight, zoomToBaseLevel, autoScrollAlignment, } = self;
                 try {
-                    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-                        showAlignment,
-                        showProteinTracks,
-                        showHighlight,
-                        zoomToBaseLevel,
-                        autoScrollAlignment,
-                    }));
+                    const settings = {};
+                    for (const key of PERSISTED_SETTINGS) {
+                        settings[key] = self[key];
+                    }
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
                 }
                 catch (e) {
                     console.error('Failed to save protein view settings', e);

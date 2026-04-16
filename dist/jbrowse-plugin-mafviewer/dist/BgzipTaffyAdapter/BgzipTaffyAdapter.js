@@ -4,12 +4,13 @@ import { updateStatus } from '@jbrowse/core/util';
 import { openLocation } from '@jbrowse/core/util/io';
 import { ObservableCreate } from '@jbrowse/core/util/rxjs';
 import VirtualOffset from './virtualOffset';
-import parseNewick from '../parseNewick';
-import { normalize } from '../util';
 import { filterFirstLineInstructions, parseRowInstructions, } from './rowInstructions';
 import MafFeature from '../MafFeature';
 import { parseAssemblyAndChrSimple } from '../util/parseAssemblyName';
-// Binary search to find the index of the first element >= target
+import { getSamplesFromConfig } from '../util/getSamples';
+/**
+ * Binary search to find the index of the first element >= target
+ */
 function lowerBound(arr, target, getKey) {
     let lo = 0;
     let hi = arr.length;
@@ -24,6 +25,12 @@ function lowerBound(arr, target, getKey) {
     }
     return lo;
 }
+/**
+ * Adapter for TAF (Taffy Alignment Format) files compressed with BGZIP
+ * Implements streaming parsing of TAF blocks into MAF features
+ *
+ * TAF Format: https://github.com/ComparativeGenomicsToolkit/taffy
+ */
 export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
     setupP;
     async getRefNames() {
@@ -108,7 +115,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
     }
     // Streaming generator version of parseTafBlocks
     // Yields features one at a time instead of collecting into array
-    *parseTafBlocksStreaming(buffer, runLengthEncodeBases) {
+    *parseTafBlocksStreaming(buffer, runLengthEncodeBases, sampleFilter) {
         let pBlock;
         let currentBlock;
         let columns = [];
@@ -127,7 +134,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
                 // If we have a current block with columns, finalize and yield it
                 if (currentBlock && columns.length > 0) {
                     this.finalizeBlock(currentBlock, columns);
-                    const feature = this.blockToFeature(currentBlock);
+                    const feature = this.blockToFeature(currentBlock, sampleFilter);
                     if (feature) {
                         yield feature;
                     }
@@ -168,15 +175,17 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         // Finalize and yield last block
         if (currentBlock && columns.length > 0) {
             this.finalizeBlock(currentBlock, columns);
-            const feature = this.blockToFeature(currentBlock);
+            const feature = this.blockToFeature(currentBlock, sampleFilter);
             if (feature) {
                 yield feature;
             }
         }
     }
     // Non-streaming version for backward compatibility (used in tests)
-    parseTafBlocks(buffer, runLengthEncodeBases, _opts) {
-        return [...this.parseTafBlocksStreaming(buffer, runLengthEncodeBases)];
+    parseTafBlocks(buffer, runLengthEncodeBases, _opts, sampleFilter) {
+        return [
+            ...this.parseTafBlocksStreaming(buffer, runLengthEncodeBases, sampleFilter),
+        ];
     }
     // TextDecoder for efficient string building from typed array
     decoder = new TextDecoder('ascii');
@@ -202,7 +211,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
             row.length = length;
         }
     }
-    blockToFeature(block) {
+    blockToFeature(block, sampleFilter) {
         if (block.rows.length === 0 || block.columnNumber === 0) {
             return undefined;
         }
@@ -210,6 +219,9 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         const alignments = {};
         for (const row of block.rows) {
             const { assemblyName, chr } = parseAssemblyAndChrSimple(row.sequenceName);
+            if (sampleFilter && !sampleFilter.has(assemblyName)) {
+                continue;
+            }
             alignments[assemblyName] = {
                 chr,
                 start: row.start,
@@ -303,6 +315,9 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         return ObservableCreate(async (observer) => {
             try {
                 const { index, runLengthEncodeBases } = await this.setup(opts);
+                const sampleFilter = opts?.samples
+                    ? new Set(opts.samples.map(s => s.id))
+                    : undefined;
                 // Get byte range for this query
                 const records = index[query.refName];
                 if (!records || records.length === 0) {
@@ -335,7 +350,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
                     : buffer.length;
                 const slice = buffer.slice(startOffset, endOffset);
                 // Stream features using generator - no caching, immediate GC eligible
-                for (const feat of this.parseTafBlocksStreaming(slice, runLengthEncodeBases)) {
+                for (const feat of this.parseTafBlocksStreaming(slice, runLengthEncodeBases, sampleFilter)) {
                     // Filter features that overlap with query region
                     if (feat.end > query.start && feat.start < query.end) {
                         observer.next(new MafFeature(feat.uniqueId, feat.start, feat.end, query.refName, feat.strand, feat.alignments, feat.seq));
@@ -350,14 +365,7 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         });
     }
     async getSamples(_query) {
-        const nhLoc = this.getConf('nhLocation');
-        const nh = nhLoc.uri === '/path/to/my.nh'
-            ? undefined
-            : await openLocation(nhLoc).readFile('utf8');
-        return {
-            samples: normalize(this.getConf('samples')),
-            tree: nh ? parseNewick(nh) : undefined,
-        };
+        return getSamplesFromConfig(this.getConf.bind(this));
     }
     freeResources() { }
 }

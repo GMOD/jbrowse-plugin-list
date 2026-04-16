@@ -2,7 +2,7 @@ import { getContainingTrack, getSession } from '@jbrowse/core/util';
 import AddIcon from '@mui/icons-material/Add';
 import LaunchProteinViewDialog from './components/LaunchProteinViewDialog';
 function isDisplay(elt) {
-    return (elt.name === 'LinearBasicDisplay' || elt.name === 'LinearFeatureDisplay');
+    return elt.name === 'LinearBasicDisplay';
 }
 function extendStateModel(stateModel) {
     return stateModel.views((self) => {
@@ -37,9 +37,15 @@ function extendStateModel(stateModel) {
                                         // eslint-disable-next-line @typescript-eslint/no-floating-promises
                                         ;
                                         (async () => {
-                                            const fullFeature = await self.fetchFullFeature(feature.id(), contextMenuInfo.regionNumber);
-                                            if (fullFeature) {
-                                                openDialog(fullFeature);
+                                            try {
+                                                const fullFeature = await self.fetchFullFeature(feature.id(), contextMenuInfo.regionNumber);
+                                                if (fullFeature) {
+                                                    openDialog(fullFeature);
+                                                }
+                                            }
+                                            catch (e) {
+                                                console.error(e);
+                                                session.notify(`${e}`, 'error');
                                             }
                                         })();
                                     }

@@ -37,10 +37,6 @@ export function ungappedToGappedPosition(sequence, ungappedPosition) {
  * Convert Map to plain object for MST frozen storage
  */
 export function mapToRecord(map) {
-    const record = {};
-    for (const [key, value] of map) {
-        record[key] = value;
-    }
-    return record;
+    return Object.fromEntries(map);
 }
 //# sourceMappingURL=structureConnection.js.map

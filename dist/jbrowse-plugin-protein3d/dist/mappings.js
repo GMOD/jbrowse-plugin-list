@@ -12,13 +12,7 @@ export function structureSeqVsTranscriptSeqMap(pairwiseAlignment) {
     for (let i = 0; i < structureSeq.length; i++) {
         const c1 = structureSeq[i];
         const c2 = transcriptSeq[i];
-        if (c1 === c2) {
-            structureSeqToTranscriptSeqPosition[j] = k;
-            transcriptSeqToStructureSeqPosition[k] = j;
-            k++;
-            j++;
-        }
-        else if (c2 === '-') {
+        if (c2 === '-') {
             j++;
         }
         else if (c1 === '-') {
@@ -36,27 +30,21 @@ export function structureSeqVsTranscriptSeqMap(pairwiseAlignment) {
         transcriptSeqToStructureSeqPosition,
     };
 }
-export function structurePositionToAlignmentMap(pairwiseAlignment) {
-    const structureSeq = pairwiseAlignment.alns[1].seq;
-    const structurePositionToAlignment = {};
-    for (let i = 0, j = 0; i < structureSeq.length; i++) {
-        if (structureSeq[i] !== '-') {
-            structurePositionToAlignment[j] = i;
+function seqPositionToAlignmentMap(seq) {
+    const map = {};
+    for (let i = 0, j = 0; i < seq.length; i++) {
+        if (seq[i] !== '-') {
+            map[j] = i;
             j++;
         }
     }
-    return structurePositionToAlignment;
+    return map;
+}
+export function structurePositionToAlignmentMap(pairwiseAlignment) {
+    return seqPositionToAlignmentMap(pairwiseAlignment.alns[1].seq);
 }
 export function transcriptPositionToAlignmentMap(pairwiseAlignment) {
-    const transcriptSeq = pairwiseAlignment.alns[0].seq;
-    const transcriptPositionToAlignment = {};
-    for (let i = 0, j = 0; i < transcriptSeq.length; i++) {
-        if (transcriptSeq[i] !== '-') {
-            transcriptPositionToAlignment[j] = i;
-            j++;
-        }
-    }
-    return transcriptPositionToAlignment;
+    return seqPositionToAlignmentMap(pairwiseAlignment.alns[0].seq);
 }
 // see similar function in msaview plugin
 export function genomeToTranscriptSeqMapping(feature) {

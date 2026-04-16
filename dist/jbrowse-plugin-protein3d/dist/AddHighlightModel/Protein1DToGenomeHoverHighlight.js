@@ -3,20 +3,12 @@ import { getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
 import Highlight from './Highlight';
 import { protein1DViewRegistry } from '../Protein1DViewRegistry';
-function checkHoveredPosition(hovered) {
-    return (!!hovered &&
-        typeof hovered === 'object' &&
-        'hoverPosition' in hovered &&
-        !!hovered.hoverPosition &&
-        typeof hovered.hoverPosition === 'object' &&
-        'coord' in hovered.hoverPosition &&
-        'refName' in hovered.hoverPosition);
-}
+import { checkHovered } from '../ProteinView/util';
 const Protein1DToGenomeHoverHighlight = observer(function Protein1DToGenomeHoverHighlight({ model, }) {
     const session = getSession(model);
     const { hovered } = session;
     const { assemblyNames, id: viewId } = model;
-    if (!checkHoveredPosition(hovered)) {
+    if (!checkHovered(hovered)) {
         return null;
     }
     const { coord, refName } = hovered.hoverPosition;

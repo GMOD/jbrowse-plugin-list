@@ -12,7 +12,7 @@ import {
 import { parsePairwise } from 'clustal-js'
 import { observer } from 'mobx-react'
 
-import { JBrowsePluginProteinViewModel } from '../model'
+import type { JBrowsePluginProteinViewModel } from '../model'
 
 const ManualAlignmentDialog = observer(function ManualAlignmentDialog({
   model,

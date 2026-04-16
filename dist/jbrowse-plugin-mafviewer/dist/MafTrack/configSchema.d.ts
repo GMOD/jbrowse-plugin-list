@@ -1,5 +1,5 @@
 import PluginManager from '@jbrowse/core/PluginManager';
-export default function configSchemaF(pluginManager: PluginManager): import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{}, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+export default function configSchemaF(pluginManager: PluginManager): import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
     name: {
         description: string;
         type: string;
@@ -31,7 +31,7 @@ export default function configSchemaF(pluginManager: PluginManager): import("@jb
         defaultValue: string;
     };
     adapter: import("@jbrowse/mobx-state-tree").IAnyModelType;
-    textSearching: import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+    textSearching: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         indexingAttributes: {
             type: string;
             description: string;
@@ -43,9 +43,9 @@ export default function configSchemaF(pluginManager: PluginManager): import("@jb
             defaultValue: string[];
         };
         textSearchAdapter: import("@jbrowse/mobx-state-tree").IAnyModelType;
-    }, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
+    }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
     displays: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IAnyModelType>;
-    formatDetails: import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+    formatDetails: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         feature: {
             type: string;
             description: string;
@@ -68,8 +68,8 @@ export default function configSchemaF(pluginManager: PluginManager): import("@jb
             defaultValue: number;
             description: string;
         };
-    }, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
-    formatAbout: import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+    }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
+    formatAbout: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         config: {
             type: string;
             description: string;
@@ -80,5 +80,5 @@ export default function configSchemaF(pluginManager: PluginManager): import("@jb
             type: string;
             defaultValue: boolean;
         };
-    }, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
-}, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "trackId">>, "trackId">>;
+    }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "trackId">>, "trackId">>;

@@ -52,10 +52,9 @@ export function processFeaturesToFasta({ regions, showAllLetters, samples, featu
                     let insertionSequence = '';
                     while (i < alignment.length && seq[i] === '-') {
                         const alignChar = alignment[i];
-                        insertionSequence +=
-                            alignChar !== '-' && alignChar !== ' '
-                                ? alignChar.toLowerCase()
-                                : '-';
+                        if (alignChar !== '-' && alignChar !== ' ') {
+                            insertionSequence += alignChar.toLowerCase();
+                        }
                         i++;
                     }
                     i--;
@@ -105,15 +104,16 @@ function expandWithInsertions(outputRowsArrays, insertionsAtPosition, numSamples
             const rowArray = outputRowsArrays[sampleIdx];
             const insertionSeq = sampleInsertions.get(sampleIdx);
             if (insertionSeq) {
-                // This sample has an insertion - add it, padded with gaps if needed
                 const paddedInsertion = insertionSeq.padEnd(maxLen, '-');
-                // Insert after position `pos`
-                rowArray.splice(pos, 0, ...paddedInsertion.split(''));
+                const chars = paddedInsertion.split('');
+                for (let k = chars.length - 1; k >= 0; k--) {
+                    rowArray.splice(pos, 0, chars[k]);
+                }
             }
             else {
-                // No insertion for this sample - fill with gaps
-                const gaps = new Array(maxLen).fill('-');
-                rowArray.splice(pos, 0, ...gaps);
+                for (let k = 0; k < maxLen; k++) {
+                    rowArray.splice(pos, 0, '-');
+                }
             }
         }
     }

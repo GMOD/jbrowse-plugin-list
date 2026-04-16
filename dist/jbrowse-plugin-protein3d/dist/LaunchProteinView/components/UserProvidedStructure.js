@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui';
-import { getContainingView, getSession, } from '@jbrowse/core/util';
+import { getContainingView, getSession } from '@jbrowse/core/util';
 import { Button, DialogActions, DialogContent, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
@@ -8,12 +8,13 @@ import AlignmentSettingsButton from './AlignmentSettingsButton';
 import HelpButton from './HelpButton';
 import MSATable from './MSATable';
 import TranscriptSelector from './TranscriptSelector';
-import { ALIGNMENT_ALGORITHM_LABELS, } from '../../ProteinView/types';
+import { ALIGNMENT_ALGORITHM_LABELS } from '../../ProteinView/types';
 import ExternalLink from '../../components/ExternalLink';
 import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences';
 import useLocalStructureFileSequence from '../hooks/useLocalStructureFileSequence';
 import useRemoteStructureFileSequence from '../hooks/useRemoteStructureFileSequence';
 import useTranscriptSelection from '../hooks/useTranscriptSelection';
+import { launch3DProteinView } from '../utils/launchViewUtils';
 import { getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptFeatures, stripStopCodon, } from '../utils/util';
 const useStyles = makeStyles()(theme => ({
     dialogContent: {
@@ -125,19 +126,16 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
                     (async () => {
                         try {
                             const structureData = file ? await file.text() : undefined;
-                            session.addView('ProteinView', {
-                                type: 'ProteinView',
+                            launch3DProteinView({
+                                session,
+                                view,
+                                feature,
+                                selectedTranscript,
+                                url: structureURL || undefined,
+                                data: structureData,
+                                userProvidedTranscriptSequence: protein?.seq ?? '',
                                 alignmentAlgorithm,
                                 displayName: `Protein view ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(selectedTranscript)}`,
-                                structures: [
-                                    {
-                                        url: structureURL || undefined,
-                                        data: structureData,
-                                        connectedViewId: view.id,
-                                        feature: selectedTranscript?.toJSON(),
-                                        userProvidedTranscriptSequence: protein?.seq ?? '',
-                                    },
-                                ],
                             });
                             handleClose();
                         }

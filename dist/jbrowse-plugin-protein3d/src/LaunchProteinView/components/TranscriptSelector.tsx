@@ -1,6 +1,5 @@
 import React from 'react'
 
-import { Feature } from '@jbrowse/core/util'
 import { MenuItem, TextField } from '@mui/material'
 
 import {
@@ -8,6 +7,8 @@ import {
   getTranscriptDisplayName,
   stripStopCodon,
 } from '../utils/util'
+
+import type { Feature } from '@jbrowse/core/util'
 
 export default function TranscriptSelector({
   val,

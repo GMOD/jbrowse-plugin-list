@@ -1,6 +1,6 @@
 import React from 'react';
-import { AlignmentAlgorithm } from '../../ProteinView/types';
-import { PairwiseAlignment } from '../../mappings';
+import type { AlignmentAlgorithm } from '../../ProteinView/types';
+import type { PairwiseAlignment } from '../../mappings';
 interface AlignmentSettingsButtonProps {
     value: AlignmentAlgorithm;
     onChange: (algorithm: AlignmentAlgorithm) => void;

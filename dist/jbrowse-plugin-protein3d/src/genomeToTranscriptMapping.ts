@@ -1,4 +1,4 @@
-import { Feature } from '@jbrowse/core/util'
+import type { Feature } from '@jbrowse/core/util'
 
 function* getPositions(f: Feature, strand: number) {
   const start = f.get('start')

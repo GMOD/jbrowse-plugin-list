@@ -1,16 +1,14 @@
 import { BaseFeatureDataAdapter, } from '@jbrowse/core/data_adapters/BaseAdapter';
 import { updateStatus } from '@jbrowse/core/util';
-import { openLocation } from '@jbrowse/core/util/io';
 import { ObservableCreate } from '@jbrowse/core/util/rxjs';
 import { getSnapshot } from '@jbrowse/mobx-state-tree';
 import MafFeature from '../MafFeature';
-import parseNewick from '../parseNewick';
-import { normalize } from '../util';
 import { subscribeToObservable } from '../util/observableUtils';
 import { parseAssemblyAndChr, selectReferenceSequenceString, } from '../util/parseAssemblyName';
+import { getSamplesFromConfig } from '../util/getSamples';
 export default class MafTabixAdapter extends BaseFeatureDataAdapter {
     setupP;
-    async setupPre() {
+    async setup() {
         if (!this.getSubAdapter) {
             throw new Error('no getSubAdapter available');
         }
@@ -21,32 +19,32 @@ export default class MafTabixAdapter extends BaseFeatureDataAdapter {
             })).dataAdapter,
         };
     }
-    async setupPre2() {
+    async setupPre(opts) {
+        const { statusCallback = () => { } } = opts || {};
         if (!this.setupP) {
-            this.setupP = this.setupPre().catch((e) => {
+            this.setupP = updateStatus('Downloading index', statusCallback, () => this.setup()).catch((e) => {
                 this.setupP = undefined;
                 throw e;
             });
         }
         return this.setupP;
     }
-    async setup(opts) {
-        const { statusCallback = () => { } } = opts || {};
-        return updateStatus('Downloading index', statusCallback, () => this.setupPre2());
-    }
     async getRefNames(opts) {
-        const { adapter } = await this.setup(opts);
+        const { adapter } = await this.setupPre(opts);
         return adapter.getRefNames();
     }
     async getHeader(opts) {
-        const { adapter } = await this.setup(opts);
+        const { adapter } = await this.setupPre(opts);
         return adapter.getHeader();
     }
     getFeatures(query, opts) {
         return ObservableCreate(async (observer) => {
-            const { adapter } = await this.setup(opts);
+            const { adapter } = await this.setupPre(opts);
             let firstAssemblyNameFound = '';
             const refAssemblyName = this.getConf('refAssemblyName');
+            const sampleFilter = opts?.samples
+                ? new Set(opts.samples.map(s => s.id))
+                : undefined;
             await subscribeToObservable(adapter.getFeatures(query, opts), feature => {
                 const data = feature.get('field5').split(',');
                 const alignments = {};
@@ -61,6 +59,9 @@ export default class MafTabixAdapter extends BaseFeatureDataAdapter {
                     if (assemblyName) {
                         if (!firstAssemblyNameFound) {
                             firstAssemblyNameFound = assemblyName;
+                        }
+                        if (sampleFilter && !sampleFilter.has(assemblyName)) {
+                            continue;
                         }
                         alignments[assemblyName] = {
                             chr,
@@ -79,16 +80,7 @@ export default class MafTabixAdapter extends BaseFeatureDataAdapter {
         }, opts?.stopToken);
     }
     async getSamples(_query) {
-        const nhLoc = this.getConf('nhLocation');
-        const nh = nhLoc.uri === '/path/to/my.nh'
-            ? undefined
-            : await openLocation(nhLoc).readFile('utf8');
-        // TODO: we may need to resolve the exact set of rows in the visible region
-        // here
-        return {
-            samples: normalize(this.getConf('samples')),
-            tree: nh ? parseNewick(nh) : undefined,
-        };
+        return getSamplesFromConfig(this.getConf.bind(this));
     }
     freeResources() { }
 }

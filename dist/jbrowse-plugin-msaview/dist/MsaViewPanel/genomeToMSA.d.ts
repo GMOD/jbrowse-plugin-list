@@ -1,4 +1,4 @@
-import { JBrowsePluginMsaViewModel } from './model';
+import type { JBrowsePluginMsaViewModel } from './model';
 /**
  * Convert a genome coordinate from session.hovered to a visible MSA column.
  *

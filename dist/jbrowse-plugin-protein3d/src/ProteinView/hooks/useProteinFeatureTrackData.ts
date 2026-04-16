@@ -1,5 +1,7 @@
-import useUniProtFeatures, { UniProtFeature } from './useUniProtFeatures'
-import { JBrowsePluginProteinStructureModel } from '../model'
+import useUniProtFeatures from './useUniProtFeatures'
+
+import type { UniProtFeature } from './useUniProtFeatures'
+import type { JBrowsePluginProteinStructureModel } from '../model'
 
 type FeaturesByType = Record<string, UniProtFeature[]>
 

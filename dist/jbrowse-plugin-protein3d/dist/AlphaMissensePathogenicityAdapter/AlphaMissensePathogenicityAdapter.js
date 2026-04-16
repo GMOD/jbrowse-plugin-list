@@ -1,5 +1,5 @@
-import { BaseFeatureDataAdapter, } from '@jbrowse/core/data_adapters/BaseAdapter';
-import { SimpleFeature, doesIntersect2, max, min, } from '@jbrowse/core/util';
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
+import { SimpleFeature, doesIntersect2, max, min } from '@jbrowse/core/util';
 import { openLocation } from '@jbrowse/core/util/io';
 import { ObservableCreate } from '@jbrowse/core/util/rxjs';
 export default class AlphaMissensePathogenicityAdapter extends BaseFeatureDataAdapter {
@@ -37,9 +37,8 @@ export default class AlphaMissensePathogenicityAdapter extends BaseFeatureDataAd
     }
     async getGlobalStats(_opts) {
         const data = await this.loadData();
-        const scoreMin = min(data.map(s => s.score));
-        const scoreMax = max(data.map(s => s.score));
-        return { scoreMin, scoreMax };
+        const scores = data.map(s => s.score);
+        return { scoreMin: min(scores), scoreMax: max(scores) };
     }
     // always render bigwig instead of calculating a feature density for it
     async getMultiRegionFeatureDensityStats(_regions) {

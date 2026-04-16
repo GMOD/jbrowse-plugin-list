@@ -1,4 +1,4 @@
-import { Feature } from '@jbrowse/core/util';
+import type { Feature } from '@jbrowse/core/util';
 export interface AlignmentRow {
     id: string;
     seq: string;

@@ -1,4 +1,4 @@
-import { PairwiseAlignment } from '../mappings';
+import type { PairwiseAlignment } from '../mappings';
 interface AlignmentResult {
     alignedSeq1: string;
     alignedSeq2: string;

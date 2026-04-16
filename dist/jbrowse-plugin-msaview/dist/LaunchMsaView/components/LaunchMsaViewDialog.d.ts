@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbstractTrackModel, Feature } from '@jbrowse/core/util';
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
 export default function LaunchMsaViewDialog({ handleClose, feature, model, }: {
     handleClose: () => void;
     feature: Feature;

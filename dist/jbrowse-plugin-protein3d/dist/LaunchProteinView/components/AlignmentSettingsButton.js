@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, FormLabel, IconButton, Radio, RadioGroup, Tab, Tabs, TextField, Typography, } from '@mui/material';
 import { parsePairwise } from 'clustal-js';
-import { ALIGNMENT_ALGORITHMS, } from '../../ProteinView/types';
+import { ALIGNMENT_ALGORITHMS } from '../../ProteinView/types';
 export default function AlignmentSettingsButton({ value, onChange, onManualAlignment, }) {
     const [open, setOpen] = useState(false);
     const [tabValue, setTabValue] = useState(0);

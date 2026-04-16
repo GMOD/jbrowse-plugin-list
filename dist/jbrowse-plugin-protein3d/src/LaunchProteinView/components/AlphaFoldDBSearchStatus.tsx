@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 
-import { Feature } from '@jbrowse/core/util'
 import { Button, Typography } from '@mui/material'
 
 import MSATable from './MSATable'
 import ExternalLink from '../../components/ExternalLink'
 import { getDisplayName } from '../utils/util'
+
+import type { Feature } from '@jbrowse/core/util'
 
 function NotFound({ uniprotId }: { uniprotId: string }) {
   return (

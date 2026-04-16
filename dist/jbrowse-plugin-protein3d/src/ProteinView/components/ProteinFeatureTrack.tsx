@@ -15,11 +15,13 @@ import {
 import highlightResidueRange, {
   selectResidueRange,
 } from '../highlightResidueRange'
-import { FeatureTrackData } from '../hooks/useProteinFeatureTrackData'
-import { UniProtFeature, getFeatureColor } from '../hooks/useUniProtFeatures'
-import { JBrowsePluginProteinStructureModel } from '../model'
+import { getFeatureColor } from '../hooks/useUniProtFeatures'
 import { clickProteinToGenome } from '../proteinToGenomeMapping'
 import { throttle } from './throttle'
+
+import type { FeatureTrackData } from '../hooks/useProteinFeatureTrackData'
+import type { UniProtFeature } from '../hooks/useUniProtFeatures'
+import type { JBrowsePluginProteinStructureModel } from '../model'
 
 function getVisibleTypes(
   featureTypes: string[],

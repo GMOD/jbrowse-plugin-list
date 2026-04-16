@@ -2,7 +2,7 @@ import React from 'react'
 
 import { observer } from 'mobx-react'
 
-import {
+import type {
   JBrowsePluginProteinStructureModel,
   JBrowsePluginProteinViewModel,
 } from '../model'

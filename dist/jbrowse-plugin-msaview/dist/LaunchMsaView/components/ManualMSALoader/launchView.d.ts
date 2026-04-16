@@ -1,4 +1,4 @@
-import { AbstractSessionModel, Feature, FileLocation } from '@jbrowse/core/util';
+import type { AbstractSessionModel, Feature, FileLocation } from '@jbrowse/core/util';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 export declare function launchView({ session, newViewTitle, view, feature, msaFilehandle, treeFilehandle, querySeqName, data, }: {
     session: AbstractSessionModel;

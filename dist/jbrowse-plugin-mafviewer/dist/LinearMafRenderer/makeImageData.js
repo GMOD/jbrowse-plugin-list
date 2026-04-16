@@ -69,15 +69,4 @@ export function finalizeRendering(renderingContext, samples) {
         samples,
     };
 }
-/**
- * Original non-streaming version for backward compatibility.
- */
-export function makeImageData({ ctx, renderArgs, }) {
-    const { features, samples, bpPerPx } = renderArgs;
-    const { renderingContext, sampleToRowMap, region } = initRenderingContext(ctx, renderArgs);
-    for (const feature of features.values()) {
-        renderFeature(feature, region, bpPerPx, sampleToRowMap, renderingContext);
-    }
-    return finalizeRendering(renderingContext, samples);
-}
 //# sourceMappingURL=makeImageData.js.map

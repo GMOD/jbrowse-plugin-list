@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbstractTrackModel, Feature } from '@jbrowse/core/util';
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
 declare const NCBIBlastAutomaticPanel: ({ handleClose, feature, model, children, baseUrl, }: {
     model: AbstractTrackModel;
     feature: Feature;

@@ -37,6 +37,6 @@ test('handles a sequence with mixed characters and gaps', () => {
     const { extractedSequence, actualStart } = extractSubsequence(sequence, 2, 5);
     // Positions 2-5 would be G,T,A after skipping gaps
     expect(extractedSequence).toBe('GT--A');
-    expect(actualStart).toBe(5);
+    expect(actualStart).toBe(4);
 });
 //# sourceMappingURL=extractSubsequence.test.js.map

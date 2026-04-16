@@ -1,6 +1,6 @@
-import { Feature } from '@jbrowse/core/util';
 import type { JBrowsePluginMsaViewModel } from '../../../MsaViewPanel/model';
 import type { CachedBlastResult } from '../../../utils/blastCache';
+import type { Feature } from '@jbrowse/core/util';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 export declare function blastLaunchView({ newViewTitle, view, feature, blastParams, }: {
     newViewTitle: string;

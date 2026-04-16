@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ErrorMessage, FileSelector } from '@jbrowse/core/ui';
-import { getContainingView, getSession, } from '@jbrowse/core/util';
+import { getContainingView, getSession } from '@jbrowse/core/util';
 import { Alert, Button, DialogActions, DialogContent, FormControl, FormControlLabel, Radio, RadioGroup, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';

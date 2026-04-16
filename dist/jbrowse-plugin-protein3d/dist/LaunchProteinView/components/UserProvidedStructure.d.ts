@@ -1,6 +1,6 @@
 import React from 'react';
-import { AbstractTrackModel, Feature } from '@jbrowse/core/util';
-import { AlignmentAlgorithm } from '../../ProteinView/types';
+import type { AlignmentAlgorithm } from '../../ProteinView/types';
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
 declare const UserProvidedStructure: ({ feature, model, handleClose, alignmentAlgorithm, onAlignmentAlgorithmChange, }: {
     feature: Feature;
     model: AbstractTrackModel;

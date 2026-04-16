@@ -1,18 +1,17 @@
-import PluginManager from '@jbrowse/core/PluginManager'
-import { PluggableElementType } from '@jbrowse/core/pluggableElementTypes'
-import DisplayType from '@jbrowse/core/pluggableElementTypes/DisplayType'
-import { MenuItem } from '@jbrowse/core/ui'
-import { Feature, getContainingTrack, getSession } from '@jbrowse/core/util'
+import { getContainingTrack, getSession } from '@jbrowse/core/util'
 import AddIcon from '@mui/icons-material/Add'
 
 import LaunchProteinViewDialog from './components/LaunchProteinViewDialog'
 
+import type PluginManager from '@jbrowse/core/PluginManager'
+import type { PluggableElementType } from '@jbrowse/core/pluggableElementTypes'
+import type DisplayType from '@jbrowse/core/pluggableElementTypes/DisplayType'
+import type { MenuItem } from '@jbrowse/core/ui'
+import type { Feature } from '@jbrowse/core/util'
 import type { IAnyModelType } from '@jbrowse/mobx-state-tree'
 
 function isDisplay(elt: { name: string }): elt is DisplayType {
-  return (
-    elt.name === 'LinearBasicDisplay' || elt.name === 'LinearFeatureDisplay'
-  )
+  return elt.name === 'LinearBasicDisplay'
 }
 
 function extendStateModel(stateModel: IAnyModelType) {
@@ -57,12 +56,17 @@ function extendStateModel(stateModel: IAnyModelType) {
                       if (self.fetchFullFeature && contextMenuInfo) {
                         // eslint-disable-next-line @typescript-eslint/no-floating-promises
                         ;(async () => {
-                          const fullFeature = await self.fetchFullFeature!(
-                            feature.id(),
-                            contextMenuInfo.regionNumber,
-                          )
-                          if (fullFeature) {
-                            openDialog(fullFeature)
+                          try {
+                            const fullFeature = await self.fetchFullFeature!(
+                              feature.id(),
+                              contextMenuInfo.regionNumber,
+                            )
+                            if (fullFeature) {
+                              openDialog(fullFeature)
+                            }
+                          } catch (e) {
+                            console.error(e)
+                            session.notify(`${e}`, 'error')
                           }
                         })()
                       } else {

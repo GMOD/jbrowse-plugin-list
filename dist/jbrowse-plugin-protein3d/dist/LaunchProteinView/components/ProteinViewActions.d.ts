@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlignmentAlgorithm } from '../../ProteinView/types';
+import type { AlignmentAlgorithm } from '../../ProteinView/types';
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 interface ProteinViewActionsProps {

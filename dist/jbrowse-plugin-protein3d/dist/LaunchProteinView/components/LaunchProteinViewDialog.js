@@ -6,7 +6,7 @@ import FoldseekSearch from './FoldseekSearch';
 import HelpButton from './HelpButton';
 import TabPanel from './TabPanel';
 import UserProvidedStructure from './UserProvidedStructure';
-import { DEFAULT_ALIGNMENT_ALGORITHM, } from '../../ProteinView/types';
+import { DEFAULT_ALIGNMENT_ALGORITHM } from '../../ProteinView/types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 export default function LaunchProteinViewDialog({ handleClose, feature, model, }) {
     const [choice, setChoice] = useState(0);

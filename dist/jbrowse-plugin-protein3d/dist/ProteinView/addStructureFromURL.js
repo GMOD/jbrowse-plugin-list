@@ -1,3 +1,4 @@
+import { applyStructurePreset } from './structurePipeline';
 export async function addStructureFromURL({ url, format = 'mmcif', isBinary, options, plugin, }) {
     const data = await plugin.builders.data.download({
         url,
@@ -8,11 +9,6 @@ export async function addStructureFromURL({ url, format = 'mmcif', isBinary, opt
         },
     });
     const trajectory = await plugin.builders.structure.parseTrajectory(data, format);
-    const model = await plugin.builders.structure.createModel(trajectory);
-    await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', {
-        useDefaultIfSingleModel: true,
-        representationPresetParams: options?.representationParams,
-    });
-    return { model };
+    return applyStructurePreset({ plugin, trajectory, options });
 }
 //# sourceMappingURL=addStructureFromURL.js.map

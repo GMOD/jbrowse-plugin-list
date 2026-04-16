@@ -1,4 +1,4 @@
-import { Feature, SessionWithAddTracks } from '@jbrowse/core/util';
+import type { Feature, SessionWithAddTracks } from '@jbrowse/core/util';
 /**
  * Launches a protein annotation view for a UniProt entry
  * Creates assembly, adds annotation tracks, and navigates to the protein view

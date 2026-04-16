@@ -1,9 +1,7 @@
+import type { LoadStructureOptions } from './structurePipeline';
 import type { PluginContext } from 'molstar/lib/mol-plugin/context';
-import type { StructureRepresentationPresetProvider } from 'molstar/lib/mol-plugin-state/builder/structure/representation-preset';
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory';
-export interface LoadStructureOptions {
-    representationParams?: StructureRepresentationPresetProvider.CommonParams;
-}
+export type { LoadStructureOptions };
 export declare function addStructureFromData({ data, format, options, plugin, }: {
     data: string;
     format?: BuiltInTrajectoryFormat;

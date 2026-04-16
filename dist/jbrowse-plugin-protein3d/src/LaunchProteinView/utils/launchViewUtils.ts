@@ -92,17 +92,20 @@ export function launch3DProteinView({
   userProvidedTranscriptSequence,
   alignmentAlgorithm,
   displayName,
+  connectedMsaViewId,
 }: LaunchViewParams & {
   url?: string
   data?: string
   userProvidedTranscriptSequence?: string
   alignmentAlgorithm?: string
   displayName?: string
+  connectedMsaViewId?: string
 }) {
   return session.addView('ProteinView', {
     type: 'ProteinView',
     isFloating: true,
     alignmentAlgorithm,
+    connectedMsaViewId,
     structures: [
       {
         url,
@@ -182,24 +185,16 @@ export function hasMsaViewPlugin() {
   return typeof window.JBrowsePluginMsaView !== 'undefined'
 }
 
-export function launch3DProteinViewWithMsa({
-  session,
-  view,
-  feature,
-  selectedTranscript,
-  uniprotId,
-  url,
-  data,
-  userProvidedTranscriptSequence,
-  alignmentAlgorithm,
-  displayName,
-}: LaunchViewParams & {
-  url?: string
-  data?: string
-  userProvidedTranscriptSequence?: string
-  alignmentAlgorithm?: string
-  displayName?: string
-}) {
+export function launch3DProteinViewWithMsa(
+  params: LaunchViewParams & {
+    url?: string
+    data?: string
+    userProvidedTranscriptSequence?: string
+    alignmentAlgorithm?: string
+    displayName?: string
+  },
+) {
+  const { session, view, feature, selectedTranscript, uniprotId } = params
   if (!uniprotId) {
     return undefined
   }
@@ -213,7 +208,6 @@ export function launch3DProteinViewWithMsa({
     ]),
   ].join(' - ')
 
-  // Launch MSA view first to get its ID
   const msaView = session.addView('MsaView', {
     type: 'MsaView',
     displayName: `MSA view - ${baseName}`,
@@ -225,22 +219,10 @@ export function launch3DProteinViewWithMsa({
     },
   })
 
-  // Launch 3D protein view with reference to MSA view
-  return session.addView('ProteinView', {
-    type: 'ProteinView',
-    isFloating: true,
-    alignmentAlgorithm,
+  return launch3DProteinView({
+    ...params,
+    displayName: params.displayName ?? `Protein view - ${baseName}`,
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     connectedMsaViewId: msaView?.id,
-    structures: [
-      {
-        url,
-        data,
-        userProvidedTranscriptSequence,
-        feature: selectedTranscript?.toJSON(),
-        connectedViewId: view.id,
-      },
-    ],
-    displayName: displayName ?? `Protein view - ${baseName}`,
   })
 }

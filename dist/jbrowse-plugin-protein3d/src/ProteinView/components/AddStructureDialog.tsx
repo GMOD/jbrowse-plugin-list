@@ -20,7 +20,8 @@ import {
   getAlphaFoldStructureUrl,
   getPdbStructureUrl,
 } from '../../LaunchProteinView/utils/launchViewUtils'
-import { JBrowsePluginProteinViewModel } from '../model'
+
+import type { JBrowsePluginProteinViewModel } from '../model'
 
 const AddStructureDialog = observer(function AddStructureDialog({
   model,

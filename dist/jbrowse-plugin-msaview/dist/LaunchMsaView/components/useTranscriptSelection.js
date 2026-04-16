@@ -12,7 +12,6 @@ export function useTranscriptSelection({ feature, view, validIds, }) {
         view,
         feature: selectedTranscript,
     });
-    const validSet = useMemo(() => (validIds ? new Set(validIds) : undefined), [validIds]);
     useEffect(() => {
         if (validIds && validIds.length > 0) {
             const currentFeature = options.find(opt => getId(opt) === selectedId);
@@ -31,7 +30,7 @@ export function useTranscriptSelection({ feature, view, validIds, }) {
         selectedTranscript,
         proteinSequence,
         error,
-        validSet,
+        validIds,
     };
 }
 //# sourceMappingURL=useTranscriptSelection.js.map

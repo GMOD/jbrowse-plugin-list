@@ -89,7 +89,7 @@ const SplitString = observer(function SplitString({ model, str, }) {
         if (index >= 0 && index < str.length) {
             model.hoverAlignmentPosition(index);
         }
-    }, 16), [str, model]);
+    }, 16), [str.length, model]);
     const handleClick = useMemo(() => (e) => {
         const container = containerRef.current;
         if (!container) {

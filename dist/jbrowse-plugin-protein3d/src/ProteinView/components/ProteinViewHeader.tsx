@@ -3,13 +3,14 @@ import React from 'react'
 import { LoadingEllipses } from '@jbrowse/core/ui'
 import { observer } from 'mobx-react'
 
-import {
-  JBrowsePluginProteinStructureModel,
-  JBrowsePluginProteinViewModel,
-} from '../model'
 import AddStructureDialog from './AddStructureDialog'
 import HeaderStructureInfo from './HeaderStructureInfo'
 import ProteinAlignment from './ProteinAlignment'
+
+import type {
+  JBrowsePluginProteinStructureModel,
+  JBrowsePluginProteinViewModel,
+} from '../model'
 
 const ProteinViewHeader = observer(function ProteinViewHeader({
   model,

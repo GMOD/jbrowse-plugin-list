@@ -1,5 +1,5 @@
 import React from 'react';
-import { Feature } from '@jbrowse/core/util';
+import type { Feature } from '@jbrowse/core/util';
 export default function AlphaFoldDBSearchStatus({ uniprotId, selectedTranscript, structureSequence, isoformSequences, url, }: {
     uniprotId?: string;
     selectedTranscript?: Feature;

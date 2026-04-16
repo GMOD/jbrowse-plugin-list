@@ -1,0 +1,10 @@
+import type { JBrowsePluginMsaViewModel } from './model';
+export declare function loadStoredData(self: JBrowsePluginMsaViewModel): void;
+export declare function storeDataToIndexedDB(self: JBrowsePluginMsaViewModel): void;
+export declare function launchBlastIfNeeded(self: JBrowsePluginMsaViewModel): void;
+export declare function processInit(self: JBrowsePluginMsaViewModel): void;
+export declare function updateGenomeHighlights(self: JBrowsePluginMsaViewModel): void;
+export declare function highlightConnectedStructures(self: JBrowsePluginMsaViewModel): void;
+export declare function autoConnectStructures(self: JBrowsePluginMsaViewModel): void;
+export declare function observeProteinHighlights(self: JBrowsePluginMsaViewModel): void;
+export declare function runCleanup(): void;

@@ -1,11 +1,12 @@
 import { getConf } from '@jbrowse/core/configuration'
 import {
-  Feature,
   defaultCodonTable,
   generateCodonTable,
   getSession,
   revcom,
 } from '@jbrowse/core/util'
+
+import type { Feature } from '@jbrowse/core/util'
 
 export interface Feat {
   start: number

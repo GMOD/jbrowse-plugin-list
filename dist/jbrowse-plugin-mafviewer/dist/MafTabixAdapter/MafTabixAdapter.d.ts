@@ -1,21 +1,19 @@
 import { BaseFeatureDataAdapter, BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
 import { Feature, Region } from '@jbrowse/core/util';
+import type { MafAdapterOptions } from '../types';
 export default class MafTabixAdapter extends BaseFeatureDataAdapter {
     setupP?: Promise<{
         adapter: BaseFeatureDataAdapter;
     }>;
-    setupPre(): Promise<{
+    setup(): Promise<{
         adapter: BaseFeatureDataAdapter;
     }>;
-    setupPre2(): Promise<{
-        adapter: BaseFeatureDataAdapter;
-    }>;
-    setup(opts?: BaseOptions): Promise<{
+    setupPre(opts?: BaseOptions): Promise<{
         adapter: BaseFeatureDataAdapter;
     }>;
     getRefNames(opts?: BaseOptions): Promise<string[]>;
     getHeader(opts?: BaseOptions): Promise<unknown>;
-    getFeatures(query: Region, opts?: BaseOptions): import("rxjs").Observable<Feature>;
+    getFeatures(query: Region, opts?: MafAdapterOptions): import("rxjs").Observable<Feature>;
     getSamples(_query: Region): Promise<{
         samples: {
             id: string;

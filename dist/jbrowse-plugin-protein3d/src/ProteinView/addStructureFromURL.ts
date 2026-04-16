@@ -1,10 +1,10 @@
+import { applyStructurePreset } from './structurePipeline'
+
+import type { LoadStructureOptions } from './structurePipeline'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
-import type { StructureRepresentationPresetProvider } from 'molstar/lib/mol-plugin-state/builder/structure/representation-preset'
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory'
 
-export interface LoadStructureOptions {
-  representationParams?: StructureRepresentationPresetProvider.CommonParams
-}
+export type { LoadStructureOptions }
 
 export async function addStructureFromURL({
   url,
@@ -35,15 +35,5 @@ export async function addStructureFromURL({
     data,
     format,
   )
-  const model = await plugin.builders.structure.createModel(trajectory)
-
-  await plugin.builders.structure.hierarchy.applyPreset(
-    trajectory,
-    'all-models',
-    {
-      useDefaultIfSingleModel: true,
-      representationPresetParams: options?.representationParams,
-    },
-  )
-  return { model }
+  return applyStructurePreset({ plugin, trajectory, options })
 }

@@ -20,19 +20,20 @@ interface LaunchViewParams {
     selectedTranscript?: Feature;
     uniprotId?: string;
 }
-export declare function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, }: LaunchViewParams & {
+export declare function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, connectedMsaViewId, }: LaunchViewParams & {
     url?: string;
     data?: string;
     userProvidedTranscriptSequence?: string;
     alignmentAlgorithm?: string;
     displayName?: string;
+    connectedMsaViewId?: string;
 }): import("@jbrowse/core/util").AbstractViewModel;
 export declare function launch1DProteinView({ session, view, feature, selectedTranscript, uniprotId, confidenceUrl, }: LaunchViewParams & {
     confidenceUrl?: string;
 }): Promise<void>;
 export declare function launchMsaView({ session, view, feature, selectedTranscript, uniprotId, }: LaunchViewParams): import("@jbrowse/core/util").AbstractViewModel | undefined;
 export declare function hasMsaViewPlugin(): boolean;
-export declare function launch3DProteinViewWithMsa({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, }: LaunchViewParams & {
+export declare function launch3DProteinViewWithMsa(params: LaunchViewParams & {
     url?: string;
     data?: string;
     userProvidedTranscriptSequence?: string;

@@ -3,7 +3,6 @@ import loadMolstar from './loadMolstar'
 import type { Mat4 } from 'molstar/lib/mol-math/linear-algebra'
 import type { StructureElement } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
-import type { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
 import type { StateObjectRef } from 'molstar/lib/mol-state'
 
 const SuperpositionTag = 'SuperpositionTransform'
@@ -79,7 +78,7 @@ export async function superposeStructures(plugin: PluginContext) {
 
 async function applyTransform(
   plugin: PluginContext,
-  s: StateObjectRef<PluginStateObject.Molecule.Structure>,
+  s: StateObjectRef,
   matrix: Mat4,
   coordinateSystem: { matrix: Mat4 } | undefined,
 ) {

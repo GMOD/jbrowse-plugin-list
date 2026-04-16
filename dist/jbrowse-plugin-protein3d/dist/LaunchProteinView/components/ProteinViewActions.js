@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Button, ButtonGroup, Dialog, DialogContent, DialogTitle, MenuItem, MenuList, Typography, } from '@mui/material';
 import AlignmentSettingsButton from './AlignmentSettingsButton';
-import { ALIGNMENT_ALGORITHM_LABELS, } from '../../ProteinView/types';
+import { ALIGNMENT_ALGORITHM_LABELS } from '../../ProteinView/types';
 import { hasMsaViewPlugin, launch1DProteinView, launch3DProteinView, launch3DProteinViewWithMsa, launchMsaView, } from '../utils/launchViewUtils';
 export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, }) {
     const [dialogOpen, setDialogOpen] = useState(false);

@@ -1,3 +1,15 @@
+/**
+ * TAF (Taffy Alignment Format) row instruction types
+ * Reference: https://github.com/ComparativeGenomicsToolkit/taffy
+ *
+ * Instruction types:
+ * 'i' - insert: add a new sequence row
+ * 's' - substitute: replace coordinates of an existing row
+ * 'd' - delete: remove a sequence row
+ * 'g' - gap: add a fixed-length gap to sequence start
+ * 'G' - gap substring: add variable-length gap from substring
+ */
+
 interface RowInsert {
   type: 'i'
   row: number
@@ -60,34 +72,25 @@ export function filterFirstLineInstructions(
     })
 }
 
+/**
+ * Parses TAF row instruction string into structured RowInstruction objects
+ * Each instruction token sequence is parsed according to TAF format rules
+ */
 export function parseRowInstructions(meta: string) {
   const ret = meta.split(' ')
   const rows = [] as RowInstruction[]
 
   for (let i = 0; i < ret.length; ) {
     const type = ret[i++]
-    if (type === 'i') {
-      const row = +ret[i++]!
-      const sequenceName = ret[i++]!
+    if (type === 'i' || type === 's') {
       rows.push({
         type,
-        row,
-        sequenceName,
+        row: +ret[i++]!,
+        sequenceName: ret[i++]!,
         start: +ret[i++]!,
         strand: ret[i++] === '-' ? -1 : 1,
         sequenceLength: +ret[i++]!,
-      })
-    } else if (type === 's') {
-      const row = +ret[i++]!
-      const sequenceName = ret[i++]!
-      rows.push({
-        type,
-        row,
-        sequenceName,
-        start: +ret[i++]!,
-        strand: ret[i++] === '-' ? -1 : 1,
-        sequenceLength: +ret[i++]!,
-      })
+      } as RowInsert | RowSubstitute)
     } else if (type === 'd') {
       rows.push({
         type,

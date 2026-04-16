@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui';
-import { getContainingView, getSession, } from '@jbrowse/core/util';
+import { getContainingView, getSession } from '@jbrowse/core/util';
 import { Button, DialogActions, DialogContent, Link } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';

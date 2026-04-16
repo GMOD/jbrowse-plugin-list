@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 
 import { Dialog } from '@jbrowse/core/ui'
-import { AbstractTrackModel, Feature } from '@jbrowse/core/util'
 import { Tab, Tabs } from '@mui/material'
 
 import AlphaFoldDBSearch from './AlphaFoldDBSearch'
@@ -9,11 +8,11 @@ import FoldseekSearch from './FoldseekSearch'
 import HelpButton from './HelpButton'
 import TabPanel from './TabPanel'
 import UserProvidedStructure from './UserProvidedStructure'
-import {
-  AlignmentAlgorithm,
-  DEFAULT_ALIGNMENT_ALGORITHM,
-} from '../../ProteinView/types'
+import { DEFAULT_ALIGNMENT_ALGORITHM } from '../../ProteinView/types'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+
+import type { AlignmentAlgorithm } from '../../ProteinView/types'
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
 
 export default function LaunchProteinViewDialog({
   handleClose,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import useAlphaFoldUrl from './useAlphaFoldUrl';
 import useRemoteStructureFileSequence from './useRemoteStructureFileSequence';
 import { getAlphaFoldStructureUrl } from '../utils/launchViewUtils';
@@ -10,12 +10,6 @@ export default function useAlphaFoldData({ uniprotId, useApiSearch = false, }) {
     const hardcodedUrl = useMemo(() => (uniprotId ? getAlphaFoldStructureUrl(uniprotId) : undefined), [uniprotId]);
     // Optionally fetch from API for isoform search
     const { predictions, isLoading: isApiLoading, error: apiError, } = useAlphaFoldUrl({ uniprotId: useApiSearch ? uniprotId : undefined });
-    // Auto-select first AlphaFold entry when predictions load
-    useEffect(() => {
-        if (predictions && predictions.length > 0) {
-            setSelectedEntryIndex(0);
-        }
-    }, [predictions]);
     const selectedPrediction = predictions?.[selectedEntryIndex];
     // When using API, use the selected prediction's URL
     // Otherwise, use the hardcoded URL

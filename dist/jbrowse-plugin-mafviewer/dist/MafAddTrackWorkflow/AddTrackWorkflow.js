@@ -42,7 +42,7 @@ export default function MultiMAFWidget({ model }) {
                 } })) : fileTypeChoice === 'MafTabixAdapter' ? (React.createElement(React.Fragment, null,
                 React.createElement(FormControl, null,
                     React.createElement(FormLabel, null, "Index type"),
-                    React.createElement(RadioGroup, { value: fileTypeChoice, onChange: event => {
+                    React.createElement(RadioGroup, { value: indexTypeChoice, onChange: event => {
                             setIndexTypeChoice(event.target.value);
                         } }, ['TBI', 'CSI'].map(r => (React.createElement(FormControlLabel, { key: r, value: r, control: React.createElement(Radio, null), checked: indexTypeChoice === r, label: r }))))),
                 React.createElement(FileSelector, { location: loc, name: "Path to MAF tabix", rootModel: rootModel, setLocation: arg => {

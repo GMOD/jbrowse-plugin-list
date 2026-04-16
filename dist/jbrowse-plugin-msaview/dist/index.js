@@ -14,6 +14,27 @@ export default class MsaViewPlugin extends Plugin {
         super(...arguments);
         this.name = 'MsaViewPlugin';
         this.version = version;
+        this.rootConfigurationSchema = (pluginManager) => {
+            return {
+                msa: ConfigurationSchema('MSA', {
+                    datasets: types.maybe(types.array(ConfigurationSchema('MSAEntry', {
+                        datasetId: {
+                            type: 'string',
+                            defaultValue: '',
+                        },
+                        description: {
+                            type: 'string',
+                            defaultValue: '',
+                        },
+                        name: {
+                            type: 'string',
+                            defaultValue: '',
+                        },
+                        adapter: pluginManager.pluggableConfigSchemaType('adapter'),
+                    }))),
+                }),
+            };
+        };
     }
     install(pluginManager) {
         MsaViewF(pluginManager);
@@ -32,28 +53,6 @@ export default class MsaViewPlugin extends Plugin {
                 },
             });
         }
-    }
-    // @ts-expect-error
-    rootConfigurationSchema(pluginManager) {
-        return {
-            msa: ConfigurationSchema('MSA', {
-                datasets: types.maybe(types.array(ConfigurationSchema('MSAEntry', {
-                    datasetId: {
-                        type: 'string',
-                        defaultValue: '',
-                    },
-                    description: {
-                        type: 'string',
-                        defaultValue: '',
-                    },
-                    name: {
-                        type: 'string',
-                        defaultValue: '',
-                    },
-                    adapter: pluginManager.pluggableConfigSchemaType('adapter'),
-                }))),
-            }),
-        };
     }
 }
 //# sourceMappingURL=index.js.map

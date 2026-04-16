@@ -12,6 +12,6 @@ export function makeId(h, taxonomyInfo) {
     return `${h.accession}-${speciesName}`;
 }
 export function strip(s) {
-    return s.replace('-', '');
+    return s.replaceAll('-', '');
 }
 //# sourceMappingURL=util.js.map

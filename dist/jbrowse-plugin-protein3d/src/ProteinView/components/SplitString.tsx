@@ -186,7 +186,7 @@ const SplitString = observer(function SplitString({
           model.hoverAlignmentPosition(index)
         }
       }, 16),
-    [str, model],
+    [str.length, model],
   )
 
   const handleClick = useMemo(

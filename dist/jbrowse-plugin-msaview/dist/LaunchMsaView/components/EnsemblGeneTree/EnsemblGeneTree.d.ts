@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbstractTrackModel, Feature } from '@jbrowse/core/util';
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
 declare const EnsemblGeneTree: ({ model, feature, handleClose, }: {
     model: AbstractTrackModel;
     feature: Feature;

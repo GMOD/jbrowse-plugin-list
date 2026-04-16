@@ -3,10 +3,10 @@ import { Tooltip, Typography } from '@mui/material';
 import { reaction } from 'mobx';
 import { observer } from 'mobx-react';
 import { CHAR_WIDTH, LABEL_WIDTH, ROW_HEIGHT } from '../constants';
-import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData';
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton';
 import { ProteinFeatureTrackContent, ProteinFeatureTrackLabels, } from './ProteinFeatureTrack';
 import SplitString, { AlignmentHighlights } from './SplitString';
+import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData';
 const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
     const { pairwiseAlignment, showHighlight, showProteinTracks, autoScrollAlignment, uniprotId, } = model;
     const containerRef = useRef(null);
@@ -24,7 +24,10 @@ const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
             left: scrollPosition - container.clientWidth / 2,
             behavior: 'smooth',
         });
-    }), [model, autoScrollAlignment]);
+    }), 
+    // reaction and model property access are handled by MobX
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [autoScrollAlignment]);
     if (!pairwiseAlignment) {
         return React.createElement("div", null, "No pairwiseAlignment");
     }

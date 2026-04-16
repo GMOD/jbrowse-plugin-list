@@ -25,7 +25,8 @@ const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({ model, }
         return () => {
             disposer();
         };
-    }, [proteinView, msaView]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     // Sync MSA hover to protein
     useEffect(() => {
         if (!proteinView || !msaView) {
@@ -44,7 +45,8 @@ const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({ model, }
         return () => {
             disposer();
         };
-    }, [proteinView, msaView]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     return null;
 });
 export default ProteinToMsaHoverSync;

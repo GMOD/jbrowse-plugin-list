@@ -44,11 +44,12 @@ export function getConfidenceUrlFromTarget(target) {
     }
     return undefined;
 }
-export function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, }) {
+export function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, connectedMsaViewId, }) {
     return session.addView('ProteinView', {
         type: 'ProteinView',
         isFloating: true,
         alignmentAlgorithm,
+        connectedMsaViewId,
         structures: [
             {
                 url,
@@ -108,7 +109,8 @@ export function launchMsaView({ session, view, feature, selectedTranscript, unip
 export function hasMsaViewPlugin() {
     return typeof window.JBrowsePluginMsaView !== 'undefined';
 }
-export function launch3DProteinViewWithMsa({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, }) {
+export function launch3DProteinViewWithMsa(params) {
+    const { session, view, feature, selectedTranscript, uniprotId } = params;
     if (!uniprotId) {
         return undefined;
     }
@@ -120,7 +122,6 @@ export function launch3DProteinViewWithMsa({ session, view, feature, selectedTra
             getTranscriptDisplayName(selectedTranscript),
         ]),
     ].join(' - ');
-    // Launch MSA view first to get its ID
     const msaView = session.addView('MsaView', {
         type: 'MsaView',
         displayName: `MSA view - ${baseName}`,
@@ -131,23 +132,11 @@ export function launch3DProteinViewWithMsa({ session, view, feature, selectedTra
             colorSchemeName: 'percent_identity',
         },
     });
-    // Launch 3D protein view with reference to MSA view
-    return session.addView('ProteinView', {
-        type: 'ProteinView',
-        isFloating: true,
-        alignmentAlgorithm,
+    return launch3DProteinView({
+        ...params,
+        displayName: params.displayName ?? `Protein view - ${baseName}`,
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         connectedMsaViewId: msaView?.id,
-        structures: [
-            {
-                url,
-                data,
-                userProvidedTranscriptSequence,
-                feature: selectedTranscript?.toJSON(),
-                connectedViewId: view.id,
-            },
-        ],
-        displayName: displayName ?? `Protein view - ${baseName}`,
     });
 }
 //# sourceMappingURL=launchViewUtils.js.map

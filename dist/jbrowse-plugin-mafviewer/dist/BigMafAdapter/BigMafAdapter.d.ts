@@ -1,5 +1,5 @@
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
-import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
+import type { MafAdapterOptions } from '../types';
 import type { Feature, Region } from '@jbrowse/core/util';
 export default class BigMafAdapter extends BaseFeatureDataAdapter {
     setupP?: Promise<{
@@ -13,7 +13,7 @@ export default class BigMafAdapter extends BaseFeatureDataAdapter {
     }>;
     getRefNames(): Promise<string[]>;
     getHeader(): Promise<unknown>;
-    getFeatures(query: Region, opts?: BaseOptions): import("rxjs").Observable<Feature>;
+    getFeatures(query: Region, opts?: MafAdapterOptions): import("rxjs").Observable<Feature>;
     getSamples(_query: Region): Promise<{
         samples: {
             id: string;

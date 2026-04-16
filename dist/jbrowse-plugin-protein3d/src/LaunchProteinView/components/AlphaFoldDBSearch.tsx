@@ -14,10 +14,10 @@ import SequenceSearchStatus from './SequenceSearchStatus'
 import TranscriptSelector from './TranscriptSelector'
 import UniProtIdInput from './UniProtIdInput'
 import UniProtResultsTable from './UniProtResultsTable'
-import { AlignmentAlgorithm } from '../../ProteinView/types'
 import ExternalLink from '../../components/ExternalLink'
 import useAlphaFoldDBSearch from '../hooks/useAlphaFoldDBSearch'
 
+import type { AlignmentAlgorithm } from '../../ProteinView/types'
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 

@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 
-import { Feature, max } from '@jbrowse/core/util'
+import { max } from '@jbrowse/core/util'
 import { TextField } from '@mui/material'
 import { makeStyles } from 'tss-react/mui'
 
 import Checkbox2 from './Checkbox2'
 import { getTranscriptDisplayName, stripStopCodon } from '../utils/util'
+
+import type { Feature } from '@jbrowse/core/util'
 
 const useStyles = makeStyles()({
   textAreaFont: {

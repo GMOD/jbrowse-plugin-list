@@ -11,9 +11,6 @@ interface BaseRenderArgs extends RenderArgsDeserialized {
     statusCallback?: (arg: string) => void;
     showAsUpperCase: boolean;
 }
-interface RenderArgs extends BaseRenderArgs {
-    features: Map<string, Feature>;
-}
 /**
  * Initialize the rendering context for streaming feature processing.
  * Call this once before processing features.
@@ -32,17 +29,6 @@ export declare function renderFeature(feature: Feature, region: Region, bpPerPx:
  * Call this after all features have been processed.
  */
 export declare function finalizeRendering(renderingContext: RenderingContext, samples: Sample[]): {
-    flatbush: ArrayBufferLike;
-    items: import("./rendering").RenderedBase[];
-    samples: Sample[];
-};
-/**
- * Original non-streaming version for backward compatibility.
- */
-export declare function makeImageData({ ctx, renderArgs, }: {
-    ctx: CanvasRenderingContext2D;
-    renderArgs: RenderArgs;
-}): {
     flatbush: ArrayBufferLike;
     items: import("./rendering").RenderedBase[];
     samples: Sample[];

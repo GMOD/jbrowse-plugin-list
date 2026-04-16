@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import useAlphaFoldUrl from './useAlphaFoldUrl'
 import useRemoteStructureFileSequence from './useRemoteStructureFileSequence'
@@ -14,7 +14,7 @@ export default function useAlphaFoldData({
   uniprotId?: string
   useApiSearch?: boolean
 }) {
-  const [selectedEntryIndex, setSelectedEntryIndex] = useState<number>(0)
+  const [selectedEntryIndex, setSelectedEntryIndex] = useState(0)
 
   const hardcodedUrl = useMemo(
     () => (uniprotId ? getAlphaFoldStructureUrl(uniprotId) : undefined),
@@ -27,13 +27,6 @@ export default function useAlphaFoldData({
     isLoading: isApiLoading,
     error: apiError,
   } = useAlphaFoldUrl({ uniprotId: useApiSearch ? uniprotId : undefined })
-
-  // Auto-select first AlphaFold entry when predictions load
-  useEffect(() => {
-    if (predictions && predictions.length > 0) {
-      setSelectedEntryIndex(0)
-    }
-  }, [predictions])
 
   const selectedPrediction = predictions?.[selectedEntryIndex]
 

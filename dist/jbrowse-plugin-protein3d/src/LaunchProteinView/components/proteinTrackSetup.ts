@@ -1,4 +1,4 @@
-import { SessionWithAddTracks } from '@jbrowse/core/util'
+import type { SessionWithAddTracks } from '@jbrowse/core/util'
 
 /**
  * Fetches UniProt GFF data and extracts unique feature types

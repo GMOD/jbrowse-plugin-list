@@ -55,12 +55,15 @@ export function useDragSelection(ref) {
             dragEndY !== undefined) {
             const dragDistanceX = Math.abs(dragEndX - dragStartX);
             if (dragDistanceX > MIN_DRAG_DISTANCE) {
+                const rect = ref.current?.getBoundingClientRect();
+                const left = rect?.left || 0;
+                const top = rect?.top || 0;
                 setContextCoord({
                     coord: [event.clientX, event.clientY],
-                    dragEndX: event.clientX,
+                    dragEndX: event.clientX - left,
                     dragStartX: dragStartX,
                     dragStartY: dragStartY,
-                    dragEndY: dragEndY,
+                    dragEndY: event.clientY - top,
                 });
                 setShowSelectionBox(true);
             }
@@ -69,7 +72,15 @@ export function useDragSelection(ref) {
             }
         }
         setIsDragging(false);
-    }, [isDragging, dragStartX, dragEndX, dragStartY, dragEndY, clearSelectionBox]);
+    }, [
+        ref,
+        isDragging,
+        dragStartX,
+        dragEndX,
+        dragStartY,
+        dragEndY,
+        clearSelectionBox,
+    ]);
     const handleMouseLeave = useCallback(() => {
         setMouseY(undefined);
         setMouseX(undefined);

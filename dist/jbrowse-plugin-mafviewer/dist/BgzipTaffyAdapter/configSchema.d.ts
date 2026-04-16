@@ -1,4 +1,4 @@
-declare const configSchema: import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaType<{
+declare const configSchema: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
     /**
      * #slot
      */
@@ -40,5 +40,5 @@ declare const configSchema: import("@jbrowse/core/esm/configuration/configuratio
             locationType: string;
         };
     };
-}, import("@jbrowse/core/esm/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, undefined>>;
 export default configSchema;

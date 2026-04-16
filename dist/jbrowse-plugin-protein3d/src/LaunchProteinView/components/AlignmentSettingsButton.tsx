@@ -20,11 +20,10 @@ import {
 } from '@mui/material'
 import { parsePairwise } from 'clustal-js'
 
-import {
-  ALIGNMENT_ALGORITHMS,
-  AlignmentAlgorithm,
-} from '../../ProteinView/types'
-import { PairwiseAlignment } from '../../mappings'
+import { ALIGNMENT_ALGORITHMS } from '../../ProteinView/types'
+
+import type { AlignmentAlgorithm } from '../../ProteinView/types'
+import type { PairwiseAlignment } from '../../mappings'
 
 interface AlignmentSettingsButtonProps {
   value: AlignmentAlgorithm

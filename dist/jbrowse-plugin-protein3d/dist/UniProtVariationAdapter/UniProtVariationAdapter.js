@@ -1,5 +1,5 @@
-import { BaseFeatureDataAdapter, } from '@jbrowse/core/data_adapters/BaseAdapter';
-import { SimpleFeature, doesIntersect2, } from '@jbrowse/core/util';
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
+import { SimpleFeature, doesIntersect2 } from '@jbrowse/core/util';
 import { openLocation } from '@jbrowse/core/util/io';
 import { ObservableCreate } from '@jbrowse/core/util/rxjs';
 export default class UniProtVariationAdapter extends BaseFeatureDataAdapter {

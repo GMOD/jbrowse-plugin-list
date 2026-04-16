@@ -1,5 +1,5 @@
 import Structure from './structureModel';
-import { AlignmentAlgorithm } from './types';
+import { type AlignmentAlgorithm } from './types';
 import type { Instance } from '@jbrowse/mobx-state-tree';
 import type { PluginContext } from 'molstar/lib/mol-plugin/context';
 export interface ProteinViewInitState {
@@ -40,9 +40,7 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         hoverPosition: {
             structureSeqPos?: number;
             code?: string;
-            chain? /**
-             * #action
-             */: string;
+            chain?: string;
         } | undefined;
         pairwiseAlignmentStatus: string;
         structureSequences: string[] | undefined;
@@ -582,6 +580,10 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         setIsMouseInAlignment(val: boolean): void;
     } & {
         readonly uniprotId: string | undefined;
+        readonly structureTranscriptMaps: {
+            structureSeqToTranscriptSeqPosition: Record<number, number>;
+            transcriptSeqToStructureSeqPosition: Record<number, number>;
+        } | undefined;
         readonly structureSeqToTranscriptSeqPosition: Record<number, number> | undefined;
         readonly transcriptSeqToStructureSeqPosition: Record<number, number> | undefined;
         readonly structurePositionToAlignmentMap: Record<number, number> | undefined;

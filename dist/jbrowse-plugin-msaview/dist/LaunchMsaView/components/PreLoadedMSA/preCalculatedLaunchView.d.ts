@@ -1,4 +1,4 @@
-import { AbstractSessionModel, Feature } from '@jbrowse/core/util';
+import type { AbstractSessionModel, Feature } from '@jbrowse/core/util';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 export declare function preCalculatedLaunchView({ session, newViewTitle, view, feature, data, querySeqName, }: {
     data: {

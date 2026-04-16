@@ -4,7 +4,7 @@ import { getSession } from '@jbrowse/core/util'
 import Help from '@mui/icons-material/Help'
 import { IconButton } from '@mui/material'
 
-import { JBrowsePluginProteinStructureModel } from '../model'
+import type { JBrowsePluginProteinStructureModel } from '../model'
 
 // icons
 

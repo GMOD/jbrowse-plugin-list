@@ -1,5 +1,7 @@
-import { BaseFeatureDataAdapter, BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
-import { Feature, Region } from '@jbrowse/core/util';
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
+import type { Feature, Region } from '@jbrowse/core/util';
+import type { Observable } from 'rxjs';
 export default class AlphaFoldConfidenceAdapter extends BaseFeatureDataAdapter {
     static capabilities: string[];
     feats: Promise<{
@@ -11,6 +13,6 @@ export default class AlphaFoldConfidenceAdapter extends BaseFeatureDataAdapter {
     private loadDataP;
     private loadData;
     getRefNames(_opts?: BaseOptions): Promise<never[]>;
-    getFeatures(query: Region, _opts?: BaseOptions): import("rxjs").Observable<Feature>;
+    getFeatures(query: Region, _opts?: BaseOptions): Observable<Feature>;
     freeResources(): void;
 }

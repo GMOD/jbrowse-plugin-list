@@ -1,65 +1,27 @@
 import { textfetch, timeout } from './fetch';
 const base = `https://www.ebi.ac.uk/Tools/services/rest`;
-async function runClustalOmega({ sequence, onProgress, }) {
-    const jobId = await textfetch(`${base}/clustalo/run`, {
-        method: 'POST',
-        body: new URLSearchParams({
-            email: 'colin.diesh@gmail.com',
-            sequence,
-        }),
-    });
-    await wait({ jobId, algorithm: 'clustalo', onProgress });
-    return {
-        msa: await textfetch(`${base}/clustalo/result/${jobId}/aln-clustal_num`),
-        tree: await textfetch(`${base}/clustalo/result/${jobId}/phylotree`),
-    };
-}
-async function runMuscle({ sequence, onProgress, }) {
-    const jobId = await textfetch(`${base}/muscle/run`, {
-        method: 'POST',
-        body: new URLSearchParams({
-            email: 'colin.diesh@gmail.com',
-            format: 'clw',
-            tree: 'tree1',
-            sequence,
-        }),
-    });
-    await wait({ jobId, algorithm: 'muscle', onProgress });
-    return {
-        msa: await textfetch(`${base}/muscle/result/${jobId}/fa`),
-        tree: await textfetch(`${base}/muscle/result/${jobId}/phylotree`),
-    };
-}
-async function runKalign({ sequence, onProgress, }) {
-    const jobId = await textfetch(`${base}/kalign/run`, {
-        method: 'POST',
-        body: new URLSearchParams({
-            email: 'colin.diesh@gmail.com',
-            stype: 'protein',
-            sequence,
-        }),
-    });
-    await wait({ jobId, algorithm: 'kalign', onProgress });
-    return {
-        msa: await textfetch(`${base}/kalign/result/${jobId}/fa`),
-        tree: await textfetch(`${base}/kalign/result/${jobId}/phylotree`),
-    };
-}
-async function runMafft({ sequence, onProgress, }) {
-    const jobId = await textfetch(`${base}/mafft/run`, {
-        method: 'POST',
-        body: new URLSearchParams({
-            email: 'colin.diesh@gmail.com',
-            stype: 'protein',
-            sequence,
-        }),
-    });
-    await wait({ jobId, algorithm: 'mafft', onProgress });
-    return {
-        msa: await textfetch(`${base}/mafft/result/${jobId}/fa`),
-        tree: await textfetch(`${base}/mafft/result/${jobId}/phylotree`),
-    };
-}
+const algorithms = {
+    clustalo: {
+        params: { email: 'colin.diesh@gmail.com' },
+        msaResult: 'aln-clustal_num',
+        treeResult: 'phylotree',
+    },
+    muscle: {
+        params: { email: 'colin.diesh@gmail.com', format: 'clw', tree: 'tree1' },
+        msaResult: 'fa',
+        treeResult: 'phylotree',
+    },
+    kalign: {
+        params: { email: 'colin.diesh@gmail.com', stype: 'protein' },
+        msaResult: 'fa',
+        treeResult: 'phylotree',
+    },
+    mafft: {
+        params: { email: 'colin.diesh@gmail.com', stype: 'protein' },
+        msaResult: 'fa',
+        treeResult: 'phylotree',
+    },
+};
 async function wait({ onProgress, jobId, algorithm, }) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
@@ -77,23 +39,19 @@ async function wait({ onProgress, jobId, algorithm, }) {
     }
 }
 export async function launchMSA({ algorithm, sequence, onProgress, }) {
-    onProgress(`Launching ${algorithm} MSA...`);
-    switch (algorithm) {
-        case 'clustalo': {
-            return runClustalOmega({ sequence, onProgress });
-        }
-        case 'muscle': {
-            return runMuscle({ sequence, onProgress });
-        }
-        case 'kalign': {
-            return runKalign({ sequence, onProgress });
-        }
-        case 'mafft': {
-            return runMafft({ sequence, onProgress });
-        }
-        default: {
-            throw new Error('unknown algorithm');
-        }
+    const config = algorithms[algorithm];
+    if (!config) {
+        throw new Error(`unknown algorithm: ${algorithm}`);
     }
+    onProgress(`Launching ${algorithm} MSA...`);
+    const jobId = await textfetch(`${base}/${algorithm}/run`, {
+        method: 'POST',
+        body: new URLSearchParams({ ...config.params, sequence }),
+    });
+    await wait({ jobId, algorithm, onProgress });
+    return {
+        msa: await textfetch(`${base}/${algorithm}/result/${jobId}/${config.msaResult}`),
+        tree: await textfetch(`${base}/${algorithm}/result/${jobId}/${config.treeResult}`),
+    };
 }
 //# sourceMappingURL=msa.js.map

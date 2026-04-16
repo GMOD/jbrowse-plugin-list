@@ -11,9 +11,16 @@ import { extractStructureSequences } from './extractStructureSequences'
 import highlightResidue from './highlightResidue'
 import Structure from './structureModel'
 import { superposeStructures } from './superposeStructures'
-import { AlignmentAlgorithm, DEFAULT_ALIGNMENT_ALGORITHM } from './types'
+import { type AlignmentAlgorithm, DEFAULT_ALIGNMENT_ALGORITHM } from './types'
 
 const SETTINGS_KEY = 'proteinView-settings'
+const PERSISTED_SETTINGS = [
+  'showAlignment',
+  'showProteinTracks',
+  'showHighlight',
+  'zoomToBaseLevel',
+  'autoScrollAlignment',
+] as const
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -291,27 +298,11 @@ function stateModelFactory() {
         try {
           const stored = localStorage.getItem(SETTINGS_KEY)
           if (stored) {
-            const settings = JSON.parse(stored) as {
-              showAlignment?: boolean
-              showProteinTracks?: boolean
-              showHighlight?: boolean
-              zoomToBaseLevel?: boolean
-              autoScrollAlignment?: boolean
-            }
-            if (settings.showAlignment !== undefined) {
-              self.setShowAlignment(settings.showAlignment)
-            }
-            if (settings.showProteinTracks !== undefined) {
-              self.setShowProteinTracks(settings.showProteinTracks)
-            }
-            if (settings.showHighlight !== undefined) {
-              self.setShowHighlight(settings.showHighlight)
-            }
-            if (settings.zoomToBaseLevel !== undefined) {
-              self.setZoomToBaseLevel(settings.zoomToBaseLevel)
-            }
-            if (settings.autoScrollAlignment !== undefined) {
-              self.setAutoScrollAlignment(settings.autoScrollAlignment)
+            const settings = JSON.parse(stored) as Record<string, boolean>
+            for (const key of PERSISTED_SETTINGS) {
+              if (settings[key] !== undefined) {
+                self[key] = settings[key]
+              }
             }
           }
         } catch (e) {
@@ -322,24 +313,12 @@ function stateModelFactory() {
         addDisposer(
           self,
           autorun(() => {
-            const {
-              showAlignment,
-              showProteinTracks,
-              showHighlight,
-              zoomToBaseLevel,
-              autoScrollAlignment,
-            } = self
             try {
-              localStorage.setItem(
-                SETTINGS_KEY,
-                JSON.stringify({
-                  showAlignment,
-                  showProteinTracks,
-                  showHighlight,
-                  zoomToBaseLevel,
-                  autoScrollAlignment,
-                }),
-              )
+              const settings: Record<string, boolean> = {}
+              for (const key of PERSISTED_SETTINGS) {
+                settings[key] = self[key]
+              }
+              localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
             } catch (e) {
               console.error('Failed to save protein view settings', e)
             }

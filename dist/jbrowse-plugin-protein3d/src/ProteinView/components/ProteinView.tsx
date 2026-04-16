@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react'
 
 import { ErrorMessage, LoadingEllipses, ResizeHandle } from '@jbrowse/core/ui'
+import { autorun } from 'mobx'
 import { observer } from 'mobx-react'
 
-import { JBrowsePluginProteinViewModel } from '../model'
 import ManualAlignmentDialog from './ManualAlignmentDialog'
 import ProteinViewHeader from './ProteinViewHeader'
 import css from '../css/molstar'
 import useProteinView from '../useProteinView'
+
+import type { JBrowsePluginProteinViewModel } from '../model'
 
 const style = document.createElement('style')
 style.append(css)
@@ -24,8 +26,14 @@ const ProteinView = observer(function ProteinView({
   })
 
   useEffect(() => {
-    model.setMolstarPluginContext(plugin)
-  }, [plugin, model])
+    const disposer = autorun(() => {
+      model.setMolstarPluginContext(plugin)
+    })
+    return () => {
+      disposer()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plugin])
 
   if (error) {
     return <ErrorMessage error={error} />

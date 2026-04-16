@@ -21,16 +21,7 @@ export async function queryBlast({ query, blastDatabase, blastProgram, baseUrl, 
         baseUrl,
     });
     onRid(rid);
-    await waitForRid({
-        rid,
-        onProgress,
-        baseUrl,
-    });
-    const ret = await jsonfetch(`${baseUrl}?CMD=Get&RID=${rid}&FORMAT_TYPE=JSON2_S&FORMAT_OBJECT=Alignment`);
-    return {
-        rid,
-        hits: ret.BlastOutput2[0]?.report.results.search.hits ?? [],
-    };
+    return queryBlastFromRid({ rid, baseUrl, onProgress });
 }
 async function initialQuery({ query, blastProgram, blastDatabase, baseUrl, }) {
     const res = await textfetch(baseUrl, {

@@ -11,3 +11,4 @@ export declare function getTranscriptDisplayName(val?: Feature): string;
 export declare function getGeneDisplayName(val?: Feature): string;
 export declare function getSortedTranscriptFeatures(feature: Feature): Feature[];
 export declare function cleanProteinSequence(seq: string): string;
+export declare function getGeneIdentifiers(feature: Feature): string[];

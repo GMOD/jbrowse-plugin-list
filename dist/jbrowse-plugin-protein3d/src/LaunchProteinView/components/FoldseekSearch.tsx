@@ -17,10 +17,7 @@ import FoldseekResultsTable from './FoldseekResultsTable'
 import TranscriptSelector from './TranscriptSelector'
 import useFoldseekSearch from '../hooks/useFoldseekSearch'
 import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences'
-import {
-  DEFAULT_DATABASES,
-  type FoldseekDatabaseId,
-} from '../services/foldseekApi'
+import { DEFAULT_DATABASES } from '../services/foldseekApi'
 import { getTranscriptFeatures } from '../utils/util'
 
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
@@ -56,10 +53,13 @@ const FoldseekSearch = observer(function FoldseekSearch({
   const session = getSession(model)
   const view = getContainingView(model) as LinearGenomeViewModel
 
-  const [sequence, setSequence] = useState('')
-  const [selectedTranscriptId, setSelectedTranscriptId] = useState<string>('')
-  const [selectedDatabases, setSelectedDatabases] =
-    useState<FoldseekDatabaseId[]>(DEFAULT_DATABASES)
+  const [userEditedSequence, setUserEditedSequence] = useState<
+    string | undefined
+  >()
+  const [selectedTranscriptId, setSelectedTranscriptId] = useState<
+    string | undefined
+  >()
+  const [selectedDatabases, setSelectedDatabases] = useState(DEFAULT_DATABASES)
 
   const {
     results,
@@ -82,12 +82,9 @@ const FoldseekSearch = observer(function FoldseekSearch({
     error: isoformError,
   } = useIsoformProteinSequences({ feature, view })
 
-  const selectedTranscript = transcripts.find(
-    t => t.id() === selectedTranscriptId,
-  )
-  const selectedIsoformData = isoformSequences?.[selectedTranscriptId]
-
-  useEffect(() => {
+  // SYNC: src/LaunchProteinView/hooks/useTranscriptSelection.ts, useAlphaFoldDBSearch.ts
+  // Auto-select synchronously to avoid render gap
+  const autoSelectedTranscriptId = useMemo(() => {
     if (isoformSequences && !selectedTranscriptId) {
       const sortedTranscripts = [...transcripts].sort((a, b) => {
         const seqA = isoformSequences[a.id()]?.seq
@@ -97,18 +94,25 @@ const FoldseekSearch = observer(function FoldseekSearch({
       const firstWithSeq = sortedTranscripts.find(
         t => isoformSequences[t.id()]?.seq,
       )
-      if (firstWithSeq) {
-        setSelectedTranscriptId(firstWithSeq.id())
-      }
+      return firstWithSeq?.id()
     }
+    return undefined
   }, [isoformSequences, selectedTranscriptId, transcripts])
 
+  const effectiveSelectedTranscriptId =
+    selectedTranscriptId ?? autoSelectedTranscriptId ?? ''
+
+  const selectedTranscript = transcripts.find(
+    t => t.id() === effectiveSelectedTranscriptId,
+  )
+  const selectedIsoformData = isoformSequences?.[effectiveSelectedTranscriptId]
+
+  const cleanedSequence = selectedIsoformData?.seq.replace(/\*/g, '') ?? ''
+  const sequence = userEditedSequence ?? cleanedSequence
+
   useEffect(() => {
-    if (selectedIsoformData?.seq) {
-      // Strip stop codons from displayed sequence
-      setSequence(selectedIsoformData.seq.replace(/\*/g, ''))
-    }
-  }, [selectedIsoformData])
+    setUserEditedSequence(undefined)
+  }, [effectiveSelectedTranscriptId])
 
   const handlePredict = async () => {
     if (sequence.trim()) {
@@ -153,7 +157,7 @@ const FoldseekSearch = observer(function FoldseekSearch({
         {isoformSequences ? (
           <>
             <TranscriptSelector
-              val={selectedTranscriptId}
+              val={effectiveSelectedTranscriptId}
               setVal={setSelectedTranscriptId}
               isoforms={transcripts}
               isoformSequences={isoformSequences}
@@ -166,7 +170,7 @@ const FoldseekSearch = observer(function FoldseekSearch({
               rows={4}
               value={sequence}
               onChange={e => {
-                setSequence(e.target.value)
+                setUserEditedSequence(e.target.value)
               }}
               placeholder={`MKTVRQERLKSIVRILERSKEPVSGAQLAEEL...`}
               disabled={isBusy}

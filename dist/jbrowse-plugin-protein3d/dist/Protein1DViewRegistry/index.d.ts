@@ -1,4 +1,4 @@
-import { SimpleFeatureSerialized } from '@jbrowse/core/util';
+import type { SimpleFeatureSerialized } from '@jbrowse/core/util';
 export interface Protein1DViewInfo {
     viewId: string;
     connectedViewId: string;

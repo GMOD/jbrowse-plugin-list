@@ -1,1 +1,2 @@
-export default function loadMolstar(): Promise<typeof import("./molstarExports")>;
+import type * as MolstarExports from './molstarExports';
+export default function loadMolstar(): Promise<typeof MolstarExports>;

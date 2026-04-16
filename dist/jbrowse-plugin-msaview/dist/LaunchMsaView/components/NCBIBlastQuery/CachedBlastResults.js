@@ -1,20 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ErrorMessage } from '@jbrowse/core/ui';
 import { getContainingView } from '@jbrowse/core/util';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Button, IconButton, List, ListItem, ListItemButton, ListItemText, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { blastLaunchViewFromCache } from './blastLaunchView';
 import { clearAllCachedResults, deleteCachedResult, getAllCachedResults, } from '../../../utils/blastCache';
-function getGeneIdentifiers(feature) {
-    const ids = [
-        feature.id(),
-        feature.get('id'),
-        feature.get('name'),
-        feature.get('gene_id'),
-        feature.get('gene_name'),
-    ].filter((id) => !!id);
-    return [...new Set(ids)];
-}
+import { getGeneIdentifiers } from '../../util';
 function getResultDisplayName(result) {
     const parts = [];
     if (result.geneName) {
@@ -31,6 +23,7 @@ function getResultDisplayName(result) {
 const CachedBlastResults = observer(function ({ model, handleClose, feature, }) {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState();
     const view = getContainingView(model);
     const geneIds = useMemo(() => getGeneIdentifiers(feature), [feature]);
     useEffect(() => {
@@ -44,16 +37,27 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
             }
             catch (e) {
                 console.error(e);
+                setError(e);
             }
         })();
     }, [geneIds]);
     const handleDelete = async (id) => {
-        await deleteCachedResult(id);
-        setResults(r => r.filter(result => result.id !== id));
+        try {
+            await deleteCachedResult(id);
+            setResults(r => r.filter(result => result.id !== id));
+        }
+        catch (e) {
+            setError(e);
+        }
     };
     const handleClearAll = async () => {
-        await clearAllCachedResults();
-        setResults([]);
+        try {
+            await clearAllCachedResults();
+            setResults([]);
+        }
+        catch (e) {
+            setError(e);
+        }
     };
     const handleUseCached = (cached) => {
         blastLaunchViewFromCache({
@@ -63,6 +67,9 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
         });
         handleClose();
     };
+    if (error) {
+        return React.createElement(ErrorMessage, { error: error });
+    }
     if (loading) {
         return React.createElement(Typography, null, "Loading cached results...");
     }

@@ -1,4 +1,4 @@
-import { SimpleFeature, getSession, } from '@jbrowse/core/util';
+import { SimpleFeature, getSession } from '@jbrowse/core/util';
 import { addDisposer, getParent, types, } from '@jbrowse/mobx-state-tree';
 import { autorun } from 'mobx';
 import clearSelection from './clearSelection';
@@ -248,20 +248,22 @@ const Structure = types
     /**
      * #getter
      */
-    get structureSeqToTranscriptSeqPosition() {
+    get structureTranscriptMaps() {
         return self.pairwiseAlignment
             ? structureSeqVsTranscriptSeqMap(self.pairwiseAlignment)
-                .structureSeqToTranscriptSeqPosition
             : undefined;
     },
     /**
      * #getter
      */
+    get structureSeqToTranscriptSeqPosition() {
+        return this.structureTranscriptMaps?.structureSeqToTranscriptSeqPosition;
+    },
+    /**
+     * #getter
+     */
     get transcriptSeqToStructureSeqPosition() {
-        return self.pairwiseAlignment
-            ? structureSeqVsTranscriptSeqMap(self.pairwiseAlignment)
-                .transcriptSeqToStructureSeqPosition
-            : undefined;
+        return this.structureTranscriptMaps?.transcriptSeqToStructureSeqPosition;
     },
     /**
      * #getter
@@ -517,13 +519,8 @@ const Structure = types
                 const r1 = stripStopCodon(seq1);
                 const r2 = stripStopCodon(seq2);
                 if (exactMatch) {
-                    let consensus = '';
-                    // eslint-disable-next-line @typescript-eslint/prefer-for-of
-                    for (let i = 0; i < r1.length; i++) {
-                        consensus += '|';
-                    }
                     self.setAlignment({
-                        consensus,
+                        consensus: '|'.repeat(r1.length),
                         alns: [
                             { id: 'seq1', seq: r1 },
                             { id: 'seq2', seq: r2 },

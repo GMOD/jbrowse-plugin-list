@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ErrorMessage } from '@jbrowse/core/ui';
-import { getContainingView, } from '@jbrowse/core/util';
+import { getContainingView } from '@jbrowse/core/util';
 import { Button, DialogActions, DialogContent, MenuItem, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import { blastLaunchView } from './blastLaunchView';
+import { msaAlgorithms } from './consts';
 import ExternalLink from '../../../components/ExternalLink';
 import TextField2 from '../../../components/TextField2';
 import { getGeneDisplayName, getTranscriptDisplayName } from '../../util';
@@ -15,7 +16,6 @@ const useStyles = makeStyles()({
         width: '80em',
     },
 });
-const msaAlgorithms = ['clustalo', 'muscle', 'kalign', 'mafft'];
 const NCBIBlastRIDPanel = observer(function ({ handleClose, feature, model, children, baseUrl, }) {
     const { classes } = useStyles();
     const view = getContainingView(model);
