@@ -8,7 +8,7 @@
     "update-plugins": "yarn download && yarn generate",
     "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ --cache-control 'no-cache, must-revalidate' && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json --cache-control 'no-cache, must-revalidate'",
     "invalidate": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E13LGELJOT4GQO --paths \"/plugins/*\" \"/plugin-store/*\"",
-    "deploy": "yarn update-plugins && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && yarn upload && yarn invalidate",
+    "dep": "yarn update-plugins && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && yarn upload && yarn invalidate",
     "postdeploy": "git push --follow-tags"
   },
   "dependencies": {
