@@ -22,7 +22,7 @@ import InfoIcon from '@mui/icons-material/Info'
 // locals
 import TipDialogue from './TipDialogue'
 import { mapDataInfo, mapGDCExploreConfig } from './GDCDataInfo'
-import { GDCSearchModel } from './model'
+import type { GDCSearchModel } from './model'
 
 const MAX_FILE_SIZE = 512 * 1024 ** 2 // 512 MiB
 const MAX_FILES = 25
@@ -150,7 +150,7 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
   const [fileChip, setFileChip] = useState<string>()
 
   const session = getSession(model)
-  const inputRef = useRef()
+  const inputRef = useRef(null)
 
   /**
    * uses information about the BEDPE file to display the contents in a spreadsheet view
@@ -161,7 +161,10 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
   async function addBEDPEView(fileUUID: string, uri?: string, fileBlob?: any) {
     session.addView('SpreadsheetView', {})
     const xView = session.views.length - 1
-    session.views[xView].setDisplayName(`GDC BEDPE ${fileUUID}`)
+    const view = session.views[xView]
+    if (view) {
+      view.setDisplayName(`GDC BEDPE ${fileUUID}`)
+    }
     if (uri) {
       // @ts-expect-error
       session.views[xView].importWizard.setFileSource({
@@ -205,14 +208,14 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
         name,
         assemblyNames: ['hg38'],
       }
-      //@ts-expect-error
+      // @ts-expect-error
       session.addTrackConf({
         ...conf,
       })
       if (session.views.length === 0) {
         session.addView('LinearGenomeView', {})
       }
-      //@ts-expect-error
+      // @ts-expect-error
       session.views[0].showTrack(
         trackId,
         {},
@@ -252,7 +255,7 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
    * and/or category of the file based on its name
    */
   function determineFileInfo(fileName: string) {
-    const format = fileName.split('.')[-1]
+    const format = fileName.split('.').at(-1) ?? ''
 
     if (fileName.includes('Methylation')) {
       return {
@@ -293,18 +296,19 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
   const { getRootProps, getInputProps } = useDropzone({
     maxSize: MAX_FILE_SIZE,
     multiple: false,
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+
     onDrop: async (acceptedFiles, rejectedFiles) => {
       resetErrorMessages()
 
       if (rejectedFiles.length) {
+        const firstRejected = rejectedFiles[0]
         if (acceptedFiles.length || rejectedFiles.length > 1) {
           const message = 'Only one session at a time may be imported'
           console.error(message)
           setDragErrorMessage(message)
-        } else if (rejectedFiles[0].file.size > MAX_FILE_SIZE) {
+        } else if (firstRejected && firstRejected.file.size > MAX_FILE_SIZE) {
           const message = `File size is too large (${Math.round(
-            rejectedFiles[0].file.size / 1024 ** 2,
+            firstRejected.file.size / 1024 ** 2,
           )} MiB), max size is ${MAX_FILE_SIZE / 1024 ** 2} MiB`
           console.error(message)
           setDragErrorMessage(message)
@@ -325,21 +329,21 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
           if (fileInfo.format == 'json') {
             const res = await new Promise(resolve => {
               const reader = new FileReader()
-              reader.addEventListener('load', event =>
-                resolve(JSON.parse(event.target?.result as string)),
-              )
+              reader.addEventListener('load', event => {
+                resolve(JSON.parse(event.target?.result as string))
+              })
               reader.readAsText(file)
             })
             // if the file is json we need to look at the properties to determine how to process it
             const propertyArray = []
-            //@ts-expect-error
+            // @ts-expect-error
             for (const property in res.slice(0, 1)[0]) {
               propertyArray.push(property)
             }
             // key properties dictate how a file should be processed and displayed, i.e. the file_id
             if (propertyArray.includes('file_id')) {
-              //@ts-expect-error
-              const ele = res.slice(0, MAX_FILES) //TODO: it only gets the first 25 files
+              // @ts-expect-error
+              const ele = res.slice(0, MAX_FILES) // TODO: it only gets the first 25 files
               ele.map(
                 (file: {
                   file_id: string
@@ -392,7 +396,7 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
             ) {
               const trackId = `gdc_plugin_track-${Date.now()}`
 
-              //TODO: update this to go through the enahancement 2135 workflow
+              // TODO: update this to go through the enahancement 2135 workflow
               const typeAdapterObject = {
                 config: {
                   type: 'AlignmentsTrack',
@@ -434,7 +438,7 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
           console.error(e)
           const message =
             // @ts-expect-error
-            e.message.length > 100 ? `${e.message.substring(0, 99)}...` : e
+            e.message.length > 100 ? `${e.message.slice(0, 99)}...` : e
           setDragErrorMessage(`Failed to add track.\n ${message as string}.`)
         }
       }
@@ -568,7 +572,6 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
               color="primary"
               variant="contained"
               size="large"
-              // eslint-disable-next-line @typescript-eslint/no-misused-promises
               onClick={async () => {
                 resetErrorMessages()
 
@@ -613,12 +616,11 @@ const Panel = ({ model }: { model: GDCSearchModel }) => {
                     }
                   }
                 } catch (e) {
-                  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
                   const err = `${e}`
                   if (!err.includes('unable to determine size of file at')) {
                     console.error(e)
                     const message =
-                      err.length > 100 ? `${err.substring(0, 99)}...` : err
+                      err.length > 100 ? `${err.slice(0, 99)}...` : err
                     setTrackErrorMessage(`Failed to add track.\n ${message}.`)
                   }
                 }

@@ -1,8 +1,11 @@
-import PluginManager from '@jbrowse/core/PluginManager'
+import type PluginManager from '@jbrowse/core/PluginManager'
+import type { AnyConfigurationSchemaType } from '@jbrowse/core/configuration'
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
-import LinearGenomeViewPlugin from '@jbrowse/plugin-linear-genome-view'
+import type LinearGenomeViewPlugin from '@jbrowse/plugin-linear-genome-view'
 
-export default (pluginManager: PluginManager) => {
+const linearGDCDisplayConfigSchema = (
+  pluginManager: PluginManager,
+): AnyConfigurationSchemaType => {
   const { baseLinearDisplayConfigSchema } = (
     pluginManager.getPlugin('LinearGenomeViewPlugin') as LinearGenomeViewPlugin
   ).exports
@@ -12,3 +15,5 @@ export default (pluginManager: PluginManager) => {
     { baseConfiguration: baseLinearDisplayConfigSchema, explicitlyTyped: true },
   )
 }
+
+export default linearGDCDisplayConfigSchema

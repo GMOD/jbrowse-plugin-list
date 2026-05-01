@@ -1,46 +1,9 @@
-/// <reference types="react" />
-import { UriLocation } from '@jbrowse/core/util/types';
-import { Instance } from 'mobx-state-tree';
-declare const stateModelFactory: (configSchema: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
-    authHeader: {
-        description: string;
-        type: string;
-        defaultValue: string;
-    };
-    customEndpoint: {
-        description: string;
-        type: string;
-        defaultValue: string;
-    };
-}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
-    name: {
-        description: string;
-        type: string;
-        defaultValue: string;
-    };
-    description: {
-        description: string;
-        type: string;
-        defaultValue: string;
-    };
-    authHeader: {
-        description: string;
-        type: string;
-        defaultValue: string;
-    };
-    tokenType: {
-        description: string;
-        type: string;
-        defaultValue: string;
-    };
-    domains: {
-        description: string;
-        type: string;
-        defaultValue: never[];
-    };
-}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "internetAccountId">>, undefined>>) => import("mobx-state-tree").IModelType<{
-    id: import("mobx-state-tree").IOptionalIType<import("mobx-state-tree").ISimpleType<string>, [undefined]>;
-    type: import("mobx-state-tree").ISimpleType<string>;
+import type { UriLocation } from '@jbrowse/core/util/types';
+import type { Instance } from '@jbrowse/mobx-state-tree';
+import type { GDCInternetAccountConfigModel } from './configSchema';
+declare const stateModelFactory: (configSchema: GDCInternetAccountConfigModel) => import("@jbrowse/mobx-state-tree").IModelType<{
+    id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
+    type: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
     configuration: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         name: {
             description: string;
@@ -69,8 +32,8 @@ declare const stateModelFactory: (configSchema: import("@jbrowse/core/configurat
         };
     }, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "internetAccountId">>;
 } & {
-    id: import("mobx-state-tree").IType<string | undefined, string, string>;
-    type: import("mobx-state-tree").ISimpleType<"GDCInternetAccount">;
+    id: import("@jbrowse/mobx-state-tree").IType<string | undefined, string, string>;
+    type: import("@jbrowse/mobx-state-tree").ISimpleType<"GDCInternetAccount">;
     configuration: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
         authHeader: {
             description: string;
@@ -116,7 +79,7 @@ declare const stateModelFactory: (configSchema: import("@jbrowse/core/configurat
     readonly authHeader: string;
     readonly tokenType: string;
     readonly domains: string[];
-    readonly toggleContents: import("react").ReactNode;
+    readonly toggleContents: React.ReactNode;
     readonly SelectorComponent: import("@jbrowse/core/util").AnyReactComponentType | undefined;
     readonly selectorLabel: string | undefined;
 } & {
@@ -129,22 +92,23 @@ declare const stateModelFactory: (configSchema: import("@jbrowse/core/configurat
     retrieveToken(): string | null;
     validateToken(token: string, _loc: UriLocation): Promise<string>;
 } & {
-    getToken(location?: UriLocation | undefined): Promise<string>;
+    getToken(location?: UriLocation): Promise<string>;
 } & {
-    addAuthHeaderToInit(init: RequestInit | undefined, token: string): {
+    addAuthHeaderToInit(init?: RequestInit, token?: string): {
         headers: Headers;
-        body?: BodyInit | null | undefined;
-        cache?: RequestCache | undefined;
-        credentials?: RequestCredentials | undefined;
-        integrity?: string | undefined;
-        keepalive?: boolean | undefined;
-        method?: string | undefined;
-        mode?: RequestMode | undefined;
-        redirect?: RequestRedirect | undefined;
-        referrer?: string | undefined;
-        referrerPolicy?: ReferrerPolicy | undefined;
-        signal?: AbortSignal | null | undefined;
-        window?: null | undefined;
+        body?: BodyInit | null;
+        cache?: RequestCache;
+        credentials?: RequestCredentials;
+        integrity?: string;
+        keepalive?: boolean;
+        method?: string;
+        mode?: RequestMode;
+        priority?: RequestPriority;
+        redirect?: RequestRedirect;
+        referrer?: string;
+        referrerPolicy?: ReferrerPolicy;
+        signal?: AbortSignal | null;
+        window?: null;
     };
     getPreAuthorizationInformation(location: UriLocation): Promise<{
         internetAccountType: string;
@@ -154,7 +118,7 @@ declare const stateModelFactory: (configSchema: import("@jbrowse/core/configurat
         };
     }>;
 } & {
-    getFetcher(loc?: UriLocation | undefined): (input: RequestInfo, init?: RequestInit | undefined) => Promise<Response>;
+    getFetcher(loc?: UriLocation): (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 } & {
     openLocation(location: UriLocation): import("@jbrowse/core/util/io").RemoteFileWithRangeCache;
 } & {
@@ -179,7 +143,7 @@ declare const stateModelFactory: (configSchema: import("@jbrowse/core/configurat
      * @param location the uri location of the resource to be fetched
      */
     getToken(location?: UriLocation): Promise<string>;
-}, import("mobx-state-tree")._NotCustomized, import("mobx-state-tree")._NotCustomized>;
+}, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>;
 export default stateModelFactory;
 export type ExternalTokenStateModel = ReturnType<typeof stateModelFactory>;
 export type ExternalTokenModel = Instance<ExternalTokenStateModel>;

@@ -1,9 +1,9 @@
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
-import { Region } from '@jbrowse/core/util/types';
-import { Feature } from '@jbrowse/core/util/simpleFeature';
-import { Instance } from 'mobx-state-tree';
-import { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
-import MyConfigSchema from './configSchema';
+import type { Region } from '@jbrowse/core/util/types';
+import type { Feature } from '@jbrowse/core/util/simpleFeature';
+import type { Instance } from '@jbrowse/mobx-state-tree';
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
+import type MyConfigSchema from './configSchema';
 export default class GDCAdapter extends BaseFeatureDataAdapter {
     private filters;
     private cases;

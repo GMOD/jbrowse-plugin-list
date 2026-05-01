@@ -1,0 +1,1 @@
+{"version":3,"file":"configSchema.js","sourceRoot":"","sources":["../../src/SegmentCNVAdapter/configSchema.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,mBAAmB,EAAE,MAAM,6BAA6B,CAAA;AAEjE,eAAe,mBAAmB,CAChC,mBAAmB,EACnB;IACE,WAAW,EAAE;QACX,IAAI,EAAE,cAAc;QACpB,YAAY,EAAE,EAAE,GAAG,EAAE,qBAAqB,EAAE,YAAY,EAAE,aAAa,EAAE;KAC1E;CACF,EACD,EAAE,eAAe,EAAE,IAAI,EAAE,CAC1B,CAAA"}

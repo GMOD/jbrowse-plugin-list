@@ -1,0 +1,24 @@
+import { test, expect } from 'vitest';
+import { toArray } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
+import MbvAdapter from './MbvAdapter';
+import configSchema from './configSchema';
+test('adapter can fetch features from mbv_test_data.txt', async () => {
+    const adapter = new MbvAdapter(configSchema.create({
+        mbvLocation: {
+            localPath: require.resolve('./test_data/mbv_test_data.txt'),
+        },
+    }));
+    const features = adapter.getFeatures({
+        assemblyName: 'hg38',
+        refName: 'chr3',
+        start: 0,
+        end: 200000,
+    });
+    const names = await adapter.getRefNames();
+    expect(names).toMatchSnapshot();
+    const featuresArray = await firstValueFrom(features.pipe(toArray()));
+    const featuresJsonArray = featuresArray.map(f => f.toJSON());
+    expect(featuresJsonArray).toMatchSnapshot();
+});
+//# sourceMappingURL=MbvAdapter.test.js.map

@@ -1,11 +1,9 @@
-import {
-  BaseFeatureDataAdapter,
-  BaseOptions,
-} from '@jbrowse/core/data_adapters/BaseAdapter'
-import { FileLocation, Region } from '@jbrowse/core/util/types'
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
+import type { FileLocation, Region } from '@jbrowse/core/util/types'
 import { openLocation } from '@jbrowse/core/util/io'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
-import { Feature } from '@jbrowse/core/util'
+import type { Feature } from '@jbrowse/core/util'
 import { readConfObject } from '@jbrowse/core/configuration'
 
 // locals
@@ -50,10 +48,11 @@ export default class IeqAdapter extends BaseFeatureDataAdapter {
 
   private parseCoords(property: string) {
     const splitProperty = property.split(':')
+    const range = splitProperty[2]?.split('-')
     return {
       chromosome: splitProperty[1],
-      start: splitProperty[2].split('-')[0],
-      end: splitProperty[2].split('-')[1],
+      start: range?.[0],
+      end: range?.[1],
       strand: splitProperty[3] === '+' ? 1 : 0,
     }
   }
@@ -62,14 +61,17 @@ export default class IeqAdapter extends BaseFeatureDataAdapter {
     let iso: any = {}
     line.split('\t').forEach((property: string, i: number) => {
       if (property) {
-        if (columns[i] === 'isoform_coords') {
-          const parsedProperties = this.parseCoords(property)
-          iso = {
-            ...iso,
-            ...parsedProperties,
+        const col = columns[i]
+        if (col !== undefined) {
+          if (col === 'isoform_coords') {
+            const parsedProperties = this.parseCoords(property)
+            iso = {
+              ...iso,
+              ...parsedProperties,
+            }
+          } else {
+            iso[col.toLowerCase()] = property
           }
-        } else {
-          iso[columns[i].toLowerCase()] = property
         }
       }
     })
@@ -136,7 +138,7 @@ export default class IeqAdapter extends BaseFeatureDataAdapter {
         }
       })
       observer.complete()
-    }, opts.signal)
+    }, opts.stopToken)
   }
 
   public freeResources(): void {}

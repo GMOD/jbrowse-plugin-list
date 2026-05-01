@@ -1,12 +1,10 @@
-import {
-  BaseFeatureDataAdapter,
-  BaseOptions,
-} from '@jbrowse/core/data_adapters/BaseAdapter'
-import { FileLocation, Region } from '@jbrowse/core/util/types'
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
+import type { FileLocation, Region } from '@jbrowse/core/util/types'
 import { openLocation } from '@jbrowse/core/util/io'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import SjqFeature from './SjqFeature'
-import { Feature } from '@jbrowse/core/util/simpleFeature'
+import type { Feature } from '@jbrowse/core/util/simpleFeature'
 import { readConfObject } from '@jbrowse/core/configuration'
 import pako from 'pako'
 
@@ -49,19 +47,15 @@ export default class SjqAdapter extends BaseFeatureDataAdapter {
       this.pluginManager,
     ).readFile()
 
-    let str: string
-    if (
+    const str =
       typeof fileContents[0] === 'number' &&
       fileContents[0] === 31 &&
       typeof fileContents[1] === 'number' &&
       fileContents[1] === 139 &&
       typeof fileContents[2] === 'number' &&
       fileContents[2] === 8
-    ) {
-      str = new TextDecoder().decode(pako.inflate(fileContents))
-    } else {
-      str = fileContents.toString()
-    }
+        ? new TextDecoder().decode(pako.inflate(fileContents))
+        : fileContents.toString()
 
     return this.readSjq(str)
   }
@@ -69,10 +63,14 @@ export default class SjqAdapter extends BaseFeatureDataAdapter {
   private parseLine(line: string, columns: string[]) {
     const sjq = {} as Record<string, unknown>
     line.split('\t').forEach((property: string, i: number) => {
-      // Source: https://stackoverflow.com/questions/4374822/remove-all-special-characters-with-regexp
-      columns[i] = columns[i].toLowerCase().replace(/[^\w\s]/gi, '')
-      if (property) {
-        sjq[columns[i].toLowerCase()] = property
+      const col = columns[i]
+      if (col !== undefined) {
+        // Source: https://stackoverflow.com/questions/4374822/remove-all-special-characters-with-regexp
+        const normalizedCol = col.toLowerCase().replace(/[^\w\s]/gi, '')
+        columns[i] = normalizedCol
+        if (property) {
+          sjq[normalizedCol] = property
+        }
       }
     })
     return sjq
@@ -138,7 +136,7 @@ export default class SjqAdapter extends BaseFeatureDataAdapter {
         }
       })
       observer.complete()
-    }, opts.signal)
+    }, opts.stopToken)
   }
 
   public freeResources(): void {}

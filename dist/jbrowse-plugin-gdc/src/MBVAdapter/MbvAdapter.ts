@@ -1,12 +1,10 @@
-import {
-  BaseFeatureDataAdapter,
-  BaseOptions,
-} from '@jbrowse/core/data_adapters/BaseAdapter'
-import { FileLocation, Region } from '@jbrowse/core/util/types'
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
+import type { FileLocation, Region } from '@jbrowse/core/util/types'
 import { openLocation } from '@jbrowse/core/util/io'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import MbvFeature from './MbvFeature'
-import { Feature } from '@jbrowse/core/util/simpleFeature'
+import type { Feature } from '@jbrowse/core/util/simpleFeature'
 import { readConfObject } from '@jbrowse/core/configuration'
 import pako from 'pako'
 
@@ -28,12 +26,10 @@ export default class MbvAdapter extends BaseFeatureDataAdapter {
           element => element.toLowerCase() === 'chromosome',
         )
       } else {
-        if (
-          line.split('\t')[refNameColumnIndex] !== '*' &&
-          line.split('\t')[refNameColumnIndex] !== undefined
-        ) {
+        const refName = line.split('\t')[refNameColumnIndex]
+        if (refName !== '*' && refName !== undefined) {
           rows.push(line)
-          refNames.push(line.split('\t')[refNameColumnIndex])
+          refNames.push(refName)
         }
       }
     })
@@ -49,7 +45,10 @@ export default class MbvAdapter extends BaseFeatureDataAdapter {
     const mutationObject: Record<string, unknown> = {}
     line.split('\t').forEach((property: string, i: number) => {
       if (property) {
-        mutationObject[columns[i].toLowerCase()] = property
+        const col = columns[i]
+        if (col !== undefined) {
+          mutationObject[col.toLowerCase()] = property
+        }
       }
     })
     return mutationObject
@@ -66,19 +65,15 @@ export default class MbvAdapter extends BaseFeatureDataAdapter {
       this.pluginManager,
     ).readFile()
 
-    let str: string
-    if (
+    const str =
       typeof fileContents[0] === 'number' &&
       fileContents[0] === 31 &&
       typeof fileContents[1] === 'number' &&
       fileContents[1] === 139 &&
       typeof fileContents[2] === 'number' &&
       fileContents[2] === 8
-    ) {
-      str = new TextDecoder().decode(pako.inflate(fileContents))
-    } else {
-      str = fileContents.toString()
-    }
+        ? new TextDecoder().decode(pako.inflate(fileContents))
+        : fileContents.toString()
 
     return this.readMbv(str)
   }
@@ -119,7 +114,7 @@ export default class MbvAdapter extends BaseFeatureDataAdapter {
         }
       })
       observer.complete()
-    }, opts.signal)
+    }, opts.stopToken)
   }
 
   public freeResources(): void {}

@@ -1,4 +1,4 @@
-import { Instance } from 'mobx-state-tree';
+import type { Instance } from '@jbrowse/mobx-state-tree';
 declare const GDCConfigSchema: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
     authHeader: {
         description: string;

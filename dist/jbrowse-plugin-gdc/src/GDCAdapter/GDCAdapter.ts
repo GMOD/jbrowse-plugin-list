@@ -1,12 +1,12 @@
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
-import { Region } from '@jbrowse/core/util/types'
-import { Feature } from '@jbrowse/core/util/simpleFeature'
-import { Instance } from 'mobx-state-tree'
+import type { Region } from '@jbrowse/core/util/types'
+import type { Feature } from '@jbrowse/core/util/simpleFeature'
+import type { Instance } from '@jbrowse/mobx-state-tree'
 import { readConfObject } from '@jbrowse/core/configuration'
-import { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import GDCFeature from './GDCFeature'
-import MyConfigSchema from './configSchema'
+import type MyConfigSchema from './configSchema'
 import AbortablePromiseCache from 'abortable-promise-cache'
 import LRU from '@jbrowse/core/util/QuickLRU'
 
@@ -22,7 +22,7 @@ export default class GDCAdapter extends BaseFeatureDataAdapter {
   public static capabilities = ['getFeatures', 'getRefNames']
 
   private featureCache = new AbortablePromiseCache({
-    cache: new LRU({ maxSize: 200 }),
+    cache: new LRU<string, any>({ maxSize: 200 }),
     fill: async (query: any, abortSignal?: AbortSignal) => {
       return this.fetchFeatures(query, abortSignal)
     },
@@ -152,7 +152,7 @@ export default class GDCAdapter extends BaseFeatureDataAdapter {
         observer.error(e)
       }
       observer.complete()
-    }, opts.signal)
+    }, opts.stopToken)
   }
 
   public freeResources(): void {}
@@ -170,7 +170,7 @@ export default class GDCAdapter extends BaseFeatureDataAdapter {
     const body = {
       query: ssmQuery,
       variables: {
-        size: this.size ? this.size : 5000,
+        size: this.size || 5000,
         offset: 0,
         filters: combinedFilters,
         filtersWithoutLocation: filtersNoLocation,
@@ -197,7 +197,7 @@ export default class GDCAdapter extends BaseFeatureDataAdapter {
       query: geneQuery,
       variables: {
         filters: combinedFilters,
-        size: this.size ? this.size : 5000,
+        size: this.size || 5000,
         offset: 0,
         score: 'case.project.project_id',
       },
@@ -245,7 +245,6 @@ export default class GDCAdapter extends BaseFeatureDataAdapter {
     end: number,
     skipLocation: boolean,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let locationFilter: any
 
     if (!skipLocation) {
@@ -305,7 +304,7 @@ export default class GDCAdapter extends BaseFeatureDataAdapter {
       }
     }
 
-    if (this.cases && this.cases.length > 0) {
+    if (this.cases.length > 0) {
       const caseFilter = {
         op: 'in',
         content: { field: 'cases.case_id', value: this.cases },

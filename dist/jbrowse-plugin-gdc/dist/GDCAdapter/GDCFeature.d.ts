@@ -1,4 +1,4 @@
-import { SimpleFeatureSerialized, Feature } from '@jbrowse/core/util/simpleFeature';
+import type { SimpleFeatureSerialized, Feature } from '@jbrowse/core/util/simpleFeature';
 interface FeatureData {
     [key: string]: unknown;
     refName: string;

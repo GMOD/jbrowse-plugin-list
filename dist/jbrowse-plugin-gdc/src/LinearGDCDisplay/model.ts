@@ -1,30 +1,22 @@
-import { types } from 'mobx-state-tree'
-import {
-  AnyConfigurationSchemaType,
-  ConfigurationReference,
-} from '@jbrowse/core/configuration'
+import type { IAnyModelType } from '@jbrowse/mobx-state-tree'
+import { types } from '@jbrowse/mobx-state-tree'
+import type { AnyConfigurationSchemaType } from '@jbrowse/core/configuration'
+import { ConfigurationReference } from '@jbrowse/core/configuration'
 import { getParentRenderProps } from '@jbrowse/core/util/tracks'
-import {
-  getSession,
-  isSessionModelWithWidgets,
-  Feature,
-} from '@jbrowse/core/util'
-// icons
+import type { Feature } from '@jbrowse/core/util'
+import { getSession, isSessionModelWithWidgets } from '@jbrowse/core/util'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import type PluginManager from '@jbrowse/core/PluginManager'
 
-// locals
-import configSchemaF from './configSchema'
-import PluginManager from '@jbrowse/core/PluginManager'
+import type LinearGenomeViewPlugin from '@jbrowse/plugin-linear-genome-view'
 
-import LinearGenomeViewPlugin from '@jbrowse/plugin-linear-genome-view'
-
-export default (
+const linearGDCDisplayModel = (
   pluginManager: PluginManager,
   configSchema: AnyConfigurationSchemaType,
-) => {
+): IAnyModelType => {
   const { BaseLinearDisplay } = (
     pluginManager.getPlugin('LinearGenomeViewPlugin') as LinearGenomeViewPlugin
-  )?.exports
+  ).exports
 
   return types
     .compose(
@@ -49,9 +41,9 @@ export default (
 
       selectFeature(feature: Feature) {
         const session = getSession(self)
-        if (feature && isSessionModelWithWidgets(session)) {
+        if (isSessionModelWithWidgets(session)) {
           const featureWidget = session.addWidget(
-            'GDCFeatureWidget',
+            'VariantFeatureWidget',
             'gdcFeature',
             { featureData: feature.toJSON() },
           )
@@ -85,7 +77,9 @@ export default (
             ...superTrackMenuItems(),
             {
               label: 'Filter',
-              onClick: () => self.openFilterConfig(),
+              onClick: () => {
+                self.openFilterConfig()
+              },
               icon: FilterListIcon,
             },
           ]
@@ -93,3 +87,5 @@ export default (
       }
     })
 }
+
+export default linearGDCDisplayModel

@@ -11,7 +11,7 @@ declare const _default: import("@jbrowse/core/configuration/configurationSchema"
     };
     featureType: {
         type: string;
-        model: import("mobx-state-tree").ISimpleType<string>;
+        model: import("@jbrowse/mobx-state-tree").ISimpleType<"mutation" | "gene">;
         defaultValue: string;
         description: string;
     };

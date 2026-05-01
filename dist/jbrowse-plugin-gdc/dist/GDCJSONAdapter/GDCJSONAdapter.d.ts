@@ -1,7 +1,8 @@
-import { BaseFeatureDataAdapter, BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
-import { Region } from '@jbrowse/core/util/types';
-import { Feature } from '@jbrowse/core/util/simpleFeature';
-import { AnyConfigurationModel } from '@jbrowse/core/configuration/configurationSchema';
+import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter';
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
+import type { Region } from '@jbrowse/core/util/types';
+import type { Feature } from '@jbrowse/core/util/simpleFeature';
+import type { AnyConfigurationModel } from '@jbrowse/core/configuration/configurationSchema';
 export default class GDCJSONAdapter extends BaseFeatureDataAdapter {
     static capabilities: string[];
     private featureType;

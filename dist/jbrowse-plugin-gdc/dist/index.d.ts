@@ -1,4 +1,4 @@
-import PluginManager from '@jbrowse/core/PluginManager';
+import type PluginManager from '@jbrowse/core/PluginManager';
 import Plugin from '@jbrowse/core/Plugin';
 export default class GDCPlugin extends Plugin {
     name: string;
