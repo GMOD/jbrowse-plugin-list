@@ -21,14 +21,16 @@ jobs:
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
+      with:
+        cache: pnpm
         with:
           node-version: '24'
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
 
       - name: Update plugins
-        run: yarn update
+        run: pnpm update
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
