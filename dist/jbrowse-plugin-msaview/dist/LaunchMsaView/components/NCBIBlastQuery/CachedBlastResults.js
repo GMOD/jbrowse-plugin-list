@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ErrorMessage } from '@jbrowse/core/ui';
 import { getContainingView } from '@jbrowse/core/util';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Button, IconButton, List, ListItem, ListItemButton, ListItemText, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { blastLaunchViewFromCache } from './blastLaunchView';
-import { clearAllCachedResults, deleteCachedResult, getAllCachedResults, } from '../../../utils/blastCache';
+import { useCachedBlastResults } from './useCachedBlastResults';
 import { getGeneIdentifiers } from '../../util';
 function getResultDisplayName(result) {
     const parts = [];
@@ -21,44 +21,10 @@ function getResultDisplayName(result) {
     return parts.join(' - ');
 }
 const CachedBlastResults = observer(function ({ model, handleClose, feature, }) {
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState();
     const view = getContainingView(model);
+    const [operationError, setOperationError] = useState();
     const geneIds = useMemo(() => getGeneIdentifiers(feature), [feature]);
-    useEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        ;
-        (async () => {
-            try {
-                const cached = await getAllCachedResults();
-                setResults(cached.filter(r => r.geneId && geneIds.includes(r.geneId)));
-                setLoading(false);
-            }
-            catch (e) {
-                console.error(e);
-                setError(e);
-            }
-        })();
-    }, [geneIds]);
-    const handleDelete = async (id) => {
-        try {
-            await deleteCachedResult(id);
-            setResults(r => r.filter(result => result.id !== id));
-        }
-        catch (e) {
-            setError(e);
-        }
-    };
-    const handleClearAll = async () => {
-        try {
-            await clearAllCachedResults();
-            setResults([]);
-        }
-        catch (e) {
-            setError(e);
-        }
-    };
+    const { results, error, isLoading, handleDelete, handleClearAll } = useCachedBlastResults(geneIds);
     const handleUseCached = (cached) => {
         blastLaunchViewFromCache({
             view,
@@ -67,10 +33,11 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
         });
         handleClose();
     };
-    if (error) {
-        return React.createElement(ErrorMessage, { error: error });
+    const displayError = error ?? operationError;
+    if (displayError) {
+        return React.createElement(ErrorMessage, { error: displayError });
     }
-    if (loading) {
+    if (isLoading) {
         return React.createElement(Typography, null, "Loading cached results...");
     }
     if (results.length === 0) {
@@ -87,14 +54,24 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
                 "Cached BLAST Results (",
                 results.length,
                 ")"),
-            React.createElement(Button, { size: "small", color: "error", onClick: () => {
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    handleClearAll();
+            React.createElement(Button, { size: "small", color: "error", onClick: async () => {
+                    try {
+                        setOperationError(undefined);
+                        await handleClearAll();
+                    }
+                    catch (e) {
+                        setOperationError(e);
+                    }
                 } }, "Clear All")),
-        React.createElement(List, { dense: true, style: { maxHeight: 300, overflow: 'auto' } }, results.map(result => (React.createElement(ListItem, { key: result.id, disablePadding: true, secondaryAction: React.createElement(IconButton, { edge: "end", size: "small", onClick: e => {
+        React.createElement(List, { dense: true, style: { maxHeight: 300, overflow: 'auto' } }, results.map(result => (React.createElement(ListItem, { key: result.id, disablePadding: true, secondaryAction: React.createElement(IconButton, { edge: "end", size: "small", onClick: async (e) => {
                     e.stopPropagation();
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    handleDelete(result.id);
+                    try {
+                        setOperationError(undefined);
+                        await handleDelete(result.id);
+                    }
+                    catch (err) {
+                        setOperationError(err);
+                    }
                 } },
                 React.createElement(DeleteIcon, { fontSize: "small" })) },
             React.createElement(ListItemButton, { onClick: () => {

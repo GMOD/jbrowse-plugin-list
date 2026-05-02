@@ -53,10 +53,11 @@ export function needlemanWunsch(seq1, seq2, gapOpen = GAP_OPEN, gapExtend = GAP_
             const matchScore = getScore(seq1[i - 1], seq2[j - 1]);
             const prevM = M[i - 1][j - 1];
             const prevIx = Ix[i - 1][j - 1];
-            if (M[i][j] === prevM + matchScore) {
+            const currentScore = M[i][j];
+            if (currentScore === prevM + matchScore) {
                 currentMatrix = 'M';
             }
-            else if (M[i][j] === prevIx + matchScore) {
+            else if (currentScore === prevIx + matchScore) {
                 currentMatrix = 'Ix';
             }
             else {
@@ -68,13 +69,17 @@ export function needlemanWunsch(seq1, seq2, gapOpen = GAP_OPEN, gapExtend = GAP_
         else if (currentMatrix === 'Ix' && i > 0) {
             alignedSeq1 = seq1[i - 1] + alignedSeq1;
             alignedSeq2 = '-' + alignedSeq2;
-            currentMatrix = Ix[i][j] === M[i - 1][j] + gapOpen ? 'M' : 'Ix';
+            const ixScore = Ix[i][j];
+            const mScore = M[i - 1][j] + gapOpen;
+            currentMatrix = ixScore === mScore ? 'M' : 'Ix';
             i--;
         }
         else if (j > 0) {
             alignedSeq1 = '-' + alignedSeq1;
             alignedSeq2 = seq2[j - 1] + alignedSeq2;
-            currentMatrix = Iy[i][j] === M[i][j - 1] + gapOpen ? 'M' : 'Iy';
+            const iyScore = Iy[i][j];
+            const mScore = M[i][j - 1] + gapOpen;
+            currentMatrix = iyScore === mScore ? 'M' : 'Iy';
             j--;
         }
         else {

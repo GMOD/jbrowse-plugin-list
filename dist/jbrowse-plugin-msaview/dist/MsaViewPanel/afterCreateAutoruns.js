@@ -4,6 +4,10 @@ import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { cleanupOldData, generateDataStoreId, retrieveMsaData, storeMsaData, } from './msaDataStore';
 import { gappedToUngappedPosition } from './structureConnection';
 import { getUniprotIdFromAlphaFoldUrl } from './util';
+function isProteinView(view) {
+    const v = view;
+    return v.type === 'ProteinView' && Array.isArray(v.structures);
+}
 export function loadStoredData(self) {
     const { dataStoreId, rows } = self;
     if (dataStoreId && rows.length === 0) {
@@ -183,12 +187,15 @@ export function autoConnectStructures(self) {
         return;
     }
     for (const view of views) {
-        const v = view;
-        if (v.type !== 'ProteinView' || !v.structures) {
+        if (!isProteinView(view)) {
             continue;
         }
+        const v = view;
         for (let structureIdx = 0; structureIdx < v.structures.length; structureIdx++) {
             const structure = v.structures[structureIdx];
+            if (!structure) {
+                continue;
+            }
             if (structure.connectedViewId !== connectedViewId) {
                 continue;
             }
@@ -217,12 +224,12 @@ export function observeProteinHighlights(self) {
     if (!connectedViewId || !transcriptToMsaMap) {
         return;
     }
-    const columns = [];
+    const columns = new Set();
     for (const view of views) {
-        const v = view;
-        if (v.type !== 'ProteinView' || !v.structures) {
+        if (!isProteinView(view)) {
             continue;
         }
+        const v = view;
         for (const structure of v.structures) {
             if (structure.connectedViewId !== connectedViewId) {
                 continue;
@@ -237,15 +244,13 @@ export function observeProteinHighlights(self) {
                     const proteinPos = g2p[coord];
                     if (proteinPos !== undefined) {
                         const col = self.seqPosToGlobalCol(querySeqName, proteinPos);
-                        if (!columns.includes(col)) {
-                            columns.push(col);
-                        }
+                        columns.add(col);
                     }
                 }
             }
         }
     }
-    const visibleColumns = columns
+    const visibleColumns = Array.from(columns)
         .map(col => self.globalColToVisibleCol(col))
         .filter((col) => col !== undefined);
     self.setHighlightedColumns(visibleColumns.length > 0 ? visibleColumns : undefined);

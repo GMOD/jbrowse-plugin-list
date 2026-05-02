@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ErrorMessage } from '@jbrowse/core/ui';
 import { getContainingView } from '@jbrowse/core/util';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -8,8 +8,8 @@ import { makeStyles } from 'tss-react/mui';
 import CachedBlastResults from './CachedBlastResults';
 import { blastLaunchView } from './blastLaunchView';
 import { msaAlgorithms } from './consts';
+import { useCachedBlastResults } from './useCachedBlastResults';
 import TextField2 from '../../../components/TextField2';
-import { getAllCachedResults } from '../../../utils/blastCache';
 import { getGeneDisplayName, getGeneIdentifiers, getTranscriptDisplayName, } from '../../util';
 import TranscriptSelector from '../TranscriptSelector';
 import { useTranscriptSelection } from '../useTranscriptSelection';
@@ -43,25 +43,10 @@ const NCBIBlastAutomaticPanel = observer(function ({ handleClose, feature, model
     const [selectedBlastDatabase, setSelectedBlastDatabase] = useState('nr');
     const [selectedMsaAlgorithm, setSelectedMsaAlgorithm] = useState('clustalo');
     const [selectedBlastProgram, setSelectedBlastProgram] = useState('quick-blastp');
-    const [hasCachedResults, setHasCachedResults] = useState(false);
-    const [error, setError] = useState();
     const geneIds = useMemo(() => getGeneIdentifiers(feature), [feature]);
-    useEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        ;
-        (async () => {
-            try {
-                const results = await getAllCachedResults();
-                setHasCachedResults(results.some(r => r.geneId && geneIds.includes(r.geneId)));
-            }
-            catch (e) {
-                console.error(e);
-                setError(e);
-            }
-        })();
-    }, [geneIds]);
+    const { results: cachedResults, error: cachedResultsError } = useCachedBlastResults(geneIds);
     const { options, selectedId, setSelectedId, selectedTranscript, proteinSequence, error: proteinSequenceError, } = useTranscriptSelection({ feature, view });
-    const e = proteinSequenceError ?? launchViewError ?? error;
+    const e = proteinSequenceError ?? launchViewError ?? cachedResultsError;
     return (React.createElement(React.Fragment, null,
         React.createElement(DialogContent, { className: classes.dialogContent },
             children,
@@ -84,7 +69,7 @@ const NCBIBlastAutomaticPanel = observer(function ({ handleClose, feature, model
                 selectedBlastDatabase === 'nr_cluster_seq' ? (React.createElement(Typography, { variant: "subtitle2", className: classes.clusterSeqMessage }, "Can only use blastp on nr_cluster_seq")) : null),
             React.createElement(TranscriptSelector, { feature: feature, options: options, selectedId: selectedId, selectedTranscript: selectedTranscript, onTranscriptChange: setSelectedId, proteinSequence: proteinSequence }),
             React.createElement(Typography, { className: classes.infoText }, "This panel will automatically submit a query to NCBI. Using blastp can take 10+ minutes to run, quick-blastp is generally a lot faster but is not available for the clustered database. After completion, all the hits will be run through a multiple sequence alignment. Note: we are not able to currently run NCBI COBALT automatically on the BLAST results, even though that is the method NCBI uses on their website. If you need a COBALT alignment, please use the manual approach of submitting BLAST yourself and downloading the resulting files"),
-            hasCachedResults ? (React.createElement(Accordion, { className: classes.cachedResultsAccordion },
+            cachedResults.length > 0 ? (React.createElement(Accordion, { className: classes.cachedResultsAccordion },
                 React.createElement(AccordionSummary, { expandIcon: React.createElement(ExpandMoreIcon, null) },
                     React.createElement(Typography, null, "Previous BLAST Results")),
                 React.createElement(AccordionDetails, null,

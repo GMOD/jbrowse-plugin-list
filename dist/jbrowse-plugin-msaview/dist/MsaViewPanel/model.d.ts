@@ -609,21 +609,9 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     fitHorizontally(): void;
     afterCreate(): void;
 } & {
-    /**
-     * #volatile
-     */
     rid: string | undefined;
-    /**
-     * #volatile
-     */
     progress: string;
-    /**
-     * #volatile
-     */
     error: unknown;
-    /**
-     * #volatile
-     */
     loadingStoredData: boolean;
 } & {
     /**

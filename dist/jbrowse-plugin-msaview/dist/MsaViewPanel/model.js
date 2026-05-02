@@ -132,7 +132,7 @@ export default function stateModelFactory() {
                 const proteinView = views.find((v) => v.id === conn.proteinViewId);
                 return proteinView ? { ...conn, proteinView } : undefined;
             })
-                .filter((c) => !!c);
+                .filter((c) => c !== undefined);
         },
     }))
         .views(self => ({

@@ -15,11 +15,10 @@ async function getDB() {
     });
 }
 function createCacheKey(proteinSequence, blastDatabase, blastProgram, transcriptId) {
-    const seqKey = proteinSequence.slice(0, 100);
     if (transcriptId) {
-        return `${blastDatabase}:${blastProgram}:${transcriptId}:${seqKey}`;
+        return `${blastDatabase}:${blastProgram}:${transcriptId}:${proteinSequence}`;
     }
-    return `${blastDatabase}:${blastProgram}:${seqKey}`;
+    return `${blastDatabase}:${blastProgram}:${proteinSequence}`;
 }
 export async function getCachedBlastResult({ proteinSequence, blastDatabase, blastProgram, transcriptId, }) {
     const db = await getDB();

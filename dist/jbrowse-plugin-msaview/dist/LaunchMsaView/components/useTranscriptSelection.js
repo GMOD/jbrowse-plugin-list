@@ -1,31 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { featureMatchesId, getId, getSortedTranscriptFeatures } from '../util';
 import { useFeatureSequence } from './useFeatureSequence';
 function featureInValidIds(feature, validIds) {
     return validIds.some(id => featureMatchesId(feature, id));
 }
+function findValidSelection(currentId, options, validIds) {
+    if (!validIds || validIds.length === 0) {
+        return undefined;
+    }
+    const currentFeature = options.find(opt => getId(opt) === currentId);
+    if (!currentFeature || featureInValidIds(currentFeature, validIds)) {
+        return undefined;
+    }
+    const validOption = options.find(opt => featureInValidIds(opt, validIds));
+    return validOption ? getId(validOption) : undefined;
+}
 export function useTranscriptSelection({ feature, view, validIds, }) {
     const options = useMemo(() => getSortedTranscriptFeatures(feature), [feature]);
     const [selectedId, setSelectedId] = useState(() => getId(options[0]));
-    const selectedTranscript = options.find(val => getId(val) === selectedId);
+    const validatedSelectedId = findValidSelection(selectedId, options, validIds) || selectedId;
+    const selectedTranscript = options.find(val => getId(val) === validatedSelectedId);
     const { proteinSequence, error } = useFeatureSequence({
         view,
         feature: selectedTranscript,
     });
-    useEffect(() => {
-        if (validIds && validIds.length > 0) {
-            const currentFeature = options.find(opt => getId(opt) === selectedId);
-            if (currentFeature && !featureInValidIds(currentFeature, validIds)) {
-                const validOption = options.find(opt => featureInValidIds(opt, validIds));
-                if (validOption) {
-                    setSelectedId(getId(validOption));
-                }
-            }
-        }
-    }, [validIds, options, selectedId]);
     return {
         options,
-        selectedId,
+        selectedId: validatedSelectedId,
         setSelectedId,
         selectedTranscript,
         proteinSequence,
