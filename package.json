@@ -17,9 +17,9 @@
   },
   "dependencies": {
     "prettier": "^3.8.3",
-    "tar": "^7.5.13"
+    "tar": "^7.5.15"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0"
+    "@types/node": "^25.7.0"
   }
 }

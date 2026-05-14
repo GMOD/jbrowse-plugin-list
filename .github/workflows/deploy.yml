@@ -1,42 +1,35 @@
-name: Deploy to S3
-
+name: deploy
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight
-  push:
-    branches: [main]
+    - cron: 0 0 * * *
+  workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  update-plugins:
-    if: github.event_name == 'schedule'
+  update:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-      with:
-        cache: pnpm
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: '24'
+          node-version: 22
 
-      - name: Install dependencies
-        run: pnpm install
+      - run: |
+          npm i -g pnpm
+          pnpm i
+          pnpm update-plugins
 
-      - name: Update plugins
-        run: pnpm update
-
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          commit-message: 'Update plugins'
-          title: 'Update plugins'
-          body: 'Automated plugin updates from npm registry'
-          branch: update-plugins
-          delete-branch: true
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -b update-plugins
+            git add .
+            git commit -m "Update plugins"
+            git push origin update-plugins --force
+            gh pr create --title "Update plugins" --body "Automated updates" --base main --head update-plugins || true
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
