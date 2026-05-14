@@ -17,22 +17,19 @@ export default function useIsoformProteinSequences({
   >(
     ['isoform-sequences', feature.id(), view?.assemblyNames?.[0]],
     async () => {
-      const ret = [] as [string, { feature: Feature; seq: string }][]
       const transcripts = getTranscriptFeatures(feature)
-      for (const f of transcripts) {
-        try {
-          const seq = await fetchProteinSeq({
-            view,
-            feature: f,
-          })
-          if (seq) {
-            ret.push([f.id(), { feature: f, seq }])
+      const results = await Promise.all(
+        transcripts.map(async f => {
+          try {
+            const seq = await fetchProteinSeq({ view, feature: f })
+            return seq ? ([f.id(), { feature: f, seq }] as const) : undefined
+          } catch (e) {
+            console.error('[useIsoformProteinSequences] error for', f.id(), e)
+            return undefined
           }
-        } catch (e) {
-          console.error('[useIsoformProteinSequences] error for', f.id(), e)
-        }
-      }
-      return Object.fromEntries(ret)
+        }),
+      )
+      return Object.fromEntries(results.filter(r => r !== undefined))
     },
     {
       revalidateOnFocus: false,

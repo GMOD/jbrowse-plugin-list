@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui';
 import { getContainingView, getSession } from '@jbrowse/core/util';
 import { Button, DialogActions, DialogContent, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
@@ -41,9 +41,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
     const [submitError, setSubmitError] = useState();
     const [structureURL, setStructureURL] = useState('');
     const [showAllProteinSequences, setShowAllProteinSequences] = useState(false);
-    // check if we are looking at a 'two-level' or 'three-level' feature by
-    // finding exon/CDS subfeatures. we want to select from transcript names
-    const options = useMemo(() => getTranscriptFeatures(feature), [feature]);
+    const options = getTranscriptFeatures(feature);
     const view = getContainingView(model);
     const { isoformSequences, error: isoformError } = useIsoformProteinSequences({
         feature,
@@ -60,7 +58,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
         structureSequence,
     });
     const selectedTranscript = options.find(val => getId(val) === userSelection);
-    const protein = isoformSequences?.[userSelection ?? ''];
+    const protein = userSelection ? isoformSequences?.[userSelection] : undefined;
     const error = isoformError ?? submitError ?? localFileError ?? remoteFileError;
     return (React.createElement(React.Fragment, null,
         React.createElement(DialogContent, { className: classes.dialogContent },
@@ -98,7 +96,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
                         setStructureURL(`https://files.rcsb.org/download/${s}.cif`);
                     }, label: "PDB ID" })) : null),
             React.createElement("div", { style: { margin: 20 } }, isoformSequences ? (structureSequence ? (React.createElement(React.Fragment, null,
-                React.createElement(TranscriptSelector, { val: userSelection ?? '', setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, isoformSequences: isoformSequences }),
+                React.createElement(TranscriptSelector, { val: userSelection, setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, isoformSequences: isoformSequences }),
                 React.createElement("div", { style: { margin: 10 } },
                     React.createElement(Button, { variant: "contained", color: "primary", onClick: () => {
                             setShowAllProteinSequences(!showAllProteinSequences);

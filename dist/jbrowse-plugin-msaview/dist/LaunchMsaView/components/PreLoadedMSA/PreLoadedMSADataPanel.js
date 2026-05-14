@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { readConfObject } from '@jbrowse/core/configuration';
 import { ErrorMessage, LoadingEllipses, SanitizedHTML } from '@jbrowse/core/ui';
 import { getContainingView, getEnv, getSession } from '@jbrowse/core/util';
 import { Button, DialogActions, DialogContent, MenuItem } from '@mui/material';
@@ -13,9 +12,13 @@ import { useTranscriptSelection } from '../useTranscriptSelection';
 import { swrFlags } from './consts';
 import { fetchMSA, fetchMSAList } from './fetchMSAData';
 import { preCalculatedLaunchView } from './preCalculatedLaunchView';
+import { readMsaDatasets } from './types';
 const useStyles = makeStyles()({
     dialogContent: {
         width: '80em',
+    },
+    selectedContainer: {
+        marginTop: 50,
     },
 });
 const PreLoadedMSA = observer(function ({ model, feature, handleClose, }) {
@@ -25,37 +28,26 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, }) {
     const { pluginManager } = getEnv(model);
     const { assemblyNames } = view;
     const [viewError, setViewError] = useState();
-    const { jbrowse } = session;
-    const datasets = readConfObject(jbrowse, ['msa', 'datasets']);
+    const datasets = readMsaDatasets(session.jbrowse);
     const [selectedDatasetId, setSelectedDatasetId] = useState(datasets?.[0]?.datasetId);
     const selectedDataset = datasets?.find(d => d.datasetId === selectedDatasetId);
-    const { data: msaList, isLoading: msaListLoading, error: msaListFetchError, } = useSWR(selectedDatasetId ? `${selectedDatasetId}-msa-list` : 'none-msa-list', () => selectedDataset
-        ? fetchMSAList({
-            config: selectedDataset.adapter,
-            pluginManager,
-        })
-        : undefined, swrFlags);
+    const { data: msaList, isLoading: msaListLoading, error: msaListFetchError, } = useSWR(selectedDataset ? `${selectedDataset.datasetId}-msa-list` : null, () => fetchMSAList({ config: selectedDataset.adapter, pluginManager }), swrFlags);
     const { options: transcripts, selectedId, setSelectedId, selectedTranscript, proteinSequence, error: proteinSequenceError, } = useTranscriptSelection({ feature, view, validIds: msaList });
-    const { data: msaData, isLoading: msaDataLoading, error: msaDataFetchError, } = useSWR(selectedId && selectedDatasetId
-        ? `${selectedDatasetId}-${selectedId}-${msaList?.length}-msa`
-        : 'none-msa', () => selectedId && selectedDataset && msaList
-        ? fetchMSA({
-            msaId: selectedId,
-            config: selectedDataset.adapter,
-            pluginManager,
-        })
-        : undefined, swrFlags);
+    const { data: msaData, isLoading: msaDataLoading, error: msaDataFetchError, } = useSWR(selectedId && selectedDataset && msaList
+        ? `${selectedDataset.datasetId}-${selectedId}-${msaList.length}-msa`
+        : null, () => fetchMSA({
+        msaId: selectedId,
+        config: selectedDataset.adapter,
+        pluginManager,
+    }), swrFlags);
     const e = msaListFetchError ?? msaDataFetchError ?? proteinSequenceError ?? viewError;
-    if (e) {
-        console.error(e);
-    }
     return (React.createElement(React.Fragment, null,
         React.createElement(DialogContent, { className: classes.dialogContent },
             e ? React.createElement(ErrorMessage, { error: e }) : null,
             React.createElement(TextField2, { select: true, label: "Select MSA dataset", value: selectedDatasetId, onChange: event => {
                     setSelectedDatasetId(event.target.value);
                 } }, datasets?.map(d => (React.createElement(MenuItem, { key: d.datasetId, value: d.datasetId }, d.name)))),
-            selectedDataset ? (React.createElement("div", { style: { marginTop: 50 } },
+            selectedDataset ? (React.createElement("div", { className: classes.selectedContainer },
                 !msaListLoading && msaDataLoading ? (React.createElement(LoadingEllipses, { variant: "h6", message: `Loading MSA for (${selectedId})` })) : null,
                 msaListLoading ? (React.createElement(LoadingEllipses, { variant: "h6", message: `Loading available MSAs for (${selectedDataset.name})` })) : null,
                 msaList ? (React.createElement("div", null,
@@ -86,7 +78,9 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, }) {
                         setViewError(e);
                     }
                 } }, "Submit"),
-            React.createElement(Button, { color: "secondary", variant: "contained", onClick: handleClose }, "Cancel"))));
+            React.createElement(Button, { color: "secondary", variant: "contained", onClick: () => {
+                    handleClose();
+                } }, "Cancel"))));
 });
 export default PreLoadedMSA;
 //# sourceMappingURL=PreLoadedMSADataPanel.js.map

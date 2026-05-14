@@ -9,5 +9,4 @@ export declare function retrieveMsaData(id: string): Promise<{
     tree: string | undefined;
     treeMetadata: string | undefined;
 } | undefined>;
-export declare function deleteMsaData(id: string): Promise<void>;
 export declare function cleanupOldData(maxAgeMs?: number): Promise<number>;

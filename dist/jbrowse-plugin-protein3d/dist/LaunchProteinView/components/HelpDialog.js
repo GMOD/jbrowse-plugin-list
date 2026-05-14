@@ -18,8 +18,6 @@ export default function HelpDialog({ handleClose, }) {
             React.createElement(Typography2, null, "If you run into challenges with this workflow e.g. your transcripts are not being found in UniProt then you can use the Manual import form, or contact colin.diesh@gmail.com for troubleshooting")),
         React.createElement(Divider, null),
         React.createElement(DialogActions, null,
-            React.createElement(Button, { onClick: () => {
-                    handleClose();
-                }, color: "primary" }, "Close"))));
+            React.createElement(Button, { onClick: handleClose, color: "primary" }, "Close"))));
 }
 //# sourceMappingURL=HelpDialog.js.map

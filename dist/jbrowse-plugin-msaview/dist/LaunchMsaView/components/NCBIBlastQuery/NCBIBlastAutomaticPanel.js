@@ -7,7 +7,7 @@ import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import CachedBlastResults from './CachedBlastResults';
 import { blastLaunchView } from './blastLaunchView';
-import { msaAlgorithms } from './consts';
+import { blastDatabaseOptions, blastPrograms, msaAlgorithms } from './consts';
 import { useCachedBlastResults } from './useCachedBlastResults';
 import TextField2 from '../../../components/TextField2';
 import { getGeneDisplayName, getGeneIdentifiers, getTranscriptDisplayName, } from '../../util';
@@ -34,8 +34,6 @@ const useStyles = makeStyles()({
         marginTop: 20,
     },
 });
-const blastDatabaseOptions = ['nr', 'nr_cluster_seq'];
-const blastPrograms = ['blastp', 'quick-blastp'];
 const NCBIBlastAutomaticPanel = observer(function ({ handleClose, feature, model, children, baseUrl, }) {
     const { classes } = useStyles();
     const view = getContainingView(model);
@@ -52,8 +50,7 @@ const NCBIBlastAutomaticPanel = observer(function ({ handleClose, feature, model
             children,
             e ? React.createElement(ErrorMessage, { error: e }) : null,
             React.createElement(TextField2, { variant: "outlined", label: "BLAST database", className: classes.selectField, select: true, value: selectedBlastDatabase, onChange: event => {
-                    const newDb = event.target
-                        .value;
+                    const newDb = event.target.value;
                     setSelectedBlastDatabase(newDb);
                     if (newDb === 'nr_cluster_seq') {
                         setSelectedBlastProgram('blastp');
@@ -94,14 +91,16 @@ const NCBIBlastAutomaticPanel = observer(function ({ handleClose, feature, model
                                 proteinSequence,
                             },
                         });
+                        handleClose();
                     }
                     catch (e) {
                         console.error(e);
                         setLaunchViewError(e);
                     }
-                    handleClose();
                 }, disabled: !proteinSequence }, "Submit"),
-            React.createElement(Button, { color: "secondary", variant: "contained", onClick: handleClose }, "Cancel"))));
+            React.createElement(Button, { color: "secondary", variant: "contained", onClick: () => {
+                    handleClose();
+                } }, "Cancel"))));
 });
 export default NCBIBlastAutomaticPanel;
 //# sourceMappingURL=NCBIBlastAutomaticPanel.js.map

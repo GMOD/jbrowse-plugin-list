@@ -4,6 +4,9 @@ const swrConfig = {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
+    refreshWhenHidden: false,
+    refreshWhenOffline: false,
+    shouldRetryOnError: false,
 };
 export function useCachedBlastResults(geneIds) {
     const { data: results, error, mutate, } = useSWR(`cached-blast-${geneIds.join(',')}`, async () => {

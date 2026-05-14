@@ -1,6 +1,3 @@
-/**
- * Custom hook to manage AlphaFold predictions and selected entry
- */
 export default function useAlphaFoldData({ uniprotId, useApiSearch, }: {
     uniprotId?: string;
     useApiSearch?: boolean;

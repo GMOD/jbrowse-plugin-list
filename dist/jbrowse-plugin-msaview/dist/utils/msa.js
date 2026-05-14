@@ -40,9 +40,6 @@ async function wait({ onProgress, jobId, algorithm, }) {
 }
 export async function launchMSA({ algorithm, sequence, onProgress, }) {
     const config = algorithms[algorithm];
-    if (!config) {
-        throw new Error(`unknown algorithm: ${algorithm}`);
-    }
     onProgress(`Launching ${algorithm} MSA...`);
     const jobId = await textfetch(`${base}/${algorithm}/run`, {
         method: 'POST',

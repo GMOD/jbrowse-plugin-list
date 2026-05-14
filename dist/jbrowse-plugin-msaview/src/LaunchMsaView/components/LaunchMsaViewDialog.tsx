@@ -1,17 +1,15 @@
 import React, { useState } from 'react'
 
-import { readConfObject } from '@jbrowse/core/configuration'
 import { Dialog } from '@jbrowse/core/ui'
 import { getSession } from '@jbrowse/core/util'
 import { Tab, Tabs } from '@mui/material'
 
-import EnsemblGeneTree from './EnsemblGeneTree/EnsemblGeneTree'
 import ManualMSALoader from './ManualMSALoader/ManualMSALoader'
 import NCBIBlastPanel from './NCBIBlastQuery/NCBIBlastPanel'
 import PreLoadedMSA from './PreLoadedMSA/PreLoadedMSADataPanel'
+import { readMsaDatasets } from './PreLoadedMSA/types'
 import TabPanel from './TabPanel'
 
-import type { Dataset } from './PreLoadedMSA/types'
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
 
 export default function LaunchMsaViewDialog({
@@ -24,11 +22,8 @@ export default function LaunchMsaViewDialog({
   model: AbstractTrackModel
 }) {
   const session = getSession(model)
-  const { jbrowse } = session
-  const datasets = readConfObject(jbrowse, ['msa', 'datasets']) as
-    | Dataset[]
-    | undefined
-  const hasPreloadedDatasets = datasets && datasets.length > 0
+  const datasets = readMsaDatasets(session.jbrowse)
+  const hasPreloadedDatasets = !!datasets?.length
 
   const [value, setValue] = useState('ncbi_blast')
 
@@ -43,7 +38,6 @@ export default function LaunchMsaViewDialog({
         {hasPreloadedDatasets ? (
           <Tab label="Pre-loaded MSA datasets" value="preloaded_msa" />
         ) : null}
-        <Tab label="Ensembl GeneTree" value="ensembl_genetree" />
         <Tab label="Manual upload" value="manual_msa" />
       </Tabs>
       <TabPanel value={value} index="ncbi_blast">
@@ -62,13 +56,6 @@ export default function LaunchMsaViewDialog({
           />
         </TabPanel>
       ) : null}
-      <TabPanel value={value} index="ensembl_genetree">
-        <EnsemblGeneTree
-          model={model}
-          feature={feature}
-          handleClose={handleClose}
-        />
-      </TabPanel>
       <TabPanel value={value} index="manual_msa">
         <ManualMSALoader
           model={model}

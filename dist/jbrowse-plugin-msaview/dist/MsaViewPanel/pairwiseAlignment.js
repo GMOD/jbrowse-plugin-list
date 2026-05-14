@@ -1,8 +1,6 @@
 import BLOSUM62 from './blosum62';
 function getScore(a, b) {
-    const upper_a = a.toUpperCase();
-    const upper_b = b.toUpperCase();
-    return BLOSUM62[upper_a]?.[upper_b] ?? -4;
+    return BLOSUM62[a.toUpperCase()]?.[b.toUpperCase()] ?? -4;
 }
 const GAP_OPEN = -10;
 const GAP_EXTEND = -0.5;
@@ -43,9 +41,11 @@ export function needlemanWunsch(seq1, seq2, gapOpen = GAP_OPEN, gapExtend = GAP_
     let alignedSeq2 = '';
     let i = m;
     let j = n;
-    const finalScores = [M[m][n], Ix[m][n], Iy[m][n]];
-    const score = Math.max(...finalScores);
-    let currentMatrix = score === M[m][n] ? 'M' : score === Ix[m][n] ? 'Ix' : 'Iy';
+    const mScore = M[m][n];
+    const ixScore = Ix[m][n];
+    const iyScore = Iy[m][n];
+    const score = Math.max(mScore, ixScore, iyScore);
+    let currentMatrix = score === mScore ? 'M' : score === ixScore ? 'Ix' : 'Iy';
     while (i > 0 || j > 0) {
         if (currentMatrix === 'M' && i > 0 && j > 0) {
             alignedSeq1 = seq1[i - 1] + alignedSeq1;

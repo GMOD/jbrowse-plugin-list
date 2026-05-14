@@ -1,4 +1,3 @@
-import { isRecognizedDatabaseId } from '../utils/util';
 export interface UniProtEntry {
     accession: string;
     id?: string;
@@ -7,7 +6,6 @@ export interface UniProtEntry {
     proteinName?: string;
     isReviewed: boolean;
 }
-export { isRecognizedDatabaseId as isRecognizedTranscriptId };
 /**
  * Search UniProt for entries matching a gene, returning multiple results.
  * Tries multiple strategies in order of specificity:

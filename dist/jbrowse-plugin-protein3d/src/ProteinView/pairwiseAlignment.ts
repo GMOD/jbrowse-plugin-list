@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/restrict-plus-operands,@typescript-eslint/no-confusing-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-confusing-non-null-assertion */
 import type { PairwiseAlignment } from '../mappings'
+import type { AlignmentAlgorithm } from './types'
 
 // BLOSUM62 scoring matrix — standard 20 amino acids + B, Z, X, *
 // prettier-ignore
@@ -147,21 +148,13 @@ export function needlemanWunsch(
       alignedSeq1 = seq1[i - 1] + alignedSeq1
       alignedSeq2 = '-' + alignedSeq2
 
-      if (Ix[i]![j]! === M[i - 1]![j]! + gapOpen) {
-        currentMatrix = 'M'
-      } else {
-        currentMatrix = 'Ix'
-      }
+      currentMatrix = Ix[i]![j]! === M[i - 1]![j]! + gapOpen ? 'M' : 'Ix'
       i--
     } else if (j > 0) {
       alignedSeq1 = '-' + alignedSeq1
       alignedSeq2 = seq2[j - 1] + alignedSeq2
 
-      if (Iy[i]![j]! === M[i]![j - 1]! + gapOpen) {
-        currentMatrix = 'M'
-      } else {
-        currentMatrix = 'Iy'
-      }
+      currentMatrix = Iy[i]![j]! === M[i]![j - 1]! + gapOpen ? 'M' : 'Iy'
       j--
     } else {
       break
@@ -331,12 +324,10 @@ function buildConsensus(alignedSeq1: string, alignedSeq2: string) {
   return chars.join('')
 }
 
-export type AlignmentType = 'needleman_wunsch' | 'smith_waterman'
-
 export function runLocalAlignment(
   seq1: string,
   seq2: string,
-  algorithm: AlignmentType = 'needleman_wunsch',
+  algorithm: AlignmentAlgorithm,
 ): PairwiseAlignment {
   const { alignedSeq1, alignedSeq2 } =
     algorithm === 'smith_waterman'

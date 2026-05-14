@@ -1,6 +1,6 @@
 import { getSession } from '@jbrowse/core/util';
 export function blastLaunchView({ newViewTitle, view, feature, blastParams, }) {
-    return getSession(view).addView('MsaView', {
+    getSession(view).addView('MsaView', {
         type: 'MsaView',
         displayName: newViewTitle,
         connectedViewId: view.id,
@@ -12,7 +12,7 @@ export function blastLaunchView({ newViewTitle, view, feature, blastParams, }) {
     });
 }
 export function blastLaunchViewFromCache({ newViewTitle, view, cached, }) {
-    return getSession(view).addView('MsaView', {
+    getSession(view).addView('MsaView', {
         type: 'MsaView',
         displayName: newViewTitle,
         connectedViewId: view.id,

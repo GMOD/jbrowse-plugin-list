@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Tooltip, Typography } from '@mui/material';
-import { reaction } from 'mobx';
+import { autorun } from 'mobx';
 import { observer } from 'mobx-react';
 import { CHAR_WIDTH, LABEL_WIDTH, ROW_HEIGHT } from '../constants';
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton';
@@ -8,26 +8,21 @@ import { ProteinFeatureTrackContent, ProteinFeatureTrackLabels, } from './Protei
 import SplitString, { AlignmentHighlights } from './SplitString';
 import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData';
 const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
-    const { pairwiseAlignment, showHighlight, showProteinTracks, autoScrollAlignment, uniprotId, } = model;
+    const { pairwiseAlignment, showHighlight, showProteinTracks, uniprotId } = model;
     const containerRef = useRef(null);
     const { data: featureData, isLoading: featureLoading, error: featureError, } = useProteinFeatureTrackData(model, uniprotId);
-    useEffect(() => reaction(() => model.alignmentHoverPos, alignmentHoverPos => {
+    useEffect(() => autorun(() => {
         const container = containerRef.current;
-        if (!autoScrollAlignment ||
-            model.isMouseInAlignment ||
-            alignmentHoverPos === undefined ||
-            !container) {
-            return;
+        if (model.autoScrollAlignment &&
+            !model.isMouseInAlignment &&
+            model.alignmentHoverPos !== undefined &&
+            container) {
+            container.scrollTo({
+                left: model.alignmentHoverPos * CHAR_WIDTH - container.clientWidth / 2,
+                behavior: 'smooth',
+            });
         }
-        const scrollPosition = alignmentHoverPos * CHAR_WIDTH;
-        container.scrollTo({
-            left: scrollPosition - container.clientWidth / 2,
-            behavior: 'smooth',
-        });
-    }), 
-    // reaction and model property access are handled by MobX
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [autoScrollAlignment]);
+    }), [model]);
     if (!pairwiseAlignment) {
         return React.createElement("div", null, "No pairwiseAlignment");
     }
@@ -52,8 +47,6 @@ const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
             }, onMouseLeave: () => {
                 model.setIsMouseInAlignment(false);
                 model.setHoveredPosition(undefined);
-                model.clearHoverGenomeHighlights();
-                model.clearHighlightFromExternal();
             } },
             React.createElement("div", { style: {
                     flexShrink: 0,

@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 
-import { readConfObject } from '@jbrowse/core/configuration'
 import { ErrorMessage, LoadingEllipses, SanitizedHTML } from '@jbrowse/core/ui'
 import { getContainingView, getEnv, getSession } from '@jbrowse/core/util'
 import { Button, DialogActions, DialogContent, MenuItem } from '@mui/material'
@@ -15,14 +14,17 @@ import { useTranscriptSelection } from '../useTranscriptSelection'
 import { swrFlags } from './consts'
 import { fetchMSA, fetchMSAList } from './fetchMSAData'
 import { preCalculatedLaunchView } from './preCalculatedLaunchView'
+import { readMsaDatasets } from './types'
 
-import type { Dataset } from './types'
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 const useStyles = makeStyles()({
   dialogContent: {
     width: '80em',
+  },
+  selectedContainer: {
+    marginTop: 50,
   },
 })
 
@@ -42,10 +44,7 @@ const PreLoadedMSA = observer(function ({
   const { assemblyNames } = view
   const [viewError, setViewError] = useState<unknown>()
 
-  const { jbrowse } = session
-  const datasets = readConfObject(jbrowse, ['msa', 'datasets']) as
-    | Dataset[]
-    | undefined
+  const datasets = readMsaDatasets(session.jbrowse)
   const [selectedDatasetId, setSelectedDatasetId] = useState(
     datasets?.[0]?.datasetId,
   )
@@ -55,14 +54,8 @@ const PreLoadedMSA = observer(function ({
     isLoading: msaListLoading,
     error: msaListFetchError,
   } = useSWR(
-    selectedDatasetId ? `${selectedDatasetId}-msa-list` : 'none-msa-list',
-    () =>
-      selectedDataset
-        ? fetchMSAList({
-            config: selectedDataset.adapter,
-            pluginManager,
-          })
-        : undefined,
+    selectedDataset ? `${selectedDataset.datasetId}-msa-list` : null,
+    () => fetchMSAList({ config: selectedDataset!.adapter, pluginManager }),
     swrFlags,
   )
 
@@ -80,25 +73,20 @@ const PreLoadedMSA = observer(function ({
     isLoading: msaDataLoading,
     error: msaDataFetchError,
   } = useSWR(
-    selectedId && selectedDatasetId
-      ? `${selectedDatasetId}-${selectedId}-${msaList?.length}-msa`
-      : 'none-msa',
+    selectedId && selectedDataset && msaList
+      ? `${selectedDataset.datasetId}-${selectedId}-${msaList.length}-msa`
+      : null,
     () =>
-      selectedId && selectedDataset && msaList
-        ? fetchMSA({
-            msaId: selectedId,
-            config: selectedDataset.adapter,
-            pluginManager,
-          })
-        : undefined,
+      fetchMSA({
+        msaId: selectedId,
+        config: selectedDataset!.adapter,
+        pluginManager,
+      }),
     swrFlags,
   )
 
   const e =
     msaListFetchError ?? msaDataFetchError ?? proteinSequenceError ?? viewError
-  if (e) {
-    console.error(e)
-  }
   return (
     <>
       <DialogContent className={classes.dialogContent}>
@@ -120,7 +108,7 @@ const PreLoadedMSA = observer(function ({
         </TextField2>
 
         {selectedDataset ? (
-          <div style={{ marginTop: 50 }}>
+          <div className={classes.selectedContainer}>
             {!msaListLoading && msaDataLoading ? (
               <LoadingEllipses
                 variant="h6"
@@ -183,7 +171,13 @@ const PreLoadedMSA = observer(function ({
         >
           Submit
         </Button>
-        <Button color="secondary" variant="contained" onClick={handleClose}>
+        <Button
+          color="secondary"
+          variant="contained"
+          onClick={() => {
+            handleClose()
+          }}
+        >
           Cancel
         </Button>
       </DialogActions>

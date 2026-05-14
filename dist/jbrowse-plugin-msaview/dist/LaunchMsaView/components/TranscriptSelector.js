@@ -10,6 +10,10 @@ const useStyles = makeStyles()({
     minWidth: {
         minWidth: 300,
     },
+    centered: {
+        alignContent: 'center',
+        marginLeft: 20,
+    },
 });
 export default function TranscriptSelector({ feature, options, selectedId, selectedTranscript, onTranscriptChange, proteinSequence, validIds, }) {
     const { classes } = useStyles();
@@ -32,12 +36,12 @@ export default function TranscriptSelector({ feature, options, selectedId, selec
                     mod ? ` (possible fragment)` : '',
                     validIds ? (inSet ? ' (has data)' : ' (no data)') : ''));
             })),
-            React.createElement("div", { style: { alignContent: 'center', marginLeft: 20 } },
+            React.createElement("div", { className: classes.centered },
                 React.createElement(Button, { variant: "contained", color: "primary", onClick: () => {
                         setShowSequence(!showSequence);
                     } }, showSequence ? 'Hide sequence' : 'Show sequence'))),
-        showSequence && (React.createElement(ReadOnlyTextField2, { value: proteinSequence
+        showSequence ? (React.createElement(ReadOnlyTextField2, { value: proteinSequence
                 ? `>${getTranscriptDisplayName(selectedTranscript)}\n${proteinSequence}`
-                : 'Loading...' }))));
+                : 'Loading...' })) : null));
 }
 //# sourceMappingURL=TranscriptSelector.js.map

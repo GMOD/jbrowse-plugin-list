@@ -21,7 +21,7 @@ export default function TranscriptSelector({
 }: {
   isoforms: Feature[]
   feature: Feature
-  val: string
+  val: string | undefined
   setVal: (str: string) => void
   structureSequence?: string
   isoformSequences: Record<string, { feature: Feature; seq: string }>
@@ -59,7 +59,7 @@ export default function TranscriptSelector({
 
   return (
     <TextField
-      value={val}
+      value={val ?? ''}
       onChange={event => {
         setVal(event.target.value)
       }}

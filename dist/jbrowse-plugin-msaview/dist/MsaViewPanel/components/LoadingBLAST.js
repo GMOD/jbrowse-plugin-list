@@ -24,12 +24,11 @@ function RIDProgress({ baseUrl, rid, progress, }) {
         React.createElement(Typography, null, progress)));
 }
 const LoadingBLAST = observer(function LoadingBLAST2({ model, baseUrl, }) {
-    const { progress, rid, error, processing } = model;
+    const { progress, rid, error } = model;
     const { classes } = useStyles();
     return (React.createElement("div", { className: classes.margin },
         React.createElement(LoadingEllipses, { message: "Running NCBI BLAST", variant: "h5" }),
-        error ? (React.createElement(RIDError, { baseUrl: baseUrl, rid: rid, error: error })) : rid ? (React.createElement(RIDProgress, { baseUrl: baseUrl, rid: rid, progress: progress })) : null,
-        React.createElement(Typography, null, processing || 'Initializing BLAST query')));
+        error ? (React.createElement(RIDError, { baseUrl: baseUrl, rid: rid, error: error })) : rid ? (React.createElement(RIDProgress, { baseUrl: baseUrl, rid: rid, progress: progress })) : (React.createElement(Typography, null, progress || 'Initializing BLAST query'))));
 });
 export default LoadingBLAST;
 //# sourceMappingURL=LoadingBLAST.js.map

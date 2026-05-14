@@ -10,13 +10,7 @@ function extendStateModel(stateModel) {
         return {
             contextMenuItems() {
                 const feature = self.contextMenuFeature;
-                const track = getContainingTrack(self);
-                // DO NOT DELETE: contextMenuInfo must be captured here, not inside
-                // onClick. The canvas display clears contextMenuInfo when the context
-                // menu closes, which happens before onClick fires. Capturing it here
-                // in the view ensures the regionNumber is available in the closure.
-                const contextMenuInfo = self.contextMenuInfo;
-                const showProteinMenuItem = feature &&
+                const showProteinMenuItem = feature !== undefined &&
                     ['gene', 'mRNA', 'transcript'].includes(feature.get('type'));
                 return [
                     ...superContextMenuItems(),
@@ -26,32 +20,12 @@ function extendStateModel(stateModel) {
                                 label: 'Launch protein view',
                                 icon: AddIcon,
                                 onClick: () => {
+                                    const track = getContainingTrack(self);
                                     const session = getSession(track);
-                                    const openDialog = (f) => {
-                                        session.queueDialog(handleClose => [
-                                            LaunchProteinViewDialog,
-                                            { model: track, handleClose, feature: f },
-                                        ]);
-                                    };
-                                    if (self.fetchFullFeature && contextMenuInfo) {
-                                        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                                        ;
-                                        (async () => {
-                                            try {
-                                                const fullFeature = await self.fetchFullFeature(feature.id(), contextMenuInfo.regionNumber);
-                                                if (fullFeature) {
-                                                    openDialog(fullFeature);
-                                                }
-                                            }
-                                            catch (e) {
-                                                console.error(e);
-                                                session.notify(`${e}`, 'error');
-                                            }
-                                        })();
-                                    }
-                                    else {
-                                        openDialog(feature);
-                                    }
+                                    session.queueDialog(handleClose => [
+                                        LaunchProteinViewDialog,
+                                        { model: track, handleClose, feature },
+                                    ]);
                                 },
                             },
                         ]

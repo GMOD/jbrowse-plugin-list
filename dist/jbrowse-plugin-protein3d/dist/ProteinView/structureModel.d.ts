@@ -49,19 +49,12 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
 }, {
     /**
      * #volatile
+     * Inclusive-exclusive structure-residue range from a click; drives the
+     * derived clickGenomeHighlights getter.
      */
-    clickGenomeHighlights: IRegion[];
-    /**
-     * #volatile
-     */
-    hoverGenomeHighlights: IRegion[];
-    /**
-     * #volatile
-     */
-    clickPosition: {
-        structureSeqPos: number;
-        code: string;
-        chain: string;
+    clickedStructureRange: {
+        start: number;
+        end: number;
     } | undefined;
     /**
      * #volatile
@@ -71,10 +64,6 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
         code?: string;
         chain?: string;
     } | undefined;
-    /**
-     * #volatile
-     */
-    pairwiseAlignmentStatus: string;
     /**
      * #volatile
      */
@@ -93,14 +82,6 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      * Range of alignment positions to highlight (e.g., when hovering a protein feature)
      */
     alignmentHoverRange: {
-        start: number;
-        end: number;
-    } | undefined;
-    /**
-     * #volatile
-     * Persistent range of alignment positions from click (e.g., when clicking a protein feature)
-     */
-    clickAlignmentRange: {
         start: number;
         end: number;
     } | undefined;
@@ -141,27 +122,10 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     /**
      * #action
      */
-    setClickedPosition(arg?: {
-        structureSeqPos: number;
-        code: string;
-        chain: string;
+    setClickedStructureRange(range?: {
+        start: number;
+        end: number;
     }): void;
-    /**
-     * #action
-     */
-    setClickGenomeHighlights(r: IRegion[]): void;
-    /**
-     * #action
-     */
-    clearClickGenomeHighlights(): void;
-    /**
-     * #action
-     */
-    setHoverGenomeHighlights(r: IRegion[]): void;
-    /**
-     * #action
-     */
-    clearHoverGenomeHighlights(): void;
     /**
      * #action
      */
@@ -172,26 +136,7 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     /**
      * #action
      */
-    clearAlignmentHoverRange(): void;
-    /**
-     * #action
-     */
-    setClickAlignmentRange(range?: {
-        start: number;
-        end: number;
-    }): void;
-    /**
-     * #action
-     */
-    clearClickAlignmentRange(): void;
-    /**
-     * #action
-     */
     setSelectedFeatureId(uniqueId?: string): void;
-    /**
-     * #action
-     */
-    clearSelectedFeatureId(): void;
     /**
      * #action
      */
@@ -204,10 +149,6 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      * #action
      */
     setAlignment(r?: PairwiseAlignment): void;
-    /**
-     * #action
-     */
-    setAlignmentStatus(str: string): void;
     /**
      * #action
      */
@@ -252,10 +193,6 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     /**
      * #getter
      */
-    readonly clickString: string;
-    /**
-     * #getter
-     */
     readonly hoverString: string;
     /**
      * #getter
@@ -274,6 +211,47 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      * #getter
      */
     readonly alignmentHoverPos: number | undefined;
+    /**
+     * #getter
+     * Structure-residue range from a feature-bar hover, derived by mapping
+     * alignmentHoverRange through pairwiseAlignmentToStructurePosition.
+     * End is exclusive, matching clickedStructureRange.
+     */
+    readonly hoverStructureRange: {
+        start: number;
+        end: number;
+    } | undefined;
+    /**
+     * #getter
+     * Persistent click selection in alignment coordinates, derived from
+     * clickedStructureRange via structurePositionToAlignmentMap.
+     */
+    readonly clickAlignmentRange: {
+        start: number;
+        end: number;
+    } | undefined;
+    /**
+     * #getter
+     * Maps a structure-residue range to genome coordinates as a single
+     * IRegion. Handles single-residue and multi-residue ranges.
+     */
+    structureRangeToGenomeHighlight(range: {
+        start: number;
+        end: number;
+    } | undefined): IRegion[];
+    /**
+     * #getter
+     * Genome regions to highlight in the LGV based on the current hover.
+     * A feature-range hover (hoverStructureRange) takes priority over a
+     * single-residue hover (structureSeqHoverPos).
+     */
+    readonly hoverGenomeHighlights: IRegion[];
+    /**
+     * #getter
+     * Genome regions to highlight in the LGV from the persistent click
+     * selection. Derived from clickedStructureRange.
+     */
+    readonly clickGenomeHighlights: IRegion[];
     /**
      * #getter
      * Returns the single-letter amino acid code from the structure at hover position
@@ -312,16 +290,7 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      */
     readonly molstarStructure: import("molstar/lib/mol-model/structure").Structure | undefined;
 } & {
-    /**
-     * #action
-     * Highlight a residue from an external source (e.g., MSA view)
-     */
-    highlightFromExternal(structureSeqPos: number): void;
-    /**
-     * #action
-     * Clear highlight from an external source
-     */
-    clearHighlightFromExternal(): void;
+    setError(e: unknown): void;
     /**
      * #action
      */

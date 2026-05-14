@@ -5,3 +5,4 @@ export interface Dataset {
     description?: string;
     adapter: AnyConfigurationModel;
 }
+export declare function readMsaDatasets(jbrowse: AnyConfigurationModel): Dataset[] | undefined;

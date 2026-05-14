@@ -1,5 +1,6 @@
-import type { StructureConnection } from './structureConnection';
+import type { ProteinView, StructureConnection } from './structureConnection';
 import type { MafRegion, MsaViewInitState } from './types';
+import type { BlastDatabase, BlastProgram, MsaAlgorithm } from '../LaunchMsaView/components/NCBIBlastQuery/consts';
 import type { Feature } from '@jbrowse/core/util';
 import type { Instance } from '@jbrowse/mobx-state-tree';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
@@ -12,9 +13,9 @@ export interface IRegion {
 }
 export interface BlastParams {
     baseUrl: string;
-    blastDatabase: string;
-    msaAlgorithm: string;
-    blastProgram: string;
+    blastDatabase: BlastDatabase;
+    msaAlgorithm: MsaAlgorithm;
+    blastProgram: BlastProgram;
     selectedTranscript?: Feature;
     proteinSequence: string;
     rid?: string;
@@ -635,16 +636,12 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     /**
      * #getter
      */
-    readonly processing: boolean;
-    /**
-     * #getter
-     */
     readonly connectedView: MaybeLGV;
     /**
      * #getter
      */
     readonly connectedProteinViews: (StructureConnection & {
-        proteinView: any;
+        proteinView: ProteinView;
     })[];
 } & {
     /**
@@ -656,10 +653,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * #getter
      */
     readonly mouseCol2: number | undefined;
-    /**
-     * #getter
-     */
-    readonly clickCol2: undefined;
 } & {
     /**
      * #action

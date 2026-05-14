@@ -12,11 +12,3 @@ export declare function selectResidueRange({ structure, startResidue, endResidue
     endResidue: number;
     plugin: PluginContext;
 }): Promise<void>;
-export declare function hexToMolstarColor(hex: string): number;
-export declare function overpaintResidueRange({ startResidue, endResidue, plugin, color, }: {
-    startResidue: number;
-    endResidue: number;
-    plugin: PluginContext;
-    color: string;
-}): Promise<void>;
-export declare function clearOverpaint(plugin: PluginContext): Promise<void>;

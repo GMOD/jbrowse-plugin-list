@@ -17,9 +17,6 @@ export function getTranscriptFeatures(feature) {
 export function stripTrailingVersion(s) {
     return s?.replace(/\.[^./]+$/, '');
 }
-export function z(n) {
-    return n.toLocaleString('en-US');
-}
 export function getDisplayName(f) {
     return f.get('name') ?? f.get('id');
 }
@@ -27,16 +24,12 @@ export function getId(val) {
     return val === undefined ? '' : val.id();
 }
 export function getTranscriptDisplayName(val) {
-    return val === undefined
-        ? ''
-        : [val.get('name') ?? val.get('id')].filter(f => !!f).join(' ');
+    return val === undefined ? '' : (val.get('name') ?? val.get('id') ?? '');
 }
 export function getGeneDisplayName(val) {
     return val === undefined
         ? ''
-        : [val.get('gene_name') ?? val.get('name') ?? val.get('id')]
-            .filter(f => !!f)
-            .join(' ');
+        : (val.get('gene_name') ?? val.get('name') ?? val.get('id') ?? '');
 }
 export function getUniProtIdFromFeature(f) {
     if (!f) {
@@ -136,13 +129,10 @@ function extractIdsFromDbxref(dbxrefEntries) {
     }
     return [...new Set(ids)];
 }
-/**
- * Extract all useful identifiers from a feature for UniProt lookup.
- * Prioritizes recognized database IDs (Ensembl, RefSeq, CCDS, HGNC) over gene symbols.
- */
-export function extractFeatureIdentifiers(f) {
+// New helper function to extract recognized DB IDs
+export function findRecognizedDbIds(f) {
     if (!f) {
-        return { recognizedIds: [] };
+        return [];
     }
     const recognizedIds = [];
     // Check various feature attributes for recognized IDs
@@ -152,7 +142,6 @@ export function extractFeatureIdentifiers(f) {
         f.get('name'),
         f.get('Name'),
         f.get('transcript_id'),
-        f.get('gene_id'),
         f.get('protein_id'),
         f.get('protAcc'), // RefSeq protein accession
         f.get('mrnaAcc'), // RefSeq mRNA accession
@@ -176,25 +165,49 @@ export function extractFeatureIdentifiers(f) {
             recognizedIds.push(hgncStr);
         }
     }
-    // Handle UniProt ID from feature attributes (trust that it's valid if present)
-    const uniprotIdAttr = f.get('uniprot') ??
-        f.get('uniprotId') ??
-        f.get('uniprotid') ??
-        f.get('UniProt');
-    const uniprotId = typeof uniprotIdAttr === 'string' && uniprotIdAttr.length > 0
-        ? uniprotIdAttr
-        : undefined;
     // Parse dbxref for additional IDs
     const dbxref = f.get('Dbxref') ?? f.get('dbxref') ?? f.get('db_xref');
     const dbxrefIds = extractIdsFromDbxref(parseDbxref(dbxref));
     for (const id of dbxrefIds) {
         recognizedIds.push(id);
     }
-    // Get gene ID and name as fallbacks
+    return [...new Set(recognizedIds)];
+}
+/**
+ * Extract all useful identifiers from a feature for UniProt lookup.
+ * If the feature is a gene, prioritizes identifiers from its first transcript.
+ * Otherwise, extracts identifiers from the feature itself.
+ * geneId and geneName are always extracted from the parent feature 'f'.
+ */
+export function extractFeatureIdentifiers(f) {
+    if (!f) {
+        return { recognizedIds: [] };
+    }
+    let featureToProcess = f; // Default to the parent feature
+    // If the feature is a gene, try to get identifiers from its first transcript.
+    if (f.get('type') === 'gene') {
+        const transcripts = getTranscriptFeatures(f);
+        if (transcripts.length > 0) {
+            featureToProcess = transcripts[0]; // Prioritize the first transcript (length > 0 checked above)
+        }
+        // If no transcripts found, featureToProcess remains the parent gene 'f'.
+    }
+    // --- Extracting Recognized IDs and UniProt ID from featureToProcess ---
+    const recognizedIds = findRecognizedDbIds(featureToProcess);
+    // Handle UniProt ID from feature attributes (trust that it's valid if present)
+    const uniprotIdAttr = featureToProcess.get('uniprot') ??
+        featureToProcess.get('uniprotId') ??
+        featureToProcess.get('uniprotid') ??
+        featureToProcess.get('UniProt');
+    const uniprotId = typeof uniprotIdAttr === 'string' && uniprotIdAttr.length > 0
+        ? uniprotIdAttr
+        : undefined;
+    // --- Get gene ID and name as fallbacks from the original parent feature 'f' ---
+    // This assumes gene_id and gene_name are attributes of the parent gene, not the transcript.
     const geneId = f.get('gene_id') ?? f.get('ID');
     const geneName = f.get('gene_name') ?? f.get('gene') ?? f.get('name') ?? f.get('Name');
     return {
-        recognizedIds: [...new Set(recognizedIds)],
+        recognizedIds: [...new Set(recognizedIds)], // Ensure unique IDs
         uniprotId,
         geneId: typeof geneId === 'string' ? geneId : undefined,
         geneName: typeof geneName === 'string' ? geneName : undefined,
@@ -205,7 +218,7 @@ export function selectBestTranscript({ options, isoformSequences, structureSeque
         stripStopCodon(isoformSequences[f.id()]?.seq ?? '') === structureSequence);
     const longestWithData = options
         .filter(f => !!isoformSequences[f.id()])
-        .sort((a, b) => isoformSequences[b.id()].seq.length -
+        .toSorted((a, b) => isoformSequences[b.id()].seq.length -
         isoformSequences[a.id()].seq.length)[0];
     return exactMatch ?? longestWithData;
 }

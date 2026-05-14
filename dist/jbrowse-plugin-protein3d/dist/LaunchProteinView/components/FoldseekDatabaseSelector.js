@@ -25,28 +25,23 @@ const useStyles = makeStyles()({
 });
 export default function FoldseekDatabaseSelector({ selected, onChange, disabled, }) {
     const { classes } = useStyles();
-    const handleToggle = (dbId) => {
-        if (selected.includes(dbId)) {
-            onChange(selected.filter(id => id !== dbId));
-        }
-        else {
-            onChange([...selected, dbId]);
-        }
-    };
-    const selectAll = () => {
-        onChange(FOLDSEEK_DATABASES.map(db => db.id));
-    };
-    const deselectAll = () => {
-        onChange([]);
-    };
     return (React.createElement("div", { className: classes.root },
         React.createElement("div", { className: classes.header },
             React.createElement(Typography, { variant: "subtitle2" }, "Databases to search:"),
             React.createElement("div", { className: classes.buttons },
-                React.createElement(Button, { size: "small", onClick: selectAll, disabled: disabled }, "Select all"),
-                React.createElement(Button, { size: "small", onClick: deselectAll, disabled: disabled }, "Clear"))),
+                React.createElement(Button, { size: "small", onClick: () => {
+                        onChange(FOLDSEEK_DATABASES.map(db => db.id));
+                    }, disabled: disabled }, "Select all"),
+                React.createElement(Button, { size: "small", onClick: () => {
+                        onChange([]);
+                    }, disabled: disabled }, "Clear"))),
         React.createElement(FormGroup, { className: classes.checkboxGroup }, FOLDSEEK_DATABASES.map(db => (React.createElement(FormControlLabel, { key: db.id, control: React.createElement(Checkbox, { size: "small", checked: selected.includes(db.id), onChange: () => {
-                    handleToggle(db.id);
+                    if (selected.includes(db.id)) {
+                        onChange(selected.filter(id => id !== db.id));
+                    }
+                    else {
+                        onChange([...selected, db.id]);
+                    }
                 }, disabled: disabled }), label: db.label }))))));
 }
 //# sourceMappingURL=FoldseekDatabaseSelector.js.map

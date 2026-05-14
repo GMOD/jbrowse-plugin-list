@@ -3,12 +3,9 @@ import { observer } from 'mobx-react';
 const HeaderStructureInfo = observer(function HeaderStructureInfo({ model, }) {
     const { structures } = model;
     return structures.map((structure, idx) => {
-        const { clickString, hoverString } = structure;
-        return (React.createElement("span", { key: `${clickString}-${hoverString}-${idx}` },
-            [
-                clickString ? `Click: ${clickString}` : '',
-                hoverString ? `Hover: ${hoverString}` : '',
-            ].join(' '),
+        const { hoverString } = structure;
+        return (React.createElement("span", { key: `${hoverString}-${idx}` },
+            hoverString ? `Hover: ${hoverString}` : '',
             "\u00A0"));
     });
 });

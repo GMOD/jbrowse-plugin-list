@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
 
 import { getSession } from '@jbrowse/core/util'
-import { autorun } from 'mobx'
+import { autorun, untracked } from 'mobx'
 import { observer } from 'mobx-react'
 
-import type { JBrowsePluginProteinViewModel } from '../ProteinView/model'
+import { getProteinView } from './util'
+
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 interface MsaView {
@@ -22,56 +23,55 @@ const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({
   const session = getSession(model)
   const { views } = session
 
-  const proteinView = views.find(f => f.type === 'ProteinView') as
-    | JBrowsePluginProteinViewModel
-    | undefined
+  const proteinView = getProteinView(session)
 
   const connectedMsaViewId = proteinView?.connectedMsaViewId
   const msaView = connectedMsaViewId
     ? (views.find(f => f.id === connectedMsaViewId) as MsaView | undefined)
     : undefined
 
-  // Sync protein hover to MSA
-  useEffect(() => {
-    if (!proteinView || !msaView?.setMouseoveredColumn) {
-      return
-    }
-
-    const disposer = autorun(() => {
-      const structure = proteinView.structures[0]
-      if (structure) {
-        const pos = structure.structureSeqHoverPos
-        msaView.setMouseoveredColumn?.(pos)
-      }
-    })
-
-    return () => {
-      disposer()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Sync MSA hover to protein
   useEffect(() => {
     if (!proteinView || !msaView) {
       return
     }
 
-    const disposer = autorun(() => {
-      const col = msaView.mouseoveredColumn
-      const structure = proteinView.structures[0]
-      if (structure && col !== undefined) {
-        structure.highlightFromExternal(col)
-      } else if (structure && col === undefined) {
-        structure.clearHighlightFromExternal()
-      }
-    })
+    const disposers: (() => void)[] = []
+
+    if (msaView.setMouseoveredColumn) {
+      const { setMouseoveredColumn } = msaView
+      disposers.push(
+        autorun(() => {
+          const structure = proteinView.structures[0]
+          if (structure) {
+            setMouseoveredColumn(structure.structureSeqHoverPos)
+          }
+        }),
+      )
+    }
+
+    disposers.push(
+      autorun(() => {
+        const col = msaView.mouseoveredColumn
+        const structure = proteinView.structures[0]
+        if (structure) {
+          const hasFeatureHoverRange = untracked(
+            () => !!structure.alignmentHoverRange,
+          )
+          if (!hasFeatureHoverRange) {
+            structure.setHoveredPosition(
+              col === undefined ? undefined : { structureSeqPos: col },
+            )
+          }
+        }
+      }),
+    )
 
     return () => {
-      disposer()
+      disposers.forEach(d => {
+        d()
+      })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [proteinView, msaView])
 
   return null
 })

@@ -89,62 +89,6 @@ export default function ProteinViewActions({
     handleClose()
   }
 
-  const handleLaunch1DView = async () => {
-    setDialogOpen(false)
-    if (!uniprotId || !selectedTranscript) {
-      return
-    }
-    try {
-      await launch1DProteinView({
-        session,
-        view,
-        feature,
-        selectedTranscript,
-        uniprotId,
-        confidenceUrl,
-      })
-    } catch (e) {
-      console.error(e)
-      session.notifyError(`${e}`, e)
-    }
-    handleClose()
-  }
-
-  const handleLaunchMSAView = () => {
-    setDialogOpen(false)
-    if (!selectedTranscript || !uniprotId) {
-      return
-    }
-    launchMsaView({
-      session,
-      view,
-      feature,
-      selectedTranscript,
-      uniprotId,
-    })
-
-    handleClose()
-  }
-
-  const handleLaunch3DWithMsa = () => {
-    setDialogOpen(false)
-    if (!selectedTranscript || !uniprotId) {
-      return
-    }
-    launch3DProteinViewWithMsa({
-      session,
-      view,
-      feature,
-      selectedTranscript,
-      uniprotId,
-      url,
-      userProvidedTranscriptSequence: userSelectedProteinSequence?.seq,
-      alignmentAlgorithm,
-    })
-
-    handleClose()
-  }
-
   return (
     <>
       {sequencesMatch === false ? (
@@ -165,9 +109,7 @@ export default function ProteinViewActions({
         variant="contained"
         color="secondary"
         size="small"
-        onClick={() => {
-          handleClose()
-        }}
+        onClick={handleClose}
       >
         Cancel
       </Button>
@@ -211,10 +153,25 @@ export default function ProteinViewActions({
               </div>
             </MenuItem>
             <MenuItem
-              onClick={() => {
-                handleLaunch1DView().catch((e: unknown) => {
+              onClick={async () => {
+                setDialogOpen(false)
+                if (!uniprotId || !selectedTranscript) {
+                  return
+                }
+                try {
+                  await launch1DProteinView({
+                    session,
+                    view,
+                    feature,
+                    selectedTranscript,
+                    uniprotId,
+                    confidenceUrl,
+                  })
+                } catch (e) {
                   console.error(e)
-                })
+                  session.notifyError(`${e}`, e)
+                }
+                handleClose()
               }}
             >
               <div>
@@ -228,7 +185,24 @@ export default function ProteinViewActions({
             </MenuItem>
             {hasMsaViewPlugin()
               ? [
-                  <MenuItem key="msa" onClick={handleLaunchMSAView}>
+                  <MenuItem
+                    key="msa"
+                    onClick={() => {
+                      setDialogOpen(false)
+                      if (!selectedTranscript || !uniprotId) {
+                        return
+                      }
+                      launchMsaView({
+                        session,
+                        view,
+                        feature,
+                        selectedTranscript,
+                        uniprotId,
+                      })
+
+                      handleClose()
+                    }}
+                  >
                     <div>
                       <Typography variant="body1">Launch MSA view</Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -236,7 +210,28 @@ export default function ProteinViewActions({
                       </Typography>
                     </div>
                   </MenuItem>,
-                  <MenuItem key="3d-msa" onClick={handleLaunch3DWithMsa}>
+                  <MenuItem
+                    key="3d-msa"
+                    onClick={() => {
+                      setDialogOpen(false)
+                      if (!selectedTranscript || !uniprotId) {
+                        return
+                      }
+                      launch3DProteinViewWithMsa({
+                        session,
+                        view,
+                        feature,
+                        selectedTranscript,
+                        uniprotId,
+                        url,
+                        userProvidedTranscriptSequence:
+                          userSelectedProteinSequence?.seq,
+                        alignmentAlgorithm,
+                      })
+
+                      handleClose()
+                    }}
+                  >
                     <div>
                       <Typography variant="body1">
                         Launch 3D structure + MSA view

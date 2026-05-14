@@ -40,9 +40,7 @@ export default function LaunchProteinViewDialog({
         </>
       }
       open
-      onClose={() => {
-        handleClose()
-      }}
+      onClose={handleClose}
     >
       <Tabs
         value={choice}

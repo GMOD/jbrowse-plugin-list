@@ -3,7 +3,7 @@ import type { Feature } from '@jbrowse/core/util';
 export default function TranscriptSelector({ val, setVal, isoforms, isoformSequences, structureSequence, feature, disabled, }: {
     isoforms: Feature[];
     feature: Feature;
-    val: string;
+    val: string | undefined;
     setVal: (str: string) => void;
     structureSequence?: string;
     isoformSequences: Record<string, {

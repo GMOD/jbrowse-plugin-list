@@ -84,7 +84,7 @@ export async function getFoldseekResults(ticketId) {
     const result = await jsonfetch(`https://search.foldseek.com/api/result/${ticketId}/0`);
     return result;
 }
-export async function waitForFoldseekResults(ticketId, databases, onStatusChange) {
+export async function waitForFoldseekResults(ticketId, onStatusChange) {
     const maxAttempts = 180;
     let attempts = 0;
     while (attempts < maxAttempts) {

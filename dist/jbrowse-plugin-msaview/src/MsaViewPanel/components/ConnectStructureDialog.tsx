@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-import { Dialog } from '@jbrowse/core/ui'
+import { Dialog, ErrorMessage } from '@jbrowse/core/ui'
 import { getSession } from '@jbrowse/core/util'
 import {
   Button,
@@ -13,8 +13,17 @@ import {
   Typography,
 } from '@mui/material'
 import { observer } from 'mobx-react'
+import { makeStyles } from 'tss-react/mui'
+
+import { getProteinViews } from '../structureConnection'
 
 import type { JBrowsePluginMsaViewModel } from '../model'
+
+const useStyles = makeStyles()(theme => ({
+  formControl: {
+    marginBottom: theme.spacing(2),
+  },
+}))
 
 const ConnectStructureDialog = observer(function ConnectStructureDialog({
   model,
@@ -23,23 +32,18 @@ const ConnectStructureDialog = observer(function ConnectStructureDialog({
   model: JBrowsePluginMsaViewModel
   handleClose: () => void
 }) {
+  const { classes } = useStyles()
   const session = getSession(model)
   const [selectedViewId, setSelectedViewId] = useState('')
   const [selectedStructureIdx, setSelectedStructureIdx] = useState(0)
   const [selectedMsaRow, setSelectedMsaRow] = useState(model.querySeqName)
   const [error, setError] = useState<string>()
 
-  // Find all ProteinViews in the session
+  const proteinViews = getProteinViews(session.views)
 
-  const proteinViews = session.views.filter(
-    (v: any) => v.type === 'ProteinView',
-  ) as any[]
-
-  // Get structures for the selected view
   const selectedView = proteinViews.find(v => v.id === selectedViewId)
   const structures = selectedView?.structures ?? []
 
-  // Get MSA row names
   const msaRowNames = model.rows.map(r => r[0])
 
   const handleConnect = () => {
@@ -75,7 +79,7 @@ const ConnectStructureDialog = observer(function ConnectStructureDialog({
           </Typography>
         ) : (
           <>
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl fullWidth className={classes.formControl}>
               <InputLabel>Protein View</InputLabel>
               <Select
                 value={selectedViewId}
@@ -93,8 +97,8 @@ const ConnectStructureDialog = observer(function ConnectStructureDialog({
               </Select>
             </FormControl>
 
-            {structures.length > 1 && (
-              <FormControl fullWidth sx={{ mb: 2 }}>
+            {structures.length > 1 ? (
+              <FormControl fullWidth className={classes.formControl}>
                 <InputLabel>Structure</InputLabel>
                 <Select
                   value={selectedStructureIdx}
@@ -103,18 +107,16 @@ const ConnectStructureDialog = observer(function ConnectStructureDialog({
                     setSelectedStructureIdx(e.target.value)
                   }}
                 >
-                  {structures.map(
-                    (structure: { url?: string }, idx: number) => (
-                      <MenuItem key={idx} value={idx}>
-                        {structure.url ?? `Structure ${idx + 1}`}
-                      </MenuItem>
-                    ),
-                  )}
+                  {structures.map((structure, idx) => (
+                    <MenuItem key={idx} value={idx}>
+                      {structure.url ?? `Structure ${idx + 1}`}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
-            )}
+            ) : null}
 
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl fullWidth className={classes.formControl}>
               <InputLabel>MSA Row</InputLabel>
               <Select
                 value={selectedMsaRow}
@@ -131,11 +133,7 @@ const ConnectStructureDialog = observer(function ConnectStructureDialog({
               </Select>
             </FormControl>
 
-            {error && (
-              <Typography color="error" sx={{ mt: 1 }}>
-                {error}
-              </Typography>
-            )}
+            {error ? <ErrorMessage error={error} /> : null}
           </>
         )}
       </DialogContent>

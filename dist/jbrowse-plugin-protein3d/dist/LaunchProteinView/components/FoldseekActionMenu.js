@@ -68,9 +68,7 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
         React.createElement(Menu, { anchorEl: anchorEl, open: open, onClose: handleMenuClose },
             React.createElement(MenuItem, { onClick: handleLaunch3D }, "Launch 3D protein view"),
             uniprotId ? (React.createElement(MenuItem, { onClick: () => {
-                    handleLaunch1D().catch((e) => {
-                        console.error(e);
-                    });
+                    void handleLaunch1D();
                 } }, "Launch 1D protein annotation view")) : null,
             uniprotId && hasMsaViewPlugin() ? (React.createElement(MenuItem, { onClick: handleLaunchMSA }, "Launch MSA view (AlphaFoldDB a3m)")) : null)));
 }

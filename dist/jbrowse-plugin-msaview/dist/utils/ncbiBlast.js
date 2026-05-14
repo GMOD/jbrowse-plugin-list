@@ -31,7 +31,7 @@ async function initialQuery({ query, blastProgram, blastDatabase, baseUrl, }) {
             PROGRAM: blastProgram === 'quick-blastp' ? 'blastp' : blastProgram,
             DATABASE: blastDatabase,
             QUERY: query,
-            ...(blastDatabase === 'nr_clustered_seq'
+            ...(blastDatabase === 'nr_cluster_seq'
                 ? {
                     CLUSTERED_DB: 'on',
                     DB_TYPE: 'Experimental Databases',

@@ -1,5 +1,4 @@
 import loadMolstar from './loadMolstar'
-import { proteinAbbreviationMapping } from './proteinAbbreviationMapping'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
 
@@ -41,26 +40,6 @@ export async function getMolstarStructureSelection({
       }),
     structure,
   )
-}
-
-export function toStr({
-  chain,
-  code,
-  structureSeqPos,
-}: {
-  structureSeqPos?: number
-  code?: string
-  chain?: string
-}) {
-  return [
-    structureSeqPos === undefined ? '' : `Position: ${structureSeqPos + 1}`,
-    code
-      ? `Letter: ${code} (${proteinAbbreviationMapping[code]?.singleLetterCode})`
-      : '',
-    chain ? `Chain: ${chain}` : '',
-  ]
-    .filter(f => !!f)
-    .join(', ')
 }
 
 export function invertMap(arg: Record<number, number>): Record<number, number> {

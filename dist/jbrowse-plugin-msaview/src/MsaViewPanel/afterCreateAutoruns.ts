@@ -8,26 +8,13 @@ import {
   retrieveMsaData,
   storeMsaData,
 } from './msaDataStore'
-import { gappedToUngappedPosition } from './structureConnection'
+import {
+  gappedToUngappedPosition,
+  getProteinViews,
+} from './structureConnection'
 import { getUniprotIdFromAlphaFoldUrl } from './util'
 
 import type { JBrowsePluginMsaViewModel } from './model'
-
-interface ProteinView {
-  type: 'ProteinView'
-  id: string
-  structures: {
-    connectedViewId?: string
-    uniprotId?: string
-    structureSequences?: unknown[]
-    hoverGenomeHighlights?: { start: number; end: number }[]
-  }[]
-}
-
-function isProteinView(view: unknown): view is ProteinView {
-  const v = view as Record<string, unknown>
-  return v.type === 'ProteinView' && Array.isArray(v.structures)
-}
 
 export function loadStoredData(self: JBrowsePluginMsaViewModel) {
   const { dataStoreId, rows } = self
@@ -57,8 +44,7 @@ export function loadStoredData(self: JBrowsePluginMsaViewModel) {
 export function storeDataToIndexedDB(self: JBrowsePluginMsaViewModel) {
   const { rows, dataStoreId } = self
   if (rows.length > 0 && !dataStoreId) {
-    const hasFilehandle = !!(self.msaFilehandle ?? self.treeFilehandle)
-    if (hasFilehandle) {
+    if (self.msaFilehandle || self.treeFilehandle) {
       return
     }
 
@@ -179,7 +165,7 @@ export function highlightConnectedStructures(self: JBrowsePluginMsaViewModel) {
   }
 
   for (const conn of connectedProteinViews) {
-    const structure = conn.proteinView?.structures?.[conn.structureIdx]
+    const structure = conn.proteinView.structures[conn.structureIdx]
     if (!structure) {
       continue
     }
@@ -210,25 +196,19 @@ export function highlightConnectedStructures(self: JBrowsePluginMsaViewModel) {
 }
 
 export function autoConnectStructures(self: JBrowsePluginMsaViewModel) {
-  const { views } = getSession(self)
   const { connectedViewId, uniprotId, rows, connectedStructures } = self
 
   if (!uniprotId || rows.length === 0) {
     return
   }
 
-  for (const view of views) {
-    if (!isProteinView(view)) {
-      continue
-    }
-    const v = view
-
+  for (const view of getProteinViews(getSession(self).views)) {
     for (
       let structureIdx = 0;
-      structureIdx < v.structures.length;
+      structureIdx < view.structures.length;
       structureIdx++
     ) {
-      const structure = v.structures[structureIdx]
+      const structure = view.structures[structureIdx]
       if (!structure) {
         continue
       }
@@ -242,7 +222,7 @@ export function autoConnectStructures(self: JBrowsePluginMsaViewModel) {
       }
 
       const alreadyConnected = connectedStructures.some(
-        c => c.proteinViewId === v.id && c.structureIdx === structureIdx,
+        c => c.proteinViewId === view.id && c.structureIdx === structureIdx,
       )
       if (alreadyConnected) {
         continue
@@ -253,7 +233,7 @@ export function autoConnectStructures(self: JBrowsePluginMsaViewModel) {
       }
 
       try {
-        self.connectToStructure(v.id, structureIdx)
+        self.connectToStructure(view.id, structureIdx)
       } catch (e) {
         console.error('Failed to auto-connect to ProteinView:', e)
       }
@@ -262,7 +242,6 @@ export function autoConnectStructures(self: JBrowsePluginMsaViewModel) {
 }
 
 export function observeProteinHighlights(self: JBrowsePluginMsaViewModel) {
-  const { views } = getSession(self)
   const { connectedViewId, transcriptToMsaMap, querySeqName } = self
 
   if (!connectedViewId || !transcriptToMsaMap) {
@@ -271,13 +250,8 @@ export function observeProteinHighlights(self: JBrowsePluginMsaViewModel) {
 
   const columns = new Set<number>()
 
-  for (const view of views) {
-    if (!isProteinView(view)) {
-      continue
-    }
-    const v = view
-
-    for (const structure of v.structures) {
+  for (const view of getProteinViews(getSession(self).views)) {
+    for (const structure of view.structures) {
       if (structure.connectedViewId !== connectedViewId) {
         continue
       }

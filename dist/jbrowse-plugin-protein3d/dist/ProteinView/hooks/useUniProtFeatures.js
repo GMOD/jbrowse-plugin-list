@@ -63,7 +63,7 @@ async function fetchUniProtFeatures(url) {
         for (const attr of attributes.split(';')) {
             const [key, value] = attr.split('=');
             if (key === 'Note') {
-                description = decodeURIComponent(value ?? '').replace(/%2C/g, ',');
+                description = decodeURIComponent(value ?? '');
             }
             else if (key === 'ID') {
                 id = value;

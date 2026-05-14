@@ -116,9 +116,7 @@ export default function FoldseekActionMenu({
         {uniprotId ? (
           <MenuItem
             onClick={() => {
-              handleLaunch1D().catch((e: unknown) => {
-                console.error(e)
-              })
+              void handleLaunch1D()
             }}
           >
             Launch 1D protein annotation view

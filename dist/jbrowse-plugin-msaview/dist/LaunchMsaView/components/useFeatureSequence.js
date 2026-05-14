@@ -1,13 +1,11 @@
 import { getProteinSequenceFromFeature } from './calculateProteinSequence';
 import { useSWRFeatureSequence } from './useSWRFeatureSequence';
-export function useFeatureSequence({ view, feature, upDownBp = 0, forceLoad = true, }) {
+export function useFeatureSequence({ view, feature, }) {
     const { sequence, error } = useSWRFeatureSequence({
         view,
         feature,
-        upDownBp,
-        forceLoad,
     });
-    const proteinSequence = sequence && !('error' in sequence) && feature
+    const proteinSequence = sequence && feature
         ? getProteinSequenceFromFeature({
             seq: sequence.seq,
             feature,

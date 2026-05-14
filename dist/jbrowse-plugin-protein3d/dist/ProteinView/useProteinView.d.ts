@@ -1,9 +1,9 @@
-import type { PluginContext } from 'molstar/lib/mol-plugin/context';
-export default function useProteinView({ showControls, }: {
+import type { JBrowsePluginProteinViewModel } from './model';
+export default function useProteinView({ showControls, model, }: {
     showControls: boolean;
+    model?: JBrowsePluginProteinViewModel;
 }): {
     parentRef: import("react").RefObject<HTMLDivElement | null>;
     error: unknown;
-    plugin: PluginContext | undefined;
     loading: boolean;
 };

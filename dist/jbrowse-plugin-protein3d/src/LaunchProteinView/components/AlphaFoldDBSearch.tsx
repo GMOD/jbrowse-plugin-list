@@ -123,7 +123,7 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
           <>
             <div className={classes.selectorsRow}>
               <TranscriptSelector
-                val={state.userSelection ?? ''}
+                val={state.userSelection}
                 setVal={state.setUserSelection}
                 structureSequence={state.structureSequence}
                 feature={feature}

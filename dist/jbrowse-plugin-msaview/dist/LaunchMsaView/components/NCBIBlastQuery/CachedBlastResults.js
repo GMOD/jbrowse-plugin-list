@@ -4,9 +4,22 @@ import { getContainingView } from '@jbrowse/core/util';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Button, IconButton, List, ListItem, ListItemButton, ListItemText, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
+import { makeStyles } from 'tss-react/mui';
 import { blastLaunchViewFromCache } from './blastLaunchView';
 import { useCachedBlastResults } from './useCachedBlastResults';
 import { getGeneIdentifiers } from '../../util';
+const useStyles = makeStyles()({
+    header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    resultList: {
+        maxHeight: 300,
+        overflow: 'auto',
+    },
+});
 function getResultDisplayName(result) {
     const parts = [];
     if (result.geneName) {
@@ -21,6 +34,7 @@ function getResultDisplayName(result) {
     return parts.join(' - ');
 }
 const CachedBlastResults = observer(function ({ model, handleClose, feature, }) {
+    const { classes } = useStyles();
     const view = getContainingView(model);
     const [operationError, setOperationError] = useState();
     const geneIds = useMemo(() => getGeneIdentifiers(feature), [feature]);
@@ -44,12 +58,7 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
         return (React.createElement(Typography, { color: "textSecondary" }, "No cached BLAST results found for this gene. Run a BLAST query to cache results."));
     }
     return (React.createElement("div", null,
-        React.createElement("div", { style: {
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 8,
-            } },
+        React.createElement("div", { className: classes.header },
             React.createElement(Typography, { variant: "subtitle1" },
                 "Cached BLAST Results (",
                 results.length,
@@ -63,7 +72,7 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
                         setOperationError(e);
                     }
                 } }, "Clear All")),
-        React.createElement(List, { dense: true, style: { maxHeight: 300, overflow: 'auto' } }, results.map(result => (React.createElement(ListItem, { key: result.id, disablePadding: true, secondaryAction: React.createElement(IconButton, { edge: "end", size: "small", onClick: async (e) => {
+        React.createElement(List, { dense: true, className: classes.resultList }, results.map(result => (React.createElement(ListItem, { key: result.id, disablePadding: true, secondaryAction: React.createElement(IconButton, { edge: "end", size: "small", onClick: async (e) => {
                     e.stopPropagation();
                     try {
                         setOperationError(undefined);

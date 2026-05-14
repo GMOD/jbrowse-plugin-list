@@ -83,5 +83,5 @@ interface FoldseekApiResponse {
     }[];
 }
 export declare function getFoldseekResults(ticketId: string): Promise<FoldseekApiResponse>;
-export declare function waitForFoldseekResults(ticketId: string, databases: FoldseekDatabaseId[], onStatusChange?: (status: string) => void): Promise<FoldseekResult>;
+export declare function waitForFoldseekResults(ticketId: string, onStatusChange?: (status: string) => void): Promise<FoldseekResult>;
 export {};

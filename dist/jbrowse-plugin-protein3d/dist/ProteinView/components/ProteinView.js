@@ -1,6 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ErrorMessage, LoadingEllipses, ResizeHandle } from '@jbrowse/core/ui';
-import { autorun } from 'mobx';
 import { observer } from 'mobx-react';
 import ManualAlignmentDialog from './ManualAlignmentDialog';
 import ProteinViewHeader from './ProteinViewHeader';
@@ -11,18 +10,10 @@ style.append(css);
 document.head.append(style);
 const ProteinView = observer(function ProteinView({ model, }) {
     const { showControls } = model;
-    const { plugin, parentRef, error, loading } = useProteinView({
+    const { parentRef, error, loading } = useProteinView({
         showControls,
+        model,
     });
-    useEffect(() => {
-        const disposer = autorun(() => {
-            model.setMolstarPluginContext(plugin);
-        });
-        return () => {
-            disposer();
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plugin]);
     if (error) {
         return React.createElement(ErrorMessage, { error: error });
     }

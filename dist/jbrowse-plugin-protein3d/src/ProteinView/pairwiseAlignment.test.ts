@@ -66,7 +66,7 @@ test('runLocalAlignment - consensus marks gaps correctly', () => {
 test('runLocalAlignment - handles real protein sequences', () => {
   const seq1 = 'MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG'
   const seq2 = 'MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG'
-  const result = runLocalAlignment(seq1, seq2)
+  const result = runLocalAlignment(seq1, seq2, 'needleman_wunsch')
   expect(result.alns[0].seq).toBe(seq1)
   expect(result.alns[1].seq).toBe(seq2)
   expect(result.consensus).toBe('|'.repeat(seq1.length))

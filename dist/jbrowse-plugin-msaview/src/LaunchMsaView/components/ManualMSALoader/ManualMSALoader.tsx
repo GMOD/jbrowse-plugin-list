@@ -35,6 +35,21 @@ const useStyles = makeStyles()({
   textAreaFont: {
     fontFamily: 'Courier New',
   },
+  inputContainer: {
+    marginBottom: 30,
+  },
+  fileContainer: {
+    maxWidth: 500,
+  },
+  msaInput: {
+    marginBottom: 20,
+  },
+  queryNameInput: {
+    marginTop: 20,
+  },
+  warningAlert: {
+    marginTop: 10,
+  },
 })
 
 const ManualMSALoader = observer(function PreLoadedMSA2({
@@ -62,10 +77,10 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
     setSelectedId,
     selectedTranscript,
     proteinSequence,
-    error: error2,
+    error,
   } = useTranscriptSelection({ feature, view })
 
-  const e = launchViewError ?? error2
+  const e = launchViewError ?? error
   return (
     <>
       <DialogContent className={classes.dialogContent}>
@@ -91,9 +106,9 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
           </RadioGroup>
         </FormControl>
 
-        <div style={{ marginBottom: 30 }}>
+        <div className={classes.inputContainer}>
           {inputMethod === 'file' ? (
-            <div style={{ maxWidth: 500 }}>
+            <div className={classes.fileContainer}>
               <FileSelector
                 name="MSA File .aln (Clustal), .fa/.mfa (aligned FASTA), .stock (Stockholm), etc)"
                 inline
@@ -114,7 +129,7 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
                 name="MSA"
                 multiline
                 minRows={5}
-                style={{ marginBottom: '20px' }}
+                className={classes.msaInput}
                 maxRows={10}
                 fullWidth
                 placeholder="Paste MSA here"
@@ -154,7 +169,7 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
           name="MSA row name"
           fullWidth
           required
-          style={{ marginTop: 20 }}
+          className={classes.queryNameInput}
           placeholder="Row name in MSA that corresponds to the selected transcript"
           helperText="Required: Specify the name of the row in your MSA that should be aligned with the selected transcript"
           value={querySeqName}
@@ -163,13 +178,13 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
           }}
         />
 
-        {!querySeqName.trim() && (
-          <Alert severity="warning" style={{ marginTop: 10 }}>
+        {!querySeqName.trim() ? (
+          <Alert severity="warning" className={classes.warningAlert}>
             Without specifying the MSA row name, clicking on the MSA will not
             navigate to the corresponding genome position, and hovering
             highlights will not work.
           </Alert>
-        )}
+        ) : null}
       </DialogContent>
 
       <DialogActions>
@@ -183,17 +198,13 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
           }
           onClick={() => {
             try {
-              if (!selectedTranscript) {
-                return
-              }
-
               setLaunchViewError(undefined)
               launchView({
                 session,
                 newViewTitle: getGeneDisplayName(selectedTranscript),
                 view,
-                feature: selectedTranscript,
-                querySeqName: querySeqName.trim() || undefined,
+                feature: selectedTranscript!,
+                querySeqName: querySeqName.trim(),
                 ...(inputMethod === 'file'
                   ? {
                       msaFilehandle: msaFileLocation,
@@ -202,15 +213,15 @@ const ManualMSALoader = observer(function PreLoadedMSA2({
                   : {
                       data: {
                         msa: msaText,
-                        tree: treeText || undefined,
+                        tree: treeText,
                       },
                     }),
               })
 
               handleClose()
-            } catch (e) {
-              console.error(e)
-              setLaunchViewError(e)
+            } catch (err) {
+              console.error(err)
+              setLaunchViewError(err)
             }
           }}
         >

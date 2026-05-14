@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 
 import { Tooltip, Typography } from '@mui/material'
-import { reaction } from 'mobx'
+import { autorun } from 'mobx'
 import { observer } from 'mobx-react'
 
 import { CHAR_WIDTH, LABEL_WIDTH, ROW_HEIGHT } from '../constants'
@@ -20,13 +20,8 @@ const ProteinAlignment = observer(function ProteinAlignment({
 }: {
   model: JBrowsePluginProteinStructureModel
 }) {
-  const {
-    pairwiseAlignment,
-    showHighlight,
-    showProteinTracks,
-    autoScrollAlignment,
-    uniprotId,
-  } = model
+  const { pairwiseAlignment, showHighlight, showProteinTracks, uniprotId } =
+    model
   const containerRef = useRef<HTMLDivElement>(null)
   const {
     data: featureData,
@@ -36,28 +31,22 @@ const ProteinAlignment = observer(function ProteinAlignment({
 
   useEffect(
     () =>
-      reaction(
-        () => model.alignmentHoverPos,
-        alignmentHoverPos => {
-          const container = containerRef.current
-          if (
-            !autoScrollAlignment ||
-            model.isMouseInAlignment ||
-            alignmentHoverPos === undefined ||
-            !container
-          ) {
-            return
-          }
-          const scrollPosition = alignmentHoverPos * CHAR_WIDTH
+      autorun(() => {
+        const container = containerRef.current
+        if (
+          model.autoScrollAlignment &&
+          !model.isMouseInAlignment &&
+          model.alignmentHoverPos !== undefined &&
+          container
+        ) {
           container.scrollTo({
-            left: scrollPosition - container.clientWidth / 2,
+            left:
+              model.alignmentHoverPos * CHAR_WIDTH - container.clientWidth / 2,
             behavior: 'smooth',
           })
-        },
-      ),
-    // reaction and model property access are handled by MobX
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [autoScrollAlignment],
+        }
+      }),
+    [model],
   )
 
   if (!pairwiseAlignment) {
@@ -92,8 +81,6 @@ const ProteinAlignment = observer(function ProteinAlignment({
         onMouseLeave={() => {
           model.setIsMouseInAlignment(false)
           model.setHoveredPosition(undefined)
-          model.clearHoverGenomeHighlights()
-          model.clearHighlightFromExternal()
         }}
       >
         <div

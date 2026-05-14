@@ -8,10 +8,13 @@ import { autorun } from 'mobx'
 import { addStructureFromData } from './addStructureFromData'
 import { addStructureFromURL } from './addStructureFromURL'
 import { extractStructureSequences } from './extractStructureSequences'
-import highlightResidue from './highlightResidue'
 import Structure from './structureModel'
 import { superposeStructures } from './superposeStructures'
-import { type AlignmentAlgorithm, DEFAULT_ALIGNMENT_ALGORITHM } from './types'
+import {
+  ALIGNMENT_ALGORITHMS,
+  type AlignmentAlgorithm,
+  DEFAULT_ALIGNMENT_ALGORITHM,
+} from './types'
 
 const SETTINGS_KEY = 'proteinView-settings'
 const PERSISTED_SETTINGS = [
@@ -24,6 +27,21 @@ const PERSISTED_SETTINGS = [
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
+
+async function loadStructureSequences({
+  structure,
+  plugin,
+}: {
+  structure: { data?: string; url?: string }
+  plugin: PluginContext
+}) {
+  const { model } = structure.data
+    ? await addStructureFromData({ data: structure.data, plugin })
+    : structure.url
+      ? await addStructureFromURL({ url: structure.url, plugin })
+      : { model: undefined }
+  return model ? extractStructureSequences(model) : undefined
+}
 
 export interface ProteinViewInitState {
   structures?: {
@@ -78,7 +96,7 @@ function stateModelFactory() {
         /**
          * #property
          */
-        autoScrollAlignment: true,
+        autoScrollAlignment: false,
         /**
          * #property
          */
@@ -91,7 +109,10 @@ function stateModelFactory() {
          * #property
          */
         alignmentAlgorithm: types.optional(
-          types.string,
+          types.enumeration<AlignmentAlgorithm>('AlignmentAlgorithm', [
+            ALIGNMENT_ALGORITHMS.NEEDLEMAN_WUNSCH,
+            ALIGNMENT_ALGORITHMS.SMITH_WATERMAN,
+          ]),
           DEFAULT_ALIGNMENT_ALGORITHM,
         ),
 
@@ -121,6 +142,7 @@ function stateModelFactory() {
       /**
        * #volatile
        */
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       error: undefined as unknown,
       /**
        * #volatile
@@ -268,21 +290,12 @@ function stateModelFactory() {
         self.structures.push(newStructure)
 
         try {
-          const { model } = structure.data
-            ? await addStructureFromData({
-                data: structure.data,
-                plugin: molstarPluginContext,
-              })
-            : structure.url
-              ? await addStructureFromURL({
-                  url: structure.url,
-                  plugin: molstarPluginContext,
-                })
-              : { model: undefined }
-
-          const sequences = model ? extractStructureSequences(model) : undefined
-          newStructure.setSequences(sequences)
-
+          newStructure.setSequences(
+            await loadStructureSequences({
+              structure,
+              plugin: molstarPluginContext,
+            }),
+          )
           if (self.structures.length > 1) {
             await superposeStructures(molstarPluginContext)
           }
@@ -358,52 +371,19 @@ function stateModelFactory() {
             const { structures, molstarPluginContext } = self
             if (molstarPluginContext) {
               for (const structure of structures) {
-                if (structure.loadedToMolstar) {
-                  continue
-                }
-                try {
-                  const { model } = structure.data
-                    ? await addStructureFromData({
-                        data: structure.data,
+                if (!structure.loadedToMolstar) {
+                  try {
+                    structure.setSequences(
+                      await loadStructureSequences({
+                        structure,
                         plugin: molstarPluginContext,
-                      })
-                    : structure.url
-                      ? await addStructureFromURL({
-                          url: structure.url,
-                          plugin: molstarPluginContext,
-                        })
-                      : { model: undefined }
-
-                  const sequences = model
-                    ? extractStructureSequences(model)
-                    : undefined
-                  structure.setSequences(sequences)
-                  structure.setLoadedToMolstar(true)
-                } catch (e) {
-                  self.setError(e)
-                  console.error(e)
-                }
-              }
-            }
-          }),
-        )
-
-        addDisposer(
-          self,
-          autorun(async () => {
-            const { structures, molstarPluginContext } = self
-            if (molstarPluginContext) {
-              for (const [i, s0] of structures.entries()) {
-                const structure =
-                  molstarPluginContext.managers.structure.hierarchy.current
-                    .structures[i]?.cell.obj?.data
-                const pos = s0.structureSeqHoverPos
-                if (structure && pos !== undefined) {
-                  await highlightResidue({
-                    structure,
-                    plugin: molstarPluginContext,
-                    selectedResidue: pos,
-                  })
+                      }),
+                    )
+                    structure.setLoadedToMolstar(true)
+                  } catch (e) {
+                    self.setError(e)
+                    console.error(e)
+                  }
                 }
               }
             }
@@ -465,7 +445,7 @@ function stateModelFactory() {
                 },
               },
               {
-                label: 'Auto-scroll alignment on hover',
+                label: 'Auto-scroll protein feature view on hover',
                 type: 'checkbox',
                 checked: self.autoScrollAlignment,
                 onClick: () => {
@@ -511,6 +491,7 @@ export type JBrowsePluginProteinViewStateModel = ReturnType<
 export type JBrowsePluginProteinViewModel =
   Instance<JBrowsePluginProteinViewStateModel>
 
-export type JBrowsePluginProteinStructureStateModel = typeof Structure
-export type JBrowsePluginProteinStructureModel =
-  Instance<JBrowsePluginProteinStructureStateModel>
+export type {
+  JBrowsePluginProteinStructureModel,
+  JBrowsePluginProteinStructureStateModel,
+} from './structureModel'

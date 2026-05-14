@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import {
   DEFAULT_DATABASES,
@@ -14,104 +14,65 @@ import type {
 
 export default function useFoldseekSearch() {
   const [results, setResults] = useState<FoldseekResult>()
-  const [cleanedAaSequence, setCleanedAaSequence] = useState<string>()
-  const [di3Sequence, setDi3Sequence] = useState<string>()
+  const [predictData, setPredictData] = useState<{
+    aaSequence: string
+    di3Sequence: string
+  }>()
   const [isLoading, setIsLoading] = useState(false)
   const [isPredicting, setIsPredicting] = useState(false)
   const [error, setError] = useState<unknown>()
   const [statusMessage, setStatusMessage] = useState('')
-  const abortRef = useRef(false)
 
-  useEffect(() => {
-    return () => {
-      abortRef.current = true
-    }
-  }, [])
-
-  const predictStructure = useCallback(async (aaSequence: string) => {
+  const predictStructure = async (aaSequence: string) => {
     setIsPredicting(true)
     setError(undefined)
-    setCleanedAaSequence(undefined)
-    setDi3Sequence(undefined)
     setStatusMessage('Predicting 3Di structure...')
-
     try {
       const result = await predict3Di(aaSequence)
-      setCleanedAaSequence(result.aaSequence)
-      setDi3Sequence(result.di3Sequence)
-      setStatusMessage('')
+      setPredictData(result)
       return result
     } catch (e) {
       setError(e)
-      setStatusMessage('')
       return undefined
     } finally {
       setIsPredicting(false)
+      setStatusMessage('')
     }
-  }, [])
+  }
 
-  const search = useCallback(
-    async (
-      aaSeq: string,
-      di3Seq: string,
-      databases: FoldseekDatabaseId[] = DEFAULT_DATABASES,
-    ) => {
-      const isAborted = () => abortRef.current
-      setIsLoading(true)
-      setError(undefined)
-      setResults(undefined)
-      setStatusMessage('Submitting search...')
-      abortRef.current = false
-
-      try {
-        const ticket = await submitFoldseekSearch(aaSeq, di3Seq, databases)
-
-        if (isAborted()) {
-          return
-        }
-
-        const results = await waitForFoldseekResults(
-          ticket.id,
-          databases,
-          status => {
-            if (!isAborted()) {
-              setStatusMessage(status)
-            }
-          },
-        )
-
-        if (!isAborted()) {
-          setResults(results)
-          setStatusMessage('')
-        }
-      } catch (e) {
-        if (!isAborted()) {
-          setError(e)
-          setStatusMessage('')
-        }
-      } finally {
-        if (!isAborted()) {
-          setIsLoading(false)
-        }
-      }
-    },
-    [],
-  )
-
-  const reset = useCallback(() => {
-    setResults(undefined)
-    setCleanedAaSequence(undefined)
-    setDi3Sequence(undefined)
+  const search = async (
+    aaSeq: string,
+    di3Seq: string,
+    databases: FoldseekDatabaseId[] = DEFAULT_DATABASES,
+  ) => {
+    setIsLoading(true)
     setError(undefined)
-    setIsLoading(false)
-    setIsPredicting(false)
+    setStatusMessage('Submitting search...')
+    try {
+      const ticket = await submitFoldseekSearch(aaSeq, di3Seq, databases)
+      const result = await waitForFoldseekResults(ticket.id, setStatusMessage)
+      setResults(result)
+      return result
+    } catch (e) {
+      setError(e)
+      return undefined
+    } finally {
+      setIsLoading(false)
+      setStatusMessage('')
+    }
+  }
+
+  const reset = () => {
+    setResults(undefined)
+    setPredictData(undefined)
+    setError(undefined)
     setStatusMessage('')
-  }, [])
+  }
 
   return {
     results,
-    cleanedAaSequence,
-    di3Sequence,
+    cleanedAaSequence: predictData?.aaSequence,
+    di3Sequence: predictData?.di3Sequence,
     isLoading,
     isPredicting,
     error,

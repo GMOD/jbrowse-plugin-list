@@ -1,5 +1,11 @@
 import { openDB } from 'idb'
 
+import type {
+  BlastDatabase,
+  BlastProgram,
+  MsaAlgorithm,
+} from '../LaunchMsaView/components/NCBIBlastQuery/consts'
+
 const DB_NAME = 'jbrowse-msaview-blast-cache'
 const STORE_NAME = 'blast-results'
 const DB_VERSION = 2
@@ -7,9 +13,9 @@ const DB_VERSION = 2
 export interface CachedBlastResult {
   id: string
   proteinSequence: string
-  blastDatabase: string
-  blastProgram: string
-  msaAlgorithm: string
+  blastDatabase: BlastDatabase
+  blastProgram: BlastProgram
+  msaAlgorithm: MsaAlgorithm
   msa: string
   tree: string
   treeMetadata: string
@@ -36,35 +42,14 @@ async function getDB() {
 
 function createCacheKey(
   proteinSequence: string,
-  blastDatabase: string,
-  blastProgram: string,
+  blastDatabase: BlastDatabase,
+  blastProgram: BlastProgram,
   transcriptId?: string,
 ) {
   if (transcriptId) {
     return `${blastDatabase}:${blastProgram}:${transcriptId}:${proteinSequence}`
   }
   return `${blastDatabase}:${blastProgram}:${proteinSequence}`
-}
-
-export async function getCachedBlastResult({
-  proteinSequence,
-  blastDatabase,
-  blastProgram,
-  transcriptId,
-}: {
-  proteinSequence: string
-  blastDatabase: string
-  blastProgram: string
-  transcriptId?: string
-}) {
-  const db = await getDB()
-  const id = createCacheKey(
-    proteinSequence,
-    blastDatabase,
-    blastProgram,
-    transcriptId,
-  )
-  return db.get(STORE_NAME, id)
 }
 
 export async function saveBlastResult({
@@ -82,9 +67,9 @@ export async function saveBlastResult({
   geneName,
 }: {
   proteinSequence: string
-  blastDatabase: string
-  blastProgram: string
-  msaAlgorithm: string
+  blastDatabase: BlastDatabase
+  blastProgram: BlastProgram
+  msaAlgorithm: MsaAlgorithm
   msa: string
   tree: string
   treeMetadata: string
@@ -125,14 +110,6 @@ export async function getAllCachedResults() {
   const db = await getDB()
   const results = await db.getAll(STORE_NAME)
   return results.toSorted((a, b) => b.timestamp - a.timestamp)
-}
-
-export async function getCachedResultsByGeneId(geneId: string) {
-  const db = await getDB()
-  const results = await db.getAll(STORE_NAME)
-  return results
-    .filter(r => r.geneId === geneId)
-    .toSorted((a, b) => b.timestamp - a.timestamp)
 }
 
 export async function deleteCachedResult(id: string) {

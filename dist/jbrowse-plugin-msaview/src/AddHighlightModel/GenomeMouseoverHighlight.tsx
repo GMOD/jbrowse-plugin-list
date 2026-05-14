@@ -3,7 +3,7 @@ import React from 'react'
 import { getSession } from '@jbrowse/core/util'
 import { observer } from 'mobx-react'
 
-import { useStyles } from './util'
+import { hasHoverPosition, useStyles } from './util'
 
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
@@ -12,25 +12,11 @@ const GenomeMouseoverHighlight = observer(function ({
 }: {
   model: LinearGenomeViewModel
 }) {
-  const session = getSession(model)
-  const { hovered, views } = session
-
-  // Early return if no MSA view exists
+  const { hovered, views } = getSession(model)
   const hasMsaView = views.some(s => s.type === 'MsaView')
-  if (!hasMsaView) {
-    return null
-  }
-
-  // Early return if no hover position
-  if (
-    !hovered ||
-    typeof hovered !== 'object' ||
-    !('hoverPosition' in hovered)
-  ) {
-    return null
-  }
-
-  return <GenomeMouseoverHighlightRenderer model={model} hovered={hovered} />
+  return hasMsaView && hasHoverPosition(hovered) ? (
+    <GenomeMouseoverHighlightRenderer model={model} hovered={hovered} />
+  ) : null
 })
 
 const GenomeMouseoverHighlightRenderer = observer(function ({
@@ -38,8 +24,7 @@ const GenomeMouseoverHighlightRenderer = observer(function ({
   hovered,
 }: {
   model: LinearGenomeViewModel
-
-  hovered: any
+  hovered: { hoverPosition: unknown }
 }) {
   const { classes } = useStyles()
   const { offsetPx } = model
@@ -49,7 +34,7 @@ const GenomeMouseoverHighlightRenderer = observer(function ({
   }
 
   const s = model.bpToPx({ refName, coord: coord - 1 })
-  const e = model.bpToPx({ refName, coord: coord })
+  const e = model.bpToPx({ refName, coord })
 
   if (s && e) {
     const width = Math.max(Math.abs(e.offsetPx - s.offsetPx), 4)

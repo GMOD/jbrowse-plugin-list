@@ -1,9 +1,8 @@
-import React, { useMemo, useRef } from 'react'
+import React from 'react'
 
 import { observer } from 'mobx-react'
 
 import { CHAR_WIDTH } from '../constants'
-import { throttle } from './throttle'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
 
@@ -123,7 +122,6 @@ const RangeHighlight = observer(function RangeHighlight({
   )
 })
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const AlignmentHighlights = observer(function AlignmentHighlights({
   model,
   strLength,
@@ -170,52 +168,30 @@ const SplitString = observer(function SplitString({
   model: JBrowsePluginProteinStructureModel
   str: string
 }) {
-  const containerRef = useRef<HTMLSpanElement>(null)
-
-  const handleMouseMove = useMemo(
-    () =>
-      throttle((e: React.MouseEvent) => {
-        const container = containerRef.current
-        if (!container) {
-          return
-        }
-        const rect = container.getBoundingClientRect()
-        const x = e.clientX - rect.left
-        const index = Math.floor(x / CHAR_WIDTH)
-        if (index >= 0 && index < str.length) {
-          model.hoverAlignmentPosition(index)
-        }
-      }, 16),
-    [str.length, model],
-  )
-
-  const handleClick = useMemo(
-    () => (e: React.MouseEvent) => {
-      const container = containerRef.current
-      if (!container) {
-        return
-      }
-      const rect = container.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const index = Math.floor(x / CHAR_WIDTH)
-      if (index >= 0 && index < str.length) {
-        model.clickAlignmentPosition(index)
-      }
-    },
-    [str.length, model],
-  )
-
   return (
     <span
-      ref={containerRef}
       style={{
         position: 'relative',
         display: 'inline-block',
         width: str.length * CHAR_WIDTH,
         height: '1em',
       }}
-      onMouseMove={handleMouseMove}
-      onClick={handleClick}
+      onMouseMove={(e: React.MouseEvent<HTMLSpanElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const index = Math.floor(x / CHAR_WIDTH)
+        if (index >= 0 && index < str.length) {
+          model.hoverAlignmentPosition(index)
+        }
+      }}
+      onClick={(e: React.MouseEvent<HTMLSpanElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const index = Math.floor(x / CHAR_WIDTH)
+        if (index >= 0 && index < str.length) {
+          model.clickAlignmentPosition(index)
+        }
+      }}
     >
       <CharacterSpans str={str} />
     </span>

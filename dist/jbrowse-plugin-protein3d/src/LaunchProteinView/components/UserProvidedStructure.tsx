@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui'
 import { getContainingView, getSession } from '@jbrowse/core/util'
@@ -88,9 +88,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
   const [structureURL, setStructureURL] = useState('')
   const [showAllProteinSequences, setShowAllProteinSequences] = useState(false)
 
-  // check if we are looking at a 'two-level' or 'three-level' feature by
-  // finding exon/CDS subfeatures. we want to select from transcript names
-  const options = useMemo(() => getTranscriptFeatures(feature), [feature])
+  const options = getTranscriptFeatures(feature)
   const view = getContainingView(model) as LGV
   const { isoformSequences, error: isoformError } = useIsoformProteinSequences({
     feature,
@@ -112,7 +110,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
     structureSequence,
   })
   const selectedTranscript = options.find(val => getId(val) === userSelection)
-  const protein = isoformSequences?.[userSelection ?? '']
+  const protein = userSelection ? isoformSequences?.[userSelection] : undefined
 
   const error = isoformError ?? submitError ?? localFileError ?? remoteFileError
   return (
@@ -193,7 +191,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
             structureSequence ? (
               <>
                 <TranscriptSelector
-                  val={userSelection ?? ''}
+                  val={userSelection}
                   setVal={setUserSelection}
                   structureSequence={structureSequence}
                   isoforms={options}

@@ -1,17 +1,14 @@
 import React from 'react';
 import { getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
-import { useStyles } from './util';
-// Outer component: only re-renders when MSA view or highlights change
+import { hasHoverPosition, useStyles } from './util';
 const MsaToGenomeHighlight = observer(function MsaToGenomeHighlight2({ model, }) {
-    const { views } = getSession(model);
+    const { views, hovered } = getSession(model);
     const msaView = views.find(f => f.type === 'MsaView');
     const highlights = msaView?.connectedHighlights;
-    // Early return if no highlights - avoid all other work
-    if (!highlights || highlights.length === 0) {
-        return null;
-    }
-    return React.createElement(MsaToGenomeHighlightRenderer, { model: model, highlights: highlights });
+    // Suppress codon highlight while hovering the LGV — GenomeMouseoverHighlight
+    // handles the single-bp display in that case
+    return !hasHoverPosition(hovered) && highlights?.length ? (React.createElement(MsaToGenomeHighlightRenderer, { model: model, highlights: Array.from(highlights) })) : null;
 });
 // Inner component: handles the scroll-dependent rendering
 const MsaToGenomeHighlightRenderer = observer(function ({ model, highlights, }) {

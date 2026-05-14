@@ -1,5 +1,4 @@
 import loadMolstar from './loadMolstar';
-import { proteinAbbreviationMapping } from './proteinAbbreviationMapping';
 export function checkHovered(hovered) {
     return (!!hovered &&
         typeof hovered === 'object' &&
@@ -18,17 +17,6 @@ export async function getMolstarStructureSelection({ structure, selectedResidue,
         ]),
         'group-by': Q.struct.atomProperty.macromolecular.residueKey(),
     }), structure);
-}
-export function toStr({ chain, code, structureSeqPos, }) {
-    return [
-        structureSeqPos === undefined ? '' : `Position: ${structureSeqPos + 1}`,
-        code
-            ? `Letter: ${code} (${proteinAbbreviationMapping[code]?.singleLetterCode})`
-            : '',
-        chain ? `Chain: ${chain}` : '',
-    ]
-        .filter(f => !!f)
-        .join(', ');
 }
 export function invertMap(arg) {
     return Object.fromEntries(Object.entries(arg).map(([a, b]) => [b, +a]));

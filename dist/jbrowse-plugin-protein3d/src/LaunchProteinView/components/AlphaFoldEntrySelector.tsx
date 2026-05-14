@@ -34,8 +34,8 @@ export default function AlphaFoldEntrySelector({
           onSelectionChange(Number(e.target.value))
         }}
       >
-        {[...predictions]
-          .sort((a, b) => a.modelEntityId.length - b.modelEntityId.length)
+        {predictions
+          .toSorted((a, b) => a.modelEntityId.length - b.modelEntityId.length)
           .map((prediction, index) => (
             <option key={index} value={index}>
               {prediction.modelEntityId}

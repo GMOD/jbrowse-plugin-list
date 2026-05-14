@@ -1,13 +1,13 @@
 import type { Feature } from '@jbrowse/core/util';
-export declare function useFeatureSequence({ view, feature, upDownBp, forceLoad, }: {
+export declare function useFeatureSequence({ view, feature, }: {
     view: {
         assemblyNames?: string[];
     } | undefined;
     feature?: Feature;
-    upDownBp?: number;
-    forceLoad?: boolean;
 }): {
     proteinSequence: string;
-    sequence: import("./types").SeqState | undefined;
+    sequence: {
+        seq: string;
+    } | undefined;
     error: any;
 };

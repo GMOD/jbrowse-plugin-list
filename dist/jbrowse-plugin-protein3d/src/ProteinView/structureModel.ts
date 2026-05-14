@@ -7,17 +7,20 @@ import {
 } from '@jbrowse/mobx-state-tree'
 import { autorun } from 'mobx'
 
-import clearSelection from './clearSelection'
-import highlightResidue from './highlightResidue'
+import {
+  applyLociInteractivityMultiple,
+  applyLociInteractivitySingle,
+} from './applyLociInteractivity'
+import highlightResidueRange from './highlightResidueRange'
 import loadMolstar from './loadMolstar'
 import { runLocalAlignment } from './pairwiseAlignment'
 import { proteinAbbreviationMapping } from './proteinAbbreviationMapping'
 import {
   clickProteinToGenome,
-  hoverProteinToGenome,
+  proteinRangeToGenomeMapping,
+  proteinToGenomeMapping,
 } from './proteinToGenomeMapping'
-import selectResidue from './selectResidue'
-import { checkHovered, invertMap, toStr } from './util'
+import { checkHovered, invertMap } from './util'
 import { getUniprotIdFromAlphaFoldTarget } from '../LaunchProteinView/utils/launchViewUtils'
 import { stripStopCodon } from '../LaunchProteinView/utils/util'
 import {
@@ -95,23 +98,13 @@ const Structure = types
   .volatile(() => ({
     /**
      * #volatile
+     * Inclusive-exclusive structure-residue range from a click; drives the
+     * derived clickGenomeHighlights getter.
      */
-    clickGenomeHighlights: [] as IRegion[],
-    /**
-     * #volatile
-     */
-    hoverGenomeHighlights: [] as IRegion[],
-
-    /**
-     * #volatile
-     */
-    clickPosition: undefined as
-      | {
-          structureSeqPos: number
-          code: string
-          chain: string
-        }
+    clickedStructureRange: undefined as
+      | { start: number; end: number }
       | undefined,
+
     /**
      * #volatile
      */
@@ -122,10 +115,6 @@ const Structure = types
           chain?: string
         }
       | undefined,
-    /**
-     * #volatile
-     */
-    pairwiseAlignmentStatus: '',
     /**
      * #volatile
      */
@@ -144,13 +133,6 @@ const Structure = types
      * Range of alignment positions to highlight (e.g., when hovering a protein feature)
      */
     alignmentHoverRange: undefined as
-      | { start: number; end: number }
-      | undefined,
-    /**
-     * #volatile
-     * Persistent range of alignment positions from click (e.g., when clicking a protein feature)
-     */
-    clickAlignmentRange: undefined as
       | { start: number; end: number }
       | undefined,
     /**
@@ -208,36 +190,8 @@ const Structure = types
     /**
      * #action
      */
-    setClickedPosition(arg?: {
-      structureSeqPos: number
-      code: string
-      chain: string
-    }) {
-      self.clickPosition = arg
-    },
-    /**
-     * #action
-     */
-    setClickGenomeHighlights(r: IRegion[]) {
-      self.clickGenomeHighlights = r
-    },
-    /**
-     * #action
-     */
-    clearClickGenomeHighlights() {
-      self.clickGenomeHighlights = []
-    },
-    /**
-     * #action
-     */
-    setHoverGenomeHighlights(r: IRegion[]) {
-      self.hoverGenomeHighlights = r
-    },
-    /**
-     * #action
-     */
-    clearHoverGenomeHighlights() {
-      self.hoverGenomeHighlights = []
+    setClickedStructureRange(range?: { start: number; end: number }) {
+      self.clickedStructureRange = range
     },
     /**
      * #action
@@ -248,32 +202,8 @@ const Structure = types
     /**
      * #action
      */
-    clearAlignmentHoverRange() {
-      self.alignmentHoverRange = undefined
-    },
-    /**
-     * #action
-     */
-    setClickAlignmentRange(range?: { start: number; end: number }) {
-      self.clickAlignmentRange = range
-    },
-    /**
-     * #action
-     */
-    clearClickAlignmentRange() {
-      self.clickAlignmentRange = undefined
-    },
-    /**
-     * #action
-     */
     setSelectedFeatureId(uniqueId?: string) {
       self.selectedFeatureId = uniqueId
-    },
-    /**
-     * #action
-     */
-    clearSelectedFeatureId() {
-      self.selectedFeatureId = undefined
     },
     /**
      * #action
@@ -290,12 +220,6 @@ const Structure = types
      */
     setAlignment(r?: PairwiseAlignment) {
       self.pairwiseAlignment = r
-    },
-    /**
-     * #action
-     */
-    setAlignmentStatus(str: string) {
-      self.pairwiseAlignmentStatus = str
     },
     /**
      * #action
@@ -371,13 +295,6 @@ const Structure = types
     /**
      * #getter
      */
-    get clickString() {
-      const r = self.clickPosition
-      return r === undefined ? '' : toStr(r)
-    },
-    /**
-     * #getter
-     */
     get hoverString() {
       const r = self.hoverPosition
       if (r === undefined) {
@@ -388,7 +305,7 @@ const Structure = types
       const parts = []
 
       if (r.structureSeqPos !== undefined) {
-        parts.push(`Position: ${r.structureSeqPos + 1}`)
+        parts.push(`${r.structureSeqPos + 1}`)
       }
 
       if (structureLetter) {
@@ -428,6 +345,106 @@ const Structure = types
       return pos === undefined
         ? undefined
         : this.structurePositionToAlignmentMap?.[pos]
+    },
+
+    /**
+     * #getter
+     * Structure-residue range from a feature-bar hover, derived by mapping
+     * alignmentHoverRange through pairwiseAlignmentToStructurePosition.
+     * End is exclusive, matching clickedStructureRange.
+     */
+    get hoverStructureRange() {
+      const { alignmentHoverRange } = self
+      const a2s = this.pairwiseAlignmentToStructurePosition
+      if (!alignmentHoverRange || !a2s) {
+        return undefined
+      }
+      const start = a2s[alignmentHoverRange.start]
+      const end = a2s[alignmentHoverRange.end]
+      return start === undefined || end === undefined
+        ? undefined
+        : { start, end: end + 1 }
+    },
+
+    /**
+     * #getter
+     * Persistent click selection in alignment coordinates, derived from
+     * clickedStructureRange via structurePositionToAlignmentMap.
+     */
+    get clickAlignmentRange() {
+      const range = self.clickedStructureRange
+      const s2a = this.structurePositionToAlignmentMap
+      if (!range || !s2a) {
+        return undefined
+      }
+      const start = s2a[range.start]
+      const end = s2a[range.end - 1]
+      return start === undefined || end === undefined
+        ? undefined
+        : { start, end }
+    },
+
+    /**
+     * #getter
+     * Maps a structure-residue range to genome coordinates as a single
+     * IRegion. Handles single-residue and multi-residue ranges.
+     */
+    structureRangeToGenomeHighlight(
+      range: { start: number; end: number } | undefined,
+    ): IRegion[] {
+      const assemblyName = self.connectedView?.assemblyNames[0]
+      const mapping = this.genomeToTranscriptSeqMapping
+      if (!range || !assemblyName || !mapping) {
+        return []
+      }
+      const model = {
+        genomeToTranscriptSeqMapping: mapping,
+        pairwiseAlignment: self.pairwiseAlignment,
+        structureSeqToTranscriptSeqPosition:
+          this.structureSeqToTranscriptSeqPosition,
+      }
+      const mapped =
+        range.end > range.start + 1
+          ? proteinRangeToGenomeMapping({
+              model,
+              structureSeqPos: range.start,
+              structureSeqEndPos: range.end,
+            })
+          : proteinToGenomeMapping({ model, structureSeqPos: range.start })
+      if (!mapped) {
+        return []
+      }
+      const [start, end] = mapped
+      return [{ assemblyName, refName: mapping.refName, start, end }]
+    },
+
+    /**
+     * #getter
+     * Genome regions to highlight in the LGV based on the current hover.
+     * A feature-range hover (hoverStructureRange) takes priority over a
+     * single-residue hover (structureSeqHoverPos).
+     */
+    get hoverGenomeHighlights(): IRegion[] {
+      const range = this.hoverStructureRange
+      if (range) {
+        return this.structureRangeToGenomeHighlight(range)
+      }
+      const structureSeqPos = this.structureSeqHoverPos
+      return structureSeqPos === undefined
+        ? []
+        : this.structureRangeToGenomeHighlight({
+            start: structureSeqPos,
+            end: structureSeqPos + 1,
+          })
+    },
+
+    /**
+     * #getter
+     * Genome regions to highlight in the LGV from the persistent click
+     * selection. Derived from clickedStructureRange.
+     */
+    get clickGenomeHighlights(): IRegion[] {
+      return this.structureRangeToGenomeHighlight(self.clickedStructureRange)
     },
 
     /**
@@ -534,45 +551,19 @@ const Structure = types
     },
   }))
   .actions(self => ({
-    /**
-     * #action
-     * Highlight a residue from an external source (e.g., MSA view)
-     */
-    highlightFromExternal(structureSeqPos: number) {
-      const structure = self.molstarStructure
-      const plugin = self.molstarPluginContext
-      if (structure && plugin) {
-        highlightResidue({
-          structure,
-          selectedResidue: structureSeqPos,
-          plugin,
-        }).catch((e: unknown) => {
-          console.error(e)
-        })
-      }
+    setError(e: unknown) {
+      self.parentView.setError(e)
     },
-
-    /**
-     * #action
-     * Clear highlight from an external source
-     */
-    clearHighlightFromExternal() {
-      const plugin = self.molstarPluginContext
-      plugin?.managers.interactivity.lociHighlights.clearHighlights()
-    },
-
     /**
      * #action
      */
     hoverAlignmentPosition(alignmentPos: number) {
-      const structureSeqPos =
-        self.pairwiseAlignmentToStructurePosition?.[alignmentPos]
-      self.setHoveredPosition({ structureSeqPos })
-      if (structureSeqPos !== undefined) {
-        hoverProteinToGenome({
-          model: self as JBrowsePluginProteinStructureModel,
-          structureSeqPos,
-        })
+      if (!self.alignmentHoverRange) {
+        const structureSeqPos =
+          self.pairwiseAlignmentToStructurePosition?.[alignmentPos]
+        self.setHoveredPosition(
+          structureSeqPos !== undefined ? { structureSeqPos } : undefined,
+        )
       }
     },
     /**
@@ -581,15 +572,17 @@ const Structure = types
     clickAlignmentPosition(alignmentPos: number) {
       const structureSeqPos =
         self.pairwiseAlignmentToStructurePosition?.[alignmentPos]
-      self.clearSelectedFeatureId()
-      self.setClickAlignmentRange({ start: alignmentPos, end: alignmentPos })
+      self.setSelectedFeatureId(undefined)
       if (structureSeqPos !== undefined) {
         clickProteinToGenome({
-          model: self as JBrowsePluginProteinStructureModel,
+          model: self,
           structureSeqPos,
         }).catch((e: unknown) => {
           console.error(e)
+          self.parentView.setError(e)
         })
+      } else {
+        self.setClickedStructureRange(undefined)
       }
     },
   }))
@@ -608,7 +601,7 @@ const Structure = types
             const seq1 = userProvidedTranscriptSequence
             const seq2 = structureSequences?.[0]
 
-            if (!!self.pairwiseAlignment || !seq1 || !seq2) {
+            if (self.pairwiseAlignment || !seq1 || !seq2) {
               return
             }
             const r1 = stripStopCodon(seq1)
@@ -622,15 +615,12 @@ const Structure = types
                 ],
               })
             } else {
-              self.setAlignmentStatus('Running alignment...')
               const pairwiseAlignment = runLocalAlignment(
                 r1,
                 r2,
                 alignmentAlgorithm,
               )
               self.setAlignment(pairwiseAlignment)
-              self.setAlignmentStatus('')
-
               self.parentView.setShowAlignment(true)
             }
           } catch (e) {
@@ -657,13 +647,11 @@ const Structure = types
             const { hoverPosition } = hovered
             const pos =
               genomeToTranscriptSeqMapping.g2p[hoverPosition.coord - 1]
-            const c0 =
-              pos === undefined
-                ? undefined
-                : transcriptSeqToStructureSeqPosition?.[pos]
-
-            if (c0 !== undefined) {
-              self.setHoveredPosition({ structureSeqPos: c0 })
+            if (pos !== undefined) {
+              const c0 = transcriptSeqToStructureSeqPosition?.[pos]
+              if (c0 !== undefined) {
+                self.setHoveredPosition({ structureSeqPos: c0 })
+              }
             }
           }
         }),
@@ -684,11 +672,10 @@ const Structure = types
                   if (loc) {
                     const locationInfo = extractLocationInfo(molstar, loc)
                     self.setHoveredPosition(locationInfo)
-                    self.clearClickAlignmentRange()
-                    self.clearSelectedFeatureId()
+                    self.setSelectedFeatureId(undefined)
 
                     clickProteinToGenome({
-                      model: self as JBrowsePluginProteinStructureModel,
+                      model: self,
                       structureSeqPos: locationInfo.structureSeqPos,
                     }).catch((e: unknown) => {
                       console.error(e)
@@ -697,11 +684,10 @@ const Structure = types
                   }
                 }
               })
-            return () => {
+            addDisposer(self, () => {
               ret.unsubscribe()
-            }
+            })
           }
-          return () => {}
         }),
       )
 
@@ -720,18 +706,15 @@ const Structure = types
                   if (loc) {
                     const locationInfo = extractLocationInfo(molstar, loc)
                     self.setHoveredPosition(locationInfo)
-                    hoverProteinToGenome({
-                      model: self as JBrowsePluginProteinStructureModel,
-                      structureSeqPos: locationInfo.structureSeqPos,
-                    })
                   }
+                } else {
+                  self.setHoveredPosition(undefined)
                 }
               })
-            return () => {
+            addDisposer(self, () => {
               ret.unsubscribe()
-            }
+            })
           }
-          return () => {}
         }),
       )
 
@@ -750,19 +733,51 @@ const Structure = types
             structureSeqToTranscriptSeqPosition
           ) {
             if (showHighlight) {
-              for (const coord of Object.keys(
+              const residues = Object.keys(
                 structureSeqToTranscriptSeqPosition,
-              )) {
-                await selectResidue({
-                  structure: molstarStructure,
-                  plugin: molstarPluginContext,
-                  selectedResidue: +coord + 1,
-                })
-              }
-            } else {
-              clearSelection({
+              ).map(coord => +coord + 1)
+              await applyLociInteractivityMultiple({
+                structure: molstarStructure,
+                residues,
                 plugin: molstarPluginContext,
+                mode: 'select',
               })
+            } else {
+              molstarPluginContext.managers.interactivity.lociSelects.deselectAll()
+            }
+          }
+        }),
+      )
+
+      // Drive molstar hover-highlight state from the model. A feature-range
+      // hover (hoverStructureRange) takes priority over a single-residue
+      // hover (structureSeqHoverPos); otherwise clear.
+      addDisposer(
+        self,
+        autorun(async () => {
+          const {
+            molstarStructure,
+            molstarPluginContext,
+            hoverStructureRange,
+            structureSeqHoverPos,
+          } = self
+          if (molstarStructure && molstarPluginContext) {
+            if (hoverStructureRange) {
+              await highlightResidueRange({
+                structure: molstarStructure,
+                plugin: molstarPluginContext,
+                startResidue: hoverStructureRange.start + 1,
+                endResidue: hoverStructureRange.end,
+              })
+            } else if (structureSeqHoverPos !== undefined) {
+              await applyLociInteractivitySingle({
+                structure: molstarStructure,
+                plugin: molstarPluginContext,
+                selectedResidue: structureSeqHoverPos,
+                mode: 'highlight',
+              })
+            } else {
+              molstarPluginContext.managers.interactivity.lociHighlights.clearHighlights()
             }
           }
         }),

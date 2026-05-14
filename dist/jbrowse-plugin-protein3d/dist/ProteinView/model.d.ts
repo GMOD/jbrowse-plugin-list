@@ -1,4 +1,3 @@
-import Structure from './structureModel';
 import { type AlignmentAlgorithm } from './types';
 import type { Instance } from '@jbrowse/mobx-state-tree';
 import type { PluginContext } from 'molstar/lib/mol-plugin/context';
@@ -30,27 +29,19 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         feature: import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/core/util").SimpleFeatureSerialized | undefined, import("@jbrowse/core/util").SimpleFeatureSerialized | undefined, import("@jbrowse/core/util").SimpleFeatureSerialized | undefined>;
         userProvidedTranscriptSequence: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
     }, {
-        clickGenomeHighlights: import("@jbrowse/core/util").Region[];
-        hoverGenomeHighlights: import("@jbrowse/core/util").Region[];
-        clickPosition: {
-            structureSeqPos: number;
-            code: string;
-            chain: string;
+        clickedStructureRange: {
+            start: number;
+            end: number;
         } | undefined;
         hoverPosition: {
             structureSeqPos?: number;
             code?: string;
             chain?: string;
         } | undefined;
-        pairwiseAlignmentStatus: string;
         structureSequences: string[] | undefined;
         isMouseInAlignment: boolean;
         loadedToMolstar: boolean;
         alignmentHoverRange: {
-            start: number;
-            end: number;
-        } | undefined;
-        clickAlignmentRange: {
             start: number;
             end: number;
         } | undefined;
@@ -549,34 +540,21 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
             init: import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined>;
         }>>>) | undefined;
     } & {
-        setClickedPosition(arg?: {
-            structureSeqPos: number;
-            code: string;
-            chain: string;
+        setClickedStructureRange(range?: {
+            start: number;
+            end: number;
         }): void;
-        setClickGenomeHighlights(r: import("@jbrowse/core/util").Region[]): void;
-        clearClickGenomeHighlights(): void;
-        setHoverGenomeHighlights(r: import("@jbrowse/core/util").Region[]): void;
-        clearHoverGenomeHighlights(): void;
         setAlignmentHoverRange(range?: {
             start: number;
             end: number;
         }): void;
-        clearAlignmentHoverRange(): void;
-        setClickAlignmentRange(range?: {
-            start: number;
-            end: number;
-        }): void;
-        clearClickAlignmentRange(): void;
         setSelectedFeatureId(uniqueId?: string): void;
-        clearSelectedFeatureId(): void;
         setHoveredPosition(arg?: {
             structureSeqPos?: number;
             chain?: string;
             code?: string;
         }): void;
         setAlignment(r?: import("../mappings").PairwiseAlignment): void;
-        setAlignmentStatus(str: string): void;
         setIsMouseInAlignment(val: boolean): void;
     } & {
         readonly uniprotId: string | undefined;
@@ -590,7 +568,6 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         readonly transcriptPositionToAlignmentMap: Record<number, number> | undefined;
         readonly pairwiseAlignmentToTranscriptPosition: Record<number, number> | undefined;
         readonly pairwiseAlignmentToStructurePosition: Record<number, number> | undefined;
-        readonly clickString: string;
         readonly hoverString: string;
         readonly genomeToTranscriptSeqMapping: {
             g2p: Record<number, number>;
@@ -600,6 +577,20 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         } | undefined;
         readonly structureSeqHoverPos: number | undefined;
         readonly alignmentHoverPos: number | undefined;
+        readonly hoverStructureRange: {
+            start: number;
+            end: number;
+        } | undefined;
+        readonly clickAlignmentRange: {
+            start: number;
+            end: number;
+        } | undefined;
+        structureRangeToGenomeHighlight(range: {
+            start: number;
+            end: number;
+        } | undefined): import("@jbrowse/core/util").Region[];
+        readonly hoverGenomeHighlights: import("@jbrowse/core/util").Region[];
+        readonly clickGenomeHighlights: import("@jbrowse/core/util").Region[];
         readonly hoverStructureLetter: string | undefined;
         readonly hoverGenomeLetter: string | undefined;
         readonly alignmentMatchSet: Set<number> | undefined;
@@ -614,8 +605,7 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         readonly structureIndex: number;
         readonly molstarStructure: import("molstar/lib/mol-model/structure").Structure | undefined;
     } & {
-        highlightFromExternal(structureSeqPos: number): void;
-        clearHighlightFromExternal(): void;
+        setError(e: unknown): void;
         hoverAlignmentPosition(alignmentPos: number): void;
         clickAlignmentPosition(alignmentPos: number): void;
     } & {
@@ -628,7 +618,7 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
     autoScrollAlignment: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     showAlignment: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     showProteinTracks: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-    alignmentAlgorithm: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
+    alignmentAlgorithm: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<AlignmentAlgorithm>, [undefined]>;
     connectedMsaViewId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     init: import("@jbrowse/mobx-state-tree").IType<ProteinViewInitState | undefined, ProteinViewInitState | undefined, ProteinViewInitState | undefined>;
 }, {
@@ -762,5 +752,4 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
 export default stateModelFactory;
 export type JBrowsePluginProteinViewStateModel = ReturnType<typeof stateModelFactory>;
 export type JBrowsePluginProteinViewModel = Instance<JBrowsePluginProteinViewStateModel>;
-export type JBrowsePluginProteinStructureStateModel = typeof Structure;
-export type JBrowsePluginProteinStructureModel = Instance<JBrowsePluginProteinStructureStateModel>;
+export type { JBrowsePluginProteinStructureModel, JBrowsePluginProteinStructureStateModel, } from './structureModel';

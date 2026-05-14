@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { gappedToUngappedPosition, mapToRecord, ungappedToGappedPosition, } from './structureConnection';
+import { gappedToUngappedPosition, ungappedToGappedPosition, } from './structureConnection';
 describe('gappedToUngappedPosition', () => {
     test('returns correct ungapped position for non-gap character', () => {
         const seq = 'M-KA-A';
@@ -99,24 +99,6 @@ describe('gappedToUngappedPosition and ungappedToGappedPosition are inverses', (
                 expect(backToGapped).toBe(i);
             }
         }
-    });
-});
-describe('mapToRecord', () => {
-    test('converts Map to Record', () => {
-        const map = new Map([
-            [0, 5],
-            [1, 10],
-            [2, 15],
-        ]);
-        const record = mapToRecord(map);
-        expect(record[0]).toBe(5);
-        expect(record[1]).toBe(10);
-        expect(record[2]).toBe(15);
-    });
-    test('handles empty Map', () => {
-        const map = new Map();
-        const record = mapToRecord(map);
-        expect(Object.keys(record)).toHaveLength(0);
     });
 });
 //# sourceMappingURL=structureConnection.test.js.map

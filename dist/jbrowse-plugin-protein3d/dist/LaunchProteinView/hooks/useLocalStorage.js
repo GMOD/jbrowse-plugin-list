@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 export function useLocalStorage(key, defaultValue) {
     const [value, setValue] = useState(() => {
         const stored = localStorage.getItem(key);
@@ -12,9 +12,10 @@ export function useLocalStorage(key, defaultValue) {
         }
         return defaultValue;
     });
-    useEffect(() => {
-        localStorage.setItem(key, JSON.stringify(value));
-    }, [key, value]);
-    return [value, setValue];
+    function setValueAndStore(newValue) {
+        setValue(newValue);
+        localStorage.setItem(key, JSON.stringify(newValue));
+    }
+    return [value, setValueAndStore];
 }
 //# sourceMappingURL=useLocalStorage.js.map

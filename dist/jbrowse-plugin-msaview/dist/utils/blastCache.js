@@ -20,11 +20,6 @@ function createCacheKey(proteinSequence, blastDatabase, blastProgram, transcript
     }
     return `${blastDatabase}:${blastProgram}:${proteinSequence}`;
 }
-export async function getCachedBlastResult({ proteinSequence, blastDatabase, blastProgram, transcriptId, }) {
-    const db = await getDB();
-    const id = createCacheKey(proteinSequence, blastDatabase, blastProgram, transcriptId);
-    return db.get(STORE_NAME, id);
-}
 export async function saveBlastResult({ proteinSequence, blastDatabase, blastProgram, msaAlgorithm, msa, tree, treeMetadata, rid, geneId, transcriptId, transcriptName, geneName, }) {
     const db = await getDB();
     const id = createCacheKey(proteinSequence, blastDatabase, blastProgram, transcriptId);
@@ -51,13 +46,6 @@ export async function getAllCachedResults() {
     const db = await getDB();
     const results = await db.getAll(STORE_NAME);
     return results.toSorted((a, b) => b.timestamp - a.timestamp);
-}
-export async function getCachedResultsByGeneId(geneId) {
-    const db = await getDB();
-    const results = await db.getAll(STORE_NAME);
-    return results
-        .filter(r => r.geneId === geneId)
-        .toSorted((a, b) => b.timestamp - a.timestamp);
 }
 export async function deleteCachedResult(id) {
     const db = await getDB();

@@ -1,42 +1,39 @@
 # jbrowse-plugin-protein3d
 
-WIP for displaying 3D protein structure alongside the genome browser
+This is a 3-D protein structure viewer for JBrowse 2
 
-## LaunchView-ProteinView extension point
+The major workflow enabled by this is
 
-This plugin registers a `LaunchView-ProteinView` extension point that allows
-programmatic launching of a ProteinView. This can be used via the JBrowse 2
-session spec URL parameters (see
-https://jbrowse.org/jb2/docs/urlparams/#session-spec).
+- Right click gene of interest -> launch 3-D protein viewer with linked
+  mouseover between genome and structure
 
-### Parameters
+It has features to automatically look up a protein structure of interest using
+the UniProt ID mapping API to connect to AlphaFoldDB, and can also use Foldseek
+to look up related structures also
 
-| Parameter                        | Required | Description                                          |
-| -------------------------------- | -------- | ---------------------------------------------------- |
-| `url`                            | Yes      | Structure file URL (PDB, mmCIF, etc.)                |
-| `userProvidedTranscriptSequence` | No       | Protein sequence for alignment                       |
-| `feature`                        | No       | Genomic feature for cross-linking                    |
-| `connectedViewId`                | No       | ID of connected LinearGenomeView                     |
-| `alignmentAlgorithm`             | No       | 'emboss_matcher', 'emboss_needle', or 'emboss_water' |
-| `displayName`                    | No       | Custom view display name                             |
-| `height`                         | No       | View height in pixels (default: 650)                 |
-| `showControls`                   | No       | Show Mol\* controls panel                            |
-| `showHighlight`                  | No       | Show alignment highlight on structure                |
-| `zoomToBaseLevel`                | No       | Zoom to base level on click (default: true)          |
+## Screenshot
 
-### URL example
+![](img/1.png)
 
-```
-https://jbrowse.org/code/jb2/main/?config=config.json&session=spec-{"views":[{"type":"ProteinView","url":"https://alphafold.ebi.ac.uk/files/AF-P04637-F1-model_v4.cif"}]}
-```
+Example at
+https://jbrowse.org/code/jb2/latest/?config=%2Fucsc%2Fhg38%2Fconfig.json&session=share-aZOIjR_qs4&password=NT4sa
 
-### Programmatic usage
+## Publication
 
-```typescript
-pluginManager.evaluateExtensionPoint('LaunchView-ProteinView', {
-  session,
-  url: 'https://alphafold.ebi.ac.uk/files/AF-P12345-F1-model_v4.cif',
-  userProvidedTranscriptSequence: 'MKTLLLTLVVV...',
-  displayName: 'AlphaFold - P12345',
-})
-```
+If you find this tool useful please cite our work
+
+Diesh, C., Stevens, G., Bridge, C., Hogue, G., Buels, R., Cain, S., Stein, L., &
+Holmes, I. (2026). Proteins in the Genome Browser: Integration of Phylogenies,
+Alignments, and Structures With Nucleotide-level Evidence in JBrowse 2. Journal
+of Molecular Biology, 169645. https://doi.org/10.1016/j.jmb.2026.169645
+
+See also https://github.com/GMOD/proteinbrowser for overview
+
+## Availability
+
+This plugin is installed by default on https://genomes.jbrowse.org so you can
+use it on any species there
+
+## Programmatic usage
+
+See [DEVELOPERS.md](DEVELOPERS.md)

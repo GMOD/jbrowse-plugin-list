@@ -47,31 +47,27 @@ export default function FoldseekDatabaseSelector({
 }) {
   const { classes } = useStyles()
 
-  const handleToggle = (dbId: FoldseekDatabaseId) => {
-    if (selected.includes(dbId)) {
-      onChange(selected.filter(id => id !== dbId))
-    } else {
-      onChange([...selected, dbId])
-    }
-  }
-
-  const selectAll = () => {
-    onChange(FOLDSEEK_DATABASES.map(db => db.id))
-  }
-
-  const deselectAll = () => {
-    onChange([])
-  }
-
   return (
     <div className={classes.root}>
       <div className={classes.header}>
         <Typography variant="subtitle2">Databases to search:</Typography>
         <div className={classes.buttons}>
-          <Button size="small" onClick={selectAll} disabled={disabled}>
+          <Button
+            size="small"
+            onClick={() => {
+              onChange(FOLDSEEK_DATABASES.map(db => db.id))
+            }}
+            disabled={disabled}
+          >
             Select all
           </Button>
-          <Button size="small" onClick={deselectAll} disabled={disabled}>
+          <Button
+            size="small"
+            onClick={() => {
+              onChange([])
+            }}
+            disabled={disabled}
+          >
             Clear
           </Button>
         </div>
@@ -85,7 +81,11 @@ export default function FoldseekDatabaseSelector({
                 size="small"
                 checked={selected.includes(db.id)}
                 onChange={() => {
-                  handleToggle(db.id)
+                  if (selected.includes(db.id)) {
+                    onChange(selected.filter(id => id !== db.id))
+                  } else {
+                    onChange([...selected, db.id])
+                  }
                 }}
                 disabled={disabled}
               />

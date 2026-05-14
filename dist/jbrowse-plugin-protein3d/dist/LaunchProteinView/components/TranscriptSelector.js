@@ -23,7 +23,7 @@ export default function TranscriptSelector({ val, setVal, isoforms, isoformSeque
         isoformSequences[a.id()].seq.length);
     nonMatches.sort((a, b) => isoformSequences[b.id()].seq.length -
         isoformSequences[a.id()].seq.length);
-    return (React.createElement(TextField, { value: val, onChange: event => {
+    return (React.createElement(TextField, { value: val ?? '', onChange: event => {
             setVal(event.target.value);
         }, label: "Choose transcript isoform", select: true, disabled: disabled },
         matches.map(f => (React.createElement(MenuItem, { value: f.id(), key: f.id() },

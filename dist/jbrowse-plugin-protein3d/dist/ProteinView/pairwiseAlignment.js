@@ -118,23 +118,13 @@ export function needlemanWunsch(seq1, seq2, gapOpen = GAP_OPEN, gapExtend = GAP_
         else if (currentMatrix === 'Ix' && i > 0) {
             alignedSeq1 = seq1[i - 1] + alignedSeq1;
             alignedSeq2 = '-' + alignedSeq2;
-            if (Ix[i][j] === M[i - 1][j] + gapOpen) {
-                currentMatrix = 'M';
-            }
-            else {
-                currentMatrix = 'Ix';
-            }
+            currentMatrix = Ix[i][j] === M[i - 1][j] + gapOpen ? 'M' : 'Ix';
             i--;
         }
         else if (j > 0) {
             alignedSeq1 = '-' + alignedSeq1;
             alignedSeq2 = seq2[j - 1] + alignedSeq2;
-            if (Iy[i][j] === M[i][j - 1] + gapOpen) {
-                currentMatrix = 'M';
-            }
-            else {
-                currentMatrix = 'Iy';
-            }
+            currentMatrix = Iy[i][j] === M[i][j - 1] + gapOpen ? 'M' : 'Iy';
             j--;
         }
         else {
@@ -277,7 +267,7 @@ function buildConsensus(alignedSeq1, alignedSeq2) {
     }
     return chars.join('');
 }
-export function runLocalAlignment(seq1, seq2, algorithm = 'needleman_wunsch') {
+export function runLocalAlignment(seq1, seq2, algorithm) {
     const { alignedSeq1, alignedSeq2 } = algorithm === 'smith_waterman'
         ? smithWaterman(seq1, seq2)
         : needlemanWunsch(seq1, seq2);

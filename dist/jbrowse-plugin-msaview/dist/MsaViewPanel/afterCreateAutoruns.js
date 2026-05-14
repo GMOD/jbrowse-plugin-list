@@ -2,12 +2,8 @@ import { getSession } from '@jbrowse/core/util';
 import { doLaunchBlast } from './doLaunchBlast';
 import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { cleanupOldData, generateDataStoreId, retrieveMsaData, storeMsaData, } from './msaDataStore';
-import { gappedToUngappedPosition } from './structureConnection';
+import { gappedToUngappedPosition, getProteinViews, } from './structureConnection';
 import { getUniprotIdFromAlphaFoldUrl } from './util';
-function isProteinView(view) {
-    const v = view;
-    return v.type === 'ProteinView' && Array.isArray(v.structures);
-}
 export function loadStoredData(self) {
     const { dataStoreId, rows } = self;
     if (dataStoreId && rows.length === 0) {
@@ -38,8 +34,7 @@ export function loadStoredData(self) {
 export function storeDataToIndexedDB(self) {
     const { rows, dataStoreId } = self;
     if (rows.length > 0 && !dataStoreId) {
-        const hasFilehandle = !!(self.msaFilehandle ?? self.treeFilehandle);
-        if (hasFilehandle) {
+        if (self.msaFilehandle || self.treeFilehandle) {
             return;
         }
         const msaData = self.data.msa;
@@ -154,7 +149,7 @@ export function highlightConnectedStructures(self) {
         return;
     }
     for (const conn of connectedProteinViews) {
-        const structure = conn.proteinView?.structures?.[conn.structureIdx];
+        const structure = conn.proteinView.structures[conn.structureIdx];
         if (!structure) {
             continue;
         }
@@ -181,18 +176,13 @@ export function highlightConnectedStructures(self) {
     }
 }
 export function autoConnectStructures(self) {
-    const { views } = getSession(self);
     const { connectedViewId, uniprotId, rows, connectedStructures } = self;
     if (!uniprotId || rows.length === 0) {
         return;
     }
-    for (const view of views) {
-        if (!isProteinView(view)) {
-            continue;
-        }
-        const v = view;
-        for (let structureIdx = 0; structureIdx < v.structures.length; structureIdx++) {
-            const structure = v.structures[structureIdx];
+    for (const view of getProteinViews(getSession(self).views)) {
+        for (let structureIdx = 0; structureIdx < view.structures.length; structureIdx++) {
+            const structure = view.structures[structureIdx];
             if (!structure) {
                 continue;
             }
@@ -202,7 +192,7 @@ export function autoConnectStructures(self) {
             if (structure.uniprotId !== uniprotId) {
                 continue;
             }
-            const alreadyConnected = connectedStructures.some(c => c.proteinViewId === v.id && c.structureIdx === structureIdx);
+            const alreadyConnected = connectedStructures.some(c => c.proteinViewId === view.id && c.structureIdx === structureIdx);
             if (alreadyConnected) {
                 continue;
             }
@@ -210,7 +200,7 @@ export function autoConnectStructures(self) {
                 continue;
             }
             try {
-                self.connectToStructure(v.id, structureIdx);
+                self.connectToStructure(view.id, structureIdx);
             }
             catch (e) {
                 console.error('Failed to auto-connect to ProteinView:', e);
@@ -219,18 +209,13 @@ export function autoConnectStructures(self) {
     }
 }
 export function observeProteinHighlights(self) {
-    const { views } = getSession(self);
     const { connectedViewId, transcriptToMsaMap, querySeqName } = self;
     if (!connectedViewId || !transcriptToMsaMap) {
         return;
     }
     const columns = new Set();
-    for (const view of views) {
-        if (!isProteinView(view)) {
-            continue;
-        }
-        const v = view;
-        for (const structure of v.structures) {
+    for (const view of getProteinViews(getSession(self).views)) {
+        for (const structure of view.structures) {
             if (structure.connectedViewId !== connectedViewId) {
                 continue;
             }

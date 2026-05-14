@@ -15,7 +15,7 @@ export default function useAlphaFoldDBSearch({ feature, view, }: {
     sequenceSearchType: SequenceSearchType;
     setSequenceSearchType: import("react").Dispatch<import("react").SetStateAction<SequenceSearchType>>;
     selectedUniprotId: string | undefined;
-    setSelectedUniprotId: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
+    setSelectedUniprotId: (id: string | undefined) => void;
     userSelection: string | undefined;
     setUserSelection: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
     transcriptOptions: Feature[];

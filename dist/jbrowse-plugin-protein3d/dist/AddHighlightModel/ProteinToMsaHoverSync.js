@@ -1,52 +1,46 @@
 import { useEffect } from 'react';
 import { getSession } from '@jbrowse/core/util';
-import { autorun } from 'mobx';
+import { autorun, untracked } from 'mobx';
 import { observer } from 'mobx-react';
+import { getProteinView } from './util';
 const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({ model, }) {
     const session = getSession(model);
     const { views } = session;
-    const proteinView = views.find(f => f.type === 'ProteinView');
+    const proteinView = getProteinView(session);
     const connectedMsaViewId = proteinView?.connectedMsaViewId;
     const msaView = connectedMsaViewId
         ? views.find(f => f.id === connectedMsaViewId)
         : undefined;
-    // Sync protein hover to MSA
-    useEffect(() => {
-        if (!proteinView || !msaView?.setMouseoveredColumn) {
-            return;
-        }
-        const disposer = autorun(() => {
-            const structure = proteinView.structures[0];
-            if (structure) {
-                const pos = structure.structureSeqHoverPos;
-                msaView.setMouseoveredColumn?.(pos);
-            }
-        });
-        return () => {
-            disposer();
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-    // Sync MSA hover to protein
     useEffect(() => {
         if (!proteinView || !msaView) {
             return;
         }
-        const disposer = autorun(() => {
+        const disposers = [];
+        if (msaView.setMouseoveredColumn) {
+            const { setMouseoveredColumn } = msaView;
+            disposers.push(autorun(() => {
+                const structure = proteinView.structures[0];
+                if (structure) {
+                    setMouseoveredColumn(structure.structureSeqHoverPos);
+                }
+            }));
+        }
+        disposers.push(autorun(() => {
             const col = msaView.mouseoveredColumn;
             const structure = proteinView.structures[0];
-            if (structure && col !== undefined) {
-                structure.highlightFromExternal(col);
+            if (structure) {
+                const hasFeatureHoverRange = untracked(() => !!structure.alignmentHoverRange);
+                if (!hasFeatureHoverRange) {
+                    structure.setHoveredPosition(col === undefined ? undefined : { structureSeqPos: col });
+                }
             }
-            else if (structure && col === undefined) {
-                structure.clearHighlightFromExternal();
-            }
-        });
+        }));
         return () => {
-            disposer();
+            disposers.forEach(d => {
+                d();
+            });
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [proteinView, msaView]);
     return null;
 });
 export default ProteinToMsaHoverSync;

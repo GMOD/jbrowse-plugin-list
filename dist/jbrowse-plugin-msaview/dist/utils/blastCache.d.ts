@@ -1,9 +1,10 @@
+import type { BlastDatabase, BlastProgram, MsaAlgorithm } from '../LaunchMsaView/components/NCBIBlastQuery/consts';
 export interface CachedBlastResult {
     id: string;
     proteinSequence: string;
-    blastDatabase: string;
-    blastProgram: string;
-    msaAlgorithm: string;
+    blastDatabase: BlastDatabase;
+    blastProgram: BlastProgram;
+    msaAlgorithm: MsaAlgorithm;
     msa: string;
     tree: string;
     treeMetadata: string;
@@ -14,17 +15,11 @@ export interface CachedBlastResult {
     transcriptName?: string;
     geneName?: string;
 }
-export declare function getCachedBlastResult({ proteinSequence, blastDatabase, blastProgram, transcriptId, }: {
-    proteinSequence: string;
-    blastDatabase: string;
-    blastProgram: string;
-    transcriptId?: string;
-}): Promise<any>;
 export declare function saveBlastResult({ proteinSequence, blastDatabase, blastProgram, msaAlgorithm, msa, tree, treeMetadata, rid, geneId, transcriptId, transcriptName, geneName, }: {
     proteinSequence: string;
-    blastDatabase: string;
-    blastProgram: string;
-    msaAlgorithm: string;
+    blastDatabase: BlastDatabase;
+    blastProgram: BlastProgram;
+    msaAlgorithm: MsaAlgorithm;
     msa: string;
     tree: string;
     treeMetadata: string;
@@ -35,6 +30,5 @@ export declare function saveBlastResult({ proteinSequence, blastDatabase, blastP
     geneName?: string;
 }): Promise<CachedBlastResult>;
 export declare function getAllCachedResults(): Promise<any[]>;
-export declare function getCachedResultsByGeneId(geneId: string): Promise<any[]>;
 export declare function deleteCachedResult(id: string): Promise<void>;
 export declare function clearAllCachedResults(): Promise<void>;

@@ -1,5 +1,8 @@
 import { makeStyles } from 'tss-react/mui'
 
+import type { JBrowsePluginProteinViewModel } from '../ProteinView/model'
+import type { AbstractSessionModel } from '@jbrowse/core/util'
+
 export const useStyles = makeStyles()({
   highlight: {
     height: '100%',
@@ -15,3 +18,10 @@ export const useStyles = makeStyles()({
     border: '1px solid black',
   },
 })
+
+export function getProteinView(
+  session: AbstractSessionModel,
+): JBrowsePluginProteinViewModel | undefined {
+  const view = session.views.find(v => v.type === 'ProteinView')
+  return view as JBrowsePluginProteinViewModel | undefined
+}

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useState } from 'react'
 
 import { Tooltip } from '@mui/material'
 import { observer } from 'mobx-react'
@@ -12,12 +12,9 @@ import {
   TRACK_GAP,
   TRACK_HEIGHT,
 } from '../constants'
-import highlightResidueRange, {
-  selectResidueRange,
-} from '../highlightResidueRange'
+import { selectResidueRange } from '../highlightResidueRange'
 import { getFeatureColor } from '../hooks/useUniProtFeatures'
 import { clickProteinToGenome } from '../proteinToGenomeMapping'
-import { throttle } from './throttle'
 
 import type { FeatureTrackData } from '../hooks/useProteinFeatureTrackData'
 import type { UniProtFeature } from '../hooks/useUniProtFeatures'
@@ -44,7 +41,6 @@ function getFeatureGeometry(
   }
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 function FeatureTooltipContent({ feature }: { feature: UniProtFeature }) {
   return (
     <div>
@@ -88,17 +84,6 @@ const FeatureBar = observer(function FeatureBar({
 
   const handleMouseEnter = () => {
     setIsHovered(true)
-    const structure = model.molstarStructure
-    if (structure && molstarPluginContext) {
-      highlightResidueRange({
-        structure,
-        startResidue: feature.start,
-        endResidue: feature.end,
-        plugin: molstarPluginContext,
-      }).catch((e: unknown) => {
-        console.error(e)
-      })
-    }
     const range = getAlignmentRange()
     if (range) {
       model.setAlignmentHoverRange(range)
@@ -107,8 +92,7 @@ const FeatureBar = observer(function FeatureBar({
 
   const handleMouseLeave = () => {
     setIsHovered(false)
-    molstarPluginContext?.managers.interactivity.lociHighlights.clearHighlights()
-    model.clearAlignmentHoverRange()
+    model.setAlignmentHoverRange(undefined)
   }
 
   const handleClick = () => {
@@ -124,6 +108,7 @@ const FeatureBar = observer(function FeatureBar({
           plugin: molstarPluginContext,
         }).catch((e: unknown) => {
           console.error(e)
+          model.setError(e)
         })
       } else {
         molstarPluginContext.managers.interactivity.lociSelects.deselectAll()
@@ -132,21 +117,17 @@ const FeatureBar = observer(function FeatureBar({
 
     if (newSelected) {
       model.setSelectedFeatureId(feature.uniqueId)
-      const range = getAlignmentRange()
-      if (range) {
-        model.setClickAlignmentRange(range)
-      }
       clickProteinToGenome({
         model,
         structureSeqPos: feature.start - 1,
         structureSeqEndPos: feature.end,
       }).catch((e: unknown) => {
         console.error(e)
+        model.setError(e)
       })
     } else {
-      model.clearSelectedFeatureId()
-      model.clearClickAlignmentRange()
-      model.clearClickGenomeHighlights()
+      model.setSelectedFeatureId(undefined)
+      model.setClickedStructureRange(undefined)
     }
   }
 
@@ -159,9 +140,15 @@ const FeatureBar = observer(function FeatureBar({
   return (
     <Tooltip title={<FeatureTooltipContent feature={feature} />} followCursor>
       <div
-        onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onClick={() => {
+          handleClick()
+        }}
+        onMouseEnter={() => {
+          handleMouseEnter()
+        }}
+        onMouseLeave={() => {
+          handleMouseLeave()
+        }}
         style={{
           position: 'absolute',
           left,
@@ -330,36 +317,20 @@ export const ProteinFeatureTrackContent = observer(
   }) {
     const { hiddenFeatureTypes } = model
     const visibleTypes = getVisibleTypes(data.featureTypes, hiddenFeatureTypes)
-    const containerRef = useRef<HTMLDivElement>(null)
 
-    const handleMouseMove = useMemo(
-      () =>
-        throttle((e: React.MouseEvent) => {
-          const container = containerRef.current
-          if (!container) {
-            return
-          }
-          const rect = container.getBoundingClientRect()
+    return (
+      <div
+        onMouseMove={(e: React.MouseEvent<HTMLDivElement>) => {
+          const rect = e.currentTarget.getBoundingClientRect()
           const x = e.clientX - rect.left
           const alignmentPos = Math.floor(x / CHAR_WIDTH)
           if (alignmentPos >= 0 && alignmentPos < data.sequenceLength) {
             model.hoverAlignmentPosition(alignmentPos)
           }
-        }, 16),
-      [model, data.sequenceLength],
-    )
-
-    const handleMouseLeave = () => {
-      model.setHoveredPosition(undefined)
-      model.clearHoverGenomeHighlights()
-      model.clearHighlightFromExternal()
-    }
-
-    return (
-      <div
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        }}
+        onMouseLeave={() => {
+          model.setHoveredPosition(undefined)
+        }}
       >
         {visibleTypes.map(type => (
           <FeatureTypeTrackContent

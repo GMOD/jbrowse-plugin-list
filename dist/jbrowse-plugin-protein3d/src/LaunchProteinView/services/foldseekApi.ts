@@ -171,7 +171,6 @@ export async function getFoldseekResults(
 
 export async function waitForFoldseekResults(
   ticketId: string,
-  databases: FoldseekDatabaseId[],
   onStatusChange?: (status: string) => void,
 ) {
   const maxAttempts = 180

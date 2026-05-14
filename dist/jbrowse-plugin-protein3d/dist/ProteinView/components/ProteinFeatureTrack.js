@@ -1,11 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Tooltip } from '@mui/material';
 import { observer } from 'mobx-react';
 import { CHAR_WIDTH, HIDE_BUTTON_COLOR, HOVERED_BORDER, HOVER_MARKER_COLOR, SELECTED_BORDER, TRACK_GAP, TRACK_HEIGHT, } from '../constants';
-import highlightResidueRange, { selectResidueRange, } from '../highlightResidueRange';
+import { selectResidueRange } from '../highlightResidueRange';
 import { getFeatureColor } from '../hooks/useUniProtFeatures';
 import { clickProteinToGenome } from '../proteinToGenomeMapping';
-import { throttle } from './throttle';
 function getVisibleTypes(featureTypes, hiddenFeatureTypes) {
     return featureTypes.filter(type => !hiddenFeatureTypes.has(type));
 }
@@ -17,7 +16,6 @@ function getFeatureGeometry(feature, structurePositionToAlignmentMap) {
         width: Math.max((endAlnPos - startAlnPos + 1) * CHAR_WIDTH, 3),
     };
 }
-// eslint-disable-next-line react-refresh/only-export-components
 function FeatureTooltipContent({ feature }) {
     return (React.createElement("div", null,
         React.createElement("div", null,
@@ -46,17 +44,6 @@ const FeatureBar = observer(function FeatureBar({ feature, model, }) {
     };
     const handleMouseEnter = () => {
         setIsHovered(true);
-        const structure = model.molstarStructure;
-        if (structure && molstarPluginContext) {
-            highlightResidueRange({
-                structure,
-                startResidue: feature.start,
-                endResidue: feature.end,
-                plugin: molstarPluginContext,
-            }).catch((e) => {
-                console.error(e);
-            });
-        }
         const range = getAlignmentRange();
         if (range) {
             model.setAlignmentHoverRange(range);
@@ -64,8 +51,7 @@ const FeatureBar = observer(function FeatureBar({ feature, model, }) {
     };
     const handleMouseLeave = () => {
         setIsHovered(false);
-        molstarPluginContext?.managers.interactivity.lociHighlights.clearHighlights();
-        model.clearAlignmentHoverRange();
+        model.setAlignmentHoverRange(undefined);
     };
     const handleClick = () => {
         const structure = model.molstarStructure;
@@ -79,6 +65,7 @@ const FeatureBar = observer(function FeatureBar({ feature, model, }) {
                     plugin: molstarPluginContext,
                 }).catch((e) => {
                     console.error(e);
+                    model.setError(e);
                 });
             }
             else {
@@ -87,28 +74,30 @@ const FeatureBar = observer(function FeatureBar({ feature, model, }) {
         }
         if (newSelected) {
             model.setSelectedFeatureId(feature.uniqueId);
-            const range = getAlignmentRange();
-            if (range) {
-                model.setClickAlignmentRange(range);
-            }
             clickProteinToGenome({
                 model,
                 structureSeqPos: feature.start - 1,
                 structureSeqEndPos: feature.end,
             }).catch((e) => {
                 console.error(e);
+                model.setError(e);
             });
         }
         else {
-            model.clearSelectedFeatureId();
-            model.clearClickAlignmentRange();
-            model.clearClickGenomeHighlights();
+            model.setSelectedFeatureId(undefined);
+            model.setClickedStructureRange(undefined);
         }
     };
     const { left, width } = getFeatureGeometry(feature, structurePositionToAlignmentMap);
     const color = getFeatureColor(feature.type);
     return (React.createElement(Tooltip, { title: React.createElement(FeatureTooltipContent, { feature: feature }), followCursor: true },
-        React.createElement("div", { onClick: handleClick, onMouseEnter: handleMouseEnter, onMouseLeave: handleMouseLeave, style: {
+        React.createElement("div", { onClick: () => {
+                handleClick();
+            }, onMouseEnter: () => {
+                handleMouseEnter();
+            }, onMouseLeave: () => {
+                handleMouseLeave();
+            }, style: {
                 position: 'absolute',
                 left,
                 top: 0,
@@ -191,24 +180,15 @@ export const ProteinFeatureTrackLabels = observer(function ProteinFeatureTrackLa
 export const ProteinFeatureTrackContent = observer(function ProteinFeatureTrackContent({ data, model, }) {
     const { hiddenFeatureTypes } = model;
     const visibleTypes = getVisibleTypes(data.featureTypes, hiddenFeatureTypes);
-    const containerRef = useRef(null);
-    const handleMouseMove = useMemo(() => throttle((e) => {
-        const container = containerRef.current;
-        if (!container) {
-            return;
-        }
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const alignmentPos = Math.floor(x / CHAR_WIDTH);
-        if (alignmentPos >= 0 && alignmentPos < data.sequenceLength) {
-            model.hoverAlignmentPosition(alignmentPos);
-        }
-    }, 16), [model, data.sequenceLength]);
-    const handleMouseLeave = () => {
-        model.setHoveredPosition(undefined);
-        model.clearHoverGenomeHighlights();
-        model.clearHighlightFromExternal();
-    };
-    return (React.createElement("div", { ref: containerRef, onMouseMove: handleMouseMove, onMouseLeave: handleMouseLeave }, visibleTypes.map(type => (React.createElement(FeatureTypeTrackContent, { key: type, features: data.groupedFeatures[type], model: model, sequenceLength: data.sequenceLength })))));
+    return (React.createElement("div", { onMouseMove: (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const alignmentPos = Math.floor(x / CHAR_WIDTH);
+            if (alignmentPos >= 0 && alignmentPos < data.sequenceLength) {
+                model.hoverAlignmentPosition(alignmentPos);
+            }
+        }, onMouseLeave: () => {
+            model.setHoveredPosition(undefined);
+        } }, visibleTypes.map(type => (React.createElement(FeatureTypeTrackContent, { key: type, features: data.groupedFeatures[type], model: model, sequenceLength: data.sequenceLength })))));
 });
 //# sourceMappingURL=ProteinFeatureTrack.js.map

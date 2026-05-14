@@ -39,19 +39,21 @@ export function getPdbStructureUrl(pdbId: string) {
   return `https://files.rcsb.org/download/${pdbId}.cif`
 }
 
+// Foldseek targets may contain a description after the ID separated by a
+// space, e.g. "AF-P16442-F1-model_v6 Histo-blood group ABO transferase".
+function extractTargetId(target: string) {
+  return target.split(' ')[0] ?? target
+}
+
 export function getUniprotIdFromAlphaFoldTarget(target: string) {
-  // Extract UniProt ID from AlphaFold target or URL
   // Handles both "AF-P16442-F1-model_v6" and full URLs like
   // "https://alphafold.ebi.ac.uk/files/AF-P16442-F1-model_v6.cif"
-  const targetId = target.split(' ')[0] ?? target
-  const match = /AF-([A-Z0-9]+)-F\d+/.exec(targetId)
+  const match = /AF-([A-Z0-9]+)-F\d+/.exec(extractTargetId(target))
   return match?.[1]
 }
 
 export function getStructureUrlFromTarget(target: string, db: string) {
-  // Target may contain description after the ID
-  const targetId = target.split(' ')[0] ?? target
-
+  const targetId = extractTargetId(target)
   if (targetId.startsWith('AF-')) {
     return `https://alphafold.ebi.ac.uk/files/${targetId}.cif`
   }
@@ -65,7 +67,7 @@ export function getStructureUrlFromTarget(target: string, db: string) {
 }
 
 export function getConfidenceUrlFromTarget(target: string) {
-  const targetId = target.split(' ')[0] ?? target
+  const targetId = extractTargetId(target)
   if (targetId.startsWith('AF-')) {
     const confidenceId = targetId.replace('-model_', '-confidence_')
     return `https://alphafold.ebi.ac.uk/files/${confidenceId}.json`
@@ -182,7 +184,7 @@ export function launchMsaView({
 }
 
 export function hasMsaViewPlugin() {
-  return typeof window.JBrowsePluginMsaView !== 'undefined'
+  return window.JBrowsePluginMsaView !== undefined
 }
 
 export function launch3DProteinViewWithMsa(

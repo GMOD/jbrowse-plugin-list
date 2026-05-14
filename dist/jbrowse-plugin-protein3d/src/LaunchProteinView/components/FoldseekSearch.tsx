@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useState } from 'react'
 
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui'
 import { getContainingView, getSession } from '@jbrowse/core/util'
@@ -17,6 +17,7 @@ import FoldseekResultsTable from './FoldseekResultsTable'
 import TranscriptSelector from './TranscriptSelector'
 import useFoldseekSearch from '../hooks/useFoldseekSearch'
 import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences'
+import useTranscriptSelection from '../hooks/useTranscriptSelection'
 import { DEFAULT_DATABASES } from '../services/foldseekApi'
 import { getTranscriptFeatures } from '../utils/util'
 
@@ -56,9 +57,6 @@ const FoldseekSearch = observer(function FoldseekSearch({
   const [userEditedSequence, setUserEditedSequence] = useState<
     string | undefined
   >()
-  const [selectedTranscriptId, setSelectedTranscriptId] = useState<
-    string | undefined
-  >()
   const [selectedDatabases, setSelectedDatabases] = useState(DEFAULT_DATABASES)
 
   const {
@@ -74,7 +72,7 @@ const FoldseekSearch = observer(function FoldseekSearch({
     reset,
   } = useFoldseekSearch()
 
-  const transcripts = useMemo(() => getTranscriptFeatures(feature), [feature])
+  const transcripts = getTranscriptFeatures(feature)
 
   const {
     isoformSequences,
@@ -82,52 +80,22 @@ const FoldseekSearch = observer(function FoldseekSearch({
     error: isoformError,
   } = useIsoformProteinSequences({ feature, view })
 
-  // SYNC: src/LaunchProteinView/hooks/useTranscriptSelection.ts, useAlphaFoldDBSearch.ts
-  // Auto-select synchronously to avoid render gap
-  const autoSelectedTranscriptId = useMemo(() => {
-    if (isoformSequences && !selectedTranscriptId) {
-      const sortedTranscripts = [...transcripts].sort((a, b) => {
-        const seqA = isoformSequences[a.id()]?.seq
-        const seqB = isoformSequences[b.id()]?.seq
-        return (seqB?.length ?? 0) - (seqA?.length ?? 0)
-      })
-      const firstWithSeq = sortedTranscripts.find(
-        t => isoformSequences[t.id()]?.seq,
-      )
-      return firstWithSeq?.id()
-    }
-    return undefined
-  }, [isoformSequences, selectedTranscriptId, transcripts])
-
-  const effectiveSelectedTranscriptId =
-    selectedTranscriptId ?? autoSelectedTranscriptId ?? ''
+  const { userSelection: effectiveSelectedTranscriptId, setUserSelection } =
+    useTranscriptSelection({ options: transcripts, isoformSequences })
 
   const selectedTranscript = transcripts.find(
     t => t.id() === effectiveSelectedTranscriptId,
   )
-  const selectedIsoformData = isoformSequences?.[effectiveSelectedTranscriptId]
+  const selectedIsoformData = effectiveSelectedTranscriptId
+    ? isoformSequences?.[effectiveSelectedTranscriptId]
+    : undefined
 
   const cleanedSequence = selectedIsoformData?.seq.replace(/\*/g, '') ?? ''
   const sequence = userEditedSequence ?? cleanedSequence
 
-  useEffect(() => {
+  const setUserSelectionWithReset = (id: string | undefined) => {
+    setUserSelection(id)
     setUserEditedSequence(undefined)
-  }, [effectiveSelectedTranscriptId])
-
-  const handlePredict = async () => {
-    if (sequence.trim()) {
-      await predictStructure(sequence.trim())
-    }
-  }
-
-  const handleSearch = () => {
-    if (cleanedAaSequence && di3Sequence && selectedDatabases.length > 0) {
-      search(cleanedAaSequence, di3Sequence, selectedDatabases).catch(
-        (e: unknown) => {
-          console.error(e)
-        },
-      )
-    }
   }
 
   const canPredict = sequence.trim().length > 0 && !isPredicting && !isLoading
@@ -158,7 +126,7 @@ const FoldseekSearch = observer(function FoldseekSearch({
           <>
             <TranscriptSelector
               val={effectiveSelectedTranscriptId}
-              setVal={setSelectedTranscriptId}
+              setVal={setUserSelectionWithReset}
               isoforms={transcripts}
               isoformSequences={isoformSequences}
               feature={feature}
@@ -235,9 +203,9 @@ const FoldseekSearch = observer(function FoldseekSearch({
             color="primary"
             disabled={!canPredict}
             onClick={() => {
-              handlePredict().catch((e: unknown) => {
-                console.error(e)
-              })
+              if (sequence.trim()) {
+                void predictStructure(sequence.trim())
+              }
             }}
           >
             {isPredicting ? 'Predicting...' : 'Predict 3Di structure'}
@@ -247,7 +215,15 @@ const FoldseekSearch = observer(function FoldseekSearch({
             variant="contained"
             color="primary"
             disabled={!canSearch}
-            onClick={handleSearch}
+            onClick={() => {
+              if (
+                cleanedAaSequence &&
+                di3Sequence &&
+                selectedDatabases.length > 0
+              ) {
+                void search(cleanedAaSequence, di3Sequence, selectedDatabases)
+              }
+            }}
           >
             {isLoading ? 'Searching...' : 'Search Foldseek'}
           </Button>

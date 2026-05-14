@@ -16,6 +16,21 @@ const useStyles = makeStyles()({
     textAreaFont: {
         fontFamily: 'Courier New',
     },
+    inputContainer: {
+        marginBottom: 30,
+    },
+    fileContainer: {
+        maxWidth: 500,
+    },
+    msaInput: {
+        marginBottom: 20,
+    },
+    queryNameInput: {
+        marginTop: 20,
+    },
+    warningAlert: {
+        marginTop: 10,
+    },
 });
 const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handleClose, }) {
     const session = getSession(model);
@@ -28,8 +43,8 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
     const [msaFileLocation, setMsaFileLocation] = useState();
     const [treeFileLocation, setTreeFileLocation] = useState();
     const [querySeqName, setQuerySeqName] = useState('');
-    const { options, selectedId, setSelectedId, selectedTranscript, proteinSequence, error: error2, } = useTranscriptSelection({ feature, view });
-    const e = launchViewError ?? error2;
+    const { options, selectedId, setSelectedId, selectedTranscript, proteinSequence, error, } = useTranscriptSelection({ feature, view });
+    const e = launchViewError ?? error;
     return (React.createElement(React.Fragment, null,
         React.createElement(DialogContent, { className: classes.dialogContent },
             e ? React.createElement(ErrorMessage, { error: e }) : null,
@@ -39,35 +54,32 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
                     } },
                     React.createElement(FormControlLabel, { value: "file", control: React.createElement(Radio, null), label: "Open files" }),
                     React.createElement(FormControlLabel, { value: "text", control: React.createElement(Radio, null), label: "Paste text" }))),
-            React.createElement("div", { style: { marginBottom: 30 } }, inputMethod === 'file' ? (React.createElement("div", { style: { maxWidth: 500 } },
+            React.createElement("div", { className: classes.inputContainer }, inputMethod === 'file' ? (React.createElement("div", { className: classes.fileContainer },
                 React.createElement(FileSelector, { name: "MSA File .aln (Clustal), .fa/.mfa (aligned FASTA), .stock (Stockholm), etc)", inline: true, location: msaFileLocation, setLocation: setMsaFileLocation }),
                 React.createElement(FileSelector, { name: "Tree file .nh (Newick) or .asn (NCBI COBALT ASN.1)", inline: true, location: treeFileLocation, setLocation: setTreeFileLocation }))) : (React.createElement(React.Fragment, null,
-                React.createElement(TextField2, { variant: "outlined", name: "MSA", multiline: true, minRows: 5, style: { marginBottom: '20px' }, maxRows: 10, fullWidth: true, placeholder: "Paste MSA here", value: msaText, onChange: event => {
+                React.createElement(TextField2, { variant: "outlined", name: "MSA", multiline: true, minRows: 5, className: classes.msaInput, maxRows: 10, fullWidth: true, placeholder: "Paste MSA here", value: msaText, onChange: event => {
                         setMsaText(event.target.value);
                     } }),
                 React.createElement(TextField2, { variant: "outlined", name: "Tree", multiline: true, minRows: 5, maxRows: 10, fullWidth: true, placeholder: "Paste newick tree (optional)", value: treeText, onChange: event => {
                         setTreeText(event.target.value);
                     } })))),
             React.createElement(TranscriptSelector, { feature: feature, options: options, selectedId: selectedId, selectedTranscript: selectedTranscript, onTranscriptChange: setSelectedId, proteinSequence: proteinSequence }),
-            React.createElement(TextField2, { variant: "outlined", name: "MSA row name", fullWidth: true, required: true, style: { marginTop: 20 }, placeholder: "Row name in MSA that corresponds to the selected transcript", helperText: "Required: Specify the name of the row in your MSA that should be aligned with the selected transcript", value: querySeqName, onChange: event => {
+            React.createElement(TextField2, { variant: "outlined", name: "MSA row name", fullWidth: true, required: true, className: classes.queryNameInput, placeholder: "Row name in MSA that corresponds to the selected transcript", helperText: "Required: Specify the name of the row in your MSA that should be aligned with the selected transcript", value: querySeqName, onChange: event => {
                     setQuerySeqName(event.target.value);
                 } }),
-            !querySeqName.trim() && (React.createElement(Alert, { severity: "warning", style: { marginTop: 10 } }, "Without specifying the MSA row name, clicking on the MSA will not navigate to the corresponding genome position, and hovering highlights will not work."))),
+            !querySeqName.trim() ? (React.createElement(Alert, { severity: "warning", className: classes.warningAlert }, "Without specifying the MSA row name, clicking on the MSA will not navigate to the corresponding genome position, and hovering highlights will not work.")) : null),
         React.createElement(DialogActions, null,
             React.createElement(Button, { color: "primary", variant: "contained", disabled: !selectedTranscript ||
                     (inputMethod === 'file' && !msaFileLocation) ||
                     (inputMethod === 'text' && !msaText.trim()), onClick: () => {
                     try {
-                        if (!selectedTranscript) {
-                            return;
-                        }
                         setLaunchViewError(undefined);
                         launchView({
                             session,
                             newViewTitle: getGeneDisplayName(selectedTranscript),
                             view,
                             feature: selectedTranscript,
-                            querySeqName: querySeqName.trim() || undefined,
+                            querySeqName: querySeqName.trim(),
                             ...(inputMethod === 'file'
                                 ? {
                                     msaFilehandle: msaFileLocation,
@@ -76,15 +88,15 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
                                 : {
                                     data: {
                                         msa: msaText,
-                                        tree: treeText || undefined,
+                                        tree: treeText,
                                     },
                                 }),
                         });
                         handleClose();
                     }
-                    catch (e) {
-                        console.error(e);
-                        setLaunchViewError(e);
+                    catch (err) {
+                        console.error(err);
+                        setLaunchViewError(err);
                     }
                 } }, "Submit"),
             React.createElement(Button, { color: "secondary", variant: "contained", onClick: () => {

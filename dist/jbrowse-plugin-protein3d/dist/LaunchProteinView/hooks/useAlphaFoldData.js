@@ -1,20 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import useAlphaFoldUrl from './useAlphaFoldUrl';
 import useRemoteStructureFileSequence from './useRemoteStructureFileSequence';
-import { getAlphaFoldStructureUrl } from '../utils/launchViewUtils';
-/**
- * Custom hook to manage AlphaFold predictions and selected entry
- */
+import { getAlphaFoldConfidenceUrl, getAlphaFoldStructureUrl, } from '../utils/launchViewUtils';
 export default function useAlphaFoldData({ uniprotId, useApiSearch = false, }) {
     const [selectedEntryIndex, setSelectedEntryIndex] = useState(0);
-    const hardcodedUrl = useMemo(() => (uniprotId ? getAlphaFoldStructureUrl(uniprotId) : undefined), [uniprotId]);
+    const hardcodedUrl = uniprotId
+        ? getAlphaFoldStructureUrl(uniprotId)
+        : undefined;
+    const hardcodedConfidenceUrl = uniprotId
+        ? getAlphaFoldConfidenceUrl(uniprotId)
+        : undefined;
     // Optionally fetch from API for isoform search
     const { predictions, isLoading: isApiLoading, error: apiError, } = useAlphaFoldUrl({ uniprotId: useApiSearch ? uniprotId : undefined });
     const selectedPrediction = predictions?.[selectedEntryIndex];
-    // When using API, use the selected prediction's URL
-    // Otherwise, use the hardcoded URL
     const url = useApiSearch ? selectedPrediction?.cifUrl : hardcodedUrl;
-    const confidenceUrl = selectedPrediction?.plddtDocUrl;
+    const confidenceUrl = selectedPrediction?.plddtDocUrl ?? hardcodedConfidenceUrl;
     // Always fetch sequence from structure file
     const { sequences, isLoading: isSequenceLoading, error: sequenceError, } = useRemoteStructureFileSequence({ url });
     const structureSequence = sequences?.[0];

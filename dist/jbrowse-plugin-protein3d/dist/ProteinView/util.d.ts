@@ -10,10 +10,5 @@ export declare function getMolstarStructureSelection({ structure, selectedResidu
     structure: Structure;
     selectedResidue: number;
 }): Promise<import("molstar/lib/mol-model/structure").StructureSelection>;
-export declare function toStr({ chain, code, structureSeqPos, }: {
-    structureSeqPos?: number;
-    code?: string;
-    chain?: string;
-}): string;
 export declare function invertMap(arg: Record<number, number>): Record<number, number>;
 export {};

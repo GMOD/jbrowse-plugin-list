@@ -13,9 +13,7 @@ export default function LaunchProteinViewDialog({ handleClose, feature, model, }
     const [alignmentAlgorithm, setAlignmentAlgorithm] = useLocalStorage('jbrowse-protein3d-alignment-algorithm', DEFAULT_ALIGNMENT_ALGORITHM);
     return (React.createElement(Dialog, { maxWidth: "xl", title: "Launch protein view", titleNode: React.createElement(React.Fragment, null,
             "Launch protein view ",
-            React.createElement(HelpButton, null)), open: true, onClose: () => {
-            handleClose();
-        } },
+            React.createElement(HelpButton, null)), open: true, onClose: handleClose },
         React.createElement(Tabs, { value: choice, onChange: (_, val) => {
                 setChoice(val);
             } },

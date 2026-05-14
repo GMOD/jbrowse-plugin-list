@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import loadMolstar from './loadMolstar';
-export default function useProteinView({ showControls, }) {
+export default function useProteinView({ showControls, model, }) {
     const parentRef = useRef(null);
-    const [plugin, setPlugin] = useState();
     const [error, setError] = useState();
     const [loading, setLoading] = useState(true);
     useEffect(() => {
-        let p;
-        (async () => {
+        const state = {
+            cancelled: false,
+        };
+        void (async () => {
             try {
                 if (!parentRef.current) {
                     return;
@@ -16,7 +17,7 @@ export default function useProteinView({ showControls, }) {
                 const d = document.createElement('div');
                 parentRef.current.append(d);
                 const defaultSpec = DefaultPluginUISpec();
-                p = await createPluginUI({
+                const created = await createPluginUI({
                     target: d,
                     render: renderReact18,
                     spec: {
@@ -34,8 +35,14 @@ export default function useProteinView({ showControls, }) {
                         config: [[PluginConfig.Viewport.ShowExpand, false]],
                     },
                 });
-                await p.initialized;
-                setPlugin(p);
+                await created.initialized;
+                if (state.cancelled) {
+                    created.unmount();
+                }
+                else {
+                    state.plugin = created;
+                    model?.setMolstarPluginContext(created);
+                }
             }
             catch (e) {
                 console.error(e);
@@ -46,9 +53,11 @@ export default function useProteinView({ showControls, }) {
             }
         })();
         return () => {
-            p?.unmount();
+            state.cancelled = true;
+            state.plugin?.unmount();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showControls]);
-    return { parentRef, error, plugin, loading };
+    return { parentRef, error, loading };
 }
 //# sourceMappingURL=useProteinView.js.map

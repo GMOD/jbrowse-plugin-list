@@ -11,6 +11,6 @@ export default function useFoldseekSearch(): {
         aaSequence: string;
         di3Sequence: string;
     } | undefined>;
-    search: (aaSeq: string, di3Seq: string, databases?: FoldseekDatabaseId[]) => Promise<void>;
+    search: (aaSeq: string, di3Seq: string, databases?: FoldseekDatabaseId[]) => Promise<FoldseekResult | undefined>;
     reset: () => void;
 };

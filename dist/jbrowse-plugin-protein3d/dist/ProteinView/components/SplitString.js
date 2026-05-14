@@ -1,7 +1,6 @@
-import React, { useMemo, useRef } from 'react';
+import React from 'react';
 import { observer } from 'mobx-react';
 import { CHAR_WIDTH } from '../constants';
-import { throttle } from './throttle';
 const CharacterSpans = observer(function CharacterSpans({ str, }) {
     return str.split('').map((char, i) => (React.createElement("span", { key: i, style: {
             position: 'absolute',
@@ -61,7 +60,6 @@ const RangeHighlight = observer(function RangeHighlight({ range, strLength, back
             pointerEvents: 'none',
         } }));
 });
-// eslint-disable-next-line react-refresh/only-export-components
 export const AlignmentHighlights = observer(function AlignmentHighlights({ model, strLength, height, }) {
     return (React.createElement("div", { style: {
             position: 'absolute',
@@ -77,37 +75,26 @@ export const AlignmentHighlights = observer(function AlignmentHighlights({ model
         React.createElement(HoverHighlight, { model: model, strLength: strLength, height: height })));
 });
 const SplitString = observer(function SplitString({ model, str, }) {
-    const containerRef = useRef(null);
-    const handleMouseMove = useMemo(() => throttle((e) => {
-        const container = containerRef.current;
-        if (!container) {
-            return;
-        }
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const index = Math.floor(x / CHAR_WIDTH);
-        if (index >= 0 && index < str.length) {
-            model.hoverAlignmentPosition(index);
-        }
-    }, 16), [str.length, model]);
-    const handleClick = useMemo(() => (e) => {
-        const container = containerRef.current;
-        if (!container) {
-            return;
-        }
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const index = Math.floor(x / CHAR_WIDTH);
-        if (index >= 0 && index < str.length) {
-            model.clickAlignmentPosition(index);
-        }
-    }, [str.length, model]);
-    return (React.createElement("span", { ref: containerRef, style: {
+    return (React.createElement("span", { style: {
             position: 'relative',
             display: 'inline-block',
             width: str.length * CHAR_WIDTH,
             height: '1em',
-        }, onMouseMove: handleMouseMove, onClick: handleClick },
+        }, onMouseMove: (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const index = Math.floor(x / CHAR_WIDTH);
+            if (index >= 0 && index < str.length) {
+                model.hoverAlignmentPosition(index);
+            }
+        }, onClick: (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const index = Math.floor(x / CHAR_WIDTH);
+            if (index >= 0 && index < str.length) {
+                model.clickAlignmentPosition(index);
+            }
+        } },
         React.createElement(CharacterSpans, { str: str })));
 });
 export default SplitString;

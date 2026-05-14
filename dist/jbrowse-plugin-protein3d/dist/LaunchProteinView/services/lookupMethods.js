@@ -1,7 +1,6 @@
 import { jsonfetch } from '../../fetchUtils';
 import { getDatabaseTypeForId, isRecognizedDatabaseId, stripTrailingVersion, } from '../utils/util';
 // Re-export for backward compatibility
-export { isRecognizedDatabaseId as isRecognizedTranscriptId };
 const UNIPROT_FIELDS = 'accession,id,gene_names,organism_name,protein_name,reviewed';
 function mapApiResultToEntry(result) {
     return {

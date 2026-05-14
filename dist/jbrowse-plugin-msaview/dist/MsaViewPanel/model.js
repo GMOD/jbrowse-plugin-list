@@ -9,7 +9,7 @@ import { autoConnectStructures, highlightConnectedStructures, launchBlastIfNeede
 import { genomeToMSA } from './genomeToMSA';
 import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { buildAlignmentMaps, runPairwiseAlignment } from './pairwiseAlignment';
-import { mapToRecord, ungappedToGappedPosition } from './structureConnection';
+import { getProteinViews, ungappedToGappedPosition, } from './structureConnection';
 const ConnectStructureDialog = lazy(() => import('./components/ConnectStructureDialog'));
 /**
  * #stateModel MsaViewPlugin
@@ -112,12 +112,6 @@ export default function stateModelFactory() {
         /**
          * #getter
          */
-        get processing() {
-            return !!self.progress;
-        },
-        /**
-         * #getter
-         */
         get connectedView() {
             const { views } = getSession(self);
             return views.find(f => f.id === self.connectedViewId);
@@ -126,13 +120,15 @@ export default function stateModelFactory() {
          * #getter
          */
         get connectedProteinViews() {
-            const { views } = getSession(self);
-            return self.connectedStructures
-                .map(conn => {
-                const proteinView = views.find((v) => v.id === conn.proteinViewId);
-                return proteinView ? { ...conn, proteinView } : undefined;
-            })
-                .filter((c) => c !== undefined);
+            const proteinViews = getProteinViews(getSession(self).views);
+            const result = [];
+            for (const conn of self.connectedStructures) {
+                const proteinView = proteinViews.find(v => v.id === conn.proteinViewId);
+                if (proteinView) {
+                    result.push({ ...conn, proteinView });
+                }
+            }
+            return result;
         },
     }))
         .views(self => ({
@@ -141,7 +137,7 @@ export default function stateModelFactory() {
          */
         get structureHoverCol() {
             for (const conn of self.connectedProteinViews) {
-                const structure = conn.proteinView?.structures?.[conn.structureIdx];
+                const structure = conn.proteinView.structures[conn.structureIdx];
                 const structurePos = structure?.hoverPosition?.structureSeqPos;
                 if (structurePos !== undefined) {
                     const msaUngapped = conn.structureToMsa[structurePos];
@@ -169,12 +165,6 @@ export default function stateModelFactory() {
                 return structureCol;
             }
             return genomeToMSA({ model: self });
-        },
-        /**
-         * #getter
-         */
-        get clickCol2() {
-            return undefined;
         },
     }))
         .actions(self => ({
@@ -292,12 +282,11 @@ export default function stateModelFactory() {
                 throw new Error(`MSA row "${rowName}" not found`);
             }
             const ungappedMsaSequence = msaSequence.replaceAll('-', '');
-            const { views } = getSession(self);
-            const proteinView = views.find((v) => v.id === proteinViewId);
+            const proteinView = getProteinViews(getSession(self).views).find(v => v.id === proteinViewId);
             if (!proteinView) {
                 throw new Error(`ProteinView "${proteinViewId}" not found`);
             }
-            const structure = proteinView.structures?.[structureIdx];
+            const structure = proteinView.structures[structureIdx];
             if (!structure) {
                 throw new Error(`Structure at index ${structureIdx} not found`);
             }
@@ -311,8 +300,8 @@ export default function stateModelFactory() {
                 proteinViewId,
                 structureIdx,
                 msaRowName: rowName,
-                msaToStructure: mapToRecord(seq1ToSeq2),
-                structureToMsa: mapToRecord(seq2ToSeq1),
+                msaToStructure: Object.fromEntries(seq1ToSeq2),
+                structureToMsa: Object.fromEntries(seq2ToSeq1),
             };
             self.connectedStructures.push(connection);
         },

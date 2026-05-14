@@ -87,9 +87,7 @@ const AddStructureDialog = observer(function AddStructureDialog({ model, }) {
         React.createElement(DialogActions, null,
             React.createElement(Button, { onClick: handleClose }, "Cancel"),
             React.createElement(Button, { onClick: () => {
-                    handleAdd().catch((e) => {
-                        console.error(e);
-                    });
+                    void handleAdd();
                 }, variant: "contained", color: "primary", disabled: !canAdd }, "Add Structure"))));
 });
 export default AddStructureDialog;

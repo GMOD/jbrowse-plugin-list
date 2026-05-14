@@ -1,3 +1,4 @@
+import type { BlastDatabase, BlastProgram } from '../LaunchMsaView/components/NCBIBlastQuery/consts';
 export declare function queryBlastFromRid({ rid, baseUrl, onProgress, }: {
     rid: string;
     baseUrl: string;
@@ -13,8 +14,8 @@ export declare function queryBlastFromRid({ rid, baseUrl, onProgress, }: {
 }>;
 export declare function queryBlast({ query, blastDatabase, blastProgram, baseUrl, onProgress, onRid, }: {
     query: string;
-    blastDatabase: string;
-    blastProgram: string;
+    blastDatabase: BlastDatabase;
+    blastProgram: BlastProgram;
     baseUrl: string;
     onProgress: (arg: string) => void;
     onRid: (arg: string) => void;

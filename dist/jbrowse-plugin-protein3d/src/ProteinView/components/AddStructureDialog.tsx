@@ -180,9 +180,7 @@ const AddStructureDialog = observer(function AddStructureDialog({
         <Button onClick={handleClose}>Cancel</Button>
         <Button
           onClick={() => {
-            handleAdd().catch((e: unknown) => {
-              console.error(e)
-            })
+            void handleAdd()
           }}
           variant="contained"
           color="primary"

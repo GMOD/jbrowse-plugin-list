@@ -9,7 +9,7 @@
     "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ --cache-control 'no-cache, must-revalidate' && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json --cache-control 'no-cache, must-revalidate'",
     "invalidate": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E13LGELJOT4GQO --paths \"/plugins/*\" \"/plugin-store/*\"",
     "dep": "pnpm update-plugins && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload && pnpm invalidate",
-    "postdeploy": "git push --follow-tags",
+    "postdep": "git push --follow-tags",
     "lint": "eslint src --report-unused-disable-directives --max-warnings 0",
     "prebuild": "pnpm clean",
     "prepack": "pnpm build",

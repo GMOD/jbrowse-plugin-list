@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import useAlphaFoldData from './useAlphaFoldData';
 import useAlphaFoldSequenceSearch from './useAlphaFoldSequenceSearch';
 import useIsoformProteinSequences from './useIsoformProteinSequences';
@@ -8,17 +8,13 @@ import { extractFeatureIdentifiers, getId, getTranscriptFeatures, getUniProtIdFr
 export default function useAlphaFoldDBSearch({ feature, view, }) {
     const [lookupMode, setLookupMode] = useState('auto');
     const [manualUniprotId, setManualUniprotId] = useState('');
-    const [selectedQueryId, setSelectedQueryId] = useState('auto');
+    const geneIds = extractFeatureIdentifiers(feature);
+    const [selectedQueryId, setSelectedQueryId] = useState(geneIds.recognizedIds[0] ?? 'auto');
     const [sequenceSearchType, setSequenceSearchType] = useState('md5');
     const [selectedUniprotId, setSelectedUniprotId] = useState();
     const [userTranscriptId, setUserTranscriptId] = useState();
-    // Gene-level identifiers for the UniProt search
-    const transcriptOptions = useMemo(() => getTranscriptFeatures(feature), [feature]);
-    const geneIds = useMemo(() => extractFeatureIdentifiers(feature), [feature]);
+    const transcriptOptions = getTranscriptFeatures(feature);
     const featureUniprotId = getUniProtIdFromFeature(feature);
-    // Compute effective lookup mode synchronously — avoids a useEffect that
-    // would leave a one-frame gap where isLoading is false but uniprotId is
-    // still undefined
     const effectiveLookupMode = lookupMode === 'auto' && featureUniprotId ? 'feature' : lookupMode;
     const isSequenceMode = effectiveLookupMode === 'sequence';
     const isAutoMode = effectiveLookupMode === 'auto';
@@ -41,23 +37,19 @@ export default function useAlphaFoldDBSearch({ feature, view, }) {
     const { predictions, isLoading: isAlphaFoldLoading, error: alphaFoldError, selectedEntryIndex, setSelectedEntryIndex, url: alphaFoldUrl, confidenceUrl: alphaFoldConfidenceUrl, structureSequence: alphaFoldStructureSequence, } = useAlphaFoldData({
         uniprotId: isSequenceMode ? undefined : uniprotId,
     });
-    // SYNC: src/LaunchProteinView/hooks/useTranscriptSelection.ts (same pattern)
-    // Auto-select transcript synchronously — avoids a useEffect that would
-    // leave a one-frame gap where isLoading is false but no transcript is
-    // selected yet
-    const autoTranscriptId = useMemo(() => {
-        if (isoformSequences) {
-            return selectBestTranscript({
-                options: transcriptOptions,
-                isoformSequences,
-                structureSequence: alphaFoldStructureSequence,
-            })?.id();
-        }
-        return undefined;
-    }, [transcriptOptions, alphaFoldStructureSequence, isoformSequences]);
+    let autoTranscriptId;
+    if (isoformSequences) {
+        autoTranscriptId = selectBestTranscript({
+            options: transcriptOptions,
+            isoformSequences,
+            structureSequence: alphaFoldStructureSequence,
+        })?.id();
+    }
     const effectiveTranscriptId = userTranscriptId ?? autoTranscriptId;
     const selectedTranscript = transcriptOptions.find(f => getId(f) === effectiveTranscriptId);
-    const userSelectedProteinSequence = isoformSequences?.[effectiveTranscriptId ?? ''];
+    const userSelectedProteinSequence = effectiveTranscriptId
+        ? isoformSequences?.[effectiveTranscriptId]
+        : undefined;
     const { uniprotId: seqSearchUniprotId, cifUrl: seqSearchUrl, plddtDocUrl: seqSearchConfidenceUrl, structureSequence: seqSearchStructureSequence, isLoading: isSequenceSearchLoading, error: sequenceSearchError, } = useAlphaFoldSequenceSearch({
         sequence: userSelectedProteinSequence?.seq,
         searchType: sequenceSearchType,
@@ -72,10 +64,10 @@ export default function useAlphaFoldDBSearch({ feature, view, }) {
         ? seqSearchStructureSequence
         : alphaFoldStructureSequence;
     const finalUniprotId = isSequenceMode ? seqSearchUniprotId : uniprotId;
-    // Reset manual transcript selection when UniProt selection changes
-    useEffect(() => {
+    const setSelectedUniprotIdWithReset = (id) => {
+        setSelectedUniprotId(id);
         setUserTranscriptId(undefined);
-    }, [selectedUniprotId]);
+    };
     const loadingStatuses = [
         isLookupLoading && 'Looking up UniProt ID',
         isIsoformLoading && 'Loading protein sequences from transcript isoforms',
@@ -100,7 +92,7 @@ export default function useAlphaFoldDBSearch({ feature, view, }) {
         sequenceSearchType,
         setSequenceSearchType,
         selectedUniprotId,
-        setSelectedUniprotId,
+        setSelectedUniprotId: setSelectedUniprotIdWithReset,
         userSelection: effectiveTranscriptId,
         setUserSelection: setUserTranscriptId,
         transcriptOptions,

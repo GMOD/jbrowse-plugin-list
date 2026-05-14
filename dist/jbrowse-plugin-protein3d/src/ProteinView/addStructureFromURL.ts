@@ -4,8 +4,6 @@ import type { LoadStructureOptions } from './structurePipeline'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory'
 
-export type { LoadStructureOptions }
-
 export async function addStructureFromURL({
   url,
   format = 'mmcif',
@@ -37,3 +35,5 @@ export async function addStructureFromURL({
   )
   return applyStructurePreset({ plugin, trajectory, options })
 }
+
+export { type LoadStructureOptions } from './structurePipeline'
