@@ -205,6 +205,23 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-hubs",
       "license": "MIT",
       "url": "https://unpkg.com/@cmdcolin/jbrowse-plugin-hubs/dist/jbrowse-plugin-hubs.umd.production.min.js"
+    },
+    {
+      "name": "Apollo",
+      "packageName": "@apollo-annotation/jbrowse-plugin-apollo",
+      "authors": [
+        "Garrett Stevens",
+        "Kyösti Sutinen",
+        "Dario Beraldi",
+        "Shashank Budhanuru Ramaraju",
+        "William Haese-Hill",
+        "Caroline Bridge"
+      ],
+      "description": "Graphical genome annotation editor",
+      "location": "https://github.com/GMOD/Apollo3",
+      "url": "https://cdn.jsdelivr.net/npm/@apollo-annotation/jbrowse-plugin-apollo/dist/jbrowse-plugin-apollo.umd.production.min.js",
+      "license": "Apache License 2.0",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png"
     }
   ]
 }
