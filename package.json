@@ -6,7 +6,7 @@
     "format": "pnpm prettier --write .",
     "generate": "node generate-plugins.ts",
     "update-plugins": "pnpm download && pnpm generate",
-    "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ --cache-control 'no-cache, must-revalidate' && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins2.json --cache-control 'no-cache, must-revalidate'",
+    "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ --cache-control 'no-cache, must-revalidate' && aws s3 cp new_plugins.json s3://jbrowse.org/plugin-store/plugins.json --cache-control 'no-cache, must-revalidate'",
     "invalidate": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E13LGELJOT4GQO --paths \"/plugins/*\" \"/plugin-store/*\"",
     "dep": "pnpm update-plugins && git add . && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload && pnpm invalidate",
     "postdep": "git push --follow-tags",
