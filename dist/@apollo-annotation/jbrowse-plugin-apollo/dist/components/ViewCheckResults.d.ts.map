@@ -1,0 +1,1 @@
+{"version":3,"file":"ViewCheckResults.d.ts","sourceRoot":"","sources":["../../src/components/ViewCheckResults.tsx"],"names":[],"mappings":"AAyBA,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,YAAY,CAAA;AAMpD,UAAU,qBAAqB;IAC7B,OAAO,EAAE,kBAAkB,CAAA;IAC3B,WAAW,IAAI,IAAI,CAAA;CACpB;AAED,wBAAgB,gBAAgB,CAAC,EAC/B,WAAW,EACX,OAAO,GACR,EAAE,qBAAqB,2CAkHvB"}

@@ -219,7 +219,7 @@
       ],
       "description": "Graphical genome annotation editor",
       "location": "https://github.com/GMOD/Apollo3",
-      "url": "https://cdn.jsdelivr.net/npm/@apollo-annotation/jbrowse-plugin-apollo/dist/jbrowse-plugin-apollo.umd.production.min.js",
+      "url": "https://unpkg.com/@apollo-annotation/jbrowse-plugin-apollo/dist/jbrowse-plugin-apollo.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png"
     }

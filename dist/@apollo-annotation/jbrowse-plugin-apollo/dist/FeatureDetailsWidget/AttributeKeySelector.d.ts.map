@@ -1,0 +1,1 @@
+{"version":3,"file":"AttributeKeySelector.d.ts","sourceRoot":"","sources":["../../src/FeatureDetailsWidget/AttributeKeySelector.tsx"],"names":[],"mappings":"AAcA,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,YAAY,CAAA;AAcpD,eAAO,MAAM,oBAAoB,yBAG9B;IACD,MAAM,EAAE,CAAC,MAAM,CAAC,EAAE,MAAM,KAAK,IAAI,CAAA;IACjC,OAAO,EAAE,kBAAkB,CAAA;CAC5B,4CAqEC,CAAA"}

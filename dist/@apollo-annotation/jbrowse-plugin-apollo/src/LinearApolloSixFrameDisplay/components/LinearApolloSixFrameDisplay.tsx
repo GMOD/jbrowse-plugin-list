@@ -1,0 +1,297 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+
+/* eslint-disable @typescript-eslint/no-misused-promises */
+
+import type { CheckResultI } from '@apollo-annotation/mst'
+import { Menu, type MenuItem } from '@jbrowse/core/ui'
+import {
+  type AbstractSessionModel,
+  doesIntersect2,
+  getContainingView,
+  getFrame,
+} from '@jbrowse/core/util'
+import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
+import ErrorIcon from '@mui/icons-material/Error'
+import LockIcon from '@mui/icons-material/Lock'
+import { Alert, Avatar, Badge, Box, Tooltip, useTheme } from '@mui/material'
+import { observer } from 'mobx-react'
+import React, { useEffect, useState } from 'react'
+
+import {
+  type Coord,
+  clusterResultByMessage,
+  useStyles,
+} from '../../util/displayUtils'
+import type { LinearApolloSixFrameDisplay as LinearApolloSixFrameDisplayI } from '../stateModel'
+
+import { TrackLines } from './TrackLines'
+
+interface LinearApolloSixFrameDisplayProps {
+  model: LinearApolloSixFrameDisplayI
+}
+
+export const LinearApolloSixFrameDisplay = observer(
+  function LinearApolloSixFrameDisplay(
+    props: LinearApolloSixFrameDisplayProps,
+    apolloDragging,
+  ) {
+    const theme = useTheme()
+    const { model } = props
+    const {
+      apolloRowHeight,
+      contextMenuItems: getContextMenuItems,
+      cursor,
+      featuresHeight,
+      geneTrackRowNums,
+      isShown,
+      onMouseDown,
+      onMouseLeave,
+      onMouseMove,
+      onMouseUp,
+      regionCannotBeRendered,
+      session,
+      setCanvas,
+      setCollaboratorCanvas,
+      setOverlayCanvas,
+      setTheme,
+      showCheckResults,
+      showFeatureLabels,
+    } = model
+    const { classes } = useStyles()
+    const lgv = getContainingView(model) as unknown as LinearGenomeViewModel
+
+    useEffect(() => {
+      setTheme(theme)
+    }, [theme, setTheme])
+    const [contextCoord, setContextCoord] = useState<Coord>()
+    const [contextMenuItems, setContextMenuItems] = useState<MenuItem[]>([])
+
+    const message = regionCannotBeRendered()
+    if (!isShown) {
+      return null
+    }
+    const { assemblyManager } = session as unknown as AbstractSessionModel
+    return (
+      <>
+        <div
+          className={classes.canvasContainer}
+          style={{
+            width: lgv.dynamicBlocks.totalWidthPx,
+            height: featuresHeight,
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            if (contextMenuItems.length > 0) {
+              // There's already a context menu open, so close it
+              setContextMenuItems([])
+            } else {
+              const coord: [number, number] = [event.clientX, event.clientY]
+              setContextCoord(coord)
+              setContextMenuItems(getContextMenuItems(event))
+            }
+          }}
+        >
+          {session.isLocked ? (
+            <div className={classes.locked} data-testid="lock-icon">
+              <LockIcon />
+            </div>
+          ) : null}
+          {/* This type is wrong in @jbrowse/core */}
+          {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
+          {message ? (
+            <Alert
+              severity="warning"
+              classes={{ message: classes.ellipses }}
+              slotProps={{ root: { className: classes.center } }}
+            >
+              <Tooltip title={message}>
+                <div>{message}</div>
+              </Tooltip>
+            </Alert>
+          ) : (
+            // Promise.resolve() in these 3 callbacks is to avoid infinite rendering loop
+            // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
+            <>
+              <TrackLines model={model} idx={0} />
+              <TrackLines
+                model={model}
+                hrStyle={{ margin: 0, top: 0, color: 'grey', opacity: 0.4 }}
+                idx={1}
+              />
+              <TrackLines model={model} idx={2} />
+              <canvas
+                ref={async (node: HTMLCanvasElement) => {
+                  await Promise.resolve()
+                  setCollaboratorCanvas(node)
+                }}
+                width={lgv.dynamicBlocks.totalWidthPx}
+                height={featuresHeight}
+                className={classes.canvas}
+                data-testid="collaboratorCanvas"
+              />
+              <canvas
+                ref={async (node: HTMLCanvasElement) => {
+                  await Promise.resolve()
+                  setCanvas(node)
+                }}
+                width={lgv.dynamicBlocks.totalWidthPx}
+                height={featuresHeight}
+                className={classes.canvas}
+                data-testid="canvas"
+              />
+              <canvas
+                ref={async (node: HTMLCanvasElement) => {
+                  await Promise.resolve()
+                  setOverlayCanvas(node)
+                }}
+                width={lgv.dynamicBlocks.totalWidthPx}
+                height={featuresHeight}
+                onMouseMove={onMouseMove}
+                onMouseLeave={onMouseLeave}
+                onMouseDown={onMouseDown}
+                onMouseUp={onMouseUp}
+                className={classes.canvas}
+                style={{ cursor: cursor ?? 'default' }}
+                data-testid="overlayCanvas"
+              />
+              {lgv.displayedRegions.flatMap((region, idx) => {
+                const widthBp = lgv.bpPerPx * apolloRowHeight
+                const assembly = assemblyManager.get(region.assemblyName)
+                if (showCheckResults) {
+                  const filteredCheckResults = [
+                    ...session.apolloDataStore.checkResults.values(),
+                  ].filter(
+                    (checkResult) =>
+                      assembly?.isValidRefName(checkResult.refSeq) &&
+                      assembly.getCanonicalRefName(checkResult.refSeq) ===
+                        region.refName &&
+                      doesIntersect2(
+                        region.start,
+                        region.end,
+                        checkResult.start,
+                        checkResult.end,
+                      ),
+                  )
+                  const checkResults = clusterResultByMessage<CheckResultI>(
+                    filteredCheckResults,
+                    widthBp,
+                    true,
+                  )
+                  return checkResults.map((checkResult) => {
+                    const left =
+                      (lgv.bpToPx({
+                        refName: region.refName,
+                        coord: checkResult.start,
+                        regionNumber: idx,
+                      })?.offsetPx ?? 0) - lgv.offsetPx
+                    const [feature] = checkResult.featureIds
+                    if (!feature || !feature.parent?.looksLikeGene) {
+                      return null
+                    }
+
+                    let row
+                    for (const loc of feature.cdsLocations) {
+                      for (const cds of loc) {
+                        const frame = getFrame(
+                          cds.min,
+                          cds.max,
+                          feature.strand ?? 1,
+                          cds.phase,
+                        )
+                        const frameOffsets = showFeatureLabels
+                          ? [0, 5, 3, 1, 15, 13, 11]
+                          : [0, 2, 1, 0, 8, 7, 6]
+                        const rowNum = frameOffsets.at(frame)
+                        if (!rowNum) {
+                          continue
+                        }
+                        if (
+                          checkResult.start >= cds.min &&
+                          checkResult.start <= cds.max
+                        ) {
+                          row = rowNum - 1
+                          break
+                        }
+                      }
+                    }
+                    if (row === undefined) {
+                      const rowNum =
+                        feature.strand == 1
+                          ? geneTrackRowNums[0]
+                          : geneTrackRowNums[1]
+                      row = rowNum - 1
+                    }
+
+                    const top = row * apolloRowHeight
+                    const height = apolloRowHeight
+                    return (
+                      <Tooltip
+                        key={checkResult._id}
+                        title={checkResult.message}
+                      >
+                        <Box
+                          className={classes.box}
+                          style={{
+                            top,
+                            left,
+                            height,
+                            width: height,
+                            pointerEvents: apolloDragging ? 'none' : 'auto',
+                          }}
+                        >
+                          <Badge
+                            className={classes.badge}
+                            badgeContent={checkResult.count}
+                            color="primary"
+                            overlap="circular"
+                            anchorOrigin={{
+                              vertical: 'bottom',
+                              horizontal: 'right',
+                            }}
+                            invisible={checkResult.count <= 1}
+                          >
+                            <Avatar className={classes.avatar}>
+                              <ErrorIcon
+                                data-testid={`ErrorIcon-${checkResult.start}`}
+                              />
+                            </Avatar>
+                          </Badge>
+                        </Box>
+                      </Tooltip>
+                    )
+                  })
+                }
+                return null
+              })}
+              <Menu
+                open={contextMenuItems.length > 0}
+                onMenuItemClick={(_, callback) => {
+                  callback()
+                  setContextMenuItems([])
+                }}
+                onClose={() => {
+                  setContextMenuItems([])
+                }}
+                slotProps={{
+                  transition: {
+                    onExit: () => {
+                      setContextMenuItems([])
+                    },
+                  },
+                }}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                  contextCoord
+                    ? { top: contextCoord[1], left: contextCoord[0] }
+                    : undefined
+                }
+                style={{ zIndex: theme.zIndex.tooltip }}
+                menuItems={contextMenuItems}
+              />
+            </>
+          )}
+        </div>
+      </>
+    )
+  },
+)

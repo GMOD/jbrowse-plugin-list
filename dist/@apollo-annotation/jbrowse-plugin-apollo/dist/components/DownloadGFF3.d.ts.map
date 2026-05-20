@@ -1,0 +1,1 @@
+{"version":3,"file":"DownloadGFF3.d.ts","sourceRoot":"","sources":["../../src/components/DownloadGFF3.tsx"],"names":[],"mappings":"AA+BA,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,YAAY,CAAA;AAKpD,UAAU,iBAAiB;IACzB,OAAO,EAAE,kBAAkB,CAAA;IAC3B,WAAW,IAAI,IAAI,CAAA;CACpB;AAED,wBAAgB,YAAY,CAAC,EAAE,WAAW,EAAE,OAAO,EAAE,EAAE,iBAAiB,2CAwMvE"}
