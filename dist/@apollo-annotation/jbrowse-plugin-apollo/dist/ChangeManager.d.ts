@@ -1,5 +1,5 @@
-import { type Change, type ClientDataStore } from '@apollo-annotation/common';
-import type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree';
+import { type Change } from '@apollo-annotation/common';
+import type { ClientDataStoreModel } from './session/ClientDataStore';
 export interface SubmitOpts {
     /** defaults to true */
     submitToBackend?: boolean;
@@ -12,7 +12,7 @@ export interface SubmitOpts {
 }
 export declare class ChangeManager {
     private dataStore;
-    constructor(dataStore: ClientDataStore & IAnyStateTreeNode);
+    constructor(dataStore: ClientDataStoreModel);
     recentChanges: Change[];
     undoneChanges: Change[];
     submit(change: Change, opts?: SubmitOpts): Promise<void>;

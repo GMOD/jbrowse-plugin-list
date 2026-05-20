@@ -22,6 +22,7 @@ import {
   clusterResultByMessage,
   useStyles,
 } from '../../util/displayUtils'
+import { looksLikeGene } from '../../util/glyphUtils'
 import type { LinearApolloSixFrameDisplay as LinearApolloSixFrameDisplayI } from '../stateModel'
 
 import { TrackLines } from './TrackLines'
@@ -185,7 +186,11 @@ export const LinearApolloSixFrameDisplay = observer(
                         regionNumber: idx,
                       })?.offsetPx ?? 0) - lgv.offsetPx
                     const [feature] = checkResult.featureIds
-                    if (!feature || !feature.parent?.looksLikeGene) {
+                    if (
+                      !feature ||
+                      !feature.parent ||
+                      !looksLikeGene(feature.parent, session)
+                    ) {
                       return null
                     }
 
@@ -202,7 +207,7 @@ export const LinearApolloSixFrameDisplay = observer(
                           ? [0, 5, 3, 1, 15, 13, 11]
                           : [0, 2, 1, 0, 8, 7, 6]
                         const rowNum = frameOffsets.at(frame)
-                        if (!rowNum) {
+                        if (rowNum === undefined) {
                           continue
                         }
                         if (

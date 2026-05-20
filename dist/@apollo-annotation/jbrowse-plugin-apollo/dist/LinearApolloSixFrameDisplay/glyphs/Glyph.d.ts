@@ -7,7 +7,7 @@ import type { CanvasMouseEvent } from '../types';
 export interface Glyph {
     /** draw the feature's primary rendering on the canvas */
     draw(ctx: CanvasRenderingContext2D, feature: AnnotationFeature, row: number, stateModel: LinearApolloSixFrameDisplayRendering, displayedRegionIndex: number): void;
-    drawHover(display: LinearApolloSixFrameDisplayMouseEvents, overlayCtx: CanvasRenderingContext2D): void;
+    drawOverlay(display: LinearApolloSixFrameDisplayMouseEvents, overlayCtx: CanvasRenderingContext2D): void;
     drawDragPreview(display: LinearApolloSixFrameDisplayMouseEvents, ctx: CanvasRenderingContext2D): void;
     onMouseDown(display: LinearApolloSixFrameDisplayMouseEvents, currentMousePosition: MousePositionWithFeature, event: CanvasMouseEvent): void;
     onMouseMove(display: LinearApolloSixFrameDisplayMouseEvents, currentMousePosition: MousePositionWithFeature, event: CanvasMouseEvent): void;

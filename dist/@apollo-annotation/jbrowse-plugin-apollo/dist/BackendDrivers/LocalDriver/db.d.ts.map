@@ -1,0 +1,1 @@
+{"version":3,"file":"db.d.ts","sourceRoot":"","sources":["../../../src/BackendDrivers/LocalDriver/db.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,YAAY,EAAU,MAAM,qBAAqB,CAAA;AAE/D,MAAM,MAAM,eAAe,GAAG,YAAY,CAAA;AAE1C,wBAAsB,MAAM,CAC1B,YAAY,EAAE,MAAM,EACpB,QAAQ,EAAE,MAAM,EAAE,GACjB,OAAO,CAAC,eAAe,CAAC,CA6B1B"}

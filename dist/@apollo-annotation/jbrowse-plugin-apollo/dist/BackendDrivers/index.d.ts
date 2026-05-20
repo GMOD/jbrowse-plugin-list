@@ -1,5 +1,4 @@
 export * from './BackendDriver';
+export * from './LocalDriver/LocalDriver';
 export * from './CollaborationServerDriver';
-export * from './InMemoryFileDriver';
-export * from './DesktopFileDriver';
 //# sourceMappingURL=index.d.ts.map

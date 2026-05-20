@@ -1,1 +1,1 @@
-{"version":3,"file":"GeneGlyph.d.ts","sourceRoot":"","sources":["../../../src/LinearApolloDisplay/glyphs/GeneGlyph.ts"],"names":[],"mappings":"AAuCA,OAAO,KAAK,EAAE,KAAK,EAAE,MAAM,SAAS,CAAA;AAm+BpC,eAAO,MAAM,SAAS,EAAE,KAcvB,CAAA"}
+{"version":3,"file":"GeneGlyph.d.ts","sourceRoot":"","sources":["../../../src/LinearApolloDisplay/glyphs/GeneGlyph.ts"],"names":[],"mappings":"AAUA,OAAO,KAAK,EAAE,KAAK,EAAe,MAAM,SAAS,CAAA;AAiGjD,eAAO,MAAM,SAAS,EAAE,KAOvB,CAAA"}

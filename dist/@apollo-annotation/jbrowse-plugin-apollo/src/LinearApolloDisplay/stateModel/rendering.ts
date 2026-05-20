@@ -24,7 +24,6 @@ export function renderingModelFactory(
       apolloRowHeight: 20,
       detailsMinHeight: 200,
       detailsHeight: 200,
-      lastRowTooltipBufferHeight: 40,
       isShown: true,
       filteredTranscripts: types.array(types.string),
     })
@@ -35,11 +34,51 @@ export function renderingModelFactory(
       theme: createTheme(),
     }))
     .views((self) => ({
-      get featuresHeight() {
-        return (
-          (self.highestRow + 1) * self.apolloRowHeight +
-          self.lastRowTooltipBufferHeight
-        )
+      featuresHeight(assemblyName: string) {
+        return (self.highestRow(assemblyName) + 1) * self.apolloRowHeight
+      },
+      get canvasPatterns(): Record<
+        'forward' | 'backward',
+        CanvasPattern | null
+      > {
+        const patterns: Record<'forward' | 'backward', CanvasPattern | null> = {
+          forward: null,
+          backward: null,
+        }
+        const canvas = document.createElement('canvas')
+        const ctx = canvas?.getContext('2d')
+        if (!ctx) {
+          return patterns
+        }
+        const canvasSize = 10
+        canvas.width = canvas.height = canvasSize
+        const { theme } = self
+        const stripeColor1 =
+          theme.palette.mode === 'light' ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,0.75)'
+        const stripeColor2 =
+          theme.palette.mode === 'light'
+            ? 'rgba(255,255,255,0.25)'
+            : 'rgba(0,0,0,0.50)'
+        const directions = ['forward', 'backward'] as const
+        for (const direction of directions) {
+          const gradient =
+            direction === 'forward'
+              ? ctx.createLinearGradient(0, canvasSize, canvasSize, 0)
+              : ctx.createLinearGradient(0, 0, canvasSize, canvasSize)
+          gradient.addColorStop(0, stripeColor1)
+          gradient.addColorStop(0.25, stripeColor1)
+          gradient.addColorStop(0.25, stripeColor2)
+          gradient.addColorStop(0.5, stripeColor2)
+          gradient.addColorStop(0.5, stripeColor1)
+          gradient.addColorStop(0.75, stripeColor1)
+          gradient.addColorStop(0.75, stripeColor2)
+          gradient.addColorStop(1, stripeColor2)
+          ctx.fillStyle = gradient
+          ctx.clearRect(0, 0, canvasSize, canvasSize)
+          ctx.fillRect(0, 0, canvasSize, canvasSize)
+          patterns[direction] = ctx.createPattern(canvas, 'repeat')
+        }
+        return patterns
       },
     }))
     .actions((self) => ({
@@ -84,7 +123,7 @@ export function renderingModelFactory(
                 0,
                 0,
                 self.lgv.dynamicBlocks.totalWidthPx,
-                self.featuresHeight,
+                self.featuresHeight(self.lgv.assemblyNames[0]),
               )
               for (const collaborator of (
                 self.session as unknown as ApolloSessionModel
@@ -132,38 +171,81 @@ export function renderingModelFactory(
           self,
           autorun(
             () => {
-              const { canvas, featureLayouts, featuresHeight, lgv } = self
-              if (!lgv.initialized || self.regionCannotBeRendered()) {
+              const { canvas, layouts, lgv } = self
+              if (
+                !lgv.initialized ||
+                self.regionCannotBeRendered() ||
+                !canvas
+              ) {
                 return
               }
-              const { displayedRegions, dynamicBlocks } = lgv
+              const { dynamicBlocks, offsetPx } = lgv
 
-              const ctx = canvas?.getContext('2d')
+              const ctx = canvas.getContext('2d')
               if (!ctx) {
                 return
               }
-              ctx.clearRect(0, 0, dynamicBlocks.totalWidthPx, featuresHeight)
-              for (const [idx, featureLayout] of featureLayouts.entries()) {
-                const displayedRegion = displayedRegions[idx]
-                for (const [row, featureLayoutRow] of featureLayout.entries()) {
-                  for (const [featureRow, featureId] of featureLayoutRow) {
-                    const feature = self.getAnnotationFeatureById(featureId)
-                    if (featureRow > 0 || !feature) {
-                      continue
-                    }
+              const featureLayouts = layouts.get(lgv.assemblyNames[0])
+              if (!featureLayouts) {
+                return
+              }
+              ctx.clearRect(0, 0, canvas.width, canvas.height)
+              for (const block of dynamicBlocks.contentBlocks) {
+                const blockLeftPx = block.offsetPx - offsetPx
+                ctx.save()
+                ctx.beginPath()
+                ctx.rect(blockLeftPx, 0, block.widthPx, canvas.height)
+                ctx.clip()
+                const layout = featureLayouts.get(block.refName)
+                if (!layout) {
+                  return
+                }
+                const { byRow } = layout
+                for (const [row, layoutRow] of byRow.entries()) {
+                  for (const layoutFeature of layoutRow) {
+                    const { feature, rowInFeature } = layoutFeature
                     if (
                       !doesIntersect2(
-                        displayedRegion.start,
-                        displayedRegion.end,
+                        block.start,
+                        block.end,
                         feature.min,
                         feature.max,
                       )
                     ) {
                       continue
                     }
-                    self.getGlyph(feature).draw(ctx, feature, row, self, idx)
+                    self
+                      .getGlyph(feature)
+                      // @ts-expect-error ts doesn't understand mst extension
+                      .draw(self, ctx, feature, row, rowInFeature, block)
                   }
                 }
+                for (const [row, layoutRow] of byRow.entries()) {
+                  for (const layoutFeature of layoutRow) {
+                    const { feature, rowInFeature } = layoutFeature
+                    if (
+                      !doesIntersect2(
+                        block.start,
+                        block.end,
+                        feature.min,
+                        feature.max,
+                      )
+                    ) {
+                      continue
+                    }
+                    self.getGlyph(feature).drawOverlay(
+                      // @ts-expect-error ts doesn't understand mst extension
+                      self,
+                      ctx,
+                      feature,
+                      row,
+                      block,
+                      'highlight',
+                      rowInFeature,
+                    )
+                  }
+                }
+                ctx.restore()
               }
             },
             { name: 'LinearApolloDisplayRenderFeatures' },

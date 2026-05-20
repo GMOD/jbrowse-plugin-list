@@ -330,7 +330,7 @@ function draw(
       let prevCDSTop = 0
       let prevCDSEndPx = 0
       let counter = 1
-      for (const cds of cdsRow.sort((a, b) => a.max - b.max)) {
+      for (const cds of cdsRow.toSorted((a, b) => a.max - b.max)) {
         if (
           (selectedFeature &&
             isSelected &&
@@ -473,7 +473,7 @@ function drawDragPreview(
   overlayCtx.fillRect(rectX, rectY, rectWidth, rectHeight)
 }
 
-function drawHover(
+function drawOverlay(
   stateModel: LinearApolloSixFrameDisplay,
   ctx: CanvasRenderingContext2D,
 ) {
@@ -520,7 +520,7 @@ function drawHover(
     let prevCDSTop = 0
     let prevCDSEndPx = 0
     let counter = 1
-    for (const cds of cdsRow.sort((a, b) => a.max - b.max)) {
+    for (const cds of cdsRow.toSorted((a, b) => a.max - b.max)) {
       const cdsWidthPx = (cds.max - cds.min) / bpPerPx
       const minX =
         (lgv.bpToPx({
@@ -859,7 +859,7 @@ function getContextMenuItems(
   const currentAssemblyId = display.getAssemblyId(region.assemblyName)
   const menuItems: MenuItem[] = []
   const role = internetAccount ? internetAccount.role : 'admin'
-  const admin = role === 'admin'
+  const readOnly = !(role && ['admin', 'user'].includes(role))
   if (!hoveredFeature) {
     return menuItems
   }
@@ -886,12 +886,7 @@ function getContextMenuItems(
         feature,
       )
       if (isExonFeature(feature, session)) {
-        const adjacentExons = getAdjacentExons(
-          feature,
-          display,
-          mousePosition,
-          session,
-        )
+        const adjacentExons = getAdjacentExons(feature, display)
         const lgv = getContainingView(
           display as BaseDisplayModel,
         ) as unknown as LinearGenomeViewModel
@@ -928,7 +923,7 @@ function getContextMenuItems(
         contextMenuItemsForFeature.push(
           {
             label: 'Merge exons',
-            disabled: !admin,
+            disabled: readOnly,
             onClick: () => {
               ;(session as unknown as AbstractSessionModel).queueDialog(
                 (doneCallback) => [
@@ -952,7 +947,7 @@ function getContextMenuItems(
           },
           {
             label: 'Split exon',
-            disabled: !admin,
+            disabled: readOnly,
             onClick: () => {
               ;(session as unknown as AbstractSessionModel).queueDialog(
                 (doneCallback) => [
@@ -1014,7 +1009,7 @@ function onMouseLeave(): void {
 export const geneGlyph: Glyph = {
   draw,
   drawDragPreview,
-  drawHover,
+  drawOverlay,
   drawTooltip,
   getContextMenuItems,
   getContextMenuItemsForFeature,

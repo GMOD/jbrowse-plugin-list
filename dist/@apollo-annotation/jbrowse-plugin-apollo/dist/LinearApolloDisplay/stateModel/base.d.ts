@@ -3,6 +3,7 @@ import type PluginManager from '@jbrowse/core/PluginManager';
 import { type AnyConfigurationSchemaType } from '@jbrowse/core/configuration';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 import type { ApolloInternetAccountModel } from '../../ApolloInternetAccount/model';
+import { Export as ExportIcon } from '../../components/DownloadGFF3';
 import type { ApolloSessionModel, HoveredFeature } from '../../session';
 export declare function baseModelFactory(_pluginManager: PluginManager, configSchema: AnyConfigurationSchemaType): import("@jbrowse/mobx-state-tree").IModelType<{
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
@@ -244,6 +245,22 @@ export declare function baseModelFactory(_pluginManager: PluginManager, configSc
             type?: undefined;
             checked?: undefined;
         })[];
+        icon?: undefined;
+        onClick?: undefined;
+    } | {
+        label: string;
+        icon: typeof ExportIcon;
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
+    } | {
+        label: string;
+        icon: import("@mui/material/OverridableComponent").OverridableComponent<import("@mui/material").SvgIconTypeMap<{}, "svg">> & {
+            muiName: string;
+        };
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
     })[];
 } & {
     setSelectedFeature(feature?: AnnotationFeature): void;

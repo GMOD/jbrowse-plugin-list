@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import type { ClientDataStore as ClientDataStoreType } from '@apollo-annotation/common'
 import {
   type AnnotationFeatureModel,
   type AnnotationFeatureSnapshot,
@@ -18,7 +17,7 @@ import {
   getConf,
   readConfObject,
 } from '@jbrowse/core/configuration'
-import { type Region, getSession, isElectron } from '@jbrowse/core/util'
+import { type Region, getSession } from '@jbrowse/core/util'
 import type {
   LocalPathLocation,
   UriLocation,
@@ -38,8 +37,7 @@ import {
   type ApolloInternetAccount,
   type BackendDriver,
   CollaborationServerDriver,
-  DesktopFileDriver,
-  InMemoryFileDriver,
+  LocalDriver,
 } from '../BackendDrivers'
 import { ChangeManager } from '../ChangeManager'
 import {
@@ -158,16 +156,11 @@ export function clientDataStoreFactory(
       },
     }))
     .volatile((self) => ({
-      changeManager: new ChangeManager(self as unknown as ClientDataStoreType),
+      changeManager: new ChangeManager(self as ClientDataStoreModel),
       collaborationServerDriver: new CollaborationServerDriver(
-        self as unknown as ClientDataStoreType,
+        self as ClientDataStoreModel,
       ),
-      inMemoryFileDriver: new InMemoryFileDriver(
-        self as unknown as ClientDataStoreType,
-      ),
-      desktopFileDriver: isElectron
-        ? new DesktopFileDriver(self as unknown as ClientDataStoreType)
-        : undefined,
+      localDriver: new LocalDriver(self as ClientDataStoreModel),
     }))
     .actions((self) => ({
       afterCreate() {
@@ -245,17 +238,14 @@ export function clientDataStoreFactory(
         if (!assembly) {
           return
         }
-        const { file, internetAccountConfigId } = getConf(assembly, [
+        const { internetAccountConfigId } = getConf(assembly, [
           'sequence',
           'metadata',
         ]) as { internetAccountConfigId?: string; file: string }
-        if (isElectron && file) {
-          return self.desktopFileDriver
-        }
         if (internetAccountConfigId) {
           return self.collaborationServerDriver
         }
-        return self.inMemoryFileDriver
+        return self.localDriver
       },
       getInternetAccount(assemblyName?: string, internetAccountId?: string) {
         if (!(assemblyName ?? internetAccountId)) {
@@ -347,3 +337,12 @@ export function clientDataStoreFactory(
       }),
     }))
 }
+
+export type ClientDataStoreStateModel = ReturnType<
+  typeof clientDataStoreFactory
+>
+// eslint disable because of
+// https://mobx-state-tree.js.org/tips/typescript#using-a-mst-type-at-design-time
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ClientDataStoreModel
+  extends Instance<ClientDataStoreStateModel> {}

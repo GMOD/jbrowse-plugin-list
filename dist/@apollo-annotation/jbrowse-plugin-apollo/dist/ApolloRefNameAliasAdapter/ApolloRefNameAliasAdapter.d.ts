@@ -5,7 +5,7 @@ declare global {
     const rpcServer: RpcServer;
 }
 export default class RefNameAliasAdapter extends BaseAdapter implements BaseRefNameAliasAdapter {
-    private refNameAliases;
+    private refNameAliasesP;
     getRefNameAliases(): Promise<RefNameAliases[]>;
     freeResources(): void;
 }

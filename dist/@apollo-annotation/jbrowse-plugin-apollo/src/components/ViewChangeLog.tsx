@@ -1,44 +1,36 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { changeRegistry } from '@apollo-annotation/common'
+import type { AbstractSessionModel } from '@jbrowse/core/util'
 import { makeStyles } from '@jbrowse/core/util/tss-react'
-import { getRoot } from '@jbrowse/mobx-state-tree'
 import {
   Button,
   DialogActions,
   DialogContent,
   DialogContentText,
-  MenuItem,
-  Select,
-  type SelectChangeEvent,
 } from '@mui/material'
 import {
   DataGrid,
   type GridColDef,
+  type GridFilterModel,
+  type GridPaginationModel,
   type GridRowsProp,
-  GridToolbar,
+  type GridSortModel,
 } from '@mui/x-data-grid'
 import React, { useEffect, useState } from 'react'
 
-import type { ApolloInternetAccountModel } from '../ApolloInternetAccount/model'
-import type {
-  ApolloInternetAccount,
-  CollaborationServerDriver,
-} from '../BackendDrivers'
+import type { GetChangesOpts } from '../BackendDrivers/BackendDriver'
 import type { ApolloSessionModel } from '../session'
-import type { ApolloRootModel } from '../types'
-import { createFetchErrorMessage } from '../util'
 
 import { Dialog } from './Dialog'
 
 interface ViewChangeLogProps {
   session: ApolloSessionModel
   handleClose(): void
+  assembly: string
 }
 
 const useStyles = makeStyles()((theme) => ({
@@ -51,28 +43,67 @@ const useStyles = makeStyles()((theme) => ({
   },
 }))
 
-export function ViewChangeLog({ handleClose, session }: ViewChangeLogProps) {
-  const { internetAccounts } = getRoot<ApolloRootModel>(session)
-  const apolloInternetAccount = internetAccounts.find(
-    (ia) => ia.type === 'ApolloInternetAccount',
-  ) as ApolloInternetAccountModel | undefined
-  if (!apolloInternetAccount) {
-    throw new Error('No Apollo internet account found')
+function buildFiltersFromModel(
+  filterModel: GridFilterModel,
+): GetChangesOpts['filters'] {
+  const filters: NonNullable<GetChangesOpts['filters']> = {}
+  for (const item of filterModel.items) {
+    if (item.value === undefined || item.value === '' || item.value === null) {
+      continue
+    }
+    switch (item.field) {
+      case 'user': {
+        filters.user = String(item.value)
+        break
+      }
+      case 'typeName': {
+        filters.typeName = String(item.value)
+        break
+      }
+      case 'createdAt': {
+        const date = new Date(
+          item.value as string | number | Date,
+        ).toISOString()
+        if (item.operator === 'after' || item.operator === 'onOrAfter') {
+          filters.startTime = date
+        } else if (
+          item.operator === 'before' ||
+          item.operator === 'onOrBefore'
+        ) {
+          filters.endTime = date
+        }
+        break
+      }
+    }
   }
-  const { baseURL } = apolloInternetAccount
+  return filters
+}
+
+export function ViewChangeLog({
+  handleClose,
+  session,
+  assembly: assemblyId,
+}: ViewChangeLogProps) {
   const { classes } = useStyles()
   const [errorMessage, setErrorMessage] = useState<string>()
   const [displayGridData, setDisplayGridData] = useState<GridRowsProp[]>([])
+  const [rowCount, setRowCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 15,
+  })
+  const [sortModel, setSortModel] = useState<GridSortModel>([
+    { field: 'sequence', sort: 'desc' },
+  ])
+  const [filterModel, setFilterModel] = useState<GridFilterModel>({
+    items: [],
+  })
 
-  const { collaborationServerDriver } = session.apolloDataStore as {
-    collaborationServerDriver: CollaborationServerDriver
-    getInternetAccount(
-      assemblyName?: string,
-      internetAccountId?: string,
-    ): ApolloInternetAccount
-  }
-  const assemblies = collaborationServerDriver.getAssemblies()
-  const [selectedAssembly, setSelectedAssembly] = useState(assemblies.at(0))
+  const { apolloDataStore } = session
+  const { assemblyManager } = session as unknown as AbstractSessionModel
+  const assembly = assemblyManager.get(assemblyId)
+  const assemblyName = assembly?.displayName ?? assemblyId
 
   const gridColumns: GridColDef[] = [
     { field: 'sequence' },
@@ -85,9 +116,11 @@ export function ViewChangeLog({ handleClose, session }: ViewChangeLogProps) {
       valueOptions: [...changeRegistry.changes.keys()],
     },
     {
-      field: 'changes',
+      field: 'changeData',
       headerName: 'Change JSON',
       width: 600,
+      sortable: false,
+      filterable: false,
       renderCell: ({ value }) => (
         <textarea
           className={classes.changeTextarea}
@@ -108,46 +141,53 @@ export function ViewChangeLog({ handleClose, session }: ViewChangeLogProps) {
 
   useEffect(() => {
     async function getGridData() {
-      if (!selectedAssembly) {
+      const backendDriver = apolloDataStore.getBackendDriver(assemblyId)
+      if (!backendDriver) {
+        setErrorMessage(`No driver found for assembly "${assemblyId}"`)
         return
       }
-
-      // Get changes
-      const url = new URL('changes', baseURL)
-      const searchParams = new URLSearchParams({
-        assembly: selectedAssembly.name,
+      setLoading(true)
+      const [sortEntry] = sortModel
+      const sortField = sortEntry?.field
+      const sortOrderValue = sortEntry?.sort
+      const sortOrder: 'asc' | 'desc' | undefined =
+        sortOrderValue === 'asc' || sortOrderValue === 'desc'
+          ? sortOrderValue
+          : undefined
+      const { changes, totalCount } = await backendDriver.getChanges(
+        assemblyId,
+        {
+          page: paginationModel.page,
+          pageSize: paginationModel.pageSize,
+          sortField,
+          sortOrder,
+          filters: buildFiltersFromModel(filterModel),
+        },
+      )
+      const gridData = changes.map((change) => {
+        const {
+          sequence,
+          typeName,
+          changes: nestedChanges,
+          user,
+          createdAt,
+          ...rest
+        } = change
+        const changeData = nestedChanges ?? { typeName, ...rest }
+        return { sequence, typeName, changeData, user, createdAt }
       })
-      url.search = searchParams.toString()
-      const uri = url.toString()
-      const apolloFetch = apolloInternetAccount?.getFetcher({
-        locationType: 'UriLocation',
-        uri,
-      })
-      if (apolloFetch) {
-        const response = await apolloFetch(uri, {
-          headers: new Headers({ 'Content-Type': 'application/json' }),
-        })
-        if (!response.ok) {
-          const newErrorMessage = await createFetchErrorMessage(
-            response,
-            'Error when retrieving changes',
-          )
-          setErrorMessage(newErrorMessage)
-          return
-        }
-        const data = await response.json()
-        setDisplayGridData(data)
-      }
+      // @ts-expect-error not sure how to type this
+      setDisplayGridData(gridData)
+      setRowCount(totalCount)
     }
-    getGridData().catch((error) => {
-      setErrorMessage(String(error))
-    })
-  }, [apolloInternetAccount, baseURL, selectedAssembly])
-
-  function handleChangeAssembly(e: SelectChangeEvent) {
-    const newAssembly = assemblies.find((asm) => asm.name === e.target.value)
-    setSelectedAssembly(newAssembly)
-  }
+    getGridData()
+      .catch((error) => {
+        setErrorMessage(String(error))
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [apolloDataStore, assemblyId, paginationModel, sortModel, filterModel])
 
   return (
     <Dialog
@@ -157,27 +197,27 @@ export function ViewChangeLog({ handleClose, session }: ViewChangeLogProps) {
       handleClose={handleClose}
       data-testid="view-changelog"
     >
-      <Select
-        style={{ width: 200, marginLeft: 40 }}
-        value={selectedAssembly?.name ?? ''}
-        onChange={handleChangeAssembly}
-      >
-        {assemblies.map((option) => (
-          <MenuItem key={option.name} value={option.name}>
-            {option.displayName || option.name}
-          </MenuItem>
-        ))}
-      </Select>
-
       <DialogContent>
+        <DialogContentText>Changes for {assemblyName}</DialogContentText>
         <DataGrid
           pagination
+          paginationMode="server"
+          sortingMode="server"
+          filterMode="server"
+          rowCount={rowCount}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          sortModel={sortModel}
+          onSortModelChange={setSortModel}
+          filterModel={filterModel}
+          onFilterModelChange={setFilterModel}
+          loading={loading}
           rows={displayGridData}
           columns={gridColumns}
-          getRowId={(row) => row._id}
-          slots={{ toolbar: GridToolbar }}
+          getRowId={(row) => row.sequence}
+          showToolbar
+          pageSizeOptions={[5, 15, 25, 50, 100]}
           initialState={{
-            sorting: { sortModel: [{ field: 'sequence', sort: 'desc' }] },
             columns: { columnVisibilityModel: { sequence: false } },
           }}
         />

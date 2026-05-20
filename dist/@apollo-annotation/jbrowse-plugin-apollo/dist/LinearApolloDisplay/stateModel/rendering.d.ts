@@ -23,7 +23,6 @@ export declare function renderingModelFactory(pluginManager: PluginManager, conf
     apolloRowHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsMinHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
-    lastRowTooltipBufferHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     isShown: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     filteredTranscripts: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
 }, {
@@ -252,6 +251,22 @@ export declare function renderingModelFactory(pluginManager: PluginManager, conf
             type?: undefined;
             checked?: undefined;
         })[];
+        icon?: undefined;
+        onClick?: undefined;
+    } | {
+        label: string;
+        icon: typeof import("../../components").Export;
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
+    } | {
+        label: string;
+        icon: import("@mui/material/OverridableComponent").OverridableComponent<import("@mui/material").SvgIconTypeMap<{}, "svg">> & {
+            muiName: string;
+        };
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
     })[];
 } & {
     setSelectedFeature(feature?: import("@apollo-annotation/mst").AnnotationFeature): void;
@@ -267,14 +282,15 @@ export declare function renderingModelFactory(pluginManager: PluginManager, conf
     addSeenFeature(feature: import("@apollo-annotation/mst").AnnotationFeature): void;
     deleteSeenFeature(featureId: string): void;
 } & {
-    readonly featureLayouts: Map<number, [number, string][]>[];
-    getFeatureLayoutPosition(feature: import("@apollo-annotation/mst").AnnotationFeature): {
-        layoutIndex: number;
-        layoutRow: number;
-        featureRow: number;
-    } | undefined;
+    getCanonicalRefName(assemblyName: string, refSeq: string): string;
 } & {
-    readonly highestRow: number;
+    isFeatureDisplayed(feature: import("@apollo-annotation/mst").AnnotationFeature): boolean;
+} & {
+    readonly layouts: Map<string, Map<string, import("../glyphs/Glyph").Layout>>;
+    getRowForFeature(feature: import("@apollo-annotation/mst").AnnotationFeature): number | undefined;
+    getFeaturesAtPosition(assemblyName: string, refName: string, row: number, bp: number): import("@apollo-annotation/mst").AnnotationFeature[];
+} & {
+    highestRow(assemblyName: string): number;
 } & {
     afterAttach(): void;
 } & {
@@ -283,7 +299,8 @@ export declare function renderingModelFactory(pluginManager: PluginManager, conf
     collaboratorCanvas: HTMLCanvasElement | null;
     theme: Theme;
 } & {
-    readonly featuresHeight: number;
+    featuresHeight(assemblyName: string): number;
+    readonly canvasPatterns: Record<"forward" | "backward", CanvasPattern | null>;
 } & {
     toggleShown(): void;
     setDetailsHeight(newHeight: number): void;

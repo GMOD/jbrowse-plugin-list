@@ -1,12 +1,11 @@
 import type {
   AnnotationFeature,
+  Children,
   TranscriptPartCoding,
 } from '@apollo-annotation/mst'
-import type { BaseDisplayModel } from '@jbrowse/core/pluggableElementTypes'
 import type { MenuItem } from '@jbrowse/core/ui'
 import {
   type AbstractSessionModel,
-  getContainingView,
   isSessionModelWithWidgets,
 } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
@@ -15,10 +14,11 @@ import SkipPreviousRoundedIcon from '@mui/icons-material/SkipPreviousRounded'
 
 import type { LinearApolloDisplayMouseEvents } from '../LinearApolloDisplay/stateModel/mouseEvents'
 import type { LinearApolloSixFrameDisplayMouseEvents } from '../LinearApolloSixFrameDisplay/stateModel/mouseEvents'
-import { AddChildFeature, CopyFeature, DeleteFeature } from '../components'
+import { AddChildFeature } from '../components/AddChildFeature'
+import { ColorFeature } from '../components/ColorFeature'
+import { CopyFeature } from '../components/CopyFeature'
+import { DeleteFeature } from '../components/DeleteFeature'
 import type { ApolloSessionModel } from '../session'
-
-import type { MousePositionWithFeature } from '.'
 
 type NavLocation = Parameters<LinearGenomeViewModel['navTo']>[0]
 
@@ -63,6 +63,20 @@ export function selectFeatureAndOpenWidget(
   }
 }
 
+export function isGeneFeature(
+  feature: AnnotationFeature,
+  session: ApolloSessionModel,
+): boolean {
+  const { featureTypeOntology } = session.apolloDataStore.ontologyManager
+  if (!featureTypeOntology) {
+    throw new Error('featureTypeOntology is undefined')
+  }
+  return (
+    featureTypeOntology.isTypeOf(feature.type, 'gene') ||
+    featureTypeOntology.isTypeOf(feature.type, 'pseudogene')
+  )
+}
+
 export function isTranscriptFeature(
   feature: AnnotationFeature,
   session: ApolloSessionModel,
@@ -99,6 +113,36 @@ export function isCDSFeature(
   return featureTypeOntology.isTypeOf(feature.type, 'CDS')
 }
 
+export function looksLikeGene(
+  feature: AnnotationFeature,
+  session: ApolloSessionModel,
+) {
+  const { featureTypeOntology } = session.apolloDataStore.ontologyManager
+  if (!featureTypeOntology) {
+    throw new Error('featureTypeOntology is undefined')
+  }
+  const children = feature.children as Children
+  if (!children?.size) {
+    return false
+  }
+  const isGene = isGeneFeature(feature, session)
+  if (!isGene) {
+    return false
+  }
+  for (const [, child] of children) {
+    if (isTranscriptFeature(child, session)) {
+      const { children: grandChildren } = child as { children?: Children }
+      if (!grandChildren?.size) {
+        return false
+      }
+      return [...grandChildren.values()].some((grandchild) =>
+        isExonFeature(grandchild, session),
+      )
+    }
+  }
+  return false
+}
+
 export interface AdjacentExons {
   upstream: AnnotationFeature | undefined
   downstream: AnnotationFeature | undefined
@@ -109,16 +153,8 @@ export function getAdjacentExons(
   display:
     | LinearApolloDisplayMouseEvents
     | LinearApolloSixFrameDisplayMouseEvents,
-  mousePosition: MousePositionWithFeature,
-  session: ApolloSessionModel,
 ): AdjacentExons {
-  const lgv = getContainingView(
-    display as BaseDisplayModel,
-  ) as unknown as LinearGenomeViewModel
-
   // Genomic coords of current view
-  const viewGenomicLeft = mousePosition.bp - lgv.bpPerPx * mousePosition.x
-  const viewGenomicRight = viewGenomicLeft + lgv.coarseTotalBp
   if (!currentExon.parent) {
     return { upstream: undefined, downstream: undefined }
   }
@@ -126,7 +162,8 @@ export function getAdjacentExons(
   if (!transcript.children) {
     throw new Error(`Error getting children of ${transcript._id}`)
   }
-  const { featureTypeOntology } = session.apolloDataStore.ontologyManager
+  const { featureTypeOntology } =
+    display.session.apolloDataStore.ontologyManager
   if (!featureTypeOntology) {
     throw new Error('featureTypeOntology is undefined')
   }
@@ -143,14 +180,14 @@ export function getAdjacentExons(
   }
   exons = exons.sort((a, b) => (a.min < b.min ? -1 : 1))
   for (const exon of exons) {
-    if (exon.min > viewGenomicRight) {
+    if (exon.min > currentExon.max) {
       adjacentExons.downstream = exon
       break
     }
   }
   exons = exons.sort((a, b) => (a.min > b.min ? -1 : 1))
   for (const exon of exons) {
-    if (exon.max < viewGenomicLeft) {
+    if (exon.max < currentExon.min) {
       adjacentExons.upstream = exon
       break
     }
@@ -241,19 +278,6 @@ export function isSelectedFeature(
   return Boolean(selectedFeature && feature._id === selectedFeature._id)
 }
 
-export function containsSelectedFeature(
-  feature: AnnotationFeature,
-  selectedFeature: AnnotationFeature | undefined,
-): boolean {
-  if (!selectedFeature) {
-    return false
-  }
-  if (feature._id === selectedFeature._id) {
-    return true
-  }
-  return feature.hasDescendant(selectedFeature._id)
-}
-
 function makeFeatureLabel(feature: AnnotationFeature) {
   let name: string | undefined
   if (feature.attributes.get('gff_name')) {
@@ -288,7 +312,6 @@ export function getContextMenuItemsForFeature(
   } = display
   const menuItems: MenuItem[] = []
   const role = internetAccount ? internetAccount.role : 'admin'
-  const admin = role === 'admin'
   const readOnly = !(role && ['admin', 'user'].includes(role))
   const [region] = regions
   const sourceAssemblyId = display.getAssemblyId(region.assemblyName)
@@ -341,7 +364,7 @@ export function getContextMenuItemsForFeature(
     },
     {
       label: 'Delete feature',
-      disabled: !admin,
+      disabled: readOnly,
       onClick: () => {
         ;(session as unknown as AbstractSessionModel).queueDialog(
           (doneCallback) => [
@@ -358,6 +381,26 @@ export function getContextMenuItemsForFeature(
               setSelectedFeature: (feature?: AnnotationFeature) => {
                 display.setSelectedFeature(feature)
               },
+            },
+          ],
+        )
+      },
+    },
+    {
+      label: 'Color feature',
+      disabled: readOnly,
+      onClick: () => {
+        ;(session as unknown as AbstractSessionModel).queueDialog(
+          (doneCallback) => [
+            ColorFeature,
+            {
+              session,
+              handleClose: () => {
+                doneCallback()
+              },
+              changeManager,
+              sourceFeature,
+              sourceAssemblyId: currentAssemblyId,
             },
           ],
         )

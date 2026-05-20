@@ -21,7 +21,6 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
     apolloRowHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsMinHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
-    lastRowTooltipBufferHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     isShown: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     filteredTranscripts: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
 } & {
@@ -264,6 +263,22 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
             type?: undefined;
             checked?: undefined;
         })[];
+        icon?: undefined;
+        onClick?: undefined;
+    } | {
+        label: string;
+        icon: typeof import("../../components").Export;
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
+    } | {
+        label: string;
+        icon: import("@mui/material/OverridableComponent").OverridableComponent<import("@mui/material").SvgIconTypeMap<{}, "svg">> & {
+            muiName: string;
+        };
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
     })[];
 } & {
     setSelectedFeature(feature?: import("@apollo-annotation/mst").AnnotationFeature): void;
@@ -279,14 +294,15 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
     addSeenFeature(feature: import("@apollo-annotation/mst").AnnotationFeature): void;
     deleteSeenFeature(featureId: string): void;
 } & {
-    readonly featureLayouts: Map<number, [number, string][]>[];
-    getFeatureLayoutPosition(feature: import("@apollo-annotation/mst").AnnotationFeature): {
-        layoutIndex: number;
-        layoutRow: number;
-        featureRow: number;
-    } | undefined;
+    getCanonicalRefName(assemblyName: string, refSeq: string): string;
 } & {
-    readonly highestRow: number;
+    isFeatureDisplayed(feature: import("@apollo-annotation/mst").AnnotationFeature): boolean;
+} & {
+    readonly layouts: Map<string, Map<string, import("../glyphs/Glyph").Layout>>;
+    getRowForFeature(feature: import("@apollo-annotation/mst").AnnotationFeature): number | undefined;
+    getFeaturesAtPosition(assemblyName: string, refName: string, row: number, bp: number): import("@apollo-annotation/mst").AnnotationFeature[];
+} & {
+    highestRow(assemblyName: string): number;
 } & {
     afterAttach(): void;
 } & {
@@ -295,7 +311,8 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
     collaboratorCanvas: HTMLCanvasElement | null;
     theme: import("@mui/material").Theme;
 } & {
-    readonly featuresHeight: number;
+    featuresHeight(assemblyName: string): number;
+    readonly canvasPatterns: Record<"forward" | "backward", CanvasPattern | null>;
 } & {
     toggleShown(): void;
     setDetailsHeight(newHeight: number): void;
@@ -307,20 +324,21 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
     afterAttach(): void;
 } & {
     apolloDragging: {
-        start: import("../../util").MousePosition;
-        current: import("../../util").MousePosition;
+        start: import("./mouseEvents").MousePosition;
+        current: import("./mouseEvents").MousePosition;
         feature: import("@apollo-annotation/mst").AnnotationFeature;
         edge: import("../../util").Edge;
         shrinkParent: boolean;
     } | null;
     cursor: import("react").CSSProperties["cursor"] | undefined;
 } & {
-    getMousePosition(event: React.MouseEvent): import("../../util").MousePosition;
+    getMousePosition(event: React.MouseEvent): import("./mouseEvents").MousePosition;
+    getFeaturesAtMousePosition(mousePosition: import("./mouseEvents").MousePosition): import("@apollo-annotation/mst").AnnotationFeature[];
 } & {
-    continueDrag(mousePosition: import("../../util").MousePosition, event: import("../types").CanvasMouseEvent): void;
+    continueDrag(mousePosition: import("./mouseEvents").MousePosition, event: import("../types").CanvasMouseEvent): void;
     setDragging(dragInfo?: {
-        start: import("../../util").MousePosition;
-        current: import("../../util").MousePosition;
+        start: import("./mouseEvents").MousePosition;
+        current: import("./mouseEvents").MousePosition;
         feature: import("@apollo-annotation/mst").AnnotationFeature;
         edge: import("../../util").Edge;
         shrinkParent: boolean;
@@ -333,12 +351,12 @@ export declare function stateModelFactory(pluginManager: PluginManager, configSc
 } & {
     contextMenuItems(event: React.MouseEvent<HTMLDivElement>): import("@jbrowse/core/ui").MenuItem[];
 } & {
-    startDrag(mousePosition: import("../../util").MousePositionWithFeature, feature: import("@apollo-annotation/mst").AnnotationFeature, edge: import("../../util").Edge, shrinkParent?: boolean): void;
+    startDrag(mousePosition: import("./mouseEvents").MousePosition, feature: import("@apollo-annotation/mst").AnnotationFeature, edge: import("../../util").Edge, shrinkParent?: boolean): void;
     endDrag(): void;
 } & {
     onMouseDown(event: import("../types").CanvasMouseEvent): void;
     onMouseMove(event: import("../types").CanvasMouseEvent): void;
-    onMouseLeave(event: import("../types").CanvasMouseEvent): void;
+    onMouseLeave(_event: import("../types").CanvasMouseEvent): void;
     onMouseUp(event: import("../types").CanvasMouseEvent): void;
 } & {
     afterAttach(): void;

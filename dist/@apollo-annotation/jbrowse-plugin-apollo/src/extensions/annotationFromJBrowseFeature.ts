@@ -6,19 +6,16 @@
 import type { AnnotationFeatureSnapshot } from '@apollo-annotation/mst'
 import { gff3ToAnnotationFeature } from '@apollo-annotation/shared'
 import type { GFF3Feature } from '@gmod/gff'
-import type { Assembly } from '@jbrowse/core/assemblyManager/assembly'
 import type { PluggableElementType } from '@jbrowse/core/pluggableElementTypes'
 import type DisplayType from '@jbrowse/core/pluggableElementTypes/DisplayType'
-import {
-  type AbstractSessionModel,
-  getContainingView,
-  getSession,
-} from '@jbrowse/core/util'
+import { getContainingView, getSession } from '@jbrowse/core/util'
 import type { Feature } from '@jbrowse/core/util/simpleFeature'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
-import AddIcon from '@mui/icons-material/Add'
 
+import { CollaborationServerDriver } from '../BackendDrivers'
 import { CreateApolloAnnotation } from '../components/CreateApolloAnnotation'
+import { Apollo as ApolloIcon } from '../menus/Icons'
+import type { ApolloSessionModel } from '../session'
 
 function simpleFeatureToGFF3Feature(
   feature: Feature,
@@ -60,27 +57,65 @@ export function jbrowseFeatureToAnnotationFeature(
   return gff3ToAnnotationFeature(simpleFeatureToGFF3Feature(feature, refSeqId))
 }
 
+const fieldsToSkip = new Set([
+  'start',
+  'end',
+  'type',
+  'strand',
+  'refName',
+  'subfeatures',
+  'derived_features',
+  'phase',
+  'source',
+  'score',
+  'parent',
+  // From https://github.com/GMOD/jbrowse-components/blob/ab3126374367f43d01038d6d2e86d8db03c4d8d8/packages/core/src/BaseFeatureWidget/BaseFeatureDetail/Attributes.tsx#L12-L24
+  '__jbrowsefmt',
+  'length',
+  'position',
+  'uniqueId',
+  'exonFrames',
+  'parentId',
+  'thickStart',
+  'thickEnd',
+  '_lineHash',
+])
+
+const fieldsToRename: Record<string, string | undefined> = {
+  id: 'gff_id',
+  name: 'gff_name',
+  alias: 'gff_alias',
+  target: 'gff_target',
+  gap: 'gff_gap',
+  derives_from: 'gff_derives_from',
+  note: 'gff_note',
+  dbxref: 'gff_dbxref',
+  ontology_term: 'gff_ontology_term',
+  is_circular: 'gff_is_circular',
+}
+
 function convertFeatureAttributes(feature: Feature): Record<string, string[]> {
   const attributes: Record<string, string[]> = {}
-  const defaultFields = new Set([
-    'start',
-    'end',
-    'type',
-    'strand',
-    'refName',
-    'subfeatures',
-    'derived_features',
-    'phase',
-    'source',
-    'score',
-  ])
-  for (const [key, value] of Object.entries(feature.toJSON())) {
-    if (defaultFields.has(key)) {
+
+  for (const [originalKey, value] of Object.entries(feature.toJSON())) {
+    if (fieldsToSkip.has(originalKey)) {
       continue
     }
+    const renamedKey = fieldsToRename[originalKey]
+    const key = renamedKey ?? originalKey
     attributes[key] = Array.isArray(value) ? value.map(String) : [String(value)]
   }
   return attributes
+}
+
+function getTopLevelSimpleFeature(feature: Feature) {
+  let topLevel = feature
+  let parent = feature.get('parent')
+  while (parent) {
+    topLevel = parent
+    parent = parent.get('parent')
+  }
+  return topLevel
 }
 
 export function annotationFromJBrowseFeature(
@@ -108,29 +143,6 @@ export function annotationFromJBrowseFeature(
         }
         return assembly
       },
-      getRefSeqId(assembly: Assembly) {
-        const firstRegion = self.getFirstRegion()
-        const { refName } = firstRegion
-        const { refNameAliases } = assembly
-        if (!refNameAliases) {
-          throw new Error(`Could not find aliases for ${assembly.name}`)
-        }
-        const newRefNames = [...Object.entries(refNameAliases)]
-          .filter(([id, refName]) => id !== refName)
-          .map(([id, refName]) => ({
-            _id: id,
-            name: refName,
-          }))
-        const refSeqId = newRefNames.find((item) => item.name === refName)?._id
-        if (!refSeqId) {
-          throw new Error(`Could not find refSeqId named ${refName}`)
-        }
-        return refSeqId
-      },
-      getAnnotationFeature(assembly: Assembly, feature: Feature) {
-        const refSeqId = self.getRefSeqId(assembly)
-        return jbrowseFeatureToAnnotationFeature(feature, refSeqId)
-      },
     }))
     .views((self) => {
       const superContextMenuItems = self.contextMenuItems
@@ -144,30 +156,46 @@ export function annotationFromJBrowseFeature(
           if (!feature) {
             return superContextMenuItems()
           }
+          const topLevelFeature = getTopLevelSimpleFeature(feature)
           return [
             ...superContextMenuItems(),
             {
               label: 'Create Apollo annotation',
-              icon: AddIcon,
-              onClick: () => {
-                ;(session as unknown as AbstractSessionModel).queueDialog(
-                  (doneCallback) => [
-                    CreateApolloAnnotation,
-                    {
-                      session,
-                      handleClose: () => {
-                        doneCallback()
-                      },
-                      annotationFeature: self.getAnnotationFeature(
-                        assembly,
-                        feature,
-                      ),
-                      assembly,
-                      refSeqId: self.getRefSeqId(assembly),
-                      region,
-                    },
-                  ],
+              icon: ApolloIcon,
+              onClick: async () => {
+                const backendDriver = (
+                  session as unknown as ApolloSessionModel
+                ).apolloDataStore.getBackendDriver(region.assemblyName)
+                let refSeqId = region.refName
+                if (backendDriver instanceof CollaborationServerDriver) {
+                  const backendRefSeqId = await backendDriver.getRefSeqId(
+                    region.assemblyName,
+                    region.refName,
+                  )
+                  if (!backendRefSeqId) {
+                    throw new Error(
+                      `Could not find refSeq for "${region.refName}"`,
+                    )
+                  }
+                  refSeqId = backendRefSeqId
+                }
+                const annotationFeature = jbrowseFeatureToAnnotationFeature(
+                  topLevelFeature,
+                  refSeqId,
                 )
+                session.queueDialog((doneCallback) => [
+                  CreateApolloAnnotation,
+                  {
+                    session,
+                    handleClose: () => {
+                      doneCallback()
+                    },
+                    annotationFeature,
+                    assembly,
+                    refSeqId,
+                    region,
+                  },
+                ])
               },
             },
           ]

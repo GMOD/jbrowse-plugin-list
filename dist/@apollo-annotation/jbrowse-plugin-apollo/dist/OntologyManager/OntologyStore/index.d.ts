@@ -1,9 +1,9 @@
 import { type BlobLocation, type LocalPathLocation, type UriLocation } from '@jbrowse/core/util';
 import { type IDBPTransaction, type StoreNames } from 'idb/with-async-ittr';
-import { type OntologyClass, type OntologyProperty, type OntologyTerm } from '..';
 import { textSearch } from './fulltext';
 import { type OntologyDB } from './indexeddb-schema';
 import { isDatabaseCurrent, loadOboGraphJson, openDatabase } from './indexeddb-storage';
+import { type OntologyClass, type OntologyProperty, type OntologyTerm } from './types';
 export type SourceLocation = UriLocation | LocalPathLocation | BlobLocation;
 /** type alias for a Transaction on this particular DB schema */
 export type Transaction<TxStores extends ArrayLike<StoreNames<OntologyDB>> = ArrayLike<StoreNames<OntologyDB>>, Mode extends IDBTransactionMode = 'readonly'> = IDBPTransaction<OntologyDB, TxStores, Mode>;
@@ -36,7 +36,7 @@ export default class OntologyStore {
     getTermsByFulltext: typeof textSearch;
     openDatabase: typeof openDatabase;
     isDatabaseCurrent: typeof isDatabaseCurrent;
-    get textIndexFields(): import("..").TextIndexFieldDefinition[];
+    get textIndexFields(): import("./types").TextIndexFieldDefinition[];
     get prefixes(): Map<string, string>;
     readonly DEFAULT_MAX_SEARCH_RESULTS = 100;
     constructor(name: string, version: string, source: SourceLocation, options?: OntologyStoreOptions);

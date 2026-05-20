@@ -1,5 +1,5 @@
-import type { TextIndexFieldDefinition } from '..';
 import type { OntologyDBNode } from './indexeddb-schema';
+import type { TextIndexFieldDefinition } from './types';
 import type OntologyStore from '.';
 import type { Transaction } from '.';
 /** special value of jsonPath that gets the IRI (that is, ID) of the node with the configured prefixes applied */

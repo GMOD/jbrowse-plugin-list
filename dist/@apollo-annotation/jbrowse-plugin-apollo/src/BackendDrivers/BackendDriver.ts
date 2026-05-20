@@ -1,4 +1,4 @@
-import type { Change, ClientDataStore } from '@apollo-annotation/common'
+import type { Change, SerializedChange } from '@apollo-annotation/common'
 import type {
   AnnotationFeatureSnapshot,
   CheckResultSnapshot,
@@ -8,15 +8,41 @@ import type { Assembly } from '@jbrowse/core/assemblyManager/assembly'
 import type { Region } from '@jbrowse/core/util'
 
 import type { SubmitOpts } from '../ChangeManager'
+import type { ClientDataStoreModel } from '../session/ClientDataStore'
 
 export interface RefNameAliases {
   refName: string
   aliases: string[]
-  uniqueId: string
+  uniqueId?: string
+}
+
+export interface ChangeDocument extends SerializedChange {
+  sequence: IDBValidKey
+  user?: string
+  createdAt: string
+  changes?: SerializedChange[]
+}
+
+export interface GetChangesOpts {
+  page?: number
+  pageSize?: number
+  sortField?: string
+  sortOrder?: 'asc' | 'desc'
+  filters?: {
+    user?: string
+    typeName?: string
+    startTime?: string
+    endTime?: string
+  }
+}
+
+export interface GetChangesResult {
+  changes: ChangeDocument[]
+  totalCount: number
 }
 
 export abstract class BackendDriver {
-  constructor(protected clientStore: ClientDataStore) {}
+  constructor(protected clientStore: ClientDataStoreModel) {}
 
   abstract getFeatures(
     region: Region,
@@ -39,4 +65,11 @@ export abstract class BackendDriver {
     term: string,
     assemblies: string[],
   ): Promise<AnnotationFeatureSnapshot[]>
+
+  abstract getChanges(
+    assemblyName: string,
+    opts?: GetChangesOpts,
+  ): Promise<GetChangesResult>
+
+  abstract getCheckResults(assemblyName: string): Promise<CheckResultSnapshot[]>
 }

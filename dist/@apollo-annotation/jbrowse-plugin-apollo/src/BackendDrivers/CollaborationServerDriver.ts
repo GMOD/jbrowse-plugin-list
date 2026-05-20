@@ -28,7 +28,12 @@ import type { Socket } from 'socket.io-client'
 import { ChangeManager, type SubmitOpts } from '../ChangeManager'
 import { createFetchErrorMessage } from '../util'
 
-import { BackendDriver, type RefNameAliases } from './BackendDriver'
+import {
+  BackendDriver,
+  type GetChangesOpts,
+  type GetChangesResult,
+  type RefNameAliases,
+} from './BackendDriver'
 
 export interface ApolloRefSeqResponse {
   _id: string
@@ -72,9 +77,7 @@ export class CollaborationServerDriver extends BackendDriver {
   }
 
   async searchFeatures(term: string, assemblies: string[]) {
-    const internetAccount = this.clientStore.getInternetAccount(
-      assemblies[0],
-    ) as ApolloInternetAccount
+    const internetAccount = this.clientStore.getInternetAccount(assemblies[0])
     const { baseURL } = internetAccount
 
     const url = new URL('features/searchFeatures', baseURL)
@@ -114,9 +117,7 @@ export class CollaborationServerDriver extends BackendDriver {
       throw new Error(`Could not find refSeq "${refName}"`)
     }
     const refSeq = refSeqEntry.id
-    const internetAccount = this.clientStore.getInternetAccount(
-      assemblyName,
-    ) as ApolloInternetAccount
+    const internetAccount = this.clientStore.getInternetAccount(assemblyName)
     const { baseURL } = internetAccount
 
     const url = new URL('features/getFeatures', baseURL)
@@ -154,16 +155,16 @@ export class CollaborationServerDriver extends BackendDriver {
     internetAccount: ApolloInternetAccount,
   ) {
     const { socket } = internetAccount
-    const token = internetAccount.retrieveToken()
-    if (!token) {
-      return
-    }
-    const localSessionId = makeUserSessionId(token)
     const channel = `${assembly}-${refSeq}`
-    const changeManager = new ChangeManager(this.clientStore)
 
     if (!socket.hasListeners(channel)) {
       socket.on(channel, async (message: ChangeMessage) => {
+        const token = internetAccount.retrieveToken()
+        if (!token) {
+          return
+        }
+        const localSessionId = makeUserSessionId(token)
+        const changeManager = new ChangeManager(this.clientStore)
         // Save server last change sequence into session storage
         internetAccount.setLastChangeSequenceNumber(
           Number(message.changeSequence),
@@ -229,9 +230,7 @@ export class CollaborationServerDriver extends BackendDriver {
     if (clientStoreSequence.length === end - start) {
       return { seq: clientStoreSequence, refSeq }
     }
-    const internetAccount = this.clientStore.getInternetAccount(
-      assemblyName,
-    ) as ApolloInternetAccount
+    const internetAccount = this.clientStore.getInternetAccount(assemblyName)
     const { baseURL } = internetAccount
 
     const url = new URL('sequence', baseURL)
@@ -293,9 +292,7 @@ export class CollaborationServerDriver extends BackendDriver {
     if (!assembly) {
       throw new Error(`Could not find assembly with name "${assemblyName}"`)
     }
-    const internetAccount = this.clientStore.getInternetAccount(
-      assemblyName,
-    ) as ApolloInternetAccount
+    const internetAccount = this.clientStore.getInternetAccount(assemblyName)
     const { baseURL } = internetAccount
     const url = new URL('refSeqs', baseURL)
     const searchParams = new URLSearchParams({ assembly: assemblyName })
@@ -351,9 +348,7 @@ export class CollaborationServerDriver extends BackendDriver {
     if (!assembly) {
       throw new Error(`Could not find assembly with name "${assemblyName}"`)
     }
-    const internetAccount = this.clientStore.getInternetAccount(
-      assemblyName,
-    ) as ApolloInternetAccount
+    const internetAccount = this.clientStore.getInternetAccount(assemblyName)
     const { baseURL } = internetAccount
     const url = new URL('refSeqs', baseURL)
     const searchParams = new URLSearchParams({ assembly: assemblyName })
@@ -402,6 +397,66 @@ export class CollaborationServerDriver extends BackendDriver {
     })
   }
 
+  async getChanges(
+    assemblyName: string,
+    opts: GetChangesOpts = {},
+  ): Promise<GetChangesResult> {
+    const internetAccount = this.clientStore.getInternetAccount(assemblyName)
+    const { baseURL } = internetAccount
+    const url = new URL('changes', baseURL)
+    const params: Record<string, string> = { assembly: assemblyName }
+    if (opts.page !== undefined) {
+      params.page = String(opts.page)
+    }
+    if (opts.pageSize !== undefined) {
+      params.pageSize = String(opts.pageSize)
+    }
+    if (opts.sortField) {
+      params.sortField = opts.sortField
+    }
+    if (opts.sortOrder) {
+      params.sortOrder = opts.sortOrder
+    }
+    if (opts.filters?.user) {
+      params.user = opts.filters.user
+    }
+    if (opts.filters?.typeName) {
+      params.typeName = opts.filters.typeName
+    }
+    if (opts.filters?.startTime) {
+      params.startTime = opts.filters.startTime
+    }
+    if (opts.filters?.endTime) {
+      params.endTime = opts.filters.endTime
+    }
+    url.search = new URLSearchParams(params).toString()
+    const response = await this.fetch(internetAccount, url.toString())
+    if (!response.ok) {
+      const errorMessage = await createFetchErrorMessage(
+        response,
+        'getChanges failed',
+      )
+      throw new Error(errorMessage)
+    }
+    return response.json() as Promise<GetChangesResult>
+  }
+
+  async getCheckResults(assemblyName: string): Promise<CheckResultSnapshot[]> {
+    const internetAccount = this.clientStore.getInternetAccount(assemblyName)
+    const { baseURL } = internetAccount
+    const url = new URL('checks', baseURL)
+    url.search = new URLSearchParams({ assembly: assemblyName }).toString()
+    const response = await this.fetch(internetAccount, url.toString())
+    if (!response.ok) {
+      const errorMessage = await createFetchErrorMessage(
+        response,
+        'getCheckResults failed',
+      )
+      throw new Error(errorMessage)
+    }
+    return response.json() as Promise<CheckResultSnapshot[]>
+  }
+
   async submitChange(
     change: Change | AssemblySpecificChange,
     opts: SubmitOpts = {},
@@ -410,7 +465,7 @@ export class CollaborationServerDriver extends BackendDriver {
     const internetAccount = this.clientStore.getInternetAccount(
       'assembly' in change ? change.assembly : undefined,
       internetAccountId,
-    ) as ApolloInternetAccount
+    )
     const { baseURL } = internetAccount
     const url = new URL('changes', baseURL).href
     const response = await this.fetch(internetAccount, url, {

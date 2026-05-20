@@ -204,6 +204,12 @@ export declare function baseModelFactory(_pluginManager: PluginManager, configSc
     }[];
     regionCannotBeRendered(): "Zoom in to see sequence" | undefined;
 } & {
+    readonly expandedRegions: {
+        assemblyName: string;
+        refName: string;
+        start: number;
+        end: number;
+    }[];
     readonly apolloInternetAccount: ApolloInternetAccountModel | undefined;
     readonly changeManager: import("../../ChangeManager").ChangeManager;
     getAssemblyId(assemblyName: string): string;

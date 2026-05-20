@@ -22,7 +22,6 @@ export declare const ApolloFeatureDetailsWidgetModel: import("@jbrowse/mobx-stat
         readonly transcriptParts: import("@apollo-annotation/mst").TranscriptPart[][];
     } & {
         readonly cdsLocations: import("@apollo-annotation/mst").TranscriptPartCoding[][];
-        readonly looksLikeGene: boolean;
     } & {
         setAttributes(attributes: Map<string, string[]>): void;
         setAttribute(key: string, value: string[]): void;
@@ -82,7 +81,6 @@ export declare const ApolloTranscriptDetailsModel: import("@jbrowse/mobx-state-t
         readonly transcriptParts: import("@apollo-annotation/mst").TranscriptPart[][];
     } & {
         readonly cdsLocations: import("@apollo-annotation/mst").TranscriptPartCoding[][];
-        readonly looksLikeGene: boolean;
     } & {
         setAttributes(attributes: Map<string, string[]>): void;
         setAttribute(key: string, value: string[]): void;

@@ -5,7 +5,7 @@ import type { BaseInternetAccountModel } from '@jbrowse/core/pluggableElementTyp
 import { type Region } from '@jbrowse/core/util';
 import type { Socket } from 'socket.io-client';
 import { type SubmitOpts } from '../ChangeManager';
-import { BackendDriver, type RefNameAliases } from './BackendDriver';
+import { BackendDriver, type GetChangesOpts, type GetChangesResult, type RefNameAliases } from './BackendDriver';
 export interface ApolloRefSeqResponse {
     _id: string;
     name: string;
@@ -200,6 +200,8 @@ export declare class CollaborationServerDriver extends BackendDriver {
         }>;
         afterCreate(): void;
     }, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>)[];
+    getChanges(assemblyName: string, opts?: GetChangesOpts): Promise<GetChangesResult>;
+    getCheckResults(assemblyName: string): Promise<CheckResultSnapshot[]>;
     submitChange(change: Change | AssemblySpecificChange, opts?: SubmitOpts): Promise<ValidationResultSet>;
 }
 export {};

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { beforeAll, describe, expect, it, jest } from '@jest/globals'
 
-import { type OntologyClass, isOntologyClass } from '..'
+import { type OntologyClass, isOntologyClass } from './types'
 
 import OntologyStore from '.'
 
@@ -40,7 +40,10 @@ jest.mock('jsonpath', () => {
 let so: OntologyStore
 
 beforeAll(async () => {
-  const localPath = path.resolve(__dirname, '../../../test_data/so-v3.1.json')
+  const localPath = path.resolve(
+    __dirname,
+    '../../../test_data/so-2024-11-18.json',
+  )
   so = new OntologyStore(
     'Sequence Ontology',
     'automated testing',

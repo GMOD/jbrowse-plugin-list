@@ -3,9 +3,19 @@ import type PluginManager from '@jbrowse/core/PluginManager';
 import type { AnyConfigurationSchemaType } from '@jbrowse/core/configuration';
 import type { MenuItem } from '@jbrowse/core/ui';
 import { type Instance } from '@jbrowse/mobx-state-tree';
+import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 import type { CSSProperties } from 'react';
-import { type Edge, type MousePosition, type MousePositionWithFeature } from '../../util';
+import { type Edge } from '../../util';
 import type { CanvasMouseEvent } from '../types';
+export interface MousePosition {
+    x: number;
+    y: number;
+    assemblyName: string;
+    refName: string;
+    bp: number;
+    regionNumber: number;
+}
+export declare function getMousePosition(event: React.MouseEvent, lgv: LinearGenomeViewModel): MousePosition;
 export declare function mouseEventsModelIntermediateFactory(pluginManager: PluginManager, configSchema: AnyConfigurationSchemaType): import("@jbrowse/mobx-state-tree").IModelType<{
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     type: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -26,7 +36,6 @@ export declare function mouseEventsModelIntermediateFactory(pluginManager: Plugi
     apolloRowHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsMinHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
-    lastRowTooltipBufferHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     isShown: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     filteredTranscripts: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
 }, {
@@ -207,7 +216,7 @@ export declare function mouseEventsModelIntermediateFactory(pluginManager: Plugi
 } & {
     scrollTop: number;
 } & {
-    readonly lgv: import("@jbrowse/plugin-linear-genome-view").LinearGenomeViewModel;
+    readonly lgv: LinearGenomeViewModel;
     readonly height: number;
     readonly loading: boolean;
     readonly zoomThresholdSetting: number;
@@ -255,6 +264,22 @@ export declare function mouseEventsModelIntermediateFactory(pluginManager: Plugi
             type?: undefined;
             checked?: undefined;
         })[];
+        icon?: undefined;
+        onClick?: undefined;
+    } | {
+        label: string;
+        icon: typeof import("../../components").Export;
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
+    } | {
+        label: string;
+        icon: import("@mui/material/OverridableComponent").OverridableComponent<import("@mui/material").SvgIconTypeMap<{}, "svg">> & {
+            muiName: string;
+        };
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
     })[];
 } & {
     setSelectedFeature(feature?: AnnotationFeature): void;
@@ -270,14 +295,15 @@ export declare function mouseEventsModelIntermediateFactory(pluginManager: Plugi
     addSeenFeature(feature: AnnotationFeature): void;
     deleteSeenFeature(featureId: string): void;
 } & {
-    readonly featureLayouts: Map<number, [number, string][]>[];
-    getFeatureLayoutPosition(feature: AnnotationFeature): {
-        layoutIndex: number;
-        layoutRow: number;
-        featureRow: number;
-    } | undefined;
+    getCanonicalRefName(assemblyName: string, refSeq: string): string;
 } & {
-    readonly highestRow: number;
+    isFeatureDisplayed(feature: AnnotationFeature): boolean;
+} & {
+    readonly layouts: Map<string, Map<string, import("../glyphs/Glyph").Layout>>;
+    getRowForFeature(feature: AnnotationFeature): number | undefined;
+    getFeaturesAtPosition(assemblyName: string, refName: string, row: number, bp: number): AnnotationFeature[];
+} & {
+    highestRow(assemblyName: string): number;
 } & {
     afterAttach(): void;
 } & {
@@ -286,7 +312,8 @@ export declare function mouseEventsModelIntermediateFactory(pluginManager: Plugi
     collaboratorCanvas: HTMLCanvasElement | null;
     theme: import("@mui/material").Theme;
 } & {
-    readonly featuresHeight: number;
+    featuresHeight(assemblyName: string): number;
+    readonly canvasPatterns: Record<"forward" | "backward", CanvasPattern | null>;
 } & {
     toggleShown(): void;
     setDetailsHeight(newHeight: number): void;
@@ -307,6 +334,7 @@ export declare function mouseEventsModelIntermediateFactory(pluginManager: Plugi
     cursor: CSSProperties["cursor"] | undefined;
 } & {
     getMousePosition(event: React.MouseEvent): MousePosition;
+    getFeaturesAtMousePosition(mousePosition: MousePosition): AnnotationFeature[];
 } & {
     continueDrag(mousePosition: MousePosition, event: CanvasMouseEvent): void;
     setDragging(dragInfo?: {
@@ -342,7 +370,6 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
     apolloRowHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsMinHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     detailsHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
-    lastRowTooltipBufferHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
     isShown: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     filteredTranscripts: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
 }, {
@@ -523,7 +550,7 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
 } & {
     scrollTop: number;
 } & {
-    readonly lgv: import("@jbrowse/plugin-linear-genome-view").LinearGenomeViewModel;
+    readonly lgv: LinearGenomeViewModel;
     readonly height: number;
     readonly loading: boolean;
     readonly zoomThresholdSetting: number;
@@ -571,6 +598,22 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
             type?: undefined;
             checked?: undefined;
         })[];
+        icon?: undefined;
+        onClick?: undefined;
+    } | {
+        label: string;
+        icon: typeof import("../../components").Export;
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
+    } | {
+        label: string;
+        icon: import("@mui/material/OverridableComponent").OverridableComponent<import("@mui/material").SvgIconTypeMap<{}, "svg">> & {
+            muiName: string;
+        };
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
     })[];
 } & {
     setSelectedFeature(feature?: AnnotationFeature): void;
@@ -586,14 +629,15 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
     addSeenFeature(feature: AnnotationFeature): void;
     deleteSeenFeature(featureId: string): void;
 } & {
-    readonly featureLayouts: Map<number, [number, string][]>[];
-    getFeatureLayoutPosition(feature: AnnotationFeature): {
-        layoutIndex: number;
-        layoutRow: number;
-        featureRow: number;
-    } | undefined;
+    getCanonicalRefName(assemblyName: string, refSeq: string): string;
 } & {
-    readonly highestRow: number;
+    isFeatureDisplayed(feature: AnnotationFeature): boolean;
+} & {
+    readonly layouts: Map<string, Map<string, import("../glyphs/Glyph").Layout>>;
+    getRowForFeature(feature: AnnotationFeature): number | undefined;
+    getFeaturesAtPosition(assemblyName: string, refName: string, row: number, bp: number): AnnotationFeature[];
+} & {
+    highestRow(assemblyName: string): number;
 } & {
     afterAttach(): void;
 } & {
@@ -602,7 +646,8 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
     collaboratorCanvas: HTMLCanvasElement | null;
     theme: import("@mui/material").Theme;
 } & {
-    readonly featuresHeight: number;
+    featuresHeight(assemblyName: string): number;
+    readonly canvasPatterns: Record<"forward" | "backward", CanvasPattern | null>;
 } & {
     toggleShown(): void;
     setDetailsHeight(newHeight: number): void;
@@ -623,6 +668,7 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
     cursor: CSSProperties["cursor"] | undefined;
 } & {
     getMousePosition(event: React.MouseEvent): MousePosition;
+    getFeaturesAtMousePosition(mousePosition: MousePosition): AnnotationFeature[];
 } & {
     continueDrag(mousePosition: MousePosition, event: CanvasMouseEvent): void;
     setDragging(dragInfo?: {
@@ -640,12 +686,12 @@ export declare function mouseEventsModelFactory(pluginManager: PluginManager, co
 } & {
     contextMenuItems(event: React.MouseEvent<HTMLDivElement>): MenuItem[];
 } & {
-    startDrag(mousePosition: MousePositionWithFeature, feature: AnnotationFeature, edge: Edge, shrinkParent?: boolean): void;
+    startDrag(mousePosition: MousePosition, feature: AnnotationFeature, edge: Edge, shrinkParent?: boolean): void;
     endDrag(): void;
 } & {
     onMouseDown(event: CanvasMouseEvent): void;
     onMouseMove(event: CanvasMouseEvent): void;
-    onMouseLeave(event: CanvasMouseEvent): void;
+    onMouseLeave(_event: CanvasMouseEvent): void;
     onMouseUp(event: CanvasMouseEvent): void;
 } & {
     afterAttach(): void;

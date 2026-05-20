@@ -2,6 +2,7 @@ import type { AnnotationFeature } from '@apollo-annotation/mst';
 import type PluginManager from '@jbrowse/core/PluginManager';
 import type { AnyConfigurationSchemaType } from '@jbrowse/core/configuration';
 import type { ApolloSessionModel } from '../../session';
+import type { Layout } from '../glyphs/Glyph';
 export declare function layoutsModelFactory(pluginManager: PluginManager, configSchema: AnyConfigurationSchemaType): import("@jbrowse/mobx-state-tree").IModelType<{
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     type: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -244,6 +245,22 @@ export declare function layoutsModelFactory(pluginManager: PluginManager, config
             type?: undefined;
             checked?: undefined;
         })[];
+        icon?: undefined;
+        onClick?: undefined;
+    } | {
+        label: string;
+        icon: typeof import("../../components").Export;
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
+    } | {
+        label: string;
+        icon: import("@mui/material/OverridableComponent").OverridableComponent<import("@mui/material").SvgIconTypeMap<{}, "svg">> & {
+            muiName: string;
+        };
+        onClick: () => void;
+        type?: undefined;
+        subMenu?: undefined;
     })[];
 } & {
     setSelectedFeature(feature?: AnnotationFeature): void;
@@ -259,14 +276,19 @@ export declare function layoutsModelFactory(pluginManager: PluginManager, config
     addSeenFeature(feature: AnnotationFeature): void;
     deleteSeenFeature(featureId: string): void;
 } & {
-    readonly featureLayouts: Map<number, [number, string][]>[];
-    getFeatureLayoutPosition(feature: AnnotationFeature): {
-        layoutIndex: number;
-        layoutRow: number;
-        featureRow: number;
-    } | undefined;
+    getCanonicalRefName(assemblyName: string, refSeq: string): string;
 } & {
-    readonly highestRow: number;
+    /**
+     * Is a feature in one of the currently displayed regions and also is not
+     * currently filtered out by the display.
+     */
+    isFeatureDisplayed(feature: AnnotationFeature): boolean;
+} & {
+    readonly layouts: Map<string, Map<string, Layout>>;
+    getRowForFeature(feature: AnnotationFeature): number | undefined;
+    getFeaturesAtPosition(assemblyName: string, refName: string, row: number, bp: number): AnnotationFeature[];
+} & {
+    highestRow(assemblyName: string): number;
 } & {
     afterAttach(): void;
 }, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>;
