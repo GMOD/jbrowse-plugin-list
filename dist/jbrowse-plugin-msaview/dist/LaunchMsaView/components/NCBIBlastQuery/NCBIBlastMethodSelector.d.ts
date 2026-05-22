@@ -1,5 +1,6 @@
 import React from 'react';
+import type { BlastLookupMethod } from './NCBIBlastPanel';
 export default function NCBIBlastMethodSelector({ lookupMethod, setLookupMethod, }: {
-    lookupMethod: string;
-    setLookupMethod: (method: string) => void;
+    lookupMethod: BlastLookupMethod;
+    setLookupMethod: (method: BlastLookupMethod) => void;
 }): React.JSX.Element;

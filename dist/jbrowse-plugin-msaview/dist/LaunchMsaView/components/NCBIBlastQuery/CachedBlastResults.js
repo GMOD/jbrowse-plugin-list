@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { ErrorMessage } from '@jbrowse/core/ui';
-import { getContainingView } from '@jbrowse/core/util';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Button, IconButton, List, ListItem, ListItemButton, ListItemText, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import { blastLaunchViewFromCache } from './blastLaunchView';
 import { useCachedBlastResults } from './useCachedBlastResults';
-import { getGeneIdentifiers } from '../../util';
+import { getGeneIdentifiers, getLinearGenomeView } from '../../util';
 const useStyles = makeStyles()({
     header: {
         display: 'flex',
@@ -21,21 +20,19 @@ const useStyles = makeStyles()({
     },
 });
 function getResultDisplayName(result) {
-    const parts = [];
-    if (result.geneName) {
-        parts.push(result.geneName);
-    }
-    if (result.transcriptName && result.transcriptName !== result.geneName) {
-        parts.push(result.transcriptName);
-    }
-    if (parts.length === 0) {
-        parts.push(result.geneId ?? result.transcriptId ?? 'Unknown');
-    }
-    return parts.join(' - ');
+    const parts = [
+        result.geneName,
+        result.transcriptName !== result.geneName
+            ? result.transcriptName
+            : undefined,
+    ].filter((p) => !!p);
+    return parts.length > 0
+        ? parts.join(' - ')
+        : (result.geneId ?? result.transcriptId ?? 'Unknown');
 }
 const CachedBlastResults = observer(function ({ model, handleClose, feature, }) {
     const { classes } = useStyles();
-    const view = getContainingView(model);
+    const view = getLinearGenomeView(model);
     const [operationError, setOperationError] = useState();
     const geneIds = useMemo(() => getGeneIdentifiers(feature), [feature]);
     const { results, error, isLoading, handleDelete, handleClearAll } = useCachedBlastResults(geneIds);
@@ -48,16 +45,7 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
         handleClose();
     };
     const displayError = error ?? operationError;
-    if (displayError) {
-        return React.createElement(ErrorMessage, { error: displayError });
-    }
-    if (isLoading) {
-        return React.createElement(Typography, null, "Loading cached results...");
-    }
-    if (results.length === 0) {
-        return (React.createElement(Typography, { color: "textSecondary" }, "No cached BLAST results found for this gene. Run a BLAST query to cache results."));
-    }
-    return (React.createElement("div", null,
+    return displayError ? (React.createElement(ErrorMessage, { error: displayError })) : isLoading ? (React.createElement(Typography, null, "Loading cached results...")) : results.length === 0 ? (React.createElement(Typography, { color: "textSecondary" }, "No cached BLAST results found for this gene. Run a BLAST query to cache results.")) : (React.createElement("div", null,
         React.createElement("div", { className: classes.header },
             React.createElement(Typography, { variant: "subtitle1" },
                 "Cached BLAST Results (",

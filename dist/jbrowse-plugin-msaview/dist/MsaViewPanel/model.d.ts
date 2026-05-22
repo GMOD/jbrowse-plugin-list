@@ -631,6 +631,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly transcriptToMsaMap: {
         g2p: Record<number, number>;
         p2g: Record<number, number>;
+        p2gCodon: Record<number, number[]>;
         refName: string;
         strand: number;
     } | undefined;

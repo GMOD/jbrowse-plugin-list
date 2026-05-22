@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { ErrorMessage, FileSelector } from '@jbrowse/core/ui';
-import { getContainingView, getSession } from '@jbrowse/core/util';
-import { Alert, Button, DialogActions, DialogContent, FormControl, FormControlLabel, Radio, RadioGroup, } from '@mui/material';
+import { FileSelector } from '@jbrowse/core/ui';
+import { getSession } from '@jbrowse/core/util';
+import { Alert, FormControl, FormControlLabel, Radio, RadioGroup, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import { launchView } from './launchView';
 import TextField2 from '../../../components/TextField2';
-import { getGeneDisplayName } from '../../util';
+import { getGeneDisplayName, getLinearGenomeView } from '../../util';
+import LaunchPanelContent from '../LaunchPanelContent';
+import SubmitCancelActions from '../SubmitCancelActions';
 import TranscriptSelector from '../TranscriptSelector';
 import { useTranscriptSelection } from '../useTranscriptSelection';
 const useStyles = makeStyles()({
-    dialogContent: {
-        width: '80em',
-    },
     textAreaFont: {
         fontFamily: 'Courier New',
     },
@@ -34,7 +33,7 @@ const useStyles = makeStyles()({
 });
 const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handleClose, }) {
     const session = getSession(model);
-    const view = getContainingView(model);
+    const view = getLinearGenomeView(model);
     const { classes } = useStyles();
     const [launchViewError, setLaunchViewError] = useState();
     const [inputMethod, setInputMethod] = useState('file');
@@ -43,11 +42,11 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
     const [msaFileLocation, setMsaFileLocation] = useState();
     const [treeFileLocation, setTreeFileLocation] = useState();
     const [querySeqName, setQuerySeqName] = useState('');
-    const { options, selectedId, setSelectedId, selectedTranscript, proteinSequence, error, } = useTranscriptSelection({ feature, view });
+    const transcriptSelection = useTranscriptSelection({ feature, view });
+    const { selectedTranscript, error } = transcriptSelection;
     const e = launchViewError ?? error;
     return (React.createElement(React.Fragment, null,
-        React.createElement(DialogContent, { className: classes.dialogContent },
-            e ? React.createElement(ErrorMessage, { error: e }) : null,
+        React.createElement(LaunchPanelContent, { error: e },
             React.createElement(FormControl, { component: "fieldset" },
                 React.createElement(RadioGroup, { row: true, value: inputMethod, onChange: event => {
                         setInputMethod(event.target.value);
@@ -63,16 +62,16 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
                 React.createElement(TextField2, { variant: "outlined", name: "Tree", multiline: true, minRows: 5, maxRows: 10, fullWidth: true, placeholder: "Paste newick tree (optional)", value: treeText, onChange: event => {
                         setTreeText(event.target.value);
                     } })))),
-            React.createElement(TranscriptSelector, { feature: feature, options: options, selectedId: selectedId, selectedTranscript: selectedTranscript, onTranscriptChange: setSelectedId, proteinSequence: proteinSequence }),
+            React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }),
             React.createElement(TextField2, { variant: "outlined", name: "MSA row name", fullWidth: true, required: true, className: classes.queryNameInput, placeholder: "Row name in MSA that corresponds to the selected transcript", helperText: "Required: Specify the name of the row in your MSA that should be aligned with the selected transcript", value: querySeqName, onChange: event => {
                     setQuerySeqName(event.target.value);
                 } }),
             !querySeqName.trim() ? (React.createElement(Alert, { severity: "warning", className: classes.warningAlert }, "Without specifying the MSA row name, clicking on the MSA will not navigate to the corresponding genome position, and hovering highlights will not work.")) : null),
-        React.createElement(DialogActions, null,
-            React.createElement(Button, { color: "primary", variant: "contained", disabled: !selectedTranscript ||
-                    (inputMethod === 'file' && !msaFileLocation) ||
-                    (inputMethod === 'text' && !msaText.trim()), onClick: () => {
-                    try {
+        React.createElement(SubmitCancelActions, { submitDisabled: !selectedTranscript ||
+                (inputMethod === 'file' && !msaFileLocation) ||
+                (inputMethod === 'text' && !msaText.trim()), onSubmit: () => {
+                try {
+                    if (selectedTranscript) {
                         setLaunchViewError(undefined);
                         launchView({
                             session,
@@ -94,14 +93,12 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
                         });
                         handleClose();
                     }
-                    catch (err) {
-                        console.error(err);
-                        setLaunchViewError(err);
-                    }
-                } }, "Submit"),
-            React.createElement(Button, { color: "secondary", variant: "contained", onClick: () => {
-                    handleClose();
-                } }, "Cancel"))));
+                }
+                catch (err) {
+                    console.error(err);
+                    setLaunchViewError(err);
+                }
+            }, onCancel: handleClose })));
 });
 export default ManualMSALoader;
 //# sourceMappingURL=ManualMSALoader.js.map

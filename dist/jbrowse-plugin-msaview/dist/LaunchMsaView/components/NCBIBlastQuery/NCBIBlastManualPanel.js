@@ -1,20 +1,14 @@
 import React from 'react';
-import { ErrorMessage } from '@jbrowse/core/ui';
-import { getContainingView, shorten2 } from '@jbrowse/core/util';
-import { Button, DialogActions, DialogContent, Typography } from '@mui/material';
+import { shorten2 } from '@jbrowse/core/util';
+import { Button, DialogActions, Typography } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import ExternalLink from '../../../components/ExternalLink';
-import { cleanProteinSequence } from '../../util';
+import { cleanProteinSequence, getLinearGenomeView } from '../../util';
+import LaunchPanelContent from '../LaunchPanelContent';
 import TranscriptSelector from '../TranscriptSelector';
 import { useTranscriptSelection } from '../useTranscriptSelection';
 const useStyles = makeStyles()({
-    dialogContent: {
-        width: '80em',
-    },
-    textAreaFont: {
-        fontFamily: 'Courier New',
-    },
     ncbiLink: {
         wordBreak: 'break-all',
         margin: 30,
@@ -26,16 +20,16 @@ const useStyles = makeStyles()({
 });
 const NCBIBlastManualPanel = observer(function ({ handleClose, feature, model, children, baseUrl, }) {
     const { classes } = useStyles();
-    const view = getContainingView(model);
-    const { options, selectedId, setSelectedId, selectedTranscript, proteinSequence, error, } = useTranscriptSelection({ feature, view });
+    const view = getLinearGenomeView(model);
+    const transcriptSelection = useTranscriptSelection({ feature, view });
+    const { proteinSequence, error } = transcriptSelection;
     const s2 = cleanProteinSequence(proteinSequence);
     const link = `${baseUrl}?PAGE_TYPE=BlastSearch&PAGE=Proteins&PROGRAM=blastp&QUERY=${s2}`;
     const link2 = `${baseUrl}?PAGE_TYPE=BlastSearch&PAGE=Proteins&PROGRAM=blastp&QUERY=${shorten2(s2, 10)}`;
     return (React.createElement(React.Fragment, null,
-        React.createElement(DialogContent, { className: classes.dialogContent },
+        React.createElement(LaunchPanelContent, { error: error },
             children,
-            error ? React.createElement(ErrorMessage, { error: error }) : null,
-            React.createElement(TranscriptSelector, { feature: feature, options: options, selectedId: selectedId, selectedTranscript: selectedTranscript, onTranscriptChange: setSelectedId, proteinSequence: proteinSequence }),
+            React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }),
             proteinSequence ? (React.createElement("div", { className: classes.ncbiLink },
                 "Link to NCBI BLAST: ",
                 React.createElement(ExternalLink, { href: link }, link2))) : null,

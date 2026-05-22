@@ -15,13 +15,13 @@ const useStyles = makeStyles()({
         marginLeft: 20,
     },
 });
-export default function TranscriptSelector({ feature, options, selectedId, selectedTranscript, onTranscriptChange, proteinSequence, validIds, }) {
+export default function TranscriptSelector({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, validIds, }) {
     const { classes } = useStyles();
     const [showSequence, setShowSequence] = useState(false);
     return (React.createElement(React.Fragment, null,
         React.createElement("div", { className: classes.flex },
             React.createElement(TextField, { variant: "outlined", label: `Choose isoform of ${getGeneDisplayName(feature)}`, select: true, className: classes.minWidth, value: selectedId, onChange: event => {
-                    onTranscriptChange(event.target.value);
+                    setSelectedId(event.target.value);
                 } }, options.map(val => {
                 const inSet = validIds
                     ? validIds.some(id => featureMatchesId(val, id))

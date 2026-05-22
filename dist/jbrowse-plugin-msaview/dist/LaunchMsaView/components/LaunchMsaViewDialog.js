@@ -12,11 +12,10 @@ export default function LaunchMsaViewDialog({ handleClose, feature, model, }) {
     const datasets = readMsaDatasets(session.jbrowse);
     const hasPreloadedDatasets = !!datasets?.length;
     const [value, setValue] = useState('ncbi_blast');
-    const handleChange = (_event, newValue) => {
-        setValue(newValue);
-    };
     return (React.createElement(Dialog, { maxWidth: "xl", title: "Launch MSA view", open: true, onClose: handleClose },
-        React.createElement(Tabs, { value: value, onChange: handleChange },
+        React.createElement(Tabs, { value: value, onChange: (_event, newValue) => {
+                setValue(newValue);
+            } },
             React.createElement(Tab, { label: "NCBI BLAST query", value: "ncbi_blast" }),
             hasPreloadedDatasets ? (React.createElement(Tab, { label: "Pre-loaded MSA datasets", value: "preloaded_msa" })) : null,
             React.createElement(Tab, { label: "Manual upload", value: "manual_msa" })),

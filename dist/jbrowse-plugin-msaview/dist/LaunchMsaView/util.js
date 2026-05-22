@@ -1,4 +1,13 @@
-import { sum } from '@jbrowse/core/util';
+import { getContainingView, sum } from '@jbrowse/core/util';
+export function getLinearGenomeView(model) {
+    return getContainingView(model);
+}
+function uniqueDefined(vals) {
+    return [...new Set(vals.filter((v) => !!v))];
+}
+function joinDefined(sep, parts) {
+    return parts.filter((p) => !!p).join(sep);
+}
 export function getTranscriptFeatures(feature) {
     // check if we are looking at a 'two-level' or 'three-level' feature by
     // finding exon/CDS subfeatures. we want to select from transcript names
@@ -28,34 +37,31 @@ export function getId(val) {
     return val?.id() ?? '';
 }
 export function getMatchableIds(val) {
-    if (!val) {
-        return [];
-    }
-    const ids = [
-        val.id(),
-        val.get('name'),
-        val.get('id'),
-        val.get('transcript_id'),
-    ].filter((id) => !!id);
-    return [...new Set(ids)];
+    return val
+        ? uniqueDefined([
+            val.id(),
+            val.get('name'),
+            val.get('id'),
+            val.get('transcript_id'),
+        ])
+        : [];
 }
 export function featureMatchesId(feature, id) {
     return getMatchableIds(feature).includes(id);
 }
 export function getTranscriptDisplayName(val) {
-    return val === undefined
-        ? ''
-        : [val.get('name'), val.get('id')].filter(f => !!f).join(' ');
+    return val ? joinDefined(' ', [val.get('name'), val.get('id')]) : '';
 }
 export function getGeneDisplayName(val) {
-    return val === undefined
-        ? ''
-        : [
+    return val
+        ? joinDefined(' ', [
             val.get('gene_name') ?? val.get('name'),
-            val.get('id') ? `(${val.get('id')})` : '',
-        ]
-            .filter(f => !!f)
-            .join(' ');
+            val.get('id') ? `(${val.get('id')})` : undefined,
+        ])
+        : '';
+}
+export function getBlastViewTitle(feature, transcript) {
+    return `BLAST - ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(transcript)}`;
 }
 export function getSortedTranscriptFeatures(feature) {
     const transcripts = getTranscriptFeatures(feature);
@@ -65,13 +71,12 @@ export function cleanProteinSequence(seq) {
     return seq.replaceAll('*', '').replaceAll('&', '');
 }
 export function getGeneIdentifiers(feature) {
-    const ids = [
+    return uniqueDefined([
         feature.id(),
         feature.get('id'),
         feature.get('name'),
         feature.get('gene_id'),
         feature.get('gene_name'),
-    ].filter((id) => !!id);
-    return [...new Set(ids)];
+    ]);
 }
 //# sourceMappingURL=util.js.map
