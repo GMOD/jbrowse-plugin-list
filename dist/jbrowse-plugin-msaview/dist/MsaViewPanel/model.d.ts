@@ -614,6 +614,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     progress: string;
     error: unknown;
     loadingStoredData: boolean;
+    isStoringData: boolean;
 } & {
     /**
      * #method
@@ -710,6 +711,10 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * #action
      */
     setLoadingStoredData(arg: boolean): void;
+    /**
+     * #action
+     */
+    setIsStoringData(arg: boolean): void;
     /**
      * #action
      */

@@ -6,6 +6,16 @@ export declare function checkHovered(hovered: unknown): hovered is {
         refName: string;
     };
 };
+interface AssemblyManagerLike {
+    get: (name: string) => {
+        getCanonicalRefName: (r: string) => string | undefined;
+    } | undefined;
+}
+export declare function getCanonicalRefName({ assemblyManager, assemblyNames, refName, }: {
+    assemblyManager: AssemblyManagerLike;
+    assemblyNames: string[] | undefined;
+    refName: string;
+}): string;
 /**
  * Extracts UniProt ID from an AlphaFold URL
  * Examples:
@@ -13,3 +23,4 @@ export declare function checkHovered(hovered: unknown): hovered is {
  * - https://alphafold.ebi.ac.uk/files/msa/AF-P12345-F1-msa_v6.a3m -> P12345
  */
 export declare function getUniprotIdFromAlphaFoldUrl(url: string): string | undefined;
+export {};

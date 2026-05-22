@@ -64,17 +64,16 @@ async function waitForRid({ rid, onProgress, baseUrl, }) {
             onProgress(`Re-checking BLAST status in... ${iter - i}`);
         }
         const res = await textfetch(`${baseUrl}?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=${rid}`);
-        const isWaiting = /\s+Status=WAITING/m.test(res);
-        const isFailed = /\s+Status=FAILED/m.test(res);
-        const isReady = /\s+Status=READY/m.test(res);
+        const statusMatch = /\s+Status=(\S+)/m.exec(res);
+        const status = statusMatch?.[1];
         const hasHits = /\s+ThereAreHits=yes/m.test(res);
-        if (isWaiting) {
+        if (status === 'WAITING') {
             continue;
         }
-        if (isFailed) {
+        if (status === 'FAILED') {
             throw new Error(`BLAST ${rid} failed`);
         }
-        if (isReady) {
+        if (status === 'READY') {
             if (hasHits) {
                 return true;
             }
@@ -82,6 +81,7 @@ async function waitForRid({ rid, onProgress, baseUrl, }) {
                 throw new Error('No hits found');
             }
         }
+        throw new Error(`BLAST ${rid} returned unexpected status: ${status ?? 'unknown'}`);
     }
 }
 //# sourceMappingURL=ncbiBlast.js.map

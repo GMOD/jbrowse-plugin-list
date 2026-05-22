@@ -1,5 +1,8 @@
 export declare function hasHoverPosition(hovered: unknown): hovered is {
-    hoverPosition: unknown;
+    hoverPosition: {
+        coord: number;
+        refName: string;
+    };
 };
 export declare const useStyles: (params: void, muiStyleOverridesParams?: {
     props: Record<string, unknown>;

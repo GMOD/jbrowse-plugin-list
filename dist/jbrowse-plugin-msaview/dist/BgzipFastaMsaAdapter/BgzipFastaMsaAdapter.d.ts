@@ -6,6 +6,8 @@ export default class BgzipFastaMsaAdapter extends BaseAdapter {
     configurePre(): Promise<BaseFeatureDataAdapter>;
     configure(): Promise<BaseFeatureDataAdapter>;
     getMSARefs(): Promise<string[]>;
+    getMsaRegex(): RegExp;
+    refNameToMsaId(refName: string): string;
     getMSAList(): Promise<string[]>;
     getMSA(id: string): Promise<import("@jbrowse/core/util").Feature[]>;
 }

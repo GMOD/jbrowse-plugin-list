@@ -32,16 +32,18 @@ export function loadStoredData(self) {
     }
 }
 export function storeDataToIndexedDB(self) {
-    const { rows, dataStoreId } = self;
-    if (rows.length > 0 && !dataStoreId) {
+    const { rows, dataStoreId, isStoringData } = self;
+    if (rows.length > 0 && !dataStoreId && !isStoringData) {
         if (self.msaFilehandle || self.treeFilehandle) {
             return;
         }
         const msaData = self.data.msa;
         const treeData = self.data.tree;
         if (msaData || treeData) {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            ;
+            // mark as storing synchronously so re-runs of this autorun (e.g. when
+            // data observables change while the write is pending) don't kick off a
+            // duplicate write and leave an orphan IndexedDB entry
+            self.setIsStoringData(true);
             (async () => {
                 try {
                     const newId = generateDataStoreId();
@@ -56,6 +58,9 @@ export function storeDataToIndexedDB(self) {
                 }
                 catch (e) {
                     console.error('Failed to store MSA data to IndexedDB:', e);
+                }
+                finally {
+                    self.setIsStoringData(false);
                 }
             })();
         }

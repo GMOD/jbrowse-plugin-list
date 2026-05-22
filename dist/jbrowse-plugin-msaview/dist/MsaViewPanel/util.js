@@ -1,8 +1,16 @@
 export function checkHovered(hovered) {
-    return (typeof hovered === 'object' &&
-        hovered !== null &&
+    return (!!hovered &&
+        typeof hovered === 'object' &&
         'hoverFeature' in hovered &&
-        'hoverPosition' in hovered);
+        'hoverPosition' in hovered &&
+        !!hovered.hoverPosition);
+}
+export function getCanonicalRefName({ assemblyManager, assemblyNames, refName, }) {
+    const assemblyName = assemblyNames?.[0];
+    if (assemblyName) {
+        return (assemblyManager.get(assemblyName)?.getCanonicalRefName(refName) ?? refName);
+    }
+    return refName;
 }
 /**
  * Extracts UniProt ID from an AlphaFold URL

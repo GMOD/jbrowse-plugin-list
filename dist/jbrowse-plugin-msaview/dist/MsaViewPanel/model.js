@@ -10,6 +10,7 @@ import { genomeToMSA } from './genomeToMSA';
 import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { buildAlignmentMaps, runPairwiseAlignment } from './pairwiseAlignment';
 import { getProteinViews, ungappedToGappedPosition, } from './structureConnection';
+import { getCanonicalRefName } from './util';
 const ConnectStructureDialog = lazy(() => import('./components/ConnectStructureDialog'));
 /**
  * #stateModel MsaViewPlugin
@@ -85,6 +86,10 @@ export default function stateModelFactory() {
          * #volatile
          */
         loadingStoredData: false,
+        /**
+         * #volatile
+         */
+        isStoringData: false,
     }))
         .views(self => ({
         /**
@@ -255,6 +260,12 @@ export default function stateModelFactory() {
         /**
          * #action
          */
+        setIsStoringData(arg) {
+            self.isStoringData = arg;
+        },
+        /**
+         * #action
+         */
         handleMsaClick(coord) {
             const { connectedView, zoomToBaseLevel } = self;
             const { assemblyManager } = getSession(self);
@@ -266,9 +277,11 @@ export default function stateModelFactory() {
                 connectedView.navTo(r2);
             }
             else {
-                const r = assemblyManager
-                    .get(connectedView.assemblyNames[0])
-                    ?.getCanonicalRefName(r2.refName) ?? r2.refName;
+                const r = getCanonicalRefName({
+                    assemblyManager,
+                    assemblyNames: connectedView.assemblyNames,
+                    refName: r2.refName,
+                });
                 connectedView.centerAt(r2.start, r);
             }
         },
