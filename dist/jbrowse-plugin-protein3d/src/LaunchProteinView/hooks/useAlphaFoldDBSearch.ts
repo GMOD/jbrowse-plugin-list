@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import useAlphaFoldData from './useAlphaFoldData'
 import useAlphaFoldSequenceSearch from './useAlphaFoldSequenceSearch'
+import useDebouncedValue from './useDebouncedValue'
 import useIsoformProteinSequences from './useIsoformProteinSequences'
 import useUniProtSearch from './useUniProtSearch'
 import getSearchDescription from '../utils/getSearchDescription'
@@ -9,7 +10,6 @@ import {
   extractFeatureIdentifiers,
   getId,
   getTranscriptFeatures,
-  getUniProtIdFromFeature,
   selectBestTranscript,
   stripStopCodon,
 } from '../utils/util'
@@ -38,7 +38,7 @@ export default function useAlphaFoldDBSearch({
   const [userTranscriptId, setUserTranscriptId] = useState<string>()
 
   const transcriptOptions = getTranscriptFeatures(feature)
-  const featureUniprotId = getUniProtIdFromFeature(feature)
+  const featureUniprotId = geneIds.uniprotId
 
   const effectiveLookupMode =
     lookupMode === 'auto' && featureUniprotId ? 'feature' : lookupMode
@@ -63,6 +63,10 @@ export default function useAlphaFoldDBSearch({
     enabled: isAutoMode,
   })
 
+  // Debounce manual entry so fetches don't fire on every keystroke and
+  // pollute the SWR cache with partial-ID 404s.
+  const debouncedManualUniprotId = useDebouncedValue(manualUniprotId, 400)
+
   const autoUniprotId = uniprotEntries[0]?.accession
   const uniprotId =
     effectiveLookupMode === 'feature'
@@ -70,7 +74,7 @@ export default function useAlphaFoldDBSearch({
       : isAutoMode
         ? (selectedUniprotId ?? autoUniprotId)
         : effectiveLookupMode === 'manual'
-          ? manualUniprotId
+          ? debouncedManualUniprotId
           : undefined
 
   const {

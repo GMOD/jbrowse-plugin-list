@@ -16,17 +16,19 @@ import {
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
-import AlignmentSettingsButton from './AlignmentSettingsButton'
 import HelpButton from './HelpButton'
 import MSATable from './MSATable'
+import SequenceMismatchNotice from './SequenceMismatchNotice'
 import TranscriptSelector from './TranscriptSelector'
-import { ALIGNMENT_ALGORITHM_LABELS } from '../../ProteinView/types'
 import ExternalLink from '../../components/ExternalLink'
 import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences'
 import useLocalStructureFileSequence from '../hooks/useLocalStructureFileSequence'
 import useRemoteStructureFileSequence from '../hooks/useRemoteStructureFileSequence'
 import useTranscriptSelection from '../hooks/useTranscriptSelection'
-import { launch3DProteinView } from '../utils/launchViewUtils'
+import {
+  getPdbStructureUrl,
+  launch3DProteinView,
+} from '../utils/launchViewUtils'
 import {
   getGeneDisplayName,
   getId,
@@ -113,6 +115,38 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
   const protein = userSelection ? isoformSequences?.[userSelection] : undefined
 
   const error = isoformError ?? submitError ?? localFileError ?? remoteFileError
+
+  const canLaunch =
+    !!(structureURL || file) && !!protein && !!selectedTranscript
+  const sequencesDiffer =
+    !!protein?.seq &&
+    !!structureSequence &&
+    stripStopCodon(protein.seq) !== structureSequence
+
+  const handleLaunch = async () => {
+    if (!protein || !selectedTranscript || !(structureURL || file)) {
+      return
+    }
+    try {
+      const structureData = file ? await file.text() : undefined
+      launch3DProteinView({
+        session,
+        view,
+        feature,
+        selectedTranscript,
+        url: structureURL || undefined,
+        data: structureData,
+        userProvidedTranscriptSequence: protein.seq,
+        alignmentAlgorithm,
+        displayName: `Protein view ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(selectedTranscript)}`,
+      })
+      handleClose()
+    } catch (e) {
+      console.error(e)
+      setSubmitError(e)
+    }
+  }
+
   return (
     <>
       <DialogContent className={classes.dialogContent}>
@@ -180,7 +214,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
               onChange={event => {
                 const s = event.target.value
                 setPdbId(s)
-                setStructureURL(`https://files.rcsb.org/download/${s}.cif`)
+                setStructureURL(getPdbStructureUrl(s))
               }}
               label="PDB ID"
             />
@@ -227,22 +261,11 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
         </div>
       </DialogContent>
       <DialogActions>
-        {protein?.seq &&
-        structureSequence &&
-        stripStopCodon(protein.seq) !== structureSequence ? (
-          <Typography
-            variant="body2"
-            sx={{ mr: 2, display: 'flex', alignItems: 'center' }}
-          >
-            Transcript and structure sequences differ, will run{' '}
-            {ALIGNMENT_ALGORITHM_LABELS[alignmentAlgorithm] ??
-              alignmentAlgorithm}{' '}
-            alignment
-            <AlignmentSettingsButton
-              value={alignmentAlgorithm}
-              onChange={onAlignmentAlgorithmChange}
-            />
-          </Typography>
+        {sequencesDiffer ? (
+          <SequenceMismatchNotice
+            alignmentAlgorithm={alignmentAlgorithm}
+            onAlignmentAlgorithmChange={onAlignmentAlgorithmChange}
+          />
         ) : null}
         <Button
           variant="contained"
@@ -256,29 +279,9 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
         <Button
           variant="contained"
           color="primary"
-          disabled={!(structureURL || file) || !protein || !selectedTranscript}
+          disabled={!canLaunch}
           onClick={() => {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            ;(async () => {
-              try {
-                const structureData = file ? await file.text() : undefined
-                launch3DProteinView({
-                  session,
-                  view,
-                  feature,
-                  selectedTranscript,
-                  url: structureURL || undefined,
-                  data: structureData,
-                  userProvidedTranscriptSequence: protein?.seq ?? '',
-                  alignmentAlgorithm,
-                  displayName: `Protein view ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(selectedTranscript)}`,
-                })
-                handleClose()
-              } catch (e) {
-                console.error(e)
-                setSubmitError(e)
-              }
-            })()
+            void handleLaunch()
           }}
         >
           Launch 3-D protein structure view

@@ -37,15 +37,16 @@ async function searchUniProt(query, size = 10) {
 }
 async function searchByXref(id) {
     const query = buildXrefQuery(id);
-    if (query) {
-        try {
-            return await searchUniProt(query);
-        }
-        catch (e) {
-            console.error(`xref search failed for ${id}:`, e);
-        }
+    if (!query) {
+        return { entries: [], error: undefined };
     }
-    return [];
+    try {
+        return { entries: await searchUniProt(query), error: undefined };
+    }
+    catch (e) {
+        console.error(`xref search failed for ${id}:`, e);
+        return { entries: [], error: e };
+    }
 }
 function deduplicateEntries(entries) {
     const seen = new Set();
@@ -73,8 +74,10 @@ export async function searchUniProtEntries({ recognizedIds = [], geneId, geneNam
     }
     // Search all xrefs in parallel
     const xrefResults = await Promise.all([...idsToSearch].map(searchByXref));
-    let entries = deduplicateEntries(xrefResults.flat());
+    let entries = deduplicateEntries(xrefResults.flatMap(r => r.entries));
+    const xrefErrors = xrefResults.filter(r => r.error !== undefined);
     // Fallback: if no reviewed entries found, try gene name search
+    let geneNameError;
     if (!entries.some(e => e.isReviewed) && geneName) {
         try {
             const query = `gene:${geneName}+AND+organism_id:${organismId}+AND+reviewed:true`;
@@ -83,6 +86,17 @@ export async function searchUniProtEntries({ recognizedIds = [], geneId, geneNam
         }
         catch (e) {
             console.error(`gene name search failed for ${geneName}:`, e);
+            geneNameError = e;
+        }
+    }
+    // If we got no entries but every attempted lookup failed, surface the
+    // underlying error rather than silently returning []. Otherwise consumers
+    // see "No UniProt ID found" with no indication that the network failed.
+    if (entries.length === 0) {
+        const attempted = idsToSearch.size + (geneName ? 1 : 0);
+        const failed = xrefErrors.length + (geneNameError ? 1 : 0);
+        if (attempted > 0 && attempted === failed) {
+            throw (geneNameError ?? xrefErrors[0]?.error);
         }
     }
     // Sort reviewed entries first

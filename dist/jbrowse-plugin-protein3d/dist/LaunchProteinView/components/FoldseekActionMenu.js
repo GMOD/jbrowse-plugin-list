@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Menu, MenuItem } from '@mui/material';
 import { caCoordsToPdb, hasValidCaCoords } from '../utils/caCoordsToPdb';
+import { safeLaunch } from '../utils/launchHelpers';
 import { getConfidenceUrlFromTarget, getUniprotIdFromAlphaFoldTarget, hasMsaViewPlugin, launch1DProteinView, launch3DProteinView, launchMsaView, } from '../utils/launchViewUtils';
 export default function FoldseekActionMenu({ hit, session, view, feature, selectedTranscript, userProvidedTranscriptSequence, onClose, }) {
     const [anchorEl, setAnchorEl] = useState(null);
@@ -12,53 +13,32 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
     const handleMenuClose = () => {
         setAnchorEl(null);
     };
-    const handleLaunch3D = () => {
+    const baseParams = { session, view, feature, selectedTranscript, uniprotId };
+    const runLaunch = (fn) => () => {
         handleMenuClose();
+        void safeLaunch(session, fn, onClose);
+    };
+    const handleLaunch3D = runLaunch(() => {
         // Use tCa coordinates to generate PDB data if no URL is available
         const pdbData = !hit.structureUrl && hasValidCaCoords(hit.tCa, hit.tSeq)
             ? caCoordsToPdb(hit.tCa, hit.tSeq, 'A', hit.target)
             : undefined;
         launch3DProteinView({
-            session,
-            view,
-            feature,
-            selectedTranscript,
-            uniprotId,
+            ...baseParams,
             url: hit.structureUrl,
             data: pdbData,
             userProvidedTranscriptSequence,
         });
-        onClose();
-    };
-    const handleLaunch1D = async () => {
-        handleMenuClose();
-        try {
-            await launch1DProteinView({
-                session,
-                view,
-                feature,
-                selectedTranscript,
-                uniprotId,
-                confidenceUrl: getConfidenceUrlFromTarget(hit.target),
-            });
-        }
-        catch (e) {
-            console.error(e);
-            session.notifyError(`${e}`, e);
-        }
-        onClose();
-    };
-    const handleLaunchMSA = () => {
-        handleMenuClose();
-        launchMsaView({
-            session,
-            view,
-            feature,
-            selectedTranscript,
-            uniprotId,
+    });
+    const handleLaunch1D = runLaunch(async () => {
+        await launch1DProteinView({
+            ...baseParams,
+            confidenceUrl: getConfidenceUrlFromTarget(hit.target),
         });
-        onClose();
-    };
+    });
+    const handleLaunchMSA = runLaunch(() => {
+        launchMsaView(baseParams);
+    });
     const canLoad = hit.structureUrl ?? hasValidCaCoords(hit.tCa, hit.tSeq);
     if (!canLoad) {
         return React.createElement("span", null, "-");
@@ -67,9 +47,7 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
         React.createElement(Button, { size: "small", variant: "outlined", onClick: handleClick }, "Load"),
         React.createElement(Menu, { anchorEl: anchorEl, open: open, onClose: handleMenuClose },
             React.createElement(MenuItem, { onClick: handleLaunch3D }, "Launch 3D protein view"),
-            uniprotId ? (React.createElement(MenuItem, { onClick: () => {
-                    void handleLaunch1D();
-                } }, "Launch 1D protein annotation view")) : null,
+            uniprotId ? (React.createElement(MenuItem, { onClick: handleLaunch1D }, "Launch 1D protein annotation view")) : null,
             uniprotId && hasMsaViewPlugin() ? (React.createElement(MenuItem, { onClick: handleLaunchMSA }, "Launch MSA view (AlphaFoldDB a3m)")) : null)));
 }
 //# sourceMappingURL=FoldseekActionMenu.js.map

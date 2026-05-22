@@ -3,21 +3,14 @@ import { addDisposer, getParent, types, } from '@jbrowse/mobx-state-tree';
 import { autorun } from 'mobx';
 import { applyLociInteractivityMultiple, applyLociInteractivitySingle, } from './applyLociInteractivity';
 import highlightResidueRange from './highlightResidueRange';
-import loadMolstar from './loadMolstar';
 import { runLocalAlignment } from './pairwiseAlignment';
 import { proteinAbbreviationMapping } from './proteinAbbreviationMapping';
 import { clickProteinToGenome, proteinRangeToGenomeMapping, proteinToGenomeMapping, } from './proteinToGenomeMapping';
+import subscribeMolstarInteraction from './subscribeMolstarInteraction';
 import { checkHovered, invertMap } from './util';
 import { getUniprotIdFromAlphaFoldTarget } from '../LaunchProteinView/utils/launchViewUtils';
 import { stripStopCodon } from '../LaunchProteinView/utils/util';
 import { genomeToTranscriptSeqMapping, structurePositionToAlignmentMap, structureSeqVsTranscriptSeqMap, transcriptPositionToAlignmentMap, } from '../mappings';
-function extractLocationInfo(molstar, location) {
-    return {
-        structureSeqPos: molstar.StructureProperties.residue.auth_seq_id(location) - 1,
-        code: molstar.StructureProperties.atom.label_comp_id(location),
-        chain: molstar.StructureProperties.chain.auth_asym_id(location),
-    };
-}
 const Structure = types
     .model({
     /**
@@ -548,48 +541,40 @@ const Structure = types
         addDisposer(self, autorun(async () => {
             const { molstarPluginContext } = self;
             if (molstarPluginContext) {
-                const molstar = await loadMolstar();
-                const ret = molstarPluginContext.behaviors.interaction.click.subscribe(e => {
-                    if (molstar.StructureElement.Loci.is(e.current.loci)) {
-                        const loc = molstar.StructureElement.Loci.getFirstLocation(e.current.loci);
-                        if (loc) {
-                            const locationInfo = extractLocationInfo(molstar, loc);
-                            self.setHoveredPosition(locationInfo);
-                            self.setSelectedFeatureId(undefined);
-                            clickProteinToGenome({
-                                model: self,
-                                structureSeqPos: locationInfo.structureSeqPos,
-                            }).catch((e) => {
-                                console.error(e);
-                                self.parentView.setError(e);
-                            });
+                const dispose = await subscribeMolstarInteraction({
+                    plugin: molstarPluginContext,
+                    kind: 'click',
+                    onUpdate: info => {
+                        // Click only acts on positive matches; ignore clicks that
+                        // didn't land on a structure element.
+                        if (!info) {
+                            return;
                         }
-                    }
+                        self.setHoveredPosition(info);
+                        self.setSelectedFeatureId(undefined);
+                        clickProteinToGenome({
+                            model: self,
+                            structureSeqPos: info.structureSeqPos,
+                        }).catch((e) => {
+                            console.error(e);
+                            self.parentView.setError(e);
+                        });
+                    },
                 });
-                addDisposer(self, () => {
-                    ret.unsubscribe();
-                });
+                addDisposer(self, dispose);
             }
         }));
         addDisposer(self, autorun(async () => {
             const { molstarPluginContext } = self;
             if (molstarPluginContext) {
-                const molstar = await loadMolstar();
-                const ret = molstarPluginContext.behaviors.interaction.hover.subscribe(e => {
-                    if (molstar.StructureElement.Loci.is(e.current.loci)) {
-                        const loc = molstar.StructureElement.Loci.getFirstLocation(e.current.loci);
-                        if (loc) {
-                            const locationInfo = extractLocationInfo(molstar, loc);
-                            self.setHoveredPosition(locationInfo);
-                        }
-                    }
-                    else {
-                        self.setHoveredPosition(undefined);
-                    }
+                const dispose = await subscribeMolstarInteraction({
+                    plugin: molstarPluginContext,
+                    kind: 'hover',
+                    onUpdate: info => {
+                        self.setHoveredPosition(info);
+                    },
                 });
-                addDisposer(self, () => {
-                    ret.unsubscribe();
-                });
+                addDisposer(self, dispose);
             }
         }));
         addDisposer(self, autorun(async () => {

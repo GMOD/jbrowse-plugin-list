@@ -18,6 +18,12 @@ interface ProteinViewActionsProps {
     onAlignmentAlgorithmChange: (algorithm: AlignmentAlgorithm) => void;
     sequencesMatch?: boolean;
     isLoading?: boolean;
+    /**
+     * Real error from the lookup/data pipeline. When present, "No UniProt ID
+     * found" is suppressed so it doesn't compete with the actual error message
+     * shown above by <ErrorMessage>.
+     */
+    error?: unknown;
 }
-export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, }: ProteinViewActionsProps): React.JSX.Element;
+export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, error, }: ProteinViewActionsProps): React.JSX.Element;
 export {};

@@ -6,6 +6,10 @@ export default function LaunchProteinViewExtensionPointF(
 ) {
   pluginManager.addToExtensionPoint(
     'LaunchView-ProteinView',
+    // LaunchView extension points are typed as transformers `(extendee, props)
+    // => extendee`, but in practice JBrowse invokes them as side-effect
+    // handlers and ignores the return value. Casting away the signature
+    // mismatch rather than fabricating a fake return.
     // @ts-expect-error
     async ({
       session,

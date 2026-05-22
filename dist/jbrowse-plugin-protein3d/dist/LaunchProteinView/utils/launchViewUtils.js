@@ -46,6 +46,16 @@ export function getConfidenceUrlFromTarget(target) {
     }
     return undefined;
 }
+function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
+    return [
+        ...new Set([
+            prefix,
+            uniprotId,
+            getGeneDisplayName(feature),
+            getTranscriptDisplayName(selectedTranscript),
+        ]),
+    ].join(' - ');
+}
 export function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, connectedMsaViewId, }) {
     return session.addView('ProteinView', {
         type: 'ProteinView',
@@ -56,20 +66,13 @@ export function launch3DProteinView({ session, view, feature, selectedTranscript
             {
                 url,
                 data,
-                userProvidedTranscriptSequence,
+                userProvidedTranscriptSequence: userProvidedTranscriptSequence ?? '',
                 feature: selectedTranscript?.toJSON(),
                 connectedViewId: view.id,
             },
         ],
         displayName: displayName ??
-            [
-                ...new Set([
-                    'Protein view',
-                    uniprotId,
-                    getGeneDisplayName(feature),
-                    getTranscriptDisplayName(selectedTranscript),
-                ]),
-            ].join(' - '),
+            formatViewName('Protein view', feature, selectedTranscript, uniprotId),
     });
 }
 export async function launch1DProteinView({ session, view, feature, selectedTranscript, uniprotId, confidenceUrl, }) {
@@ -85,25 +88,18 @@ export async function launch1DProteinView({ session, view, feature, selectedTran
         connectedViewId: view.id,
     });
 }
-export function launchMsaView({ session, view, feature, selectedTranscript, uniprotId, }) {
+export function launchMsaView({ session, view, feature, selectedTranscript, uniprotId, displayName, }) {
     if (!uniprotId) {
         return undefined;
     }
-    const msaUrl = getAlphaFoldMsaUrl(uniprotId);
     return session.addView('MsaView', {
         type: 'MsaView',
-        displayName: [
-            ...new Set([
-                'MSA view',
-                uniprotId,
-                getGeneDisplayName(feature),
-                getTranscriptDisplayName(selectedTranscript),
-            ]),
-        ].join(' - '),
+        displayName: displayName ??
+            formatViewName('MSA view', feature, selectedTranscript, uniprotId),
         connectedViewId: view.id,
         connectedFeature: selectedTranscript?.toJSON(),
         init: {
-            msaUrl,
+            msaUrl: getAlphaFoldMsaUrl(uniprotId),
             colorSchemeName: 'percent_identity',
         },
     });
@@ -112,32 +108,15 @@ export function hasMsaViewPlugin() {
     return window.JBrowsePluginMsaView !== undefined;
 }
 export function launch3DProteinViewWithMsa(params) {
-    const { session, view, feature, selectedTranscript, uniprotId } = params;
+    const { feature, selectedTranscript, uniprotId } = params;
     if (!uniprotId) {
         return undefined;
     }
-    const msaUrl = getAlphaFoldMsaUrl(uniprotId);
-    const baseName = [
-        ...new Set([
-            uniprotId,
-            getGeneDisplayName(feature),
-            getTranscriptDisplayName(selectedTranscript),
-        ]),
-    ].join(' - ');
-    const msaView = session.addView('MsaView', {
-        type: 'MsaView',
-        displayName: `MSA view - ${baseName}`,
-        connectedViewId: view.id,
-        connectedFeature: selectedTranscript?.toJSON(),
-        init: {
-            msaUrl,
-            colorSchemeName: 'percent_identity',
-        },
-    });
+    const msaView = launchMsaView(params);
     return launch3DProteinView({
         ...params,
-        displayName: params.displayName ?? `Protein view - ${baseName}`,
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        displayName: params.displayName ??
+            formatViewName('Protein view', feature, selectedTranscript, uniprotId),
         connectedMsaViewId: msaView?.id,
     });
 }

@@ -4,17 +4,16 @@ import { getContainingView, getSession } from '@jbrowse/core/util';
 import { Button, DialogActions, DialogContent, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
-import AlignmentSettingsButton from './AlignmentSettingsButton';
 import HelpButton from './HelpButton';
 import MSATable from './MSATable';
+import SequenceMismatchNotice from './SequenceMismatchNotice';
 import TranscriptSelector from './TranscriptSelector';
-import { ALIGNMENT_ALGORITHM_LABELS } from '../../ProteinView/types';
 import ExternalLink from '../../components/ExternalLink';
 import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences';
 import useLocalStructureFileSequence from '../hooks/useLocalStructureFileSequence';
 import useRemoteStructureFileSequence from '../hooks/useRemoteStructureFileSequence';
 import useTranscriptSelection from '../hooks/useTranscriptSelection';
-import { launch3DProteinView } from '../utils/launchViewUtils';
+import { getPdbStructureUrl, launch3DProteinView, } from '../utils/launchViewUtils';
 import { getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptFeatures, stripStopCodon, } from '../utils/util';
 const useStyles = makeStyles()(theme => ({
     dialogContent: {
@@ -60,6 +59,34 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
     const selectedTranscript = options.find(val => getId(val) === userSelection);
     const protein = userSelection ? isoformSequences?.[userSelection] : undefined;
     const error = isoformError ?? submitError ?? localFileError ?? remoteFileError;
+    const canLaunch = !!(structureURL || file) && !!protein && !!selectedTranscript;
+    const sequencesDiffer = !!protein?.seq &&
+        !!structureSequence &&
+        stripStopCodon(protein.seq) !== structureSequence;
+    const handleLaunch = async () => {
+        if (!protein || !selectedTranscript || !(structureURL || file)) {
+            return;
+        }
+        try {
+            const structureData = file ? await file.text() : undefined;
+            launch3DProteinView({
+                session,
+                view,
+                feature,
+                selectedTranscript,
+                url: structureURL || undefined,
+                data: structureData,
+                userProvidedTranscriptSequence: protein.seq,
+                alignmentAlgorithm,
+                displayName: `Protein view ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(selectedTranscript)}`,
+            });
+            handleClose();
+        }
+        catch (e) {
+            console.error(e);
+            setSubmitError(e);
+        }
+    };
     return (React.createElement(React.Fragment, null,
         React.createElement(DialogContent, { className: classes.dialogContent },
             error ? React.createElement(ErrorMessage, { error: error }) : null,
@@ -93,7 +120,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
                 choice === 'pdb' ? (React.createElement(TextField, { value: pdbId, onChange: event => {
                         const s = event.target.value;
                         setPdbId(s);
-                        setStructureURL(`https://files.rcsb.org/download/${s}.cif`);
+                        setStructureURL(getPdbStructureUrl(s));
                     }, label: "PDB ID" })) : null),
             React.createElement("div", { style: { margin: 20 } }, isoformSequences ? (structureSequence ? (React.createElement(React.Fragment, null,
                 React.createElement(TranscriptSelector, { val: userSelection, setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, isoformSequences: isoformSequences }),
@@ -105,43 +132,12 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
                         : 'Show all isoform protein sequences'),
                     showAllProteinSequences ? (React.createElement(MSATable, { structureSequence: structureSequence, structureName: structureName, isoformSequences: isoformSequences })) : null))) : null) : (React.createElement(LoadingEllipses, { title: "Loading protein sequences", variant: "h6" })))),
         React.createElement(DialogActions, null,
-            protein?.seq &&
-                structureSequence &&
-                stripStopCodon(protein.seq) !== structureSequence ? (React.createElement(Typography, { variant: "body2", sx: { mr: 2, display: 'flex', alignItems: 'center' } },
-                "Transcript and structure sequences differ, will run",
-                ' ',
-                ALIGNMENT_ALGORITHM_LABELS[alignmentAlgorithm] ??
-                    alignmentAlgorithm,
-                ' ',
-                "alignment",
-                React.createElement(AlignmentSettingsButton, { value: alignmentAlgorithm, onChange: onAlignmentAlgorithmChange }))) : null,
+            sequencesDiffer ? (React.createElement(SequenceMismatchNotice, { alignmentAlgorithm: alignmentAlgorithm, onAlignmentAlgorithmChange: onAlignmentAlgorithmChange })) : null,
             React.createElement(Button, { variant: "contained", color: "secondary", onClick: () => {
                     handleClose();
                 } }, "Cancel"),
-            React.createElement(Button, { variant: "contained", color: "primary", disabled: !(structureURL || file) || !protein || !selectedTranscript, onClick: () => {
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    ;
-                    (async () => {
-                        try {
-                            const structureData = file ? await file.text() : undefined;
-                            launch3DProteinView({
-                                session,
-                                view,
-                                feature,
-                                selectedTranscript,
-                                url: structureURL || undefined,
-                                data: structureData,
-                                userProvidedTranscriptSequence: protein?.seq ?? '',
-                                alignmentAlgorithm,
-                                displayName: `Protein view ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(selectedTranscript)}`,
-                            });
-                            handleClose();
-                        }
-                        catch (e) {
-                            console.error(e);
-                            setSubmitError(e);
-                        }
-                    })();
+            React.createElement(Button, { variant: "contained", color: "primary", disabled: !canLaunch, onClick: () => {
+                    void handleLaunch();
                 } }, "Launch 3-D protein structure view"))));
 });
 export default UserProvidedStructure;

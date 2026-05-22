@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { Button, Menu, MenuItem } from '@mui/material'
 
 import { caCoordsToPdb, hasValidCaCoords } from '../utils/caCoordsToPdb'
+import { safeLaunch } from '../utils/launchHelpers'
 import {
   getConfidenceUrlFromTarget,
   getUniprotIdFromAlphaFoldTarget,
@@ -51,55 +52,37 @@ export default function FoldseekActionMenu({
     setAnchorEl(null)
   }
 
-  const handleLaunch3D = () => {
+  const baseParams = { session, view, feature, selectedTranscript, uniprotId }
+
+  const runLaunch = (fn: () => void | Promise<void>) => () => {
     handleMenuClose()
+    void safeLaunch(session, fn, onClose)
+  }
+
+  const handleLaunch3D = runLaunch(() => {
     // Use tCa coordinates to generate PDB data if no URL is available
     const pdbData =
       !hit.structureUrl && hasValidCaCoords(hit.tCa, hit.tSeq)
         ? caCoordsToPdb(hit.tCa!, hit.tSeq!, 'A', hit.target)
         : undefined
     launch3DProteinView({
-      session,
-      view,
-      feature,
-      selectedTranscript,
-      uniprotId,
+      ...baseParams,
       url: hit.structureUrl,
       data: pdbData,
       userProvidedTranscriptSequence,
     })
-    onClose()
-  }
+  })
 
-  const handleLaunch1D = async () => {
-    handleMenuClose()
-    try {
-      await launch1DProteinView({
-        session,
-        view,
-        feature,
-        selectedTranscript,
-        uniprotId,
-        confidenceUrl: getConfidenceUrlFromTarget(hit.target),
-      })
-    } catch (e) {
-      console.error(e)
-      session.notifyError(`${e}`, e)
-    }
-    onClose()
-  }
-
-  const handleLaunchMSA = () => {
-    handleMenuClose()
-    launchMsaView({
-      session,
-      view,
-      feature,
-      selectedTranscript,
-      uniprotId,
+  const handleLaunch1D = runLaunch(async () => {
+    await launch1DProteinView({
+      ...baseParams,
+      confidenceUrl: getConfidenceUrlFromTarget(hit.target),
     })
-    onClose()
-  }
+  })
+
+  const handleLaunchMSA = runLaunch(() => {
+    launchMsaView(baseParams)
+  })
 
   const canLoad = hit.structureUrl ?? hasValidCaCoords(hit.tCa, hit.tSeq)
   if (!canLoad) {
@@ -114,11 +97,7 @@ export default function FoldseekActionMenu({
       <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
         <MenuItem onClick={handleLaunch3D}>Launch 3D protein view</MenuItem>
         {uniprotId ? (
-          <MenuItem
-            onClick={() => {
-              void handleLaunch1D()
-            }}
-          >
+          <MenuItem onClick={handleLaunch1D}>
             Launch 1D protein annotation view
           </MenuItem>
         ) : null}

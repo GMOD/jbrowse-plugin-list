@@ -83,6 +83,22 @@ interface LaunchViewParams {
   uniprotId?: string
 }
 
+function formatViewName(
+  prefix: string,
+  feature: Feature,
+  selectedTranscript?: Feature,
+  uniprotId?: string,
+) {
+  return [
+    ...new Set([
+      prefix,
+      uniprotId,
+      getGeneDisplayName(feature),
+      getTranscriptDisplayName(selectedTranscript),
+    ]),
+  ].join(' - ')
+}
+
 export function launch3DProteinView({
   session,
   view,
@@ -112,21 +128,14 @@ export function launch3DProteinView({
       {
         url,
         data,
-        userProvidedTranscriptSequence,
+        userProvidedTranscriptSequence: userProvidedTranscriptSequence ?? '',
         feature: selectedTranscript?.toJSON(),
         connectedViewId: view.id,
       },
     ],
     displayName:
       displayName ??
-      [
-        ...new Set([
-          'Protein view',
-          uniprotId,
-          getGeneDisplayName(feature),
-          getTranscriptDisplayName(selectedTranscript),
-        ]),
-      ].join(' - '),
+      formatViewName('Protein view', feature, selectedTranscript, uniprotId),
   })
 }
 
@@ -159,25 +168,20 @@ export function launchMsaView({
   feature,
   selectedTranscript,
   uniprotId,
-}: LaunchViewParams) {
+  displayName,
+}: LaunchViewParams & { displayName?: string }) {
   if (!uniprotId) {
     return undefined
   }
-  const msaUrl = getAlphaFoldMsaUrl(uniprotId)
   return session.addView('MsaView', {
     type: 'MsaView',
-    displayName: [
-      ...new Set([
-        'MSA view',
-        uniprotId,
-        getGeneDisplayName(feature),
-        getTranscriptDisplayName(selectedTranscript),
-      ]),
-    ].join(' - '),
+    displayName:
+      displayName ??
+      formatViewName('MSA view', feature, selectedTranscript, uniprotId),
     connectedViewId: view.id,
     connectedFeature: selectedTranscript?.toJSON(),
     init: {
-      msaUrl,
+      msaUrl: getAlphaFoldMsaUrl(uniprotId),
       colorSchemeName: 'percent_identity',
     },
   })
@@ -196,35 +200,17 @@ export function launch3DProteinViewWithMsa(
     displayName?: string
   },
 ) {
-  const { session, view, feature, selectedTranscript, uniprotId } = params
+  const { feature, selectedTranscript, uniprotId } = params
   if (!uniprotId) {
     return undefined
   }
-
-  const msaUrl = getAlphaFoldMsaUrl(uniprotId)
-  const baseName = [
-    ...new Set([
-      uniprotId,
-      getGeneDisplayName(feature),
-      getTranscriptDisplayName(selectedTranscript),
-    ]),
-  ].join(' - ')
-
-  const msaView = session.addView('MsaView', {
-    type: 'MsaView',
-    displayName: `MSA view - ${baseName}`,
-    connectedViewId: view.id,
-    connectedFeature: selectedTranscript?.toJSON(),
-    init: {
-      msaUrl,
-      colorSchemeName: 'percent_identity',
-    },
-  })
-
+  const msaView = launchMsaView(params)
   return launch3DProteinView({
     ...params,
-    displayName: params.displayName ?? `Protein view - ${baseName}`,
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    displayName:
+      params.displayName ??
+      formatViewName('Protein view', feature, selectedTranscript, uniprotId),
+     
     connectedMsaViewId: msaView?.id,
   })
 }

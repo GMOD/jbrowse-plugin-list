@@ -1,127 +1,107 @@
 import React, { useState } from 'react';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { Button, ButtonGroup, Dialog, DialogContent, DialogTitle, MenuItem, MenuList, Typography, } from '@mui/material';
-import AlignmentSettingsButton from './AlignmentSettingsButton';
-import { ALIGNMENT_ALGORITHM_LABELS } from '../../ProteinView/types';
+import { Button, ButtonGroup, Typography } from '@mui/material';
+import LaunchOptionsDialog from './LaunchOptionsDialog';
+import SequenceMismatchNotice from './SequenceMismatchNotice';
+import { getLaunchMissingReasons, safeLaunch, } from '../utils/launchHelpers';
 import { hasMsaViewPlugin, launch1DProteinView, launch3DProteinView, launch3DProteinViewWithMsa, launchMsaView, } from '../utils/launchViewUtils';
-export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, }) {
+export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, error, }) {
     const [dialogOpen, setDialogOpen] = useState(false);
-    const canLaunch = !!uniprotId && !!userSelectedProteinSequence && !!selectedTranscript;
-    const missingReasons = isLoading
-        ? []
-        : [
-            !uniprotId && 'No UniProt ID found',
-            !userSelectedProteinSequence &&
-                'Could not compute protein sequence (feature may be missing CDS subfeatures)',
-            !selectedTranscript && 'No transcript selected',
-        ].filter(Boolean);
-    const handleLaunch3DView = () => {
+    // Disable launch while loading — SWR's keepPreviousData would otherwise let
+    // a user click Launch on stale results (wrong UniProt ID) during a refetch.
+    const canLaunch = !isLoading &&
+        !!uniprotId &&
+        !!userSelectedProteinSequence &&
+        !!selectedTranscript;
+    const missingReasons = getLaunchMissingReasons({
+        uniprotId,
+        userSelectedProteinSequence,
+        selectedTranscript,
+        isLoading,
+        error,
+    });
+    const closeMenu = () => {
         setDialogOpen(false);
-        if (!selectedTranscript) {
-            return;
-        }
-        launch3DProteinView({
-            session,
-            view,
-            feature,
-            selectedTranscript,
-            uniprotId,
-            url,
-            userProvidedTranscriptSequence: userSelectedProteinSequence?.seq,
-            alignmentAlgorithm,
-        });
-        handleClose();
     };
+    const baseParams = {
+        session,
+        view,
+        feature,
+        selectedTranscript,
+        uniprotId,
+    };
+    const launch3DParams = {
+        ...baseParams,
+        url,
+        userProvidedTranscriptSequence: userSelectedProteinSequence?.seq,
+        alignmentAlgorithm,
+    };
+    const runLaunch = (fn) => () => {
+        closeMenu();
+        void safeLaunch(session, fn, handleClose);
+    };
+    const handleLaunch3DView = runLaunch(() => {
+        if (selectedTranscript) {
+            launch3DProteinView(launch3DParams);
+        }
+    });
+    const handleLaunch1DView = runLaunch(async () => {
+        if (uniprotId && selectedTranscript) {
+            await launch1DProteinView({ ...baseParams, confidenceUrl });
+        }
+    });
+    const handleLaunchMsa = runLaunch(() => {
+        if (selectedTranscript && uniprotId) {
+            launchMsaView(baseParams);
+        }
+    });
+    const handleLaunch3DWithMsa = runLaunch(() => {
+        if (selectedTranscript && uniprotId) {
+            launch3DProteinViewWithMsa(launch3DParams);
+        }
+    });
+    const launchOptions = [
+        {
+            key: '3d',
+            title: 'Launch 3D protein structure view',
+            description: 'View protein structure with genome-to-structure coordinate mapping',
+            onClick: handleLaunch3DView,
+        },
+        {
+            key: '1d',
+            title: 'Launch 1D protein annotation view',
+            description: 'View protein features and annotations as a linear track',
+            onClick: handleLaunch1DView,
+        },
+        ...(hasMsaViewPlugin()
+            ? [
+                {
+                    key: 'msa',
+                    title: 'Launch MSA view',
+                    description: 'View AlphaFold a3m multiple sequence alignment',
+                    onClick: handleLaunchMsa,
+                },
+                {
+                    key: '3d-msa',
+                    title: 'Launch 3D structure + MSA view',
+                    description: 'Launch both views with AlphaFold a3m MSA',
+                    onClick: handleLaunch3DWithMsa,
+                },
+            ]
+            : []),
+    ];
     return (React.createElement(React.Fragment, null,
-        sequencesMatch === false ? (React.createElement(Typography, { variant: "body2", sx: { mr: 2, display: 'flex', alignItems: 'center' } },
-            "Transcript and structure sequences differ, will run",
-            ' ',
-            ALIGNMENT_ALGORITHM_LABELS[alignmentAlgorithm] ?? alignmentAlgorithm,
-            ' ',
-            "alignment",
-            React.createElement(AlignmentSettingsButton, { value: alignmentAlgorithm, onChange: onAlignmentAlgorithmChange }))) : null,
-        React.createElement(Button, { variant: "contained", color: "secondary", size: "small", onClick: handleClose }, "Cancel"),
-        !canLaunch ? (React.createElement(Typography, { variant: "body2", color: "error", sx: { mr: 2 } }, missingReasons.join('. '))) : null,
+        sequencesMatch === false ? (React.createElement(SequenceMismatchNotice, { alignmentAlgorithm: alignmentAlgorithm, onAlignmentAlgorithmChange: onAlignmentAlgorithmChange })) : null,
+        React.createElement(Button, { variant: "contained", color: "secondary", size: "small", onClick: () => {
+                handleClose();
+            } }, "Cancel"),
+        !canLaunch && missingReasons.length > 0 ? (React.createElement(Typography, { variant: "body2", color: "error", sx: { mr: 2 } }, missingReasons.join('. '))) : null,
         React.createElement(ButtonGroup, { variant: "contained", color: "primary", size: "small" },
             React.createElement(Button, { disabled: !canLaunch, onClick: handleLaunch3DView }, "Launch"),
             React.createElement(Button, { disabled: !canLaunch, onClick: () => {
                     setDialogOpen(true);
                 }, "aria-label": "More launch options" },
                 React.createElement(ArrowDropDownIcon, null))),
-        React.createElement(Dialog, { open: dialogOpen, onClose: () => {
-                setDialogOpen(false);
-            } },
-            React.createElement(DialogTitle, null, "Launch options"),
-            React.createElement(DialogContent, null,
-                React.createElement(MenuList, null,
-                    React.createElement(MenuItem, { onClick: handleLaunch3DView },
-                        React.createElement("div", null,
-                            React.createElement(Typography, { variant: "body1" }, "Launch 3D protein structure view"),
-                            React.createElement(Typography, { variant: "body2", color: "text.secondary" }, "View protein structure with genome-to-structure coordinate mapping"))),
-                    React.createElement(MenuItem, { onClick: async () => {
-                            setDialogOpen(false);
-                            if (!uniprotId || !selectedTranscript) {
-                                return;
-                            }
-                            try {
-                                await launch1DProteinView({
-                                    session,
-                                    view,
-                                    feature,
-                                    selectedTranscript,
-                                    uniprotId,
-                                    confidenceUrl,
-                                });
-                            }
-                            catch (e) {
-                                console.error(e);
-                                session.notifyError(`${e}`, e);
-                            }
-                            handleClose();
-                        } },
-                        React.createElement("div", null,
-                            React.createElement(Typography, { variant: "body1" }, "Launch 1D protein annotation view"),
-                            React.createElement(Typography, { variant: "body2", color: "text.secondary" }, "View protein features and annotations as a linear track"))),
-                    hasMsaViewPlugin()
-                        ? [
-                            React.createElement(MenuItem, { key: "msa", onClick: () => {
-                                    setDialogOpen(false);
-                                    if (!selectedTranscript || !uniprotId) {
-                                        return;
-                                    }
-                                    launchMsaView({
-                                        session,
-                                        view,
-                                        feature,
-                                        selectedTranscript,
-                                        uniprotId,
-                                    });
-                                    handleClose();
-                                } },
-                                React.createElement("div", null,
-                                    React.createElement(Typography, { variant: "body1" }, "Launch MSA view"),
-                                    React.createElement(Typography, { variant: "body2", color: "text.secondary" }, "View AlphaFold a3m multiple sequence alignment"))),
-                            React.createElement(MenuItem, { key: "3d-msa", onClick: () => {
-                                    setDialogOpen(false);
-                                    if (!selectedTranscript || !uniprotId) {
-                                        return;
-                                    }
-                                    launch3DProteinViewWithMsa({
-                                        session,
-                                        view,
-                                        feature,
-                                        selectedTranscript,
-                                        uniprotId,
-                                        url,
-                                        userProvidedTranscriptSequence: userSelectedProteinSequence?.seq,
-                                        alignmentAlgorithm,
-                                    });
-                                    handleClose();
-                                } },
-                                React.createElement("div", null,
-                                    React.createElement(Typography, { variant: "body1" }, "Launch 3D structure + MSA view"),
-                                    React.createElement(Typography, { variant: "body2", color: "text.secondary" }, "Launch both views with AlphaFold a3m MSA"))),
-                        ]
-                        : null)))));
+        React.createElement(LaunchOptionsDialog, { open: dialogOpen, onClose: closeMenu, options: launchOptions })));
 }
 //# sourceMappingURL=ProteinViewActions.js.map

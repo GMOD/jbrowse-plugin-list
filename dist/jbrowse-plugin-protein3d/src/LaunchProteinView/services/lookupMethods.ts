@@ -88,14 +88,15 @@ async function searchUniProt(
 
 async function searchByXref(id: string) {
   const query = buildXrefQuery(id)
-  if (query) {
-    try {
-      return await searchUniProt(query)
-    } catch (e) {
-      console.error(`xref search failed for ${id}:`, e)
-    }
+  if (!query) {
+    return { entries: [] as UniProtEntry[], error: undefined as unknown }
   }
-  return []
+  try {
+    return { entries: await searchUniProt(query), error: undefined as unknown }
+  } catch (e) {
+    console.error(`xref search failed for ${id}:`, e)
+    return { entries: [] as UniProtEntry[], error: e }
+  }
 }
 
 function deduplicateEntries(entries: UniProtEntry[]) {
@@ -136,9 +137,11 @@ export async function searchUniProtEntries({
 
   // Search all xrefs in parallel
   const xrefResults = await Promise.all([...idsToSearch].map(searchByXref))
-  let entries = deduplicateEntries(xrefResults.flat())
+  let entries = deduplicateEntries(xrefResults.flatMap(r => r.entries))
+  const xrefErrors = xrefResults.filter(r => r.error !== undefined)
 
   // Fallback: if no reviewed entries found, try gene name search
+  let geneNameError: unknown
   if (!entries.some(e => e.isReviewed) && geneName) {
     try {
       const query = `gene:${geneName}+AND+organism_id:${organismId}+AND+reviewed:true`
@@ -146,6 +149,18 @@ export async function searchUniProtEntries({
       entries = deduplicateEntries([...entries, ...geneNameResults])
     } catch (e) {
       console.error(`gene name search failed for ${geneName}:`, e)
+      geneNameError = e
+    }
+  }
+
+  // If we got no entries but every attempted lookup failed, surface the
+  // underlying error rather than silently returning []. Otherwise consumers
+  // see "No UniProt ID found" with no indication that the network failed.
+  if (entries.length === 0) {
+    const attempted = idsToSearch.size + (geneName ? 1 : 0)
+    const failed = xrefErrors.length + (geneNameError ? 1 : 0)
+    if (attempted > 0 && attempted === failed) {
+      throw (geneNameError ?? xrefErrors[0]?.error) as Error
     }
   }
 
