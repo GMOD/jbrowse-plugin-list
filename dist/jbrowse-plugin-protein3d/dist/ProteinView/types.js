@@ -7,4 +7,3 @@ export const ALIGNMENT_ALGORITHM_LABELS = {
     needleman_wunsch: 'Needleman-Wunsch',
     smith_waterman: 'Smith-Waterman',
 };
-//# sourceMappingURL=types.js.map

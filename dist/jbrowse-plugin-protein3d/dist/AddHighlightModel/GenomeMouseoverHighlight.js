@@ -14,4 +14,3 @@ const GenomeMouseoverHighlight = observer(function GenomeMouseoverHighlight({ mo
     return null;
 });
 export default GenomeMouseoverHighlight;
-//# sourceMappingURL=GenomeMouseoverHighlight.js.map

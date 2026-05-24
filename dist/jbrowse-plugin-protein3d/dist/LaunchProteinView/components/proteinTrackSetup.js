@@ -157,4 +157,3 @@ export async function addAllProteinTracks({ session, uniprotId, confidenceUrl, }
         uniprotId,
     });
 }
-//# sourceMappingURL=proteinTrackSetup.js.map

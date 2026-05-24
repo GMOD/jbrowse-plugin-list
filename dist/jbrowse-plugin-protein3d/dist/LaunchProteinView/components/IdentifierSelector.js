@@ -68,4 +68,3 @@ export default function IdentifierSelector({ recognizedIds, uniprotId, geneName,
                 onSelectedIdChange(e.target.value);
             } }, options.map(opt => (React.createElement(MenuItem, { key: opt.value, value: opt.value }, opt.label))))));
 }
-//# sourceMappingURL=IdentifierSelector.js.map

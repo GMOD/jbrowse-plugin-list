@@ -43,4 +43,3 @@ export default function LaunchProteinViewF(pluginManager) {
         return elt;
     });
 }
-//# sourceMappingURL=index.js.map

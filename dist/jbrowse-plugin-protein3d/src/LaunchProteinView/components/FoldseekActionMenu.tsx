@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 
+import { ErrorMessage } from '@jbrowse/core/ui'
 import { Button, Menu, MenuItem } from '@mui/material'
 
 import { caCoordsToPdb, hasValidCaCoords } from '../utils/caCoordsToPdb'
@@ -40,6 +41,7 @@ export default function FoldseekActionMenu({
   onClose: () => void
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [launchError, setLaunchError] = useState<unknown>()
   const open = Boolean(anchorEl)
 
   const uniprotId = getUniprotIdFromAlphaFoldTarget(hit.target)
@@ -56,7 +58,7 @@ export default function FoldseekActionMenu({
 
   const runLaunch = (fn: () => void | Promise<void>) => () => {
     handleMenuClose()
-    void safeLaunch(session, fn, onClose)
+    void safeLaunch(fn, onClose, setLaunchError)
   }
 
   const handleLaunch3D = runLaunch(() => {
@@ -91,6 +93,7 @@ export default function FoldseekActionMenu({
 
   return (
     <>
+      {launchError ? <ErrorMessage error={launchError} /> : null}
       <Button size="small" variant="outlined" onClick={handleClick}>
         Load
       </Button>

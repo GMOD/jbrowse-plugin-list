@@ -91,4 +91,3 @@ export default function useUniProtFeatures(uniprotId) {
         isLoading,
     };
 }
-//# sourceMappingURL=useUniProtFeatures.js.map

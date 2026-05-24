@@ -51,4 +51,3 @@ export default function MSATable({ structureName, structureSequence, isoformSequ
                 },
             } })));
 }
-//# sourceMappingURL=MSATable.js.map

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { ErrorMessage } from '@jbrowse/core/ui';
 import { Button, Menu, MenuItem } from '@mui/material';
 import { caCoordsToPdb, hasValidCaCoords } from '../utils/caCoordsToPdb';
 import { safeLaunch } from '../utils/launchHelpers';
 import { getConfidenceUrlFromTarget, getUniprotIdFromAlphaFoldTarget, hasMsaViewPlugin, launch1DProteinView, launch3DProteinView, launchMsaView, } from '../utils/launchViewUtils';
 export default function FoldseekActionMenu({ hit, session, view, feature, selectedTranscript, userProvidedTranscriptSequence, onClose, }) {
     const [anchorEl, setAnchorEl] = useState(null);
+    const [launchError, setLaunchError] = useState();
     const open = Boolean(anchorEl);
     const uniprotId = getUniprotIdFromAlphaFoldTarget(hit.target);
     const handleClick = (event) => {
@@ -16,7 +18,7 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
     const baseParams = { session, view, feature, selectedTranscript, uniprotId };
     const runLaunch = (fn) => () => {
         handleMenuClose();
-        void safeLaunch(session, fn, onClose);
+        void safeLaunch(fn, onClose, setLaunchError);
     };
     const handleLaunch3D = runLaunch(() => {
         // Use tCa coordinates to generate PDB data if no URL is available
@@ -44,10 +46,10 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
         return React.createElement("span", null, "-");
     }
     return (React.createElement(React.Fragment, null,
+        launchError ? React.createElement(ErrorMessage, { error: launchError }) : null,
         React.createElement(Button, { size: "small", variant: "outlined", onClick: handleClick }, "Load"),
         React.createElement(Menu, { anchorEl: anchorEl, open: open, onClose: handleMenuClose },
             React.createElement(MenuItem, { onClick: handleLaunch3D }, "Launch 3D protein view"),
             uniprotId ? (React.createElement(MenuItem, { onClick: handleLaunch1D }, "Launch 1D protein annotation view")) : null,
             uniprotId && hasMsaViewPlugin() ? (React.createElement(MenuItem, { onClick: handleLaunchMSA }, "Launch MSA view (AlphaFoldDB a3m)")) : null)));
 }
-//# sourceMappingURL=FoldseekActionMenu.js.map

@@ -71,6 +71,5 @@ export function transcriptPositionToAlignmentMap(
 
 // see similar function in msaview plugin
 export function genomeToTranscriptSeqMapping(feature: Feature) {
-  // @ts-expect-error
   return g2p(feature.toJSON())
 }

@@ -626,4 +626,3 @@ const Structure = types
     },
 }));
 export default Structure;
-//# sourceMappingURL=structureModel.js.map

@@ -44,4 +44,3 @@ export default function FoldseekDatabaseSelector({ selected, onChange, disabled,
                     }
                 }, disabled: disabled }), label: db.label }))))));
 }
-//# sourceMappingURL=FoldseekDatabaseSelector.js.map

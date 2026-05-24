@@ -16,4 +16,3 @@ const AlphaFoldConfidenceAdapter = ConfigurationSchema('AlphaFoldConfidenceAdapt
     },
 }, { explicitlyTyped: true });
 export default AlphaFoldConfidenceAdapter;
-//# sourceMappingURL=configSchema.js.map

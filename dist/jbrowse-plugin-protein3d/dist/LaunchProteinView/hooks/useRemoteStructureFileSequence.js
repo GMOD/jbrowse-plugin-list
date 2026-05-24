@@ -26,4 +26,3 @@ export default function useRemoteStructureFileSequence({ url, }) {
     });
     return { error, isLoading, sequences: data };
 }
-//# sourceMappingURL=useRemoteStructureFileSequence.js.map

@@ -35,7 +35,11 @@ export default function useIsoformProteinSequences({
       // If every transcript fetch failed, surface the underlying error rather
       // than silently returning {} — otherwise the UI shows the misleading
       // "feature may be missing CDS subfeatures" hint with no actual cause.
-      if (entries.length === 0 && errors.length === transcripts.length && errors.length > 0) {
+      if (
+        entries.length === 0 &&
+        errors.length === transcripts.length &&
+        errors.length > 0
+      ) {
         throw errors[0]
       }
       return Object.fromEntries(entries)

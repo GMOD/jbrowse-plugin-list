@@ -63,4 +63,3 @@ export default function useFoldseekSearch() {
         reset,
     };
 }
-//# sourceMappingURL=useFoldseekSearch.js.map

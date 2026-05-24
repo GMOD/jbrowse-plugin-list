@@ -17,4 +17,3 @@ export async function selectResidueRange({ structure, startResidue, endResidue, 
         mode: 'select',
     });
 }
-//# sourceMappingURL=highlightResidueRange.js.map

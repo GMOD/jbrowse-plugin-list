@@ -18,4 +18,3 @@ export default function ProteinAlignmentHelpDialog({ handleClose, }) {
                     handleClose();
                 }, variant: "contained", color: "primary" }, "Close"))));
 }
-//# sourceMappingURL=ProteinAlignmentHelpDialog.js.map

@@ -39,4 +39,3 @@ const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
         React.createElement(AddStructureDialog, { model: model })));
 });
 export default ProteinViewHeader;
-//# sourceMappingURL=ProteinViewHeader.js.map

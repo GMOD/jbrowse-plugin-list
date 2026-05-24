@@ -50,4 +50,3 @@ export default class UniProtVariationAdapter extends BaseFeatureDataAdapter {
     }
     freeResources() { }
 }
-//# sourceMappingURL=UniProtVariationAdapter.js.map

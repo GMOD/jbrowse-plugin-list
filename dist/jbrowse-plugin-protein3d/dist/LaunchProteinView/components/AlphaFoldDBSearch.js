@@ -70,4 +70,3 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({ feature, model, 
             React.createElement(ProteinViewActions, { handleClose: handleClose, uniprotId: state.uniprotId, userSelectedProteinSequence: state.userSelectedProteinSequence, selectedTranscript: state.selectedTranscript, url: state.url, confidenceUrl: state.confidenceUrl, feature: feature, view: view, session: session, alignmentAlgorithm: alignmentAlgorithm, onAlignmentAlgorithmChange: onAlignmentAlgorithmChange, sequencesMatch: state.sequencesMatch, isLoading: state.isLoading, error: state.error }))));
 });
 export default AlphaFoldDBSearch;
-//# sourceMappingURL=AlphaFoldDBSearch.js.map

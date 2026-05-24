@@ -102,4 +102,3 @@ export async function searchUniProtEntries({ recognizedIds = [], geneId, geneNam
     // Sort reviewed entries first
     return entries.toSorted((a, b) => Number(b.isReviewed) - Number(a.isReviewed));
 }
-//# sourceMappingURL=lookupMethods.js.map

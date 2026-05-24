@@ -17,4 +17,3 @@ const UniProtVariationAdapter = ConfigurationSchema('UniProtVariationAdapter', {
     },
 }, { explicitlyTyped: true });
 export default UniProtVariationAdapter;
-//# sourceMappingURL=configSchema.js.map

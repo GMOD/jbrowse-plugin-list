@@ -60,4 +60,3 @@ export default function useProteinView({ showControls, model, }) {
     }, [showControls]);
     return { parentRef, error, loading };
 }
-//# sourceMappingURL=useProteinView.js.map

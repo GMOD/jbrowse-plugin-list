@@ -67,4 +67,3 @@ async function applyTransform(plugin, s, matrix, coordinateSystem) {
         });
     await plugin.runTask(plugin.state.data.updateTree(b));
 }
-//# sourceMappingURL=superposeStructures.js.map

@@ -36,4 +36,3 @@ export async function launchProteinAnnotationView({ session, feature, selectedTr
     }
     await view.navToLocString(uniprotId, uniprotId);
 }
-//# sourceMappingURL=launchProteinAnnotationView.js.map

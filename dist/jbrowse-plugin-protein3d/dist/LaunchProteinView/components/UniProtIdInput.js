@@ -37,4 +37,3 @@ export default function UniProtIdInput({ lookupMode, onLookupModeChange, manualU
             ' or ',
             React.createElement(ExternalLink, { href: "https://alphafold.ebi.ac.uk/" }, "AlphaFoldDB")))));
 }
-//# sourceMappingURL=UniProtIdInput.js.map

@@ -141,4 +141,3 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
                 } }, "Launch 3-D protein structure view"))));
 });
 export default UserProvidedStructure;
-//# sourceMappingURL=UserProvidedStructure.js.map

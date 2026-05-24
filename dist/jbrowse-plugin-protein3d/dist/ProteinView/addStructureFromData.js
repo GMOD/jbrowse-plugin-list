@@ -7,4 +7,3 @@ export async function addStructureFromData({ data, format = 'pdb', options, plug
     const trajectory = await plugin.builders.structure.parseTrajectory(_data, format);
     return applyStructurePreset({ plugin, trajectory, options });
 }
-//# sourceMappingURL=addStructureFromData.js.map

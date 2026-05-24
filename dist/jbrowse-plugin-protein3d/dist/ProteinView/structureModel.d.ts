@@ -200,6 +200,7 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     readonly genomeToTranscriptSeqMapping: {
         g2p: Record<number, number>;
         p2g: Record<number, number>;
+        p2gCodon: Record<number, number[]>;
         refName: string;
         strand: number;
     } | undefined;

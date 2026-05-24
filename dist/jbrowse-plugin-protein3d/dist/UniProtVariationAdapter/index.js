@@ -8,4 +8,3 @@ export default function UniProtVariationAdapterF(pluginManager) {
         getAdapterClass: () => import('./UniProtVariationAdapter').then(r => r.default),
     }));
 }
-//# sourceMappingURL=index.js.map

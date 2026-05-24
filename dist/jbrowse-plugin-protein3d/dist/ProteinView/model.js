@@ -417,4 +417,3 @@ function stateModelFactory() {
     }));
 }
 export default stateModelFactory;
-//# sourceMappingURL=model.js.map

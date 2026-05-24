@@ -10,4 +10,3 @@ export default function AddHighlightModelF(pluginManager) {
         ];
     });
 }
-//# sourceMappingURL=index.js.map

@@ -7,4 +7,3 @@ export const HOVER_MARKER_COLOR = 'rgba(255, 105, 180, 0.5)';
 export const SELECTED_BORDER = '2px solid #333';
 export const HOVERED_BORDER = '1px solid black';
 export const HIDE_BUTTON_COLOR = '#999';
-//# sourceMappingURL=constants.js.map

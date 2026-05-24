@@ -29,4 +29,3 @@ export default function useAlphaFoldSequenceSearch({ sequence, searchType, enabl
         error,
     };
 }
-//# sourceMappingURL=useAlphaFoldSequenceSearch.js.map

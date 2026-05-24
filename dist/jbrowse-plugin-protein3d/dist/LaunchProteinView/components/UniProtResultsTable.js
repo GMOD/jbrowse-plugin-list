@@ -71,4 +71,3 @@ export default function UniProtResultsTable({ entries, selectedAccession, onSele
                                 ? classes.reviewedChip
                                 : classes.unreviewedChip }))))))))));
 }
-//# sourceMappingURL=UniProtResultsTable.js.map

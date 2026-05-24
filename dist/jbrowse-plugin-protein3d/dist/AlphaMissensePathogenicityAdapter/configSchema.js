@@ -16,4 +16,3 @@ const AlphaMissensePathogenicityAdapter = ConfigurationSchema('AlphaMissensePath
     },
 }, { explicitlyTyped: true });
 export default AlphaMissensePathogenicityAdapter;
-//# sourceMappingURL=configSchema.js.map

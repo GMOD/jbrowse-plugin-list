@@ -23,4 +23,3 @@ export default function SequenceSearchStatus({ isLoading, uniprotId, url, hasPro
     }
     return null;
 }
-//# sourceMappingURL=SequenceSearchStatus.js.map

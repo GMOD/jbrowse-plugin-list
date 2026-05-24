@@ -29,4 +29,3 @@ export default async function subscribeMolstarInteraction({ plugin, kind, onUpda
         subscription.unsubscribe();
     };
 }
-//# sourceMappingURL=subscribeMolstarInteraction.js.map

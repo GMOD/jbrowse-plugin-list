@@ -16,6 +16,7 @@ export declare function transcriptPositionToAlignmentMap(pairwiseAlignment: Pair
 export declare function genomeToTranscriptSeqMapping(feature: Feature): {
     g2p: Record<number, number>;
     p2g: Record<number, number>;
+    p2gCodon: Record<number, number[]>;
     refName: string;
     strand: number;
 };

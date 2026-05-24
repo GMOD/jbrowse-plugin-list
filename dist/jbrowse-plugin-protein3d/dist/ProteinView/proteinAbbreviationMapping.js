@@ -20,4 +20,3 @@ export const proteinAbbreviationMapping = Object.fromEntries([
     { name: 'tyrosine', abbreviation: 'Tyr', singleLetterCode: 'Y' },
     { name: 'valine', abbreviation: 'Val', singleLetterCode: 'V' },
 ].map(r => [r.abbreviation.toUpperCase(), r]));
-//# sourceMappingURL=proteinAbbreviationMapping.js.map

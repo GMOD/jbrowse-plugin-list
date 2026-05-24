@@ -21,4 +21,3 @@ export default class ProteinViewer extends Plugin {
     }
     configure(_pluginManager) { }
 }
-//# sourceMappingURL=index.js.map

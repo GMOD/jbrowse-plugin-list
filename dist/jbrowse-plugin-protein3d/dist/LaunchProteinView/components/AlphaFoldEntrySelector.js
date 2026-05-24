@@ -15,4 +15,3 @@ export default function AlphaFoldEntrySelector({ predictions, selectedEntryIndex
             .toSorted((a, b) => a.modelEntityId.length - b.modelEntityId.length)
             .map((prediction, index) => (React.createElement("option", { key: index, value: index }, prediction.modelEntityId))))));
 }
-//# sourceMappingURL=AlphaFoldEntrySelector.js.map

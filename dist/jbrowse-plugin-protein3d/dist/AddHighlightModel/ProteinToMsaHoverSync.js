@@ -44,4 +44,3 @@ const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({ model, }
     return null;
 });
 export default ProteinToMsaHoverSync;
-//# sourceMappingURL=ProteinToMsaHoverSync.js.map

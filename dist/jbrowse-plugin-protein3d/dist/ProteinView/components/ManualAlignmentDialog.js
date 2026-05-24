@@ -49,4 +49,3 @@ b  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG`, value: alignment, onChange: e => {
             React.createElement(Button, { onClick: handleApply, variant: "contained", color: "primary", disabled: !alignment.trim() }, "Apply Alignment"))));
 });
 export default ManualAlignmentDialog;
-//# sourceMappingURL=ManualAlignmentDialog.js.map

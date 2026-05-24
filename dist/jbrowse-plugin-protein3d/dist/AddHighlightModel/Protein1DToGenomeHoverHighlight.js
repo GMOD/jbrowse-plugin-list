@@ -27,4 +27,3 @@ const Protein1DToGenomeHoverHighlight = observer(function Protein1DToGenomeHover
     return (React.createElement(Highlight, { model: model, start: genomeHighlight.start, end: genomeHighlight.end, refName: genomeHighlight.refName, assemblyName: assemblyName }));
 });
 export default Protein1DToGenomeHoverHighlight;
-//# sourceMappingURL=Protein1DToGenomeHoverHighlight.js.map

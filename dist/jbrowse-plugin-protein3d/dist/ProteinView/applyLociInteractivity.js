@@ -73,4 +73,3 @@ export async function applyLociInteractivitySingle({ structure, selectedResidue,
         plugin.managers.interactivity.lociSelects.select({ loci });
     }
 }
-//# sourceMappingURL=applyLociInteractivity.js.map

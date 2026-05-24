@@ -83,4 +83,3 @@ export default function FoldseekResultsTable({ results, session, view, feature, 
                     React.createElement(TableCell, null,
                         React.createElement(FoldseekActionMenu, { hit: hit, session: session, view: view, feature: feature, selectedTranscript: selectedTranscript, userProvidedTranscriptSequence: userProvidedTranscriptSequence, onClose: onClose }))))))))));
 }
-//# sourceMappingURL=FoldseekResultsTable.js.map

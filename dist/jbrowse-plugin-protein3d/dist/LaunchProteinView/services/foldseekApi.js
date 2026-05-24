@@ -112,4 +112,3 @@ export async function waitForFoldseekResults(ticketId, onStatusChange) {
     }
     throw new Error('Foldseek search timed out');
 }
-//# sourceMappingURL=foldseekApi.js.map

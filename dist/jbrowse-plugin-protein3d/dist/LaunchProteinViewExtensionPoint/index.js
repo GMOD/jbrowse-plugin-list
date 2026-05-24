@@ -28,4 +28,3 @@ export default function LaunchProteinViewExtensionPointF(pluginManager) {
         });
     });
 }
-//# sourceMappingURL=index.js.map

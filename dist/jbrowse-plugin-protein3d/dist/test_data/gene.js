@@ -600,4 +600,3 @@ export const pairwiseAlignment = {
         },
     ],
 };
-//# sourceMappingURL=gene.js.map

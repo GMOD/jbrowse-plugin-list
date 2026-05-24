@@ -12,4 +12,3 @@ export default function ProteinViewF(pluginManager) {
         });
     });
 }
-//# sourceMappingURL=index.js.map

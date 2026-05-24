@@ -22,4 +22,3 @@ export default function useProteinFeatureTrackData(model, uniprotId) {
         error: undefined,
     };
 }
-//# sourceMappingURL=useProteinFeatureTrackData.js.map

@@ -18,4 +18,3 @@ export function setupProteinAssembly(session, uniprotId) {
         },
     });
 }
-//# sourceMappingURL=proteinAssemblySetup.js.map

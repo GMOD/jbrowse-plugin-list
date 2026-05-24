@@ -12,4 +12,3 @@ export async function jsonfetch(url, args) {
 export function timeout(time) {
     return new Promise(res => setTimeout(res, time));
 }
-//# sourceMappingURL=fetchUtils.js.map

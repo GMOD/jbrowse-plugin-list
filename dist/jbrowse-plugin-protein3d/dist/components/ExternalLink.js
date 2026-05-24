@@ -8,4 +8,3 @@ export default function ExternalLink(props) {
         " ",
         React.createElement(OpenInNewIcon, { fontSize: "small" })));
 }
-//# sourceMappingURL=ExternalLink.js.map

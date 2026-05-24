@@ -37,4 +37,3 @@ export default function useLocalStructureFileSequence({ file, }) {
     });
     return { error, isLoading, sequences: data };
 }
-//# sourceMappingURL=useLocalStructureFileSequence.js.map

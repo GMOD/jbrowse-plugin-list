@@ -91,4 +91,3 @@ const FoldseekSearch = observer(function FoldseekSearch({ feature, model, handle
                 } }, isLoading ? 'Searching...' : 'Search Foldseek')))));
 });
 export default FoldseekSearch;
-//# sourceMappingURL=FoldseekSearch.js.map

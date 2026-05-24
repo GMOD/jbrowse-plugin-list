@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { ErrorMessage } from '@jbrowse/core/ui';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Button, ButtonGroup, Typography } from '@mui/material';
 import LaunchOptionsDialog from './LaunchOptionsDialog';
 import SequenceMismatchNotice from './SequenceMismatchNotice';
-import { getLaunchMissingReasons, safeLaunch, } from '../utils/launchHelpers';
+import { getLaunchMissingReasons, safeLaunch } from '../utils/launchHelpers';
 import { hasMsaViewPlugin, launch1DProteinView, launch3DProteinView, launch3DProteinViewWithMsa, launchMsaView, } from '../utils/launchViewUtils';
 export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, error, }) {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [launchError, setLaunchError] = useState();
     // Disable launch while loading — SWR's keepPreviousData would otherwise let
     // a user click Launch on stale results (wrong UniProt ID) during a refetch.
     const canLaunch = !isLoading &&
@@ -38,7 +40,7 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
     };
     const runLaunch = (fn) => () => {
         closeMenu();
-        void safeLaunch(session, fn, handleClose);
+        void safeLaunch(fn, handleClose, setLaunchError);
     };
     const handleLaunch3DView = runLaunch(() => {
         if (selectedTranscript) {
@@ -91,6 +93,7 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
             : []),
     ];
     return (React.createElement(React.Fragment, null,
+        launchError ? React.createElement(ErrorMessage, { error: launchError }) : null,
         sequencesMatch === false ? (React.createElement(SequenceMismatchNotice, { alignmentAlgorithm: alignmentAlgorithm, onAlignmentAlgorithmChange: onAlignmentAlgorithmChange })) : null,
         React.createElement(Button, { variant: "contained", color: "secondary", size: "small", onClick: () => {
                 handleClose();
@@ -104,4 +107,3 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
                 React.createElement(ArrowDropDownIcon, null))),
         React.createElement(LaunchOptionsDialog, { open: dialogOpen, onClose: closeMenu, options: launchOptions })));
 }
-//# sourceMappingURL=ProteinViewActions.js.map

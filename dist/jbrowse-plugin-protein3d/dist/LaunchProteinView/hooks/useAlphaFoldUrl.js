@@ -15,4 +15,3 @@ export default function useAlphaFoldUrl({ uniprotId }) {
         error,
     };
 }
-//# sourceMappingURL=useAlphaFoldUrl.js.map

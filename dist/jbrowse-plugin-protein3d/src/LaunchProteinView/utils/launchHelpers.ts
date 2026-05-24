@@ -1,21 +1,19 @@
-import type { AbstractSessionModel } from '@jbrowse/core/util'
-
 /**
- * Run a launch fn (sync or async) and surface any thrown error to the
- * session. Used to wrap `session.addView(...)` calls so MST validation errors
- * don't fall silently into the React error boundary.
+ * Run a launch fn (sync or async) and surface any thrown error via onError.
+ * Used to wrap `session.addView(...)` calls so MST validation errors don't
+ * fall silently into the React error boundary.
  */
 export async function safeLaunch(
-  session: AbstractSessionModel,
   fn: () => void | Promise<void>,
   onSuccess?: () => void,
+  onError?: (e: unknown) => void,
 ) {
   try {
     await fn()
     onSuccess?.()
   } catch (e) {
     console.error(e)
-    session.notifyError(`${e}`, e)
+    onError?.(e)
   }
 }
 

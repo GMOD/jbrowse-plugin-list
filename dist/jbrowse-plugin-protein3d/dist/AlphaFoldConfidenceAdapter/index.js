@@ -8,4 +8,3 @@ export default function AlphaFoldConfidenceAdapterF(pluginManager) {
         getAdapterClass: () => import('./AlphaFoldConfidenceAdapter').then(r => r.default),
     }));
 }
-//# sourceMappingURL=index.js.map

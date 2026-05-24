@@ -10,4 +10,3 @@ const HeaderStructureInfo = observer(function HeaderStructureInfo({ model, }) {
     });
 });
 export default HeaderStructureInfo;
-//# sourceMappingURL=HeaderStructureInfo.js.map

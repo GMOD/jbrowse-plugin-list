@@ -83,4 +83,3 @@ const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
                 showProteinTracks && featureData ? (React.createElement(ProteinFeatureTrackContent, { data: featureData, model: model })) : null))));
 });
 export default ProteinAlignment;
-//# sourceMappingURL=ProteinAlignment.js.map

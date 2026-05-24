@@ -35,4 +35,3 @@ const ProteinViewContainer = observer(function ProteinViewContainer({ model, par
         React.createElement(ManualAlignmentDialog, { model: model })));
 });
 export default ProteinView;
-//# sourceMappingURL=ProteinView.js.map

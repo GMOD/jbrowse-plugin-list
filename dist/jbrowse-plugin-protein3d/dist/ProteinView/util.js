@@ -21,4 +21,3 @@ export async function getMolstarStructureSelection({ structure, selectedResidue,
 export function invertMap(arg) {
     return Object.fromEntries(Object.entries(arg).map(([a, b]) => [b, +a]));
 }
-//# sourceMappingURL=util.js.map

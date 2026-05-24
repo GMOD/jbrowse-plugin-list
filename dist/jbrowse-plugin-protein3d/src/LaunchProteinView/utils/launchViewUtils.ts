@@ -210,7 +210,7 @@ export function launch3DProteinViewWithMsa(
     displayName:
       params.displayName ??
       formatViewName('Protein view', feature, selectedTranscript, uniprotId),
-     
+
     connectedMsaViewId: msaView?.id,
   })
 }

@@ -20,4 +20,3 @@ export default function HelpDialog({ handleClose, }) {
         React.createElement(DialogActions, null,
             React.createElement(Button, { onClick: handleClose, color: "primary" }, "Close"))));
 }
-//# sourceMappingURL=HelpDialog.js.map

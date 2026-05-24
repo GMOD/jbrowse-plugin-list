@@ -7,4 +7,3 @@ export const ProteinToGenomeClickHighlight = observer(function ProteinToGenomeCl
 export const ProteinToGenomeHoverHighlight = observer(function ProteinToGenomeHoverHighlight({ model, }) {
     return (React.createElement(ProteinToGenomeHighlightInner, { model: model, field: "hoverGenomeHighlights" }));
 });
-//# sourceMappingURL=ProteinToGenomeHighlight.js.map

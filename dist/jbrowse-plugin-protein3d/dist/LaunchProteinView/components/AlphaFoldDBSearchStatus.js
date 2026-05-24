@@ -35,4 +35,3 @@ export default function AlphaFoldDBSearchStatus({ uniprotId, selectedTranscript,
         ' ',
         "for UniProt ID"));
 }
-//# sourceMappingURL=AlphaFoldDBSearchStatus.js.map

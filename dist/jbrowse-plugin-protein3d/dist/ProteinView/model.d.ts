@@ -72,10 +72,12 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
             trackLabels: string;
             showGridlines: boolean;
             highlight: import("@jbrowse/mobx-state-tree").IMSTArray<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType>> & import("@jbrowse/mobx-state-tree").IStateTreeNode<import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType>>, [undefined]>>;
+            highlightsVisible: boolean;
+            labelsVisible: boolean;
             colorByCDS: boolean;
             showTrackOutlines: boolean;
             init: (import("@jbrowse/plugin-linear-genome-view").InitState & import("@jbrowse/mobx-state-tree").IStateTreeNode<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined>>) | undefined;
-        } & import("@jbrowse/mobx-state-tree/dist/internal").NonEmptyObject & {
+        } & import("@jbrowse/mobx-state-tree").NonEmptyObject & {
             width: number;
         } & {
             menuItems(): import("@jbrowse/core/ui").MenuItem[];
@@ -163,6 +165,9 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
             addToHighlights(highlight: import("@jbrowse/plugin-linear-genome-view").HighlightType): void;
             setHighlight(highlight?: import("@jbrowse/plugin-linear-genome-view").HighlightType[]): void;
             removeHighlight(highlight: import("@jbrowse/plugin-linear-genome-view").HighlightType): void;
+            updateHighlight(old: import("@jbrowse/plugin-linear-genome-view").HighlightType, updates: Partial<import("@jbrowse/plugin-linear-genome-view").HighlightType>): void;
+            setHighlightsVisible(arg: boolean): void;
+            setLabelsVisible(arg: boolean): void;
             setVolatileGuides(guides: import("@jbrowse/plugin-linear-genome-view").VolatileGuide[]): void;
             scrollTo(offsetPx: number): number;
             zoomTo(bpPerPx: number, offset?: number, centerAtOffset?: boolean): number;
@@ -243,6 +248,15 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
                 index: number;
                 offsetPx: number;
             } | undefined;
+            getHighlightCoords(region: {
+                assemblyName?: string;
+                refName: string;
+                start: number;
+                end: number;
+            }): {
+                width: number;
+                left: number;
+            } | undefined;
             centerAt(coord: number, refName: string, regionNumber?: number): void;
             pxToBp(px: number): {
                 coord: number;
@@ -292,6 +306,8 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
             trackLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
             showGridlines: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
             highlight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType>>, [undefined]>;
+            highlightsVisible: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
+            labelsVisible: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
             colorByCDS: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
             showTrackOutlines: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
             init: import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined>;
@@ -383,6 +399,9 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
             addToHighlights(highlight: import("@jbrowse/plugin-linear-genome-view").HighlightType): void;
             setHighlight(highlight?: import("@jbrowse/plugin-linear-genome-view").HighlightType[]): void;
             removeHighlight(highlight: import("@jbrowse/plugin-linear-genome-view").HighlightType): void;
+            updateHighlight(old: import("@jbrowse/plugin-linear-genome-view").HighlightType, updates: Partial<import("@jbrowse/plugin-linear-genome-view").HighlightType>): void;
+            setHighlightsVisible(arg: boolean): void;
+            setLabelsVisible(arg: boolean): void;
             setVolatileGuides(guides: import("@jbrowse/plugin-linear-genome-view").VolatileGuide[]): void;
             scrollTo(offsetPx: number): number;
             zoomTo(bpPerPx: number, offset?: number, centerAtOffset?: boolean): number;
@@ -463,6 +482,15 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
                 index: number;
                 offsetPx: number;
             } | undefined;
+            getHighlightCoords(region: {
+                assemblyName?: string;
+                refName: string;
+                start: number;
+                end: number;
+            }): {
+                width: number;
+                left: number;
+            } | undefined;
             centerAt(coord: number, refName: string, regionNumber?: number): void;
             pxToBp(px: number): {
                 coord: number;
@@ -492,7 +520,7 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         } & {
             afterCreate(): void;
             afterAttach(): void;
-        }, import("@jbrowse/mobx-state-tree").ModelCreationType<import("@jbrowse/mobx-state-tree/dist/internal").ExtractCFromProps<{
+        }, any, import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
             id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
             displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
             minimized: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
@@ -512,29 +540,8 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
             trackLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
             showGridlines: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
             highlight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType>>, [undefined]>;
-            colorByCDS: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-            showTrackOutlines: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-            init: import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined>;
-        }>>, import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-            id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-            displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
-            minimized: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-        } & {
-            id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-            type: import("@jbrowse/mobx-state-tree").IType<string | undefined, string, string>;
-            offsetPx: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
-            bpPerPx: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
-            displayedRegions: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/core/util").Region[], import("@jbrowse/core/util").Region[], import("@jbrowse/core/util").Region[]>, [undefined]>;
-            tracks: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IAnyType>;
-            hideHeader: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-            hideHeaderOverview: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-            hideNoTracksActive: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-            trackSelectorType: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-            showCenterLine: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-            showCytobandsSetting: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-            trackLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-            showGridlines: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-            highlight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType, import("@jbrowse/plugin-linear-genome-view").HighlightType>>, [undefined]>;
+            highlightsVisible: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
+            labelsVisible: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
             colorByCDS: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
             showTrackOutlines: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
             init: import("@jbrowse/mobx-state-tree").IType<import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined, import("@jbrowse/plugin-linear-genome-view").InitState | undefined>;
@@ -572,6 +579,7 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
         readonly genomeToTranscriptSeqMapping: {
             g2p: Record<number, number>;
             p2g: Record<number, number>;
+            p2gCodon: Record<number, number[]>;
             refName: string;
             strand: number;
         } | undefined;
@@ -748,7 +756,7 @@ declare function stateModelFactory(): import("@jbrowse/mobx-state-tree").IModelT
     id: string;
     displayName: string | undefined;
     minimized: boolean;
-} & import("@jbrowse/mobx-state-tree/dist/internal").NonEmptyObject & import("@jbrowse/mobx-state-tree")._NotCustomized>;
+} & import("@jbrowse/mobx-state-tree").NonEmptyObject & import("@jbrowse/mobx-state-tree")._NotCustomized>;
 export default stateModelFactory;
 export type JBrowsePluginProteinViewStateModel = ReturnType<typeof stateModelFactory>;
 export type JBrowsePluginProteinViewModel = Instance<JBrowsePluginProteinViewStateModel>;

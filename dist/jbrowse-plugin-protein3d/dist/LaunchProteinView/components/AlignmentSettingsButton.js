@@ -73,4 +73,3 @@ b  MKAAYLSMFGKEDHKPFGD`, value: manualAlignment, onChange: e => {
                 React.createElement(Button, { onClick: handleCancel }, "Cancel"),
                 React.createElement(Button, { onClick: handleSave, variant: "contained", color: "primary", disabled: tabValue === 1 && !manualAlignment.trim() }, tabValue === 0 ? 'Save' : 'Apply Alignment')))));
 }
-//# sourceMappingURL=AlignmentSettingsButton.js.map

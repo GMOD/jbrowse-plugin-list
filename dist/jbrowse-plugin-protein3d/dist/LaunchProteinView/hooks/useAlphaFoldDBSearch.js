@@ -150,4 +150,3 @@ export default function useAlphaFoldDBSearch({ feature, view, }) {
         isLoading,
     };
 }
-//# sourceMappingURL=useAlphaFoldDBSearch.js.map

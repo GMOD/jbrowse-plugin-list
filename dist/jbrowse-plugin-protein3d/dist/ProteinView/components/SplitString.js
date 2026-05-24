@@ -98,4 +98,3 @@ const SplitString = observer(function SplitString({ model, str, }) {
         React.createElement(CharacterSpans, { str: str })));
 });
 export default SplitString;
-//# sourceMappingURL=SplitString.js.map

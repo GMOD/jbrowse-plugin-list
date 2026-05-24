@@ -17,4 +17,3 @@ export default function useTranscriptSelection({ options, isoformSequences, stru
     const effectiveSelection = userSelection ?? autoSelection;
     return { userSelection: effectiveSelection, setUserSelection };
 }
-//# sourceMappingURL=useTranscriptSelection.js.map

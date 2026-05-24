@@ -11,4 +11,3 @@ export async function addStructureFromURL({ url, format = 'mmcif', isBinary, opt
     const trajectory = await plugin.builders.structure.parseTrajectory(data, format);
     return applyStructurePreset({ plugin, trajectory, options });
 }
-//# sourceMappingURL=addStructureFromURL.js.map

@@ -8,4 +8,3 @@ export default function AlphaMissensePathogenicityAdapterF(pluginManager) {
         getAdapterClass: () => import('./AlphaMissensePathogenicityAdapter').then(r => r.default),
     }));
 }
-//# sourceMappingURL=index.js.map

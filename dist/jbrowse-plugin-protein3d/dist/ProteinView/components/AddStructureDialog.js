@@ -91,4 +91,3 @@ const AddStructureDialog = observer(function AddStructureDialog({ model, }) {
                 }, variant: "contained", color: "primary", disabled: !canAdd }, "Add Structure"))));
 });
 export default AddStructureDialog;
-//# sourceMappingURL=AddStructureDialog.js.map

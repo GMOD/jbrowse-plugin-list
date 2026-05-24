@@ -18,4 +18,3 @@ export function useLocalStorage(key, defaultValue) {
     }
     return [value, setValueAndStore];
 }
-//# sourceMappingURL=useLocalStorage.js.map

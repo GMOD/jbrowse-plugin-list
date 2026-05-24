@@ -17,4 +17,3 @@ export { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 export { StateObjectRef } from 'molstar/lib/mol-state';
 export { Script } from 'molstar/lib/mol-script/script';
 export { Color } from 'molstar/lib/mol-util/color';
-//# sourceMappingURL=molstarExports.js.map

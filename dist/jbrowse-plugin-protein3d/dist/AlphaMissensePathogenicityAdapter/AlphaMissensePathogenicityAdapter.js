@@ -76,4 +76,3 @@ export default class AlphaMissensePathogenicityAdapter extends BaseFeatureDataAd
     }
     freeResources() { }
 }
-//# sourceMappingURL=AlphaMissensePathogenicityAdapter.js.map

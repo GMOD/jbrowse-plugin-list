@@ -11,4 +11,3 @@ export default function SequenceMismatchNotice({ alignmentAlgorithm, onAlignment
         "alignment",
         React.createElement(AlignmentSettingsButton, { value: alignmentAlgorithm, onChange: onAlignmentAlgorithmChange })));
 }
-//# sourceMappingURL=SequenceMismatchNotice.js.map

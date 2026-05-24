@@ -38,4 +38,3 @@ export default class AlphaFoldConfidenceAdapter extends BaseFeatureDataAdapter {
     }
     freeResources() { }
 }
-//# sourceMappingURL=AlphaFoldConfidenceAdapter.js.map

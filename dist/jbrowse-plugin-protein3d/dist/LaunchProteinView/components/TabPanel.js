@@ -3,4 +3,3 @@ import React from 'react';
 export default function TabPanel({ children, value, index, ...other }) {
     return (React.createElement("div", { role: "tabpanel", hidden: value !== index, ...other }, value === index && React.createElement("div", null, children)));
 }
-//# sourceMappingURL=TabPanel.js.map

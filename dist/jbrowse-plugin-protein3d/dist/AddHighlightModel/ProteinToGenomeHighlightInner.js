@@ -15,4 +15,3 @@ const ProteinToGenomeHighlightInner = observer(function ProteinToGenomeHighlight
     return assembly && assemblyName ? (React.createElement(React.Fragment, null, proteinView?.structures.map((structure, idx) => structure[field].map((r, idx2) => (React.createElement(Highlight, { key: `${r.refName}-${r.start}-${r.end}-${idx}-${idx2}`, start: r.start, end: r.end, refName: r.refName, assemblyName: assemblyName, model: model })))))) : null;
 });
 export default ProteinToGenomeHighlightInner;
-//# sourceMappingURL=ProteinToGenomeHighlightInner.js.map

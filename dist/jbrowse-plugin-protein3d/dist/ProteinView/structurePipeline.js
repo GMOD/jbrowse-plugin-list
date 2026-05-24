@@ -6,4 +6,3 @@ export async function applyStructurePreset({ plugin, trajectory, options, }) {
     });
     return { model };
 }
-//# sourceMappingURL=structurePipeline.js.map

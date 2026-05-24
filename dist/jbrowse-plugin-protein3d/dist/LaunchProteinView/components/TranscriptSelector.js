@@ -46,4 +46,3 @@ export default function TranscriptSelector({ val, setVal, isoforms, isoformSeque
             getTranscriptDisplayName(f),
             " (no data)")))));
 }
-//# sourceMappingURL=TranscriptSelector.js.map

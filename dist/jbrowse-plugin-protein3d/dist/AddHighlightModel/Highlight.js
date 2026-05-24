@@ -20,4 +20,3 @@ const Highlight = observer(function Highlight({ assemblyName, start, end, refNam
     }
 });
 export default Highlight;
-//# sourceMappingURL=Highlight.js.map

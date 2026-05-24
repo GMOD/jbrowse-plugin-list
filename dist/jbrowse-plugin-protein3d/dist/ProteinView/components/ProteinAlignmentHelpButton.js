@@ -13,4 +13,3 @@ export default function ProteinAlignmentHelpButton({ model, }) {
         } },
         React.createElement(Help, null)));
 }
-//# sourceMappingURL=ProteinAlignmentHelpButton.js.map

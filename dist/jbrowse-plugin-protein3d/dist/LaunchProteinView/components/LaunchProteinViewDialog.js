@@ -27,4 +27,3 @@ export default function LaunchProteinViewDialog({ handleClose, feature, model, }
         React.createElement(TabPanel, { value: choice, index: 2 },
             React.createElement(UserProvidedStructure, { model: model, feature: feature, handleClose: handleClose, alignmentAlgorithm: alignmentAlgorithm, onAlignmentAlgorithmChange: setAlignmentAlgorithm }))));
 }
-//# sourceMappingURL=LaunchProteinViewDialog.js.map

@@ -32,4 +32,3 @@ export default function useAlphaFoldData({ uniprotId, useApiSearch = false, }) {
         structureSequence,
     };
 }
-//# sourceMappingURL=useAlphaFoldData.js.map

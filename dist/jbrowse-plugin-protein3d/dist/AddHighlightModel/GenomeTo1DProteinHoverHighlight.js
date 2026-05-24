@@ -31,4 +31,3 @@ const GenomeTo1DProteinHoverHighlight = observer(function GenomeTo1DProteinHover
     return (React.createElement(Highlight, { model: model, start: proteinPos, end: proteinPos + 1, refName: protein1DInfo.uniprotId, assemblyName: protein1DInfo.uniprotId }));
 });
 export default GenomeTo1DProteinHoverHighlight;
-//# sourceMappingURL=GenomeTo1DProteinHoverHighlight.js.map

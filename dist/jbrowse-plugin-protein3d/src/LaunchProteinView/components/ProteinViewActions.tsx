@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
 
+import { ErrorMessage } from '@jbrowse/core/ui'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import { Button, ButtonGroup, Typography } from '@mui/material'
 
 import LaunchOptionsDialog from './LaunchOptionsDialog'
 import SequenceMismatchNotice from './SequenceMismatchNotice'
-import {
-  getLaunchMissingReasons,
-  safeLaunch,
-} from '../utils/launchHelpers'
+import { getLaunchMissingReasons, safeLaunch } from '../utils/launchHelpers'
 import {
   hasMsaViewPlugin,
   launch1DProteinView,
@@ -60,6 +58,7 @@ export default function ProteinViewActions({
   error,
 }: ProteinViewActionsProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [launchError, setLaunchError] = useState<unknown>()
   // Disable launch while loading — SWR's keepPreviousData would otherwise let
   // a user click Launch on stale results (wrong UniProt ID) during a refetch.
   const canLaunch =
@@ -96,7 +95,7 @@ export default function ProteinViewActions({
 
   const runLaunch = (fn: () => void | Promise<void>) => () => {
     closeMenu()
-    void safeLaunch(session, fn, handleClose)
+    void safeLaunch(fn, handleClose, setLaunchError)
   }
 
   const handleLaunch3DView = runLaunch(() => {
@@ -157,6 +156,7 @@ export default function ProteinViewActions({
 
   return (
     <>
+      {launchError ? <ErrorMessage error={launchError} /> : null}
       {sequencesMatch === false ? (
         <SequenceMismatchNotice
           alignmentAlgorithm={alignmentAlgorithm}

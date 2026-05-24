@@ -3,4 +3,3 @@ export default `
 /*! normalize.css v3.0.3 | MIT License | github.com/necolas/normalize.css */
 /*# sourceMappingURL=molstar.css.map */
 `;
-//# sourceMappingURL=molstar.js.map

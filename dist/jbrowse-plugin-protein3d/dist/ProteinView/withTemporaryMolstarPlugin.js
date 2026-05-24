@@ -14,4 +14,3 @@ export async function withTemporaryMolstarPlugin(callback) {
         ret.remove();
     }
 }
-//# sourceMappingURL=withTemporaryMolstarPlugin.js.map

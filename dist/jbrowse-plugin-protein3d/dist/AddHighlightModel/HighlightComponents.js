@@ -15,4 +15,3 @@ const HighlightComponents = observer(function Highlight({ model, }) {
         React.createElement(ProteinToMsaHoverSync, { model: model })));
 });
 export default HighlightComponents;
-//# sourceMappingURL=HighlightComponents.js.map

@@ -279,4 +279,3 @@ export function runLocalAlignment(seq1, seq2, algorithm) {
         ],
     };
 }
-//# sourceMappingURL=pairwiseAlignment.js.map

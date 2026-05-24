@@ -77,4 +77,3 @@ export async function fetchProteinSeq({ feature, view, }) {
     const seq = feat?.get('seq');
     return seq ? getProteinSequence({ seq, feature }) : undefined;
 }
-//# sourceMappingURL=calculateProteinSequence.js.map

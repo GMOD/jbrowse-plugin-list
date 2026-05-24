@@ -9,4 +9,3 @@ export default function LaunchOptionsDialog({ open, onClose, options, }) {
                     React.createElement(Typography, { variant: "body1" }, opt.title),
                     React.createElement(Typography, { variant: "body2", color: "text.secondary" }, opt.description)))))))));
 }
-//# sourceMappingURL=LaunchOptionsDialog.js.map

@@ -84,4 +84,3 @@ export async function clickProteinToGenome({ model, structureSeqPos, structureSe
         zoomToBaseLevel: model.zoomToBaseLevel,
     });
 }
-//# sourceMappingURL=proteinToGenomeMapping.js.map

@@ -63,4 +63,3 @@ class Protein1DViewRegistry {
     }
 }
 export const protein1DViewRegistry = new Protein1DViewRegistry();
-//# sourceMappingURL=index.js.map

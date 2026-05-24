@@ -56,4 +56,3 @@ export default function useUniProtSearch({ recognizedIds = [], uniprotId, geneId
         hasValidId,
     };
 }
-//# sourceMappingURL=useUniProtSearch.js.map

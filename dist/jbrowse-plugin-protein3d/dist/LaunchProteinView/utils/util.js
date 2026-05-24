@@ -222,4 +222,3 @@ export function selectBestTranscript({ options, isoformSequences, structureSeque
         isoformSequences[a.id()].seq.length)[0];
     return exactMatch ?? longestWithData;
 }
-//# sourceMappingURL=util.js.map

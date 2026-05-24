@@ -48,7 +48,5 @@ export function transcriptPositionToAlignmentMap(pairwiseAlignment) {
 }
 // see similar function in msaview plugin
 export function genomeToTranscriptSeqMapping(feature) {
-    // @ts-expect-error
     return g2p(feature.toJSON());
 }
-//# sourceMappingURL=mappings.js.map

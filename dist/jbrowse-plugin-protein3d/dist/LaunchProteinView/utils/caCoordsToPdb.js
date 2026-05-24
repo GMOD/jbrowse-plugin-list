@@ -89,4 +89,3 @@ export function hasValidCaCoords(tCa, tSeq) {
     // Need at least 3 coordinates (x,y,z for one residue) and matching sequence
     return coords.length >= 3 && tSeq.length > 0;
 }
-//# sourceMappingURL=caCoordsToPdb.js.map

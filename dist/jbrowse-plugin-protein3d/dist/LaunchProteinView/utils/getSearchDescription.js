@@ -14,4 +14,3 @@ export default function getSearchDescription({ selectedQueryId, recognizedIds, g
     }
     return `database ID "${selectedQueryId}"`;
 }
-//# sourceMappingURL=getSearchDescription.js.map

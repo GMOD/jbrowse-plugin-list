@@ -120,4 +120,3 @@ export function launch3DProteinViewWithMsa(params) {
         connectedMsaViewId: msaView?.id,
     });
 }
-//# sourceMappingURL=launchViewUtils.js.map

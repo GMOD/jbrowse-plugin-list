@@ -18,4 +18,3 @@ export function getProteinView(session) {
     const view = session.views.find(v => v.type === 'ProteinView');
     return view;
 }
-//# sourceMappingURL=util.js.map

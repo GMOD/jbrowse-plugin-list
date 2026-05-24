@@ -191,4 +191,3 @@ export const ProteinFeatureTrackContent = observer(function ProteinFeatureTrackC
             model.setHoveredPosition(undefined);
         } }, visibleTypes.map(type => (React.createElement(FeatureTypeTrackContent, { key: type, features: data.groupedFeatures[type], model: model, sequenceLength: data.sequenceLength })))));
 });
-//# sourceMappingURL=ProteinFeatureTrack.js.map
