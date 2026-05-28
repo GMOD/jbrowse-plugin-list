@@ -23,7 +23,9 @@ export async function launchProteinAnnotationView({ session, feature, selectedTr
             uniprotId,
             getGeneDisplayName(feature),
             getTranscriptDisplayName(selectedTranscript),
-        ].join(' - '),
+        ]
+            .filter(s => !!s)
+            .join(' - '),
     });
     // Register the 1D view for linked highlighting
     if (connectedViewId && selectedTranscript) {

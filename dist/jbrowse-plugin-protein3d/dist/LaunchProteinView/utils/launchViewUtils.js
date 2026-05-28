@@ -54,12 +54,13 @@ function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
             getGeneDisplayName(feature),
             getTranscriptDisplayName(selectedTranscript),
         ]),
-    ].join(' - ');
+    ]
+        .filter(s => !!s)
+        .join(' - ');
 }
 export function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, connectedMsaViewId, }) {
-    return session.addView('ProteinView', {
+    const snap = {
         type: 'ProteinView',
-        isFloating: true,
         alignmentAlgorithm,
         connectedMsaViewId,
         structures: [
@@ -73,7 +74,17 @@ export function launch3DProteinView({ session, view, feature, selectedTranscript
         ],
         displayName: displayName ??
             formatViewName('Protein view', feature, selectedTranscript, uniprotId),
-    });
+    };
+    // eslint-disable-next-line no-console
+    console.log('[protein3d debug] addView ProteinView snapshot:', JSON.stringify(snap, (_k, v) => (typeof v === 'function' ? '<fn>' : v), 2));
+    try {
+        return session.addView('ProteinView', snap);
+    }
+    catch (e) {
+        // eslint-disable-next-line no-console
+        console.log('[protein3d debug] addView threw:', e.message);
+        throw e;
+    }
 }
 export async function launch1DProteinView({ session, view, feature, selectedTranscript, uniprotId, confidenceUrl, }) {
     if (!uniprotId || !isSessionWithAddTracks(session)) {

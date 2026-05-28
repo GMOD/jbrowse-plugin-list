@@ -17,7 +17,7 @@ const HeaderStructureInfo = observer(function HeaderStructureInfo({
     (structure: JBrowsePluginProteinStructureModel, idx: number) => {
       const { hoverString } = structure
       return (
-        <span key={`${hoverString}-${idx}`}>
+        <span key={idx}>
           {hoverString ? `Hover: ${hoverString}` : ''}
           &nbsp;
         </span>

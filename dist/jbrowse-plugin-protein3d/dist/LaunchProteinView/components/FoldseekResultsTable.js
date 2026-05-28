@@ -22,27 +22,11 @@ const useStyles = makeStyles()({
     },
 });
 function flattenResults(results) {
-    const hits = [];
-    for (const dbResult of results.results) {
-        if (!dbResult.alignments) {
-            continue;
-        }
-        for (const alignmentGroup of dbResult.alignments) {
-            if (!alignmentGroup) {
-                continue;
-            }
-            for (const alignment of alignmentGroup) {
-                if (!alignment) {
-                    continue;
-                }
-                hits.push({
-                    ...alignment,
-                    db: dbResult.db,
-                    structureUrl: getStructureUrlFromTarget(alignment.target, dbResult.db),
-                });
-            }
-        }
-    }
+    const hits = results.results.flatMap(dbResult => (dbResult.alignments ?? []).flat().map(alignment => ({
+        ...alignment,
+        db: dbResult.db,
+        structureUrl: getStructureUrlFromTarget(alignment.target, dbResult.db),
+    })));
     hits.sort((a, b) => (a.eval ?? Infinity) - (b.eval ?? Infinity));
     return hits.slice(0, 100);
 }

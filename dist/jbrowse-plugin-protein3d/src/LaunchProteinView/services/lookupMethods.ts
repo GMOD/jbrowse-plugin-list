@@ -86,16 +86,21 @@ async function searchUniProt(
   return data.results.map(mapApiResultToEntry)
 }
 
-async function searchByXref(id: string) {
+interface SearchByXrefResult {
+  entries: UniProtEntry[]
+  error: unknown
+}
+
+async function searchByXref(id: string): Promise<SearchByXrefResult> {
   const query = buildXrefQuery(id)
   if (!query) {
-    return { entries: [] as UniProtEntry[], error: undefined as unknown }
+    return { entries: [], error: undefined }
   }
   try {
-    return { entries: await searchUniProt(query), error: undefined as unknown }
+    return { entries: await searchUniProt(query), error: undefined }
   } catch (e) {
     console.error(`xref search failed for ${id}:`, e)
-    return { entries: [] as UniProtEntry[], error: e }
+    return { entries: [], error: e }
   }
 }
 

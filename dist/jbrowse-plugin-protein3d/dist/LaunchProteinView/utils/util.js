@@ -64,13 +64,9 @@ export function isRecognizedDatabaseId(id) {
  * Get the database type for a recognized ID (used for UniProt xref queries)
  */
 export function getDatabaseTypeForId(id) {
-    if (ensemblGenePattern.test(id)) {
-        return 'ensembl';
-    }
-    if (ensemblTranscriptPattern.test(id)) {
-        return 'ensembl';
-    }
-    if (ensemblProteinPattern.test(id)) {
+    if (ensemblGenePattern.test(id) ||
+        ensemblTranscriptPattern.test(id) ||
+        ensemblProteinPattern.test(id)) {
         return 'ensembl';
     }
     if (refSeqTranscriptPattern.test(id) || refSeqProteinPattern.test(id)) {

@@ -30,7 +30,7 @@ const ProteinToGenomeHighlightInner = observer(
       : undefined
     return assembly && assemblyName ? (
       <>
-        {proteinView?.structures.map(
+        {proteinView?.structures.flatMap(
           (structure: JBrowsePluginProteinStructureModel, idx: number) =>
             structure[field].map((r: Region, idx2: number) => (
               <Highlight

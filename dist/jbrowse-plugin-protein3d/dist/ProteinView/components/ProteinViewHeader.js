@@ -31,10 +31,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
                         model.setAutoScrollAlignment(!autoScrollAlignment);
                     } }))),
         showAlignment
-            ? structures.map((structure, idx) => {
-                const { pairwiseAlignment } = structure;
-                return (React.createElement("div", { key: idx }, pairwiseAlignment ? (React.createElement(ProteinAlignment, { key: idx, model: structure })) : (React.createElement(LoadingEllipses, { message: "Loading pairwise alignment" }))));
-            })
+            ? structures.map((structure, idx) => (React.createElement("div", { key: idx }, structure.pairwiseAlignment ? (React.createElement(ProteinAlignment, { model: structure })) : (React.createElement(LoadingEllipses, { message: "Loading pairwise alignment" })))))
             : null,
         React.createElement(AddStructureDialog, { model: model })));
 });

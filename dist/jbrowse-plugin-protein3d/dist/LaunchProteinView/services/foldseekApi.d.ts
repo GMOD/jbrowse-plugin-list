@@ -55,7 +55,7 @@ export interface FoldseekAlignment {
 }
 export interface FoldseekDatabaseResult {
     db: string;
-    alignments?: ((FoldseekAlignment | undefined)[] | undefined)[];
+    alignments?: FoldseekAlignment[][];
 }
 export interface FoldseekResult {
     query: {

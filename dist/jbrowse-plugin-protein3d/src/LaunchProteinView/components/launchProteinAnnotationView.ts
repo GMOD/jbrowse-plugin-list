@@ -43,7 +43,9 @@ export async function launchProteinAnnotationView({
       uniprotId,
       getGeneDisplayName(feature),
       getTranscriptDisplayName(selectedTranscript),
-    ].join(' - '),
+    ]
+      .filter(s => !!s)
+      .join(' - '),
   }) as LinearGenomeViewModel
 
   // Register the 1D view for linked highlighting

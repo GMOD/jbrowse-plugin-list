@@ -15,18 +15,13 @@ export default function useTranscriptSelection({
 }) {
   const [userSelection, setUserSelection] = useState<string>()
 
-  // SYNC: src/LaunchProteinView/hooks/useAlphaFoldDBSearch.ts (same pattern)
-  // Auto-select synchronously to avoid render gap
-  const autoSelection = useMemo(() => {
-    if (isoformSequences !== undefined && userSelection === undefined) {
-      return selectBestTranscript({
-        options,
-        isoformSequences,
-        structureSequence,
-      })?.id()
-    }
-    return undefined
-  }, [options, structureSequence, isoformSequences, userSelection])
+  const autoSelection = useMemo(
+    () =>
+      isoformSequences !== undefined
+        ? selectBestTranscript({ options, isoformSequences, structureSequence })?.id()
+        : undefined,
+    [options, structureSequence, isoformSequences],
+  )
 
   const effectiveSelection = userSelection ?? autoSelection
 

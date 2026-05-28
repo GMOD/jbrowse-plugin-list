@@ -5,6 +5,13 @@ import { CHAR_WIDTH, HIDE_BUTTON_COLOR, HOVERED_BORDER, HOVER_MARKER_COLOR, SELE
 import { selectResidueRange } from '../highlightResidueRange';
 import { getFeatureColor } from '../hooks/useUniProtFeatures';
 import { clickProteinToGenome } from '../proteinToGenomeMapping';
+function getFeatureAlignmentRange(feature, structurePositionToAlignmentMap) {
+    const startAlignmentPos = structurePositionToAlignmentMap?.[feature.start - 1];
+    const endAlignmentPos = structurePositionToAlignmentMap?.[feature.end - 1];
+    return startAlignmentPos !== undefined && endAlignmentPos !== undefined
+        ? { start: startAlignmentPos, end: endAlignmentPos }
+        : undefined;
+}
 function getVisibleTypes(featureTypes, hiddenFeatureTypes) {
     return featureTypes.filter(type => !hiddenFeatureTypes.has(type));
 }
@@ -31,20 +38,9 @@ const FeatureBar = observer(function FeatureBar({ feature, model, }) {
     const [isHovered, setIsHovered] = useState(false);
     const { molstarPluginContext, selectedFeatureId, structurePositionToAlignmentMap, } = model;
     const isSelected = selectedFeatureId === feature.uniqueId;
-    const getAlignmentRange = () => {
-        if (!structurePositionToAlignmentMap) {
-            return undefined;
-        }
-        const startAlignmentPos = structurePositionToAlignmentMap[feature.start - 1];
-        const endAlignmentPos = structurePositionToAlignmentMap[feature.end - 1];
-        if (startAlignmentPos !== undefined && endAlignmentPos !== undefined) {
-            return { start: startAlignmentPos, end: endAlignmentPos };
-        }
-        return undefined;
-    };
     const handleMouseEnter = () => {
         setIsHovered(true);
-        const range = getAlignmentRange();
+        const range = getFeatureAlignmentRange(feature, structurePositionToAlignmentMap);
         if (range) {
             model.setAlignmentHoverRange(range);
         }

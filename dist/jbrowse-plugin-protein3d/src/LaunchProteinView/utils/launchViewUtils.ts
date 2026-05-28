@@ -96,7 +96,9 @@ function formatViewName(
       getGeneDisplayName(feature),
       getTranscriptDisplayName(selectedTranscript),
     ]),
-  ].join(' - ')
+  ]
+    .filter(s => !!s)
+    .join(' - ')
 }
 
 export function launch3DProteinView({
@@ -119,9 +121,8 @@ export function launch3DProteinView({
   displayName?: string
   connectedMsaViewId?: string
 }) {
-  return session.addView('ProteinView', {
+  const snap = {
     type: 'ProteinView',
-    isFloating: true,
     alignmentAlgorithm,
     connectedMsaViewId,
     structures: [
@@ -136,7 +137,19 @@ export function launch3DProteinView({
     displayName:
       displayName ??
       formatViewName('Protein view', feature, selectedTranscript, uniprotId),
-  })
+  }
+  // eslint-disable-next-line no-console
+  console.log(
+    '[protein3d debug] addView ProteinView snapshot:',
+    JSON.stringify(snap, (_k, v) => (typeof v === 'function' ? '<fn>' : v), 2),
+  )
+  try {
+    return session.addView('ProteinView', snap)
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('[protein3d debug] addView threw:', (e as Error).message)
+    throw e
+  }
 }
 
 export async function launch1DProteinView({

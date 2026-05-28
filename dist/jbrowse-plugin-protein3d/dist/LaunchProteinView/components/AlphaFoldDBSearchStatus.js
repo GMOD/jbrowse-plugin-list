@@ -10,15 +10,13 @@ function NotFound({ uniprotId }) {
         React.createElement(ExternalLink, { href: `https://alphafold.ebi.ac.uk/search/text/${uniprotId}` }, "(search for results)")));
 }
 export default function AlphaFoldDBSearchStatus({ uniprotId, selectedTranscript, structureSequence, isoformSequences, url, }) {
-    const url2 = uniprotId
-        ? `https://www.uniprot.org/uniprotkb/${uniprotId}/entry`
-        : undefined;
     const [showAllProteinSequences, setShowAllProteinSequences] = useState(false);
     return uniprotId ? (React.createElement(React.Fragment, null,
         React.createElement("div", null,
             React.createElement(Typography, null,
-                "UniProt link: ",
-                React.createElement(ExternalLink, { href: url2 }, uniprotId)),
+                "UniProt link:",
+                ' ',
+                React.createElement(ExternalLink, { href: `https://www.uniprot.org/uniprotkb/${uniprotId}/entry` }, uniprotId)),
             React.createElement(Typography, null,
                 "AlphaFoldDB link: ",
                 React.createElement(ExternalLink, { href: url }, url))),

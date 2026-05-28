@@ -18,7 +18,7 @@ export default function MSATable({ structureName, structureSequence, isoformSequ
         { ...val, seq: stripStopCodon(val.seq) },
     ]));
     const exactMatchIsoformAndStructureSeq = Object.entries(removedStars).find(([_, val]) => structureSequence === val.seq);
-    const sname = `${structureName || ''} (structure residues)`;
+    const sname = `${structureName} (structure residues)`;
     const maxKeyLen = max([
         sname.length,
         ...Object.entries(removedStars).map(([_, val]) => getTranscriptDisplayName(val.feature).length),
@@ -38,8 +38,8 @@ export default function MSATable({ structureName, structureSequence, isoformSequ
                         ? `${getTranscriptDisplayName(exactMatchIsoformAndStructureSeq[1].feature).padEnd(maxKeyLen)}* ${exactMatchIsoformAndStructureSeq[1].seq}`
                         : undefined,
                     ...Object.entries(removedStars)
-                        .map(([_, val]) => `${getTranscriptDisplayName(val.feature).padEnd(maxKeyLen)}  ${val.seq}`)
-                        .filter(([k]) => k !== exactMatchIsoformAndStructureSeq?.[0]),
+                        .filter(([k]) => k !== exactMatchIsoformAndStructureSeq?.[0])
+                        .map(([_, val]) => `${getTranscriptDisplayName(val.feature).padEnd(maxKeyLen)}  ${val.seq}`),
                 ]
                     .filter(f => !!f)
                     .join('\n'), slotProps: {

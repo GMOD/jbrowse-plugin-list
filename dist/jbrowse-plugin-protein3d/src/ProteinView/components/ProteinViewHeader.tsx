@@ -81,20 +81,15 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
         </div>
       </div>
       {showAlignment
-        ? structures.map(
-            (structure: JBrowsePluginProteinStructureModel, idx: number) => {
-              const { pairwiseAlignment } = structure
-              return (
-                <div key={idx}>
-                  {pairwiseAlignment ? (
-                    <ProteinAlignment key={idx} model={structure} />
-                  ) : (
-                    <LoadingEllipses message="Loading pairwise alignment" />
-                  )}
-                </div>
-              )
-            },
-          )
+        ? structures.map((structure: JBrowsePluginProteinStructureModel, idx) => (
+            <div key={idx}>
+              {structure.pairwiseAlignment ? (
+                <ProteinAlignment model={structure} />
+              ) : (
+                <LoadingEllipses message="Loading pairwise alignment" />
+              )}
+            </div>
+          ))
         : null}
       <AddStructureDialog model={model} />
     </div>

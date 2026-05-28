@@ -34,16 +34,18 @@ export default function AlphaFoldDBSearchStatus({
   isoformSequences: Record<string, { feature: Feature; seq: string }>
   url?: string
 }) {
-  const url2 = uniprotId
-    ? `https://www.uniprot.org/uniprotkb/${uniprotId}/entry`
-    : undefined
   const [showAllProteinSequences, setShowAllProteinSequences] = useState(false)
 
   return uniprotId ? (
     <>
       <div>
         <Typography>
-          UniProt link: <ExternalLink href={url2}>{uniprotId}</ExternalLink>
+          UniProt link:{' '}
+          <ExternalLink
+            href={`https://www.uniprot.org/uniprotkb/${uniprotId}/entry`}
+          >
+            {uniprotId}
+          </ExternalLink>
         </Typography>
         <Typography>
           AlphaFoldDB link: <ExternalLink href={url}>{url}</ExternalLink>

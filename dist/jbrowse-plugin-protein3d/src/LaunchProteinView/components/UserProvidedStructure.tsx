@@ -124,17 +124,21 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
     stripStopCodon(protein.seq) !== structureSequence
 
   const handleLaunch = async () => {
-    if (!protein || !selectedTranscript || !(structureURL || file)) {
+    if (!protein || !selectedTranscript) {
       return
     }
     try {
       const structureData = file ? await file.text() : undefined
+      const url = structureURL ? structureURL : undefined
+      if (!url && !structureData) {
+        return
+      }
       launch3DProteinView({
         session,
         view,
         feature,
         selectedTranscript,
-        url: structureURL || undefined,
+        url,
         data: structureData,
         userProvidedTranscriptSequence: protein.seq,
         alignmentAlgorithm,

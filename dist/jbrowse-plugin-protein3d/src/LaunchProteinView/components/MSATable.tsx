@@ -36,7 +36,7 @@ export default function MSATable({
   const exactMatchIsoformAndStructureSeq = Object.entries(removedStars).find(
     ([_, val]) => structureSequence === val.seq,
   )
-  const sname = `${structureName || ''} (structure residues)`
+  const sname = `${structureName} (structure residues)`
   const maxKeyLen = max([
     sname.length,
     ...Object.entries(removedStars).map(
@@ -74,11 +74,11 @@ export default function MSATable({
                   ? `${getTranscriptDisplayName(exactMatchIsoformAndStructureSeq[1].feature).padEnd(maxKeyLen)}* ${exactMatchIsoformAndStructureSeq[1].seq}`
                   : undefined,
                 ...Object.entries(removedStars)
+                  .filter(([k]) => k !== exactMatchIsoformAndStructureSeq?.[0])
                   .map(
                     ([_, val]) =>
                       `${getTranscriptDisplayName(val.feature).padEnd(maxKeyLen)}  ${val.seq}`,
-                  )
-                  .filter(([k]) => k !== exactMatchIsoformAndStructureSeq?.[0]),
+                  ),
               ]
                 .filter(f => !!f)
                 .join('\n')

@@ -21,19 +21,22 @@ const AddStructureDialog = observer(function AddStructureDialog({ model, }) {
     };
     const handleAdd = async () => {
         try {
-            let url = structureURL;
+            let url;
             let data;
             if (choice === 'pdb' && pdbId) {
                 url = getPdbStructureUrl(pdbId);
             }
-            if (choice === 'uniprot' && uniprotId) {
+            else if (choice === 'uniprot' && uniprotId) {
                 url = getAlphaFoldStructureUrl(uniprotId.toUpperCase());
             }
-            if (choice === 'file' && file) {
+            else if (choice === 'url' && structureURL) {
+                url = structureURL;
+            }
+            else if (choice === 'file' && file) {
                 data = await file.text();
             }
-            if (url || data) {
-                await model.addStructureAndSuperpose({ url: url || undefined, data });
+            if (url !== undefined || data !== undefined) {
+                await model.addStructureAndSuperpose({ url, data });
                 handleClose();
             }
         }

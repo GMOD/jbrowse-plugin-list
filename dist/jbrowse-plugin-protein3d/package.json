@@ -1,5 +1,5 @@
 {
-  "version": "0.4.4",
+  "version": "0.4.5",
   "name": "jbrowse-plugin-protein3d",
   "repository": {
     "type": "git",
@@ -53,7 +53,7 @@
     "mobx-react": "^9.2.1",
     "prettier": "^3.8.3",
     "pretty-bytes": "^7.1.0",
-    "puppeteer": "^24.43.1",
+    "puppeteer": "^25.0.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "rimraf": "^6.1.3",

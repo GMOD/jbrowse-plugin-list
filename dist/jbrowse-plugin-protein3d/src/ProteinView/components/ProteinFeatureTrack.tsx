@@ -20,6 +20,17 @@ import type { FeatureTrackData } from '../hooks/useProteinFeatureTrackData'
 import type { UniProtFeature } from '../hooks/useUniProtFeatures'
 import type { JBrowsePluginProteinStructureModel } from '../model'
 
+function getFeatureAlignmentRange(
+  feature: UniProtFeature,
+  structurePositionToAlignmentMap: Record<number, number> | undefined,
+) {
+  const startAlignmentPos = structurePositionToAlignmentMap?.[feature.start - 1]
+  const endAlignmentPos = structurePositionToAlignmentMap?.[feature.end - 1]
+  return startAlignmentPos !== undefined && endAlignmentPos !== undefined
+    ? { start: startAlignmentPos, end: endAlignmentPos }
+    : undefined
+}
+
 function getVisibleTypes(
   featureTypes: string[],
   hiddenFeatureTypes: Set<string>,
@@ -70,21 +81,9 @@ const FeatureBar = observer(function FeatureBar({
   } = model
   const isSelected = selectedFeatureId === feature.uniqueId
 
-  const getAlignmentRange = () => {
-    if (!structurePositionToAlignmentMap) {
-      return undefined
-    }
-    const startAlignmentPos = structurePositionToAlignmentMap[feature.start - 1]
-    const endAlignmentPos = structurePositionToAlignmentMap[feature.end - 1]
-    if (startAlignmentPos !== undefined && endAlignmentPos !== undefined) {
-      return { start: startAlignmentPos, end: endAlignmentPos }
-    }
-    return undefined
-  }
-
   const handleMouseEnter = () => {
     setIsHovered(true)
-    const range = getAlignmentRange()
+    const range = getFeatureAlignmentRange(feature, structurePositionToAlignmentMap)
     if (range) {
       model.setAlignmentHoverRange(range)
     }
