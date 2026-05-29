@@ -11,4 +11,3 @@ export async function fetchMSA({ config, pluginManager, msaId, }) {
     const adapter = await getMsaAdapter(pluginManager, config);
     return adapter.getMSA(msaId);
 }
-//# sourceMappingURL=fetchMSAData.js.map

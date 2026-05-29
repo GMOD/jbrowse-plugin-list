@@ -10,4 +10,3 @@ function RIDLink({ baseUrl, rid }) {
         ")"));
 }
 export default RIDLink;
-//# sourceMappingURL=RIDLink.js.map

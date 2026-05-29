@@ -40,16 +40,18 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
     const [submitError, setSubmitError] = useState();
     const [structureURL, setStructureURL] = useState('');
     const [showAllProteinSequences, setShowAllProteinSequences] = useState(false);
+    const activeFile = choice === 'file' ? file : undefined;
+    const activeURL = choice === 'file' ? '' : structureURL;
     const options = getTranscriptFeatures(feature);
     const view = getContainingView(model);
     const { isoformSequences, error: isoformError } = useIsoformProteinSequences({
         feature,
         view,
     });
-    const { sequences: structureSequences1, error: localFileError } = useLocalStructureFileSequence({ file });
-    const { sequences: structureSequences2, error: remoteFileError } = useRemoteStructureFileSequence({ url: structureURL });
-    const structureName = file?.name ?? structureURL.slice(structureURL.lastIndexOf('/') + 1);
-    const structureSequences = structureSequences1 ?? structureSequences2;
+    const { sequences: localSequences, error: localFileError } = useLocalStructureFileSequence({ file: activeFile });
+    const { sequences: remoteSequences, error: remoteFileError } = useRemoteStructureFileSequence({ url: activeURL });
+    const structureName = activeFile?.name ?? activeURL.slice(activeURL.lastIndexOf('/') + 1);
+    const structureSequences = activeFile ? localSequences : remoteSequences;
     const structureSequence = structureSequences?.[0];
     const { userSelection, setUserSelection } = useTranscriptSelection({
         options,
@@ -59,7 +61,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
     const selectedTranscript = options.find(val => getId(val) === userSelection);
     const protein = userSelection ? isoformSequences?.[userSelection] : undefined;
     const error = isoformError ?? submitError ?? localFileError ?? remoteFileError;
-    const canLaunch = !!(structureURL || file) && !!protein && !!selectedTranscript;
+    const canLaunch = !!(activeURL || activeFile) && !!protein && !!selectedTranscript;
     const sequencesDiffer = !!protein?.seq &&
         !!structureSequence &&
         stripStopCodon(protein.seq) !== structureSequence;
@@ -68,8 +70,8 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
             return;
         }
         try {
-            const structureData = file ? await file.text() : undefined;
-            const url = structureURL ? structureURL : undefined;
+            const structureData = activeFile ? await activeFile.text() : undefined;
+            const url = activeURL ? activeURL : undefined;
             if (!url && !structureData) {
                 return;
             }

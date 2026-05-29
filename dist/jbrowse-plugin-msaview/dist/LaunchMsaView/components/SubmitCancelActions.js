@@ -9,4 +9,3 @@ export default function SubmitCancelActions({ onSubmit, onCancel, submitDisabled
                 onCancel();
             } }, cancelLabel)));
 }
-//# sourceMappingURL=SubmitCancelActions.js.map

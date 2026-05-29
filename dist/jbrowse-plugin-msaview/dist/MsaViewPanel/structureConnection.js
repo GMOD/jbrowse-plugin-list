@@ -43,4 +43,3 @@ export function ungappedToGappedPosition(sequence, ungappedPosition) {
     }
     return undefined;
 }
-//# sourceMappingURL=structureConnection.js.map

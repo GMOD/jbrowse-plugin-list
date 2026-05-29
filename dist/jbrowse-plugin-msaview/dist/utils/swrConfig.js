@@ -6,4 +6,3 @@ export const staticSwrConfig = {
     refreshWhenOffline: false,
     shouldRetryOnError: false,
 };
-//# sourceMappingURL=swrConfig.js.map

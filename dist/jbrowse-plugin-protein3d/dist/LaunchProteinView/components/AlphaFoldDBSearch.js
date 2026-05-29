@@ -5,7 +5,6 @@ import { DialogActions, DialogContent, Typography } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import AlphaFoldDBSearchStatus from './AlphaFoldDBSearchStatus';
-import AlphaFoldEntrySelector from './AlphaFoldEntrySelector';
 import IdentifierSelector from './IdentifierSelector';
 import ProteinViewActions from './ProteinViewActions';
 import SequenceSearchStatus from './SequenceSearchStatus';
@@ -62,8 +61,7 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({ feature, model, 
                 "directly and use \"Enter manually\" above, or use \"Search sequence against AlphaFoldDB API\" if available.")),
             state.showStructureSelectors && (React.createElement(React.Fragment, null,
                 React.createElement("div", { className: classes.selectorsRow },
-                    React.createElement(TranscriptSelector, { val: state.userSelection, setVal: state.setUserSelection, structureSequence: state.structureSequence, feature: feature, isoforms: state.transcriptOptions, isoformSequences: state.isoformSequences }),
-                    state.showAlphaFoldEntrySelector && (React.createElement(AlphaFoldEntrySelector, { predictions: state.predictions, selectedEntryIndex: state.selectedEntryIndex, onSelectionChange: state.setSelectedEntryIndex }))),
+                    React.createElement(TranscriptSelector, { val: state.userSelection, setVal: state.setUserSelection, structureSequence: state.structureSequence, feature: feature, isoforms: state.transcriptOptions, isoformSequences: state.isoformSequences })),
                 state.showSequenceSearchStatus && (React.createElement(SequenceSearchStatus, { isLoading: state.isSequenceSearchLoading, uniprotId: state.uniprotId, url: state.url, hasProteinSequence: !!state.userSelectedProteinSequence, sequenceSearchType: state.sequenceSearchType })),
                 state.showAlphaFoldDBSearchStatus && (React.createElement(AlphaFoldDBSearchStatus, { uniprotId: state.uniprotId, selectedTranscript: state.selectedTranscript, structureSequence: state.structureSequence, isoformSequences: state.isoformSequences, url: state.url }))))),
         React.createElement(DialogActions, null,

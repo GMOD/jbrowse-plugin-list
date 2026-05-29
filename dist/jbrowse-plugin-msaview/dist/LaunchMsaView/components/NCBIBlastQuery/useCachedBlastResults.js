@@ -22,4 +22,3 @@ export function useCachedBlastResults(geneIds) {
         handleClearAll,
     };
 }
-//# sourceMappingURL=useCachedBlastResults.js.map

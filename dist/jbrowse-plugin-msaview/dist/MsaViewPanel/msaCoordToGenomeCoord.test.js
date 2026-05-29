@@ -237,4 +237,3 @@ describe('msaCoordToGenomeCoord', () => {
         });
     });
 });
-//# sourceMappingURL=msaCoordToGenomeCoord.test.js.map

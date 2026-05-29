@@ -15,10 +15,8 @@ async function getDB() {
     });
 }
 function createCacheKey(proteinSequence, blastDatabase, blastProgram, transcriptId) {
-    if (transcriptId) {
-        return `${blastDatabase}:${blastProgram}:${transcriptId}:${proteinSequence}`;
-    }
-    return `${blastDatabase}:${blastProgram}:${proteinSequence}`;
+    const idPart = transcriptId ? `:${transcriptId}` : '';
+    return `${blastDatabase}:${blastProgram}${idPart}:${proteinSequence}`;
 }
 export async function saveBlastResult({ proteinSequence, blastDatabase, blastProgram, msaAlgorithm, msa, tree, treeMetadata, rid, geneId, transcriptId, transcriptName, geneName, }) {
     const db = await getDB();
@@ -55,4 +53,3 @@ export async function clearAllCachedResults() {
     const db = await getDB();
     await db.clear(STORE_NAME);
 }
-//# sourceMappingURL=blastCache.js.map

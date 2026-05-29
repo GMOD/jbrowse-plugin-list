@@ -35,26 +35,20 @@ function getIdLabel(id) {
     }
     return id;
 }
-export default function IdentifierSelector({ recognizedIds, uniprotId, geneName, selectedId, onSelectedIdChange, }) {
+export default function IdentifierSelector({ recognizedIds, geneName, selectedId, onSelectedIdChange, }) {
     const [expanded, setExpanded] = useState(false);
     // Build list of selectable options
     const options = [
         { value: 'auto', label: 'Auto (try all)' },
         ...recognizedIds.map(id => ({ value: id, label: getIdLabel(id) })),
     ];
-    if (uniprotId) {
-        options.push({
-            value: `uniprot:${uniprotId}`,
-            label: `${uniprotId} (UniProt)`,
-        });
-    }
     if (geneName) {
         options.push({
             value: `gene:${geneName}`,
             label: `${geneName} (gene name)`,
         });
     }
-    if (recognizedIds.length === 0 && !uniprotId && !geneName) {
+    if (recognizedIds.length === 0 && !geneName) {
         return null;
     }
     if (!expanded) {

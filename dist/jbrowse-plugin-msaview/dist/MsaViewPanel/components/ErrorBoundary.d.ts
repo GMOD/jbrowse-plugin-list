@@ -14,6 +14,6 @@ export declare class ErrorBoundary extends Component<Props, State> {
         error: unknown;
     };
     componentDidCatch(error: unknown, info: React.ErrorInfo): void;
-    render(): string | number | bigint | boolean | React.JSX.Element | Iterable<ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined;
+    render(): string | number | bigint | boolean | Iterable<ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | React.JSX.Element | null | undefined;
 }
 export {};

@@ -44,4 +44,3 @@ export default function TranscriptSelector({ feature, options, selectedId, selec
                 ? `>${getTranscriptDisplayName(selectedTranscript)}\n${proteinSequence}`
                 : 'Loading...' })) : null));
 }
-//# sourceMappingURL=TranscriptSelector.js.map

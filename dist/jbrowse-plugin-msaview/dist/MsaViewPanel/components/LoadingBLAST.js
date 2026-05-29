@@ -31,4 +31,3 @@ const LoadingBLAST = observer(function LoadingBLAST2({ model, baseUrl, }) {
         error ? (React.createElement(RIDError, { baseUrl: baseUrl, rid: rid, error: error })) : rid ? (React.createElement(RIDProgress, { baseUrl: baseUrl, rid: rid, progress: progress })) : (React.createElement(Typography, null, progress || 'Initializing BLAST query'))));
 });
 export default LoadingBLAST;
-//# sourceMappingURL=LoadingBLAST.js.map

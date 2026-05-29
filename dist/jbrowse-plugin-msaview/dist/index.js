@@ -55,4 +55,3 @@ export default class MsaViewPlugin extends Plugin {
         }
     }
 }
-//# sourceMappingURL=index.js.map

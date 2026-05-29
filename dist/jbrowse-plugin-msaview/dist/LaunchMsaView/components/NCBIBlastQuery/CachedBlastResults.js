@@ -77,4 +77,3 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, }) 
                 React.createElement(ListItemText, { primary: `${getResultDisplayName(result)} - ${result.blastDatabase}/${result.blastProgram} (${result.msaAlgorithm})`, secondary: `${new Date(result.timestamp).toLocaleString()} - Seq: ${result.proteinSequence.slice(0, 30)}...` }))))))));
 });
 export default CachedBlastResults;
-//# sourceMappingURL=CachedBlastResults.js.map

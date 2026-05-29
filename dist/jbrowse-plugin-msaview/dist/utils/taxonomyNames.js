@@ -112,4 +112,3 @@ export async function fetchTaxonomyInfo(taxids) {
     }
     return result;
 }
-//# sourceMappingURL=taxonomyNames.js.map

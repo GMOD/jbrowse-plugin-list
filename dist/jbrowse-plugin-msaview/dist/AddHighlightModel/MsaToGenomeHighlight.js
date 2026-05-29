@@ -2,14 +2,17 @@ import React from 'react';
 import { getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
 import { hasHoverPosition, useStyles } from './util';
+import { isMsaView } from '../MsaViewPanel/model';
 import { getCanonicalRefName } from '../MsaViewPanel/util';
 const MsaToGenomeHighlight = observer(function MsaToGenomeHighlight2({ model, }) {
     const { views, hovered } = getSession(model);
-    const msaView = views.find(f => f.type === 'MsaView');
+    const msaView = views
+        .filter(isMsaView)
+        .find(v => v.connectedViewId === model.id);
     const highlights = msaView?.connectedHighlights;
     // Suppress codon highlight while hovering the LGV — GenomeMouseoverHighlight
     // handles the single-bp display in that case
-    return !hasHoverPosition(hovered) && highlights?.length ? (React.createElement(MsaToGenomeHighlightRenderer, { model: model, highlights: Array.from(highlights) })) : null;
+    return !hasHoverPosition(hovered) && highlights?.length ? (React.createElement(MsaToGenomeHighlightRenderer, { model: model, highlights: highlights })) : null;
 });
 // Inner component: handles the scroll-dependent rendering
 const MsaToGenomeHighlightRenderer = observer(function ({ model, highlights, }) {
@@ -33,4 +36,3 @@ const MsaToGenomeHighlightRenderer = observer(function ({ model, highlights, }) 
     })));
 });
 export default MsaToGenomeHighlight;
-//# sourceMappingURL=MsaToGenomeHighlight.js.map

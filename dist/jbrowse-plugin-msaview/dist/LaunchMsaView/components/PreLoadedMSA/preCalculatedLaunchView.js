@@ -16,4 +16,3 @@ export function preCalculatedLaunchView({ session, newViewTitle, view, feature, 
         connectedFeature: feature.toJSON(),
     });
 }
-//# sourceMappingURL=preCalculatedLaunchView.js.map

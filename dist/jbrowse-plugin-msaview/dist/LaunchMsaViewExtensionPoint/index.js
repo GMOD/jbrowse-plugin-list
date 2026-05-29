@@ -28,4 +28,3 @@ export default function LaunchMsaViewExtensionPointF(pluginManager) {
         });
     });
 }
-//# sourceMappingURL=index.js.map

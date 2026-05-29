@@ -241,4 +241,3 @@ describe('genomeToMSA', () => {
         expect(result).toBeUndefined();
     });
 });
-//# sourceMappingURL=genomeToMSA.test.js.map

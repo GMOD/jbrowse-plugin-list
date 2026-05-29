@@ -1,12 +1,7 @@
 import useSWR from 'swr';
 import { searchUniProtEntries } from '../services/lookupMethods';
 import { isRecognizedDatabaseId } from '../utils/util';
-export default function useUniProtSearch({ recognizedIds = [], uniprotId, geneId, geneName, selectedQueryId = 'auto', enabled = true, }) {
-    // If selected ID is a UniProt accession (prefixed with uniprot:), return it directly
-    const isDirectUniProt = selectedQueryId.startsWith('uniprot:');
-    const directUniProtId = isDirectUniProt
-        ? selectedQueryId.replace('uniprot:', '')
-        : undefined;
+export default function useUniProtSearch({ recognizedIds = [], geneId, geneName, selectedQueryId = 'auto', enabled = true, }) {
     // Determine what to search based on selectedQueryId
     let idsToSearch = [];
     let geneNameToSearch;
@@ -20,16 +15,10 @@ export default function useUniProtSearch({ recognizedIds = [], uniprotId, geneId
     else if (isRecognizedDatabaseId(selectedQueryId)) {
         idsToSearch = [selectedQueryId];
     }
-    // Has valid ID if we have any recognized database IDs or a gene name
-    const hasRecognizedId = idsToSearch.some(id => isRecognizedDatabaseId(id));
-    const hasValidId = hasRecognizedId || Boolean(geneNameToSearch) || Boolean(uniprotId);
-    const { data, error, isLoading } = useSWR(enabled && hasValidId && !isDirectUniProt
-        ? [
-            'uniprotSearch',
-            selectedQueryId,
-            idsToSearch.join(','),
-            geneNameToSearch,
-        ]
+    const hasValidId = idsToSearch.some(id => isRecognizedDatabaseId(id)) ||
+        Boolean(geneNameToSearch);
+    const { data, error, isLoading } = useSWR(enabled && hasValidId
+        ? ['uniprotSearch', selectedQueryId, idsToSearch.join(','), geneNameToSearch]
         : null, async () => searchUniProtEntries({
         recognizedIds: idsToSearch,
         geneId,
@@ -40,15 +29,6 @@ export default function useUniProtSearch({ recognizedIds = [], uniprotId, geneId
         revalidateIfStale: false,
         keepPreviousData: true,
     });
-    // If direct UniProt accession selected, return it as a synthetic entry
-    if (isDirectUniProt && directUniProtId) {
-        return {
-            entries: [{ accession: directUniProtId, isReviewed: true }],
-            isLoading: false,
-            error: undefined,
-            hasValidId: true,
-        };
-    }
     return {
         entries: data ?? [],
         isLoading,

@@ -7,4 +7,3 @@ export default function MsaAlgorithmSelect({ value, onChange, className, }) {
             onChange(event.target.value);
         } }, msaAlgorithms.map(val => (React.createElement(MenuItem, { value: val, key: val }, val)))));
 }
-//# sourceMappingURL=MsaAlgorithmSelect.js.map

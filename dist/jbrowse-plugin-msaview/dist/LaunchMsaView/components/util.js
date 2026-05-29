@@ -14,4 +14,3 @@ export function makeId(h, taxonomyInfo) {
 export function strip(s) {
     return s.replaceAll('-', '');
 }
-//# sourceMappingURL=util.js.map

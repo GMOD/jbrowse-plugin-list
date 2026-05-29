@@ -17,4 +17,3 @@ export function useFeatureSequence({ view, feature, }) {
         error,
     };
 }
-//# sourceMappingURL=useFeatureSequence.js.map

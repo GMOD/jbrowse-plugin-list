@@ -15,7 +15,7 @@ export default function useAlphaFoldDBSearch({ feature, view, }: {
     sequenceSearchType: SequenceSearchType;
     setSequenceSearchType: import("react").Dispatch<import("react").SetStateAction<SequenceSearchType>>;
     selectedUniprotId: string | undefined;
-    setSelectedUniprotId: (id: string | undefined) => void;
+    setSelectedUniprotId: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
     userSelection: string | undefined;
     setUserSelection: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
     transcriptOptions: Feature[];
@@ -29,9 +29,6 @@ export default function useAlphaFoldDBSearch({ feature, view, }: {
         seq: string;
     } | undefined;
     uniprotEntries: import("../services/lookupMethods").UniProtEntry[];
-    predictions: import("./useAlphaFoldUrl").AlphaFoldPrediction[] | undefined;
-    selectedEntryIndex: number;
-    setSelectedEntryIndex: import("react").Dispatch<import("react").SetStateAction<number>>;
     recognizedIds: string[];
     geneName: string | undefined;
     featureUniprotId: string | undefined;
@@ -50,7 +47,6 @@ export default function useAlphaFoldDBSearch({ feature, view, }: {
     selectedTableAccession: string | undefined;
     showUniprotResults: boolean;
     showNoResults: boolean;
-    showAlphaFoldEntrySelector: boolean;
     showSequenceSearchStatus: boolean;
     showAlphaFoldDBSearchStatus: boolean;
     isLoading: boolean;

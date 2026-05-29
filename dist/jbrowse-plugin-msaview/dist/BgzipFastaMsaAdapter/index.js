@@ -12,4 +12,3 @@ export default function BgzipFastaMsaAdapterF(pluginManager) {
         });
     });
 }
-//# sourceMappingURL=index.js.map

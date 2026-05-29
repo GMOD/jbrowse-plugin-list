@@ -56,4 +56,3 @@ export default class BgzipFastaMsaAdapter extends BaseAdapter {
             .pipe(toArray()));
     }
 }
-//# sourceMappingURL=BgzipFastaMsaAdapter.js.map

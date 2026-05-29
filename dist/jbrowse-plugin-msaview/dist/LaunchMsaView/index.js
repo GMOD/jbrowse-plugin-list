@@ -46,4 +46,3 @@ export default function LaunchMsaViewF(pluginManager) {
         return elt;
     });
 }
-//# sourceMappingURL=index.js.map

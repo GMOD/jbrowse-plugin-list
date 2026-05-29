@@ -76,8 +76,12 @@ const FoldseekSearch = observer(function FoldseekSearch({ feature, model, handle
             statusMessage ? (React.createElement(LoadingEllipses, { variant: "subtitle2", message: statusMessage })) : null,
             results ? (React.createElement(FoldseekResultsTable, { results: results, session: session, view: view, feature: feature, selectedTranscript: selectedTranscript, userProvidedTranscriptSequence: sequence, onClose: handleClose })) : null),
         React.createElement(DialogActions, null,
-            React.createElement(Button, { variant: "contained", color: "secondary", onClick: handleClose }, "Cancel"),
-            results ? (React.createElement(Button, { variant: "outlined", onClick: reset }, "New search")) : null,
+            React.createElement(Button, { variant: "contained", color: "secondary", onClick: () => {
+                    handleClose();
+                } }, "Cancel"),
+            results ? (React.createElement(Button, { variant: "outlined", onClick: () => {
+                    reset();
+                } }, "New search")) : null,
             !di3Sequence ? (React.createElement(Button, { variant: "contained", color: "primary", disabled: !canPredict, onClick: () => {
                     if (sequence.trim()) {
                         void predictStructure(sequence.trim());

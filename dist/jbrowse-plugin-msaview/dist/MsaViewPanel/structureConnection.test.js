@@ -101,4 +101,3 @@ describe('gappedToUngappedPosition and ungappedToGappedPosition are inverses', (
         }
     });
 });
-//# sourceMappingURL=structureConnection.test.js.map

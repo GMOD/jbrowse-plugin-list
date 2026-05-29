@@ -189,11 +189,22 @@ const FoldseekSearch = observer(function FoldseekSearch({
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button variant="contained" color="secondary" onClick={handleClose}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => {
+            handleClose()
+          }}
+        >
           Cancel
         </Button>
         {results ? (
-          <Button variant="outlined" onClick={reset}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              reset()
+            }}
+          >
             New search
           </Button>
         ) : null}

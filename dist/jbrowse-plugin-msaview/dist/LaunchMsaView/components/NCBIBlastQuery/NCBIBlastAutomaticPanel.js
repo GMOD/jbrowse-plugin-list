@@ -94,4 +94,3 @@ const NCBIBlastAutomaticPanel = observer(function ({ handleClose, feature, model
             }, onCancel: handleClose })));
 });
 export default NCBIBlastAutomaticPanel;
-//# sourceMappingURL=NCBIBlastAutomaticPanel.js.map

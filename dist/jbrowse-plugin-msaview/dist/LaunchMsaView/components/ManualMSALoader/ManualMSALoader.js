@@ -101,4 +101,3 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
             }, onCancel: handleClose })));
 });
 export default ManualMSALoader;
-//# sourceMappingURL=ManualMSALoader.js.map

@@ -1,7 +1,6 @@
-export function checkHovered(hovered) {
+export function hasHoverPosition(hovered) {
     return (!!hovered &&
         typeof hovered === 'object' &&
-        'hoverFeature' in hovered &&
         'hoverPosition' in hovered &&
         !!hovered.hoverPosition);
 }
@@ -22,4 +21,3 @@ export function getUniprotIdFromAlphaFoldUrl(url) {
     const match = /AF-([A-Z0-9]+)-F\d+/.exec(url);
     return match?.[1];
 }
-//# sourceMappingURL=util.js.map

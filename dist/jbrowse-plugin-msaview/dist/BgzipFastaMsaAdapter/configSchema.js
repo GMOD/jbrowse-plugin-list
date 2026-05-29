@@ -10,4 +10,3 @@ export default function configSchemaF(pluginManager) {
         baseConfiguration: base?.configSchema,
     });
 }
-//# sourceMappingURL=configSchema.js.map

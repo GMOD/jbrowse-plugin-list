@@ -2,9 +2,10 @@ import React from 'react';
 import { getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
 import { hasHoverPosition, useStyles } from './util';
+import { isMsaView } from '../MsaViewPanel/model';
 const GenomeMouseoverHighlight = observer(function ({ model, }) {
     const { hovered, views } = getSession(model);
-    const hasMsaView = views.some(s => s.type === 'MsaView');
+    const hasMsaView = views.some(s => isMsaView(s) && s.connectedViewId === model.id);
     return hasMsaView && hasHoverPosition(hovered) ? (React.createElement(GenomeMouseoverHighlightRenderer, { model: model, hovered: hovered })) : null;
 });
 const GenomeMouseoverHighlightRenderer = observer(function ({ model, hovered, }) {
@@ -21,4 +22,3 @@ const GenomeMouseoverHighlightRenderer = observer(function ({ model, hovered, })
     return null;
 });
 export default GenomeMouseoverHighlight;
-//# sourceMappingURL=GenomeMouseoverHighlight.js.map

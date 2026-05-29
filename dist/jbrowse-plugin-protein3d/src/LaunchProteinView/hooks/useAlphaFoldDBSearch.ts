@@ -4,13 +4,13 @@ import useAlphaFoldData from './useAlphaFoldData'
 import useAlphaFoldSequenceSearch from './useAlphaFoldSequenceSearch'
 import useDebouncedValue from './useDebouncedValue'
 import useIsoformProteinSequences from './useIsoformProteinSequences'
+import useTranscriptSelection from './useTranscriptSelection'
 import useUniProtSearch from './useUniProtSearch'
 import getSearchDescription from '../utils/getSearchDescription'
 import {
   extractFeatureIdentifiers,
   getId,
   getTranscriptFeatures,
-  selectBestTranscript,
   stripStopCodon,
 } from '../utils/util'
 
@@ -35,7 +35,6 @@ export default function useAlphaFoldDBSearch({
   const [sequenceSearchType, setSequenceSearchType] =
     useState<SequenceSearchType>('md5')
   const [selectedUniprotId, setSelectedUniprotId] = useState<string>()
-  const [userTranscriptId, setUserTranscriptId] = useState<string>()
 
   const transcriptOptions = getTranscriptFeatures(feature)
   const featureUniprotId = geneIds.uniprotId
@@ -78,11 +77,8 @@ export default function useAlphaFoldDBSearch({
           : undefined
 
   const {
-    predictions,
     isLoading: isAlphaFoldLoading,
     error: alphaFoldError,
-    selectedEntryIndex,
-    setSelectedEntryIndex,
     url: alphaFoldUrl,
     confidenceUrl: alphaFoldConfidenceUrl,
     structureSequence: alphaFoldStructureSequence,
@@ -90,16 +86,13 @@ export default function useAlphaFoldDBSearch({
     uniprotId: isSequenceMode ? undefined : uniprotId,
   })
 
-  let autoTranscriptId: string | undefined
-  if (isoformSequences) {
-    autoTranscriptId = selectBestTranscript({
+  const { userSelection: effectiveTranscriptId, setUserSelection } =
+    useTranscriptSelection({
       options: transcriptOptions,
       isoformSequences,
       structureSequence: alphaFoldStructureSequence,
-    })?.id()
-  }
-
-  const effectiveTranscriptId = userTranscriptId ?? autoTranscriptId
+      resetKey: uniprotId,
+    })
   const selectedTranscript = transcriptOptions.find(
     f => getId(f) === effectiveTranscriptId,
   )
@@ -130,11 +123,6 @@ export default function useAlphaFoldDBSearch({
     : alphaFoldStructureSequence
   const finalUniprotId = isSequenceMode ? seqSearchUniprotId : uniprotId
 
-  const setSelectedUniprotIdWithReset = (id: string | undefined) => {
-    setSelectedUniprotId(id)
-    setUserTranscriptId(undefined)
-  }
-
   const loadingStatuses = [
     isLookupLoading && 'Looking up UniProt ID',
     isIsoformLoading && 'Loading protein sequences from transcript isoforms',
@@ -162,18 +150,15 @@ export default function useAlphaFoldDBSearch({
     sequenceSearchType,
     setSequenceSearchType,
     selectedUniprotId,
-    setSelectedUniprotId: setSelectedUniprotIdWithReset,
+    setSelectedUniprotId,
     userSelection: effectiveTranscriptId,
-    setUserSelection: setUserTranscriptId,
+    setUserSelection,
 
     transcriptOptions,
     selectedTranscript,
     isoformSequences,
     userSelectedProteinSequence,
     uniprotEntries,
-    predictions,
-    selectedEntryIndex,
-    setSelectedEntryIndex,
 
     recognizedIds: geneIds.recognizedIds,
     geneName: geneIds.geneName,
@@ -223,7 +208,6 @@ export default function useAlphaFoldDBSearch({
       isAutoMode &&
       !isLookupLoading &&
       uniprotEntries.length === 0,
-    showAlphaFoldEntrySelector: !!predictions && !isSequenceMode,
     showSequenceSearchStatus: isSequenceMode,
     showAlphaFoldDBSearchStatus:
       !!finalStructureSequence && !!finalUniprotId && !isSequenceMode,

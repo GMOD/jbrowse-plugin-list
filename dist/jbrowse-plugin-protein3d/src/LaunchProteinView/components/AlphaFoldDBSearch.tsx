@@ -7,7 +7,6 @@ import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
 import AlphaFoldDBSearchStatus from './AlphaFoldDBSearchStatus'
-import AlphaFoldEntrySelector from './AlphaFoldEntrySelector'
 import IdentifierSelector from './IdentifierSelector'
 import ProteinViewActions from './ProteinViewActions'
 import SequenceSearchStatus from './SequenceSearchStatus'
@@ -130,13 +129,6 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
                 isoforms={state.transcriptOptions}
                 isoformSequences={state.isoformSequences!}
               />
-              {state.showAlphaFoldEntrySelector && (
-                <AlphaFoldEntrySelector
-                  predictions={state.predictions!}
-                  selectedEntryIndex={state.selectedEntryIndex}
-                  onSelectionChange={state.setSelectedEntryIndex}
-                />
-              )}
             </div>
             {state.showSequenceSearchStatus && (
               <SequenceSearchStatus

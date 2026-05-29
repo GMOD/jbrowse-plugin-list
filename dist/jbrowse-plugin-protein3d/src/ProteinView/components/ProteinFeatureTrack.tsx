@@ -83,7 +83,10 @@ const FeatureBar = observer(function FeatureBar({
 
   const handleMouseEnter = () => {
     setIsHovered(true)
-    const range = getFeatureAlignmentRange(feature, structurePositionToAlignmentMap)
+    const range = getFeatureAlignmentRange(
+      feature,
+      structurePositionToAlignmentMap,
+    )
     if (range) {
       model.setAlignmentHoverRange(range)
     }

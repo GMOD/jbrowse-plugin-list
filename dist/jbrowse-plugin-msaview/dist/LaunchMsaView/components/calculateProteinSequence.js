@@ -36,4 +36,3 @@ export function getProteinSequenceFromFeature({ feature, seq, }) {
         codonTable: generateCodonTable(defaultCodonTable),
     });
 }
-//# sourceMappingURL=calculateProteinSequence.js.map
