@@ -10,4 +10,3 @@ export function launchView({ session, newViewTitle, view, feature, msaFilehandle
         data,
     });
 }
-//# sourceMappingURL=launchView.js.map

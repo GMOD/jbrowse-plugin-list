@@ -40,4 +40,3 @@ const NCBIBlastManualPanel = observer(function ({ handleClose, feature, model, c
                 } }, "Close"))));
 });
 export default NCBIBlastManualPanel;
-//# sourceMappingURL=NCBIBlastManualPanel.js.map

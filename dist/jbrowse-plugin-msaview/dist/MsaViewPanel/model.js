@@ -1,11 +1,11 @@
 import { lazy } from 'react';
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes';
 import { getSession } from '@jbrowse/core/util';
-import { addDisposer, cast, types } from '@jbrowse/mobx-state-tree';
+import { addDisposer, types } from '@jbrowse/mobx-state-tree';
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper';
 import { autorun } from 'mobx';
 import { MSAModelF } from 'react-msaview';
-import { autoConnectStructures, highlightConnectedStructures, launchBlastIfNeeded, loadStoredData, observeProteinHighlights, processInit, runCleanup, storeDataToIndexedDB, updateGenomeHighlights, } from './afterCreateAutoruns';
+import { autoConnectStructures, highlightConnectedStructures, launchBlastIfNeeded, loadStoredData, observeProteinHighlights, processInit, runCleanup, storeDataToIndexedDB, } from './afterCreateAutoruns';
 import { genomeToMSA } from './genomeToMSA';
 import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { buildAlignmentMaps, runPairwiseAlignment } from './pairwiseAlignment';
@@ -31,11 +31,6 @@ export default function stateModelFactory() {
         /**
          * #property
          */
-        connectedHighlights: types.array(types.model({
-            refName: types.string,
-            start: types.number,
-            end: types.number,
-        })),
         /**
          * #property
          */
@@ -165,11 +160,22 @@ export default function stateModelFactory() {
          * #getter
          */
         get mouseCol2() {
-            const structureCol = self.structureHoverCol;
-            if (structureCol !== undefined) {
-                return structureCol;
-            }
-            return genomeToMSA({ model: self });
+            return (self.structureHoverCol ??
+                genomeToMSA({ model: self }));
+        },
+        /**
+         * #getter
+         */
+        get connectedHighlights() {
+            const { mouseCol, mouseClickCol } = self;
+            return [
+                mouseCol === undefined
+                    ? undefined
+                    : msaCoordToGenomeCoord({ model: self, coord: mouseCol }),
+                mouseClickCol === undefined
+                    ? undefined
+                    : msaCoordToGenomeCoord({ model: self, coord: mouseClickCol }),
+            ].filter((r) => r !== undefined);
         },
     }))
         .actions(self => ({
@@ -196,24 +202,6 @@ export default function stateModelFactory() {
          */
         setRid(arg) {
             self.rid = arg;
-        },
-        /**
-         * #action
-         */
-        setConnectedHighlights(r) {
-            self.connectedHighlights = cast(r);
-        },
-        /**
-         * #action
-         */
-        addToConnectedHighlights(r) {
-            self.connectedHighlights.push(r);
-        },
-        /**
-         * #action
-         */
-        clearConnectedHighlights() {
-            self.connectedHighlights = cast([]);
         },
         /**
          * #action
@@ -396,7 +384,6 @@ export default function stateModelFactory() {
                 storeDataToIndexedDB,
                 launchBlastIfNeeded,
                 processInit,
-                updateGenomeHighlights,
                 highlightConnectedStructures,
                 autoConnectStructures,
                 observeProteinHighlights,
@@ -408,4 +395,6 @@ export default function stateModelFactory() {
         },
     }));
 }
-//# sourceMappingURL=model.js.map
+export function isMsaView(view) {
+    return view.type === 'MsaView';
+}

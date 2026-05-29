@@ -20,4 +20,3 @@ export async function fetchSeq({ start, end, refName, session, assemblyName, }) 
     }));
     return feats[0]?.get('seq') ?? '';
 }
-//# sourceMappingURL=fetchSeq.js.map

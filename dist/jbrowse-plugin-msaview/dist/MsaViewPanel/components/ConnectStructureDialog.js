@@ -58,4 +58,3 @@ const ConnectStructureDialog = observer(function ConnectStructureDialog({ model,
             React.createElement(Button, { onClick: handleConnect, variant: "contained", disabled: proteinViews.length === 0 || !selectedViewId }, "Connect"))));
 });
 export default ConnectStructureDialog;
-//# sourceMappingURL=ConnectStructureDialog.js.map

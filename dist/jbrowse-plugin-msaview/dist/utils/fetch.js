@@ -37,4 +37,3 @@ export async function unzipfetch(url, arg) {
     const res = await handleFetch(url, arg);
     return ungzip(await res.arrayBuffer(), { to: 'string' });
 }
-//# sourceMappingURL=fetch.js.map

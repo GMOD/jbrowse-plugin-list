@@ -39,4 +39,3 @@ export default function NCBIBlastPanel({ handleClose, model, feature, }) {
                 setSettingsOpen(false);
             } })) : null));
 }
-//# sourceMappingURL=NCBIBlastPanel.js.map

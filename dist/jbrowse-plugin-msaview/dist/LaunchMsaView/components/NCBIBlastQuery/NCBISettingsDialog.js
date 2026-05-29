@@ -30,4 +30,3 @@ export default function NCBISettingsDialog({ handleClose, baseUrl, }) {
                     handleClose(tempBaseUrl);
                 } }, "Save"))));
 }
-//# sourceMappingURL=NCBISettingsDialog.js.map

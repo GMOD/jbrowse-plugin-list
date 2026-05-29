@@ -143,4 +143,3 @@ export function buildAlignmentMaps(pairwiseAlignment) {
     }
     return { seq1ToSeq2, seq2ToSeq1 };
 }
-//# sourceMappingURL=pairwiseAlignment.js.map

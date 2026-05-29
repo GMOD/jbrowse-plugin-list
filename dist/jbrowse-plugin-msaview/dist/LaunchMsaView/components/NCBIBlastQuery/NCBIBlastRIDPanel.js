@@ -72,4 +72,3 @@ const NCBIBlastRIDPanel = observer(function ({ handleClose, feature, model, chil
             }, onCancel: handleClose })));
 });
 export default NCBIBlastRIDPanel;
-//# sourceMappingURL=NCBIBlastRIDPanel.js.map

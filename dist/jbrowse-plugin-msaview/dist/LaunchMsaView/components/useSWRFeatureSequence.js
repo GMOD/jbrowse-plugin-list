@@ -23,4 +23,3 @@ export function useSWRFeatureSequence({ view, feature, }) {
         error,
     };
 }
-//# sourceMappingURL=useSWRFeatureSequence.js.map

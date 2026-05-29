@@ -625,4 +625,3 @@ const BLOSUM62 = {
     },
 };
 export default BLOSUM62;
-//# sourceMappingURL=blosum62.js.map

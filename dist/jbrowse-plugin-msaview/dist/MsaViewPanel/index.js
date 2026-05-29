@@ -12,4 +12,3 @@ export default function MsaViewF(pluginManager) {
         });
     });
 }
-//# sourceMappingURL=index.js.map

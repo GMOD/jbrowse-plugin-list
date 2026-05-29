@@ -109,4 +109,3 @@ describe('buildAlignmentMaps', () => {
         expect(seq1ToSeq2.size).toBeLessThanOrEqual(structureSeq.length);
     });
 });
-//# sourceMappingURL=pairwiseAlignment.test.js.map

@@ -26,4 +26,3 @@ export default function LaunchMsaViewDialog({ handleClose, feature, model, }) {
         React.createElement(TabPanel, { value: value, index: "manual_msa" },
             React.createElement(ManualMSALoader, { model: model, feature: feature, handleClose: handleClose }))));
 }
-//# sourceMappingURL=LaunchMsaViewDialog.js.map

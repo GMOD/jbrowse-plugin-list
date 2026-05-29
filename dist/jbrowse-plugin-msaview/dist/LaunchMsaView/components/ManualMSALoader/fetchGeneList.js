@@ -9,4 +9,3 @@ export async function fetchGeneList() {
         .map(f => f.trim())
         .filter(f => !!f);
 }
-//# sourceMappingURL=fetchGeneList.js.map

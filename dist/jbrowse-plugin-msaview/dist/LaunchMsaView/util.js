@@ -79,4 +79,3 @@ export function getGeneIdentifiers(feature) {
         feature.get('gene_name'),
     ]);
 }
-//# sourceMappingURL=util.js.map

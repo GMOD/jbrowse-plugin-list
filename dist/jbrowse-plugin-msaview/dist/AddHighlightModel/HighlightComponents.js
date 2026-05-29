@@ -8,4 +8,3 @@ const HighlightComponents = observer(function HighlightComponents2({ model, }) {
         React.createElement(GenomeMouseoverHighlight, { model: model })));
 });
 export default HighlightComponents;
-//# sourceMappingURL=HighlightComponents.js.map

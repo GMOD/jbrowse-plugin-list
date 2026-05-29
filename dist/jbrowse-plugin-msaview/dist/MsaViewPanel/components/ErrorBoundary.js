@@ -19,4 +19,3 @@ export class ErrorBoundary extends Component {
         return this.props.children;
     }
 }
-//# sourceMappingURL=ErrorBoundary.js.map

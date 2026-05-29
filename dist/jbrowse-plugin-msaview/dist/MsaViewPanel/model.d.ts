@@ -330,11 +330,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
 } & {
     connectedViewId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     connectedFeature: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
-    connectedHighlights: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IModelType<{
-        refName: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-        start: import("@jbrowse/mobx-state-tree").ISimpleType<number>;
-        end: import("@jbrowse/mobx-state-tree").ISimpleType<number>;
-    }, {}, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
     blastParams: import("@jbrowse/mobx-state-tree").IType<BlastParams | undefined, BlastParams | undefined, BlastParams | undefined>;
     querySeqName: import("@jbrowse/mobx-state-tree").IType<string | undefined, string, string>;
     uniprotId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
@@ -655,6 +650,10 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * #getter
      */
     readonly mouseCol2: number | undefined;
+    /**
+     * #getter
+     */
+    readonly connectedHighlights: IRegion[];
 } & {
     /**
      * #action
@@ -672,18 +671,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * #action
      */
     setRid(arg: string): void;
-    /**
-     * #action
-     */
-    setConnectedHighlights(r: IRegion[]): void;
-    /**
-     * #action
-     */
-    addToConnectedHighlights(r: IRegion): void;
-    /**
-     * #action
-     */
-    clearConnectedHighlights(): void;
     /**
      * #action
      */
@@ -758,7 +745,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     id: string;
     displayName: string | undefined;
     minimized: boolean;
-} & import("@jbrowse/mobx-state-tree/dist/internal").NonEmptyObject & Omit<import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+} & import("@jbrowse/mobx-state-tree").NonEmptyObject & Omit<import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
     drawLabels: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     labelsAlignRight: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     treeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
@@ -1060,3 +1047,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
 export type JBrowsePluginMsaViewStateModel = ReturnType<typeof stateModelFactory>;
 export type JBrowsePluginMsaViewModel = Instance<JBrowsePluginMsaViewStateModel>;
 export { type MafRegion, type MsaViewInitState } from './types';
+export declare function isMsaView(view: {
+    type: string;
+}): view is JBrowsePluginMsaViewModel;

@@ -9,4 +9,3 @@ export default function NCBIBlastMethodSelector({ lookupMethod, setLookupMethod,
             React.createElement(FormControlLabel, { value: "rid", control: React.createElement(Radio, null), label: "Load from RID" }),
             React.createElement(FormControlLabel, { value: "manual", control: React.createElement(Radio, null), label: "Manual" }))));
 }
-//# sourceMappingURL=NCBIBlastMethodSelector.js.map

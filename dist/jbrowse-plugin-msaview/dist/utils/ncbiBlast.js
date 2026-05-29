@@ -84,4 +84,3 @@ async function waitForRid({ rid, onProgress, baseUrl, }) {
         throw new Error(`BLAST ${rid} returned unexpected status: ${status ?? 'unknown'}`);
     }
 }
-//# sourceMappingURL=ncbiBlast.js.map

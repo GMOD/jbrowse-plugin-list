@@ -51,4 +51,3 @@ export async function launchMSA({ algorithm, sequence, onProgress, }) {
         tree: await textfetch(`${base}/${algorithm}/result/${jobId}/${config.treeResult}`),
     };
 }
-//# sourceMappingURL=msa.js.map

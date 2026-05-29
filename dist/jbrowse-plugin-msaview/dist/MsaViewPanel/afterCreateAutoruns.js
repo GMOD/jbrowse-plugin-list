@@ -1,15 +1,12 @@
 import { getSession } from '@jbrowse/core/util';
 import { doLaunchBlast } from './doLaunchBlast';
-import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { cleanupOldData, generateDataStoreId, retrieveMsaData, storeMsaData, } from './msaDataStore';
 import { gappedToUngappedPosition, getProteinViews, } from './structureConnection';
 import { getUniprotIdFromAlphaFoldUrl } from './util';
 export function loadStoredData(self) {
     const { dataStoreId, rows } = self;
     if (dataStoreId && rows.length === 0) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        ;
-        (async () => {
+        void (async () => {
             try {
                 self.setLoadingStoredData(true);
                 const storedData = await retrieveMsaData(dataStoreId);
@@ -44,7 +41,7 @@ export function storeDataToIndexedDB(self) {
             // data observables change while the write is pending) don't kick off a
             // duplicate write and leave an orphan IndexedDB entry
             self.setIsStoringData(true);
-            (async () => {
+            void (async () => {
                 try {
                     const newId = generateDataStoreId();
                     const success = await storeMsaData(newId, {
@@ -68,9 +65,7 @@ export function storeDataToIndexedDB(self) {
 }
 export function launchBlastIfNeeded(self) {
     if (self.blastParams) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        ;
-        (async () => {
+        void (async () => {
             try {
                 self.setProgress('Submitting query');
                 self.setError(undefined);
@@ -91,9 +86,7 @@ export function launchBlastIfNeeded(self) {
 export function processInit(self) {
     const { init } = self;
     if (init) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        ;
-        (async () => {
+        void (async () => {
             try {
                 self.setError(undefined);
                 const { msaData, msaUrl, treeData, treeUrl, querySeqName } = init;
@@ -137,16 +130,6 @@ export function processInit(self) {
             }
         })();
     }
-}
-export function updateGenomeHighlights(self) {
-    const { mouseCol, mouseClickCol } = self;
-    const r1 = mouseCol === undefined
-        ? undefined
-        : msaCoordToGenomeCoord({ model: self, coord: mouseCol });
-    const r2 = mouseClickCol === undefined
-        ? undefined
-        : msaCoordToGenomeCoord({ model: self, coord: mouseClickCol });
-    self.setConnectedHighlights([r1, r2].filter(f => !!f));
 }
 export function highlightConnectedStructures(self) {
     const { mouseCol, connectedProteinViews } = self;
@@ -250,4 +233,3 @@ export function runCleanup() {
         console.error('Failed to cleanup old MSA data:', e);
     });
 }
-//# sourceMappingURL=afterCreateAutoruns.js.map

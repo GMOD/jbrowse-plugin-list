@@ -32,4 +32,3 @@ export function useTranscriptSelection({ feature, view, validIds, }) {
         validIds,
     };
 }
-//# sourceMappingURL=useTranscriptSelection.js.map

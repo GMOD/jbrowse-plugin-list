@@ -84,4 +84,3 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, }) {
             }, onCancel: handleClose })));
 });
 export default PreLoadedMSA;
-//# sourceMappingURL=PreLoadedMSADataPanel.js.map

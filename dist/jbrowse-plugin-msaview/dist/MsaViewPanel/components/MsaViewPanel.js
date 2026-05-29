@@ -18,4 +18,3 @@ const MsaViewPanel = observer(function MsaViewPanel2({ model, }) {
             React.createElement(LoadingEllipses, { message: "Loading MSA data", variant: "h6" }))) : (React.createElement(MSAView, { model: model })))));
 });
 export default MsaViewPanel;
-//# sourceMappingURL=MsaViewPanel.js.map
