@@ -46,16 +46,8 @@ export default function TranscriptSelector({
     }
   }
 
-  matches.sort(
-    (a, b) =>
-      isoformSequences[b.id()]!.seq.length -
-      isoformSequences[a.id()]!.seq.length,
-  )
-  nonMatches.sort(
-    (a, b) =>
-      isoformSequences[b.id()]!.seq.length -
-      isoformSequences[a.id()]!.seq.length,
-  )
+  const byLengthDesc = (a: Feature, b: Feature) =>
+    isoformSequences[b.id()]!.seq.length - isoformSequences[a.id()]!.seq.length
 
   return (
     <TextField
@@ -67,13 +59,13 @@ export default function TranscriptSelector({
       select
       disabled={disabled}
     >
-      {matches.map(f => (
+      {matches.toSorted(byLengthDesc).map(f => (
         <MenuItem value={f.id()} key={f.id()}>
           {geneName} - {getTranscriptDisplayName(f)} (
           {isoformSequences[f.id()]!.seq.length}aa) (matches structure residues)
         </MenuItem>
       ))}
-      {nonMatches.map(f => (
+      {nonMatches.toSorted(byLengthDesc).map(f => (
         <MenuItem value={f.id()} key={f.id()}>
           {geneName} - {getTranscriptDisplayName(f)} (
           {isoformSequences[f.id()]!.seq.length}aa)

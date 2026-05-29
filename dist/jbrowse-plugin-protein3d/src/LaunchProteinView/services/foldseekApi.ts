@@ -163,10 +163,9 @@ interface FoldseekApiResponse {
 export async function getFoldseekResults(
   ticketId: string,
 ): Promise<FoldseekApiResponse> {
-  const result = await jsonfetch(
+  return jsonfetch<FoldseekApiResponse>(
     `https://search.foldseek.com/api/result/${ticketId}/0`,
   )
-  return result as FoldseekApiResponse
 }
 
 export async function waitForFoldseekResults(

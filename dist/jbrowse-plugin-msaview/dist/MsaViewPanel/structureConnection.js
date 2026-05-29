@@ -27,19 +27,3 @@ export function gappedToUngappedPosition(sequence, gappedPosition) {
     }
     return ungapped;
 }
-/**
- * Helper to convert ungapped position to gapped MSA column for a specific row
- */
-export function ungappedToGappedPosition(sequence, ungappedPosition) {
-    let ungapped = 0;
-    for (let i = 0; i < sequence.length; i++) {
-        const element = sequence[i];
-        if (element !== '-') {
-            if (ungapped === ungappedPosition) {
-                return i;
-            }
-            ungapped++;
-        }
-    }
-    return undefined;
-}

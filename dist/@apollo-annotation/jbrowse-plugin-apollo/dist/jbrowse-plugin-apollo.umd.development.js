@@ -7122,7 +7122,7 @@
     d: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"
   }), 'Add');
 
-  var version = "1.0.0";
+  var version = "1.0.1";
 
   const ApolloConfigSchema = configuration.ConfigurationSchema('ApolloInternetAccount', {
       baseURL: {
@@ -23316,7 +23316,10 @@
           const adapter = new CLASS(
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           adapterConf, undefined, pluginManager);
-          const seq = await adapter.getSequence(region);
+          const seq = await adapter.getSequence({
+              ...region,
+              refName: assembly.getSeqAdapterRefName(region.refName),
+          });
           if (!seq) {
               throw new Error(`Sequence not found: ${JSON.stringify(region)}`);
           }

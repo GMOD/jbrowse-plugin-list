@@ -65,7 +65,7 @@ import RedoIcon from '@mui/icons-material/Redo';
 import UndoIcon from '@mui/icons-material/Undo';
 import SaveIcon from '@mui/icons-material/Save';
 
-var version = "1.0.0";
+var version = "1.0.1";
 
 const ApolloConfigSchema = ConfigurationSchema('ApolloInternetAccount', {
     baseURL: {
@@ -2869,7 +2869,10 @@ class LocalDriver extends BackendDriver {
         const adapter = new CLASS(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         adapterConf, undefined, pluginManager);
-        const seq = await adapter.getSequence(region);
+        const seq = await adapter.getSequence({
+            ...region,
+            refName: assembly.getSeqAdapterRefName(region.refName),
+        });
         if (!seq) {
             throw new Error(`Sequence not found: ${JSON.stringify(region)}`);
         }

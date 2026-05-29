@@ -81,8 +81,7 @@ export async function pollFoldseekStatus(ticketId) {
     return result;
 }
 export async function getFoldseekResults(ticketId) {
-    const result = await jsonfetch(`https://search.foldseek.com/api/result/${ticketId}/0`);
-    return result;
+    return jsonfetch(`https://search.foldseek.com/api/result/${ticketId}/0`);
 }
 export async function waitForFoldseekResults(ticketId, onStatusChange) {
     const maxAttempts = 180;

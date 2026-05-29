@@ -38,14 +38,8 @@ export interface StructureConnection {
     msaRowName: string;
     /** Map from MSA ungapped position to structure sequence position */
     msaToStructure: Record<number, number>;
-    /** Map from structure sequence position to MSA ungapped position */
-    structureToMsa: Record<number, number>;
 }
 /**
  * Helper to convert gapped MSA column to ungapped position for a specific row
  */
 export declare function gappedToUngappedPosition(sequence: string, gappedPosition: number): number | undefined;
-/**
- * Helper to convert ungapped position to gapped MSA column for a specific row
- */
-export declare function ungappedToGappedPosition(sequence: string, ungappedPosition: number): number | undefined;

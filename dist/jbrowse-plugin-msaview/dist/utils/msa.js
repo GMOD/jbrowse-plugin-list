@@ -1,23 +1,24 @@
 import { textfetch, timeout } from './fetch';
 const base = `https://www.ebi.ac.uk/Tools/services/rest`;
+const email = 'colin.diesh@gmail.com';
 const algorithms = {
     clustalo: {
-        params: { email: 'colin.diesh@gmail.com' },
+        params: { email },
         msaResult: 'aln-clustal_num',
         treeResult: 'phylotree',
     },
     muscle: {
-        params: { email: 'colin.diesh@gmail.com', format: 'clw', tree: 'tree1' },
+        params: { email, format: 'clw', tree: 'tree1' },
         msaResult: 'fa',
         treeResult: 'phylotree',
     },
     kalign: {
-        params: { email: 'colin.diesh@gmail.com', stype: 'protein' },
+        params: { email, stype: 'protein' },
         msaResult: 'fa',
         treeResult: 'phylotree',
     },
     mafft: {
-        params: { email: 'colin.diesh@gmail.com', stype: 'protein' },
+        params: { email, stype: 'protein' },
         msaResult: 'fa',
         treeResult: 'phylotree',
     },
@@ -25,16 +26,16 @@ const algorithms = {
 async function wait({ onProgress, jobId, algorithm, }) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
-        for (let i = 0; i < 10; i++) {
-            await timeout(1000);
-            onProgress(`Re-checking MSA status in... ${10 - i}`);
-        }
         const result = await textfetch(`${base}/${algorithm}/status/${jobId}`);
         if (result === 'FINISHED') {
             break;
         }
         else if (result.includes('FAILURE')) {
             throw new Error(`Failed to run: jobId ${jobId}`);
+        }
+        for (let i = 0; i < 10; i++) {
+            onProgress(`Re-checking MSA status in... ${10 - i}`);
+            await timeout(1000);
         }
     }
 }

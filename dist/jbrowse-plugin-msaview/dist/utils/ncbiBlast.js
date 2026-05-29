@@ -58,16 +58,16 @@ async function initialQuery({ query, blastProgram, blastDatabase, baseUrl, }) {
 async function waitForRid({ rid, onProgress, baseUrl, }) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
-        const iter = 20;
-        for (let i = 0; i < iter; i++) {
-            await timeout(1000);
-            onProgress(`Re-checking BLAST status in... ${iter - i}`);
-        }
         const res = await textfetch(`${baseUrl}?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=${rid}`);
         const statusMatch = /\s+Status=(\S+)/m.exec(res);
         const status = statusMatch?.[1];
         const hasHits = /\s+ThereAreHits=yes/m.test(res);
         if (status === 'WAITING') {
+            const iter = 20;
+            for (let i = 0; i < iter; i++) {
+                onProgress(`Re-checking BLAST status in... ${iter - i}`);
+                await timeout(1000);
+            }
             continue;
         }
         if (status === 'FAILED') {

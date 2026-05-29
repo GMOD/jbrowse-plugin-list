@@ -82,7 +82,7 @@ async function searchUniProt(
   size = 10,
 ): Promise<UniProtEntry[]> {
   const url = `https://rest.uniprot.org/uniprotkb/search?query=${encodeURIComponent(query)}&fields=${UNIPROT_FIELDS}&size=${size}`
-  const data = (await jsonfetch(url)) as UniProtApiResult
+  const data = await jsonfetch<UniProtApiResult>(url)
   return data.results.map(mapApiResultToEntry)
 }
 

@@ -32,7 +32,7 @@ function buildXrefQuery(id) {
 }
 async function searchUniProt(query, size = 10) {
     const url = `https://rest.uniprot.org/uniprotkb/search?query=${encodeURIComponent(query)}&fields=${UNIPROT_FIELDS}&size=${size}`;
-    const data = (await jsonfetch(url));
+    const data = await jsonfetch(url);
     return data.results.map(mapApiResultToEntry);
 }
 async function searchByXref(id) {

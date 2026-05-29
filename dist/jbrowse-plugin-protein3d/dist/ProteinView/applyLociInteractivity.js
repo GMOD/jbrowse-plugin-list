@@ -1,9 +1,22 @@
 import loadMolstar from './loadMolstar';
 import { getMolstarStructureSelection } from './util';
+function clearLoci(plugin) {
+    plugin.managers.interactivity.lociHighlights.clearHighlights();
+    plugin.managers.interactivity.lociSelects.deselectAll();
+}
+function applyLoci(plugin, loci, mode) {
+    if (mode === 'highlight') {
+        plugin.managers.interactivity.lociHighlights.clearHighlights();
+        plugin.managers.interactivity.lociHighlights.highlight({ loci });
+    }
+    else {
+        plugin.managers.interactivity.lociSelects.deselectAll();
+        plugin.managers.interactivity.lociSelects.select({ loci });
+    }
+}
 export async function applyLociInteractivityMultiple({ structure, residues, plugin, mode, }) {
     if (mode === 'clear' || residues.length === 0) {
-        plugin.managers.interactivity.lociHighlights.clearHighlights();
-        plugin.managers.interactivity.lociSelects.deselectAll();
+        clearLoci(plugin);
         return;
     }
     const { StructureSelection, Script } = await loadMolstar();
@@ -15,18 +28,11 @@ export async function applyLociInteractivityMultiple({ structure, residues, plug
         'group-by': Q.struct.atomProperty.macromolecular.residueKey(),
     }), structure);
     const loci = StructureSelection.toLociWithSourceUnits(sel);
-    if (mode === 'highlight') {
-        plugin.managers.interactivity.lociHighlights.clearHighlights();
-        plugin.managers.interactivity.lociHighlights.highlight({ loci });
-    }
-    else {
-        plugin.managers.interactivity.lociSelects.deselectAll();
-        plugin.managers.interactivity.lociSelects.select({ loci });
-    }
+    applyLoci(plugin, loci, mode);
 }
 export async function applyLociInteractivity({ structure, startResidue, endResidue, plugin, mode, }) {
     if (mode === 'clear') {
-        plugin.managers.interactivity.lociHighlights.clearHighlights();
+        clearLoci(plugin);
         return;
     }
     const { StructureSelection, Script } = await loadMolstar();
@@ -44,18 +50,11 @@ export async function applyLociInteractivity({ structure, startResidue, endResid
         'group-by': Q.struct.atomProperty.macromolecular.residueKey(),
     }), structure);
     const loci = StructureSelection.toLociWithSourceUnits(sel);
-    if (mode === 'highlight') {
-        plugin.managers.interactivity.lociHighlights.clearHighlights();
-        plugin.managers.interactivity.lociHighlights.highlight({ loci });
-    }
-    else {
-        plugin.managers.interactivity.lociSelects.deselectAll();
-        plugin.managers.interactivity.lociSelects.select({ loci });
-    }
+    applyLoci(plugin, loci, mode);
 }
 export async function applyLociInteractivitySingle({ structure, selectedResidue, plugin, mode, }) {
     if (mode === 'clear') {
-        plugin.managers.interactivity.lociHighlights.clearHighlights();
+        clearLoci(plugin);
         return;
     }
     const { StructureSelection } = await loadMolstar();
@@ -64,12 +63,5 @@ export async function applyLociInteractivitySingle({ structure, selectedResidue,
         selectedResidue: selectedResidue + 1,
     });
     const loci = StructureSelection.toLociWithSourceUnits(sel);
-    if (mode === 'highlight') {
-        plugin.managers.interactivity.lociHighlights.clearHighlights();
-        plugin.managers.interactivity.lociHighlights.highlight({ loci });
-    }
-    else {
-        plugin.managers.interactivity.lociSelects.deselectAll();
-        plugin.managers.interactivity.lociSelects.select({ loci });
-    }
+    applyLoci(plugin, loci, mode);
 }

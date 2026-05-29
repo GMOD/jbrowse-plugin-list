@@ -1,6 +1,6 @@
 {
   "name": "@apollo-annotation/jbrowse-plugin-apollo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Apollo plugin for JBrowse 2",
   "keywords": [
     "jbrowse",
@@ -46,9 +46,9 @@
     }
   },
   "dependencies": {
-    "@apollo-annotation/common": "^1.0.0",
-    "@apollo-annotation/mst": "^1.0.0",
-    "@apollo-annotation/shared": "^1.0.0",
+    "@apollo-annotation/common": "^1.0.1",
+    "@apollo-annotation/mst": "^1.0.1",
+    "@apollo-annotation/shared": "^1.0.1",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@gmod/gff": "^2.1.0",

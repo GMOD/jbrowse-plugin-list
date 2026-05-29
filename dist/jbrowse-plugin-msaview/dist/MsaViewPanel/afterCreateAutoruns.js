@@ -1,5 +1,6 @@
 import { getSession } from '@jbrowse/core/util';
 import { doLaunchBlast } from './doLaunchBlast';
+import { genomeToMSA } from './genomeToMSA';
 import { cleanupOldData, generateDataStoreId, retrieveMsaData, storeMsaData, } from './msaDataStore';
 import { gappedToUngappedPosition, getProteinViews, } from './structureConnection';
 import { getUniprotIdFromAlphaFoldUrl } from './util';
@@ -130,6 +131,27 @@ export function processInit(self) {
             }
         })();
     }
+}
+/**
+ * Mirror the connected genome view's hover position onto the MSA's hovered
+ * column. Returns the autorun body so it can keep a flag tracking whether the
+ * MSA's mouseCol was set by this sync: that way an unrelated session hover
+ * change clears the column only when the genome put it there, never wiping a
+ * column the user is hovering directly in the MSA.
+ */
+export function syncGenomeHoverToMsaColumn(self) {
+    let genomeDrivenCol = false;
+    return () => {
+        const col = genomeToMSA({ model: self });
+        if (col !== undefined) {
+            self.setMousePos(col);
+            genomeDrivenCol = true;
+        }
+        else if (genomeDrivenCol) {
+            self.setMousePos(undefined);
+            genomeDrivenCol = false;
+        }
+    };
 }
 export function highlightConnectedStructures(self) {
     const { mouseCol, connectedProteinViews } = self;

@@ -19,21 +19,18 @@ export default function TranscriptSelector({ val, setVal, isoforms, isoformSeque
             nonMatches.push(f);
         }
     }
-    matches.sort((a, b) => isoformSequences[b.id()].seq.length -
-        isoformSequences[a.id()].seq.length);
-    nonMatches.sort((a, b) => isoformSequences[b.id()].seq.length -
-        isoformSequences[a.id()].seq.length);
+    const byLengthDesc = (a, b) => isoformSequences[b.id()].seq.length - isoformSequences[a.id()].seq.length;
     return (React.createElement(TextField, { value: val ?? '', onChange: event => {
             setVal(event.target.value);
         }, label: "Choose transcript isoform", select: true, disabled: disabled },
-        matches.map(f => (React.createElement(MenuItem, { value: f.id(), key: f.id() },
+        matches.toSorted(byLengthDesc).map(f => (React.createElement(MenuItem, { value: f.id(), key: f.id() },
             geneName,
             " - ",
             getTranscriptDisplayName(f),
             " (",
             isoformSequences[f.id()].seq.length,
             "aa) (matches structure residues)"))),
-        nonMatches.map(f => (React.createElement(MenuItem, { value: f.id(), key: f.id() },
+        nonMatches.toSorted(byLengthDesc).map(f => (React.createElement(MenuItem, { value: f.id(), key: f.id() },
             geneName,
             " - ",
             getTranscriptDisplayName(f),

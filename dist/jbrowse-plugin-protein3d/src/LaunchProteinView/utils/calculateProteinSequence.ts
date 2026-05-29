@@ -65,29 +65,23 @@ export function getProteinSequence({
   seq: string
   feature: Feature
 }) {
-  // @ts-expect-error
-  const f = feature.toJSON() as {
-    start: number
-    end: number
-    strand: number
-    type: string
-    subfeatures: { start: number; end: number; type: string }[]
-  }
-  const subfeatures = f.subfeatures
+  const featureStart = feature.get('start')
+  const strand = feature.get('strand')
+  const subfeatures = feature.get('subfeatures') ?? []
   const cds = dedupe(
     subfeatures
-      .toSorted((a, b) => a.start - b.start)
+      .toSorted((a, b) => a.get('start') - b.get('start'))
       .map(sub => ({
-        ...sub,
-        start: sub.start - f.start,
-        end: sub.end - f.start,
+        start: sub.get('start') - featureStart,
+        end: sub.get('end') - featureStart,
+        type: sub.get('type'),
       }))
       .filter(f => f.type === 'CDS'),
   )
 
   return calculateProteinSequence({
-    cds: f.strand === -1 ? revlist(cds, seq.length) : cds,
-    sequence: f.strand === -1 ? revcom(seq) : seq,
+    cds: strand === -1 ? revlist(cds, seq.length) : cds,
+    sequence: strand === -1 ? revcom(seq) : seq,
     codonTable: generateCodonTable(defaultCodonTable),
   })
 }

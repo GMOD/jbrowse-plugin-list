@@ -10,7 +10,10 @@ export async function myfetch(url: string, args?: RequestInit) {
   return response
 }
 
-export async function jsonfetch(url: string, args?: RequestInit) {
+export async function jsonfetch<T = unknown>(
+  url: string,
+  args?: RequestInit,
+): Promise<T> {
   const response = await myfetch(url, args)
   return response.json()
 }

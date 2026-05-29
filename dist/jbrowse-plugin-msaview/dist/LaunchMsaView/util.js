@@ -26,7 +26,7 @@ export function getTranscriptFeatures(feature) {
 export function getTranscriptLength(feature) {
     const cdsLen = sum(feature
         .get('subfeatures')
-        ?.filter(f => f.get('type')?.toLowerCase() === 'cds')
+        ?.filter(f => f.get('type') === 'CDS')
         .map(s => s.get('end') - s.get('start')) ?? []);
     return {
         len: Math.floor(cdsLen / 3),

@@ -1,10 +1,32 @@
 import loadMolstar from './loadMolstar'
 import { getMolstarStructureSelection } from './util'
 
-import type { Structure } from 'molstar/lib/mol-model/structure'
+import type {
+  Structure,
+  StructureElement,
+} from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 type InteractivityMode = 'highlight' | 'select' | 'clear'
+
+function clearLoci(plugin: PluginContext) {
+  plugin.managers.interactivity.lociHighlights.clearHighlights()
+  plugin.managers.interactivity.lociSelects.deselectAll()
+}
+
+function applyLoci(
+  plugin: PluginContext,
+  loci: StructureElement.Loci,
+  mode: 'highlight' | 'select',
+) {
+  if (mode === 'highlight') {
+    plugin.managers.interactivity.lociHighlights.clearHighlights()
+    plugin.managers.interactivity.lociHighlights.highlight({ loci })
+  } else {
+    plugin.managers.interactivity.lociSelects.deselectAll()
+    plugin.managers.interactivity.lociSelects.select({ loci })
+  }
+}
 
 export async function applyLociInteractivityMultiple({
   structure,
@@ -18,8 +40,7 @@ export async function applyLociInteractivityMultiple({
   mode: InteractivityMode
 }) {
   if (mode === 'clear' || residues.length === 0) {
-    plugin.managers.interactivity.lociHighlights.clearHighlights()
-    plugin.managers.interactivity.lociSelects.deselectAll()
+    clearLoci(plugin)
     return
   }
 
@@ -42,14 +63,7 @@ export async function applyLociInteractivityMultiple({
   )
 
   const loci = StructureSelection.toLociWithSourceUnits(sel)
-
-  if (mode === 'highlight') {
-    plugin.managers.interactivity.lociHighlights.clearHighlights()
-    plugin.managers.interactivity.lociHighlights.highlight({ loci })
-  } else {
-    plugin.managers.interactivity.lociSelects.deselectAll()
-    plugin.managers.interactivity.lociSelects.select({ loci })
-  }
+  applyLoci(plugin, loci, mode)
 }
 
 export async function applyLociInteractivity({
@@ -66,7 +80,7 @@ export async function applyLociInteractivity({
   mode: InteractivityMode
 }) {
   if (mode === 'clear') {
-    plugin.managers.interactivity.lociHighlights.clearHighlights()
+    clearLoci(plugin)
     return
   }
 
@@ -90,14 +104,7 @@ export async function applyLociInteractivity({
   )
 
   const loci = StructureSelection.toLociWithSourceUnits(sel)
-
-  if (mode === 'highlight') {
-    plugin.managers.interactivity.lociHighlights.clearHighlights()
-    plugin.managers.interactivity.lociHighlights.highlight({ loci })
-  } else {
-    plugin.managers.interactivity.lociSelects.deselectAll()
-    plugin.managers.interactivity.lociSelects.select({ loci })
-  }
+  applyLoci(plugin, loci, mode)
 }
 
 export async function applyLociInteractivitySingle({
@@ -112,7 +119,7 @@ export async function applyLociInteractivitySingle({
   mode: InteractivityMode
 }) {
   if (mode === 'clear') {
-    plugin.managers.interactivity.lociHighlights.clearHighlights()
+    clearLoci(plugin)
     return
   }
 
@@ -122,12 +129,5 @@ export async function applyLociInteractivitySingle({
     selectedResidue: selectedResidue + 1,
   })
   const loci = StructureSelection.toLociWithSourceUnits(sel)
-
-  if (mode === 'highlight') {
-    plugin.managers.interactivity.lociHighlights.clearHighlights()
-    plugin.managers.interactivity.lociHighlights.highlight({ loci })
-  } else {
-    plugin.managers.interactivity.lociSelects.deselectAll()
-    plugin.managers.interactivity.lociSelects.select({ loci })
-  }
+  applyLoci(plugin, loci, mode)
 }

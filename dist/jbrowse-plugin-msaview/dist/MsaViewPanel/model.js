@@ -5,11 +5,10 @@ import { addDisposer, types } from '@jbrowse/mobx-state-tree';
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper';
 import { autorun } from 'mobx';
 import { MSAModelF } from 'react-msaview';
-import { autoConnectStructures, highlightConnectedStructures, launchBlastIfNeeded, loadStoredData, observeProteinHighlights, processInit, runCleanup, storeDataToIndexedDB, } from './afterCreateAutoruns';
-import { genomeToMSA } from './genomeToMSA';
+import { autoConnectStructures, highlightConnectedStructures, launchBlastIfNeeded, loadStoredData, observeProteinHighlights, processInit, runCleanup, storeDataToIndexedDB, syncGenomeHoverToMsaColumn, } from './afterCreateAutoruns';
 import { msaCoordToGenomeCoord } from './msaCoordToGenomeCoord';
 import { buildAlignmentMaps, runPairwiseAlignment } from './pairwiseAlignment';
-import { getProteinViews, ungappedToGappedPosition, } from './structureConnection';
+import { getProteinViews } from './structureConnection';
 import { getCanonicalRefName } from './util';
 const ConnectStructureDialog = lazy(() => import('./components/ConnectStructureDialog'));
 /**
@@ -132,37 +131,6 @@ export default function stateModelFactory() {
         },
     }))
         .views(self => ({
-        /**
-         * #getter
-         */
-        get structureHoverCol() {
-            for (const conn of self.connectedProteinViews) {
-                const structure = conn.proteinView.structures[conn.structureIdx];
-                const structurePos = structure?.hoverPosition?.structureSeqPos;
-                if (structurePos !== undefined) {
-                    const msaUngapped = conn.structureToMsa[structurePos];
-                    if (msaUngapped !== undefined) {
-                        const seq = self.getSequenceByRowName(conn.msaRowName);
-                        if (seq) {
-                            const globalCol = ungappedToGappedPosition(seq, msaUngapped);
-                            if (globalCol !== undefined) {
-                                return self.globalColToVisibleCol(globalCol);
-                            }
-                        }
-                    }
-                }
-            }
-            return undefined;
-        },
-    }))
-        .views(self => ({
-        /**
-         * #getter
-         */
-        get mouseCol2() {
-            return (self.structureHoverCol ??
-                genomeToMSA({ model: self }));
-        },
         /**
          * #getter
          */
@@ -296,13 +264,12 @@ export default function stateModelFactory() {
                 throw new Error('Structure sequence not available');
             }
             const alignment = runPairwiseAlignment(ungappedMsaSequence, structureSequence);
-            const { seq1ToSeq2, seq2ToSeq1 } = buildAlignmentMaps(alignment);
+            const { seq1ToSeq2 } = buildAlignmentMaps(alignment);
             const connection = {
                 proteinViewId,
                 structureIdx,
                 msaRowName: rowName,
                 msaToStructure: Object.fromEntries(seq1ToSeq2),
-                structureToMsa: Object.fromEntries(seq2ToSeq1),
             };
             self.connectedStructures.push(connection);
         },
@@ -392,6 +359,7 @@ export default function stateModelFactory() {
                     fn(self);
                 }));
             }
+            addDisposer(self, autorun(syncGenomeHoverToMsaColumn(self)));
         },
     }));
 }
