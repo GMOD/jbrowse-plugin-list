@@ -2,40 +2,34 @@
 
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-const pluginsFile = path.join(__dirname, 'plugins.json')
-const outputFile = path.join(__dirname, 'new_plugins.json')
 
 interface Plugin {
-  [key: string]: string
+  name: string
+  packageName: string
+  authors: string[]
+  description: string
+  location: string
+  plug_n_play?: number
+  url: string
+  license: string
+  image?: string
 }
 
 interface PluginsData {
   plugins: Plugin[]
 }
 
-const pluginsData: PluginsData = JSON.parse(
-  fs.readFileSync(pluginsFile, 'utf8'),
-)
+const pluginsData = JSON.parse(
+  fs.readFileSync(path.join(import.meta.dirname, 'plugins.json'), 'utf8'),
+) as PluginsData
 
-// Transform plugin URLs from unpkg to S3/jbrowse.org URLs
-// Remove packageName and umdFile fields as they're only needed for download scripts
-const newPlugins: PluginsData = {
-  plugins: pluginsData.plugins.map(plugin => {
-    const { packageName, umdFile, ...rest } = plugin
-    return {
-      ...rest,
-      url: plugin.url.replace(
-        /https:\/\/unpkg\.com\//,
-        'https://jbrowse.org/plugins/',
-      ),
-    }
-  }),
+const newPlugins = {
+  plugins: pluginsData.plugins.map(({ packageName: _packageName, ...rest }) => ({
+    ...rest,
+    url: rest.url.replace('https://unpkg.com/', 'https://jbrowse.org/plugins/'),
+  })),
 }
 
+const outputFile = path.join(import.meta.dirname, 'new_plugins.json')
 fs.writeFileSync(outputFile, JSON.stringify(newPlugins, null, 2) + '\n')
 console.log(`Generated ${outputFile}`)

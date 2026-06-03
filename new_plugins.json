@@ -190,6 +190,7 @@
       ],
       "description": "View 3-D protein structures in JBrowse 2",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-protein3d",
+      "plug_n_play": 0,
       "license": "MIT",
       "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/dist/jbrowse-plugin-protein3d.umd.production.min.js",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png"
@@ -217,6 +218,7 @@
       ],
       "description": "Graphical genome annotation editor",
       "location": "https://github.com/GMOD/Apollo3",
+      "plug_n_play": 0,
       "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/dist/jbrowse-plugin-apollo.umd.production.min.js",
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png"
