@@ -9,6 +9,7 @@ import { getSnapshot } from '@jbrowse/mobx-state-tree'
 import MafFeature from '../MafFeature'
 import { subscribeToObservable } from '../util/observableUtils'
 import {
+  matchSampleId,
   parseAssemblyAndChr,
   selectReferenceSequenceString,
 } from '../util/parseAssemblyName'
@@ -62,7 +63,7 @@ export default class MafTabixAdapter extends BaseFeatureDataAdapter {
       let firstAssemblyNameFound = ''
       const refAssemblyName = this.getConf('refAssemblyName')
 
-      const sampleFilter = opts?.samples
+      const sampleIds = opts?.samples
         ? new Set(opts.samples.map(s => s.id))
         : undefined
 
@@ -87,15 +88,16 @@ export default class MafTabixAdapter extends BaseFeatureDataAdapter {
             continue
           }
 
-          const { assemblyName, chr } = parseAssemblyAndChr(assemblyAndChr)
+          // Known set → resolve the token against it so haplotype-suffixed
+          // names (`Species1.1`) match exactly. No set → dot-position split.
+          const parsed = sampleIds
+            ? matchSampleId(assemblyAndChr, sampleIds)
+            : parseAssemblyAndChr(assemblyAndChr)
 
-          if (assemblyName) {
+          if (parsed?.assemblyName) {
+            const { assemblyName, chr } = parsed
             if (!firstAssemblyNameFound) {
               firstAssemblyNameFound = assemblyName
-            }
-
-            if (sampleFilter && !sampleFilter.has(assemblyName)) {
-              continue
             }
 
             alignments[assemblyName] = {

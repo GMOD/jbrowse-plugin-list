@@ -15,6 +15,16 @@ export interface ParsedAssemblyName {
  */
 export declare function parseAssemblyAndChr(assemblyAndChr: string): ParsedAssemblyName;
 /**
+ * Resolve a `genome.sequence` source token against a known sample set by its
+ * longest dot-bounded prefix (or the whole token). The genome can itself
+ * contain dots (a `.1`/`.2` haplotype, e.g. `Species1.1.chr3`), so a fixed
+ * dot-position split is ambiguous — the known set removes the guess.
+ * `Species1.1` beats `Species1` when both are present.
+ *
+ * Returns undefined when no sample matches, so callers skip that token.
+ */
+export declare function matchSampleId(token: string, sampleIds: Set<string>): ParsedAssemblyName | undefined;
+/**
  * Parses assembly name and chromosome from a combined string in BigMaf format.
  *
  * Uses simple dot splitting: org.chr where org is before the first dot,

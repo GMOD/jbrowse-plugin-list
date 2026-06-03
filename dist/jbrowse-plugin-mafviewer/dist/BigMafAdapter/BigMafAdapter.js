@@ -3,7 +3,7 @@ import { ObservableCreate } from '@jbrowse/core/util/rxjs';
 import { getSnapshot } from '@jbrowse/mobx-state-tree';
 import MafFeature from '../MafFeature';
 import { subscribeToObservable } from '../util/observableUtils';
-import { parseAssemblyAndChrSimple } from '../util/parseAssemblyName';
+import { matchSampleId, parseAssemblyAndChrSimple, } from '../util/parseAssemblyName';
 import { getSamplesFromConfig } from '../util/getSamples';
 export default class BigMafAdapter extends BaseFeatureDataAdapter {
     setupP;
@@ -37,7 +37,7 @@ export default class BigMafAdapter extends BaseFeatureDataAdapter {
         const WHITESPACE_REGEX = / +/;
         return ObservableCreate(async (observer) => {
             const { adapter } = await this.setupPre();
-            const sampleFilter = opts?.samples
+            const sampleIds = opts?.samples
                 ? new Set(opts.samples.map(s => s.id))
                 : undefined;
             await subscribeToObservable(adapter.getFeatures(query, opts), feature => {
@@ -50,21 +50,24 @@ export default class BigMafAdapter extends BaseFeatureDataAdapter {
                         const parts = block.split(WHITESPACE_REGEX);
                         const sequence = parts[6];
                         const organismChr = parts[1];
-                        const { assemblyName: org, chr } = parseAssemblyAndChrSimple(organismChr);
                         if (referenceSeq === undefined) {
                             referenceSeq = sequence;
                         }
-                        if (sampleFilter && !sampleFilter.has(org)) {
-                            continue;
+                        // Known set → resolve the token against it so haplotype-suffixed
+                        // names (`Species1.1`) match exactly. No set → dot-position split.
+                        const parsed = sampleIds
+                            ? matchSampleId(organismChr, sampleIds)
+                            : parseAssemblyAndChrSimple(organismChr);
+                        if (parsed?.assemblyName) {
+                            alignments[parsed.assemblyName] = {
+                                chr: parsed.chr,
+                                start: +parts[2],
+                                srcSize: +parts[3],
+                                strand: parts[4] === '+' ? 1 : -1,
+                                unknown: +parts[5],
+                                seq: sequence,
+                            };
                         }
-                        alignments[org] = {
-                            chr,
-                            start: +parts[2],
-                            srcSize: +parts[3],
-                            strand: parts[4] === '+' ? 1 : -1,
-                            unknown: +parts[5],
-                            seq: sequence,
-                        };
                     }
                 }
                 observer.next(new MafFeature(feature.id(), feature.get('start'), feature.get('end'), feature.get('refName'), 0, // strand not in BigMaf format

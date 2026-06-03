@@ -17,8 +17,8 @@ export default class LinearMafRenderer extends FeatureRendererType {
         start: number;
         end: number;
         refName: string;
-        reversed?: boolean | undefined;
         assemblyName: string;
+        reversed?: boolean | undefined;
     };
     render(renderProps: RenderArgs): Promise<{
         imageData: unknown;

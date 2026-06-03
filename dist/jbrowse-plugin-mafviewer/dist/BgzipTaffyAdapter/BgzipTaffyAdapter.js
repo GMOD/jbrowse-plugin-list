@@ -6,7 +6,7 @@ import { ObservableCreate } from '@jbrowse/core/util/rxjs';
 import VirtualOffset from './virtualOffset';
 import { filterFirstLineInstructions, parseRowInstructions, } from './rowInstructions';
 import MafFeature from '../MafFeature';
-import { parseAssemblyAndChrSimple } from '../util/parseAssemblyName';
+import { matchSampleId, parseAssemblyAndChrSimple, } from '../util/parseAssemblyName';
 import { getSamplesFromConfig } from '../util/getSamples';
 /**
  * Binary search to find the index of the first element >= target
@@ -218,17 +218,20 @@ export default class BgzipTaffyAdapter extends BaseFeatureDataAdapter {
         const row0 = block.rows[0];
         const alignments = {};
         for (const row of block.rows) {
-            const { assemblyName, chr } = parseAssemblyAndChrSimple(row.sequenceName);
-            if (sampleFilter && !sampleFilter.has(assemblyName)) {
-                continue;
+            // Known set → resolve the token against it so haplotype-suffixed names
+            // (`Species1.1`) match exactly. No set → dot-position split.
+            const parsed = sampleFilter
+                ? matchSampleId(row.sequenceName, sampleFilter)
+                : parseAssemblyAndChrSimple(row.sequenceName);
+            if (parsed?.assemblyName) {
+                alignments[parsed.assemblyName] = {
+                    chr: parsed.chr,
+                    start: row.start,
+                    srcSize: row.sequenceLength,
+                    strand: row.strand,
+                    seq: row.bases,
+                };
             }
-            alignments[assemblyName] = {
-                chr,
-                start: row.start,
-                srcSize: row.sequenceLength,
-                strand: row.strand,
-                seq: row.bases,
-            };
         }
         return {
             uniqueId: `${row0.start}-${row0.length}`,
