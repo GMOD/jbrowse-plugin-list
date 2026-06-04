@@ -1,4 +1,5 @@
 import { type Instance } from '@jbrowse/mobx-state-tree';
+import { type CoordinateMapper } from './coordinates';
 import type { PairwiseAlignment } from '../mappings';
 import type { AlignmentAlgorithm } from './types';
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util';
@@ -13,7 +14,7 @@ export interface ParentProteinView {
     autoScrollAlignment: boolean;
     showHighlight: boolean;
     showProteinTracks: boolean;
-    alignmentAlgorithm: AlignmentAlgorithm;
+    alignmentAlgorithm: string;
     molstarPluginContext: PluginContext | undefined;
     structures: {
         url?: string;
@@ -70,6 +71,12 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     structureSequences: string[] | undefined;
     /**
      * #volatile
+     * Per-residue B-factor / pLDDT for the first chain, indexed by 0-based
+     * structure sequence position. Drives the confidence feature track.
+     */
+    structureConfidence: number[] | undefined;
+    /**
+     * #volatile
      */
     isMouseInAlignment: boolean;
     /**
@@ -96,7 +103,10 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      */
     hiddenFeatureTypes: Set<string>;
 } & {
-    setSequences(str?: string[]): void;
+    setStructureData(data: {
+        sequences?: string[];
+        confidence?: number[];
+    }): void;
     /**
      * #action
      */
@@ -161,11 +171,12 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     readonly uniprotId: string | undefined;
     /**
      * #getter
+     * All structure/transcript/alignment coordinate conversions, built once
+     * from the pairwise alignment (see coordinates.ts). Use its typed methods
+     * for point conversions; the getters below expose the raw maps for
+     * whole-map consumers.
      */
-    readonly structureTranscriptMaps: {
-        structureSeqToTranscriptSeqPosition: Record<number, number>;
-        transcriptSeqToStructureSeqPosition: Record<number, number>;
-    } | undefined;
+    readonly coordinateMapper: CoordinateMapper | undefined;
     /**
      * #getter
      */
@@ -182,6 +193,23 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
      * #getter
      */
     readonly transcriptPositionToAlignmentMap: Record<number, number> | undefined;
+    /**
+     * #getter
+     * Per-residue pLDDT values mapped to alignment columns, shown only when the
+     * structure's B-factor column actually looks like AlphaFold confidence.
+     */
+    readonly confidenceCells: {
+        col: number;
+        value: number;
+    }[];
+    /**
+     * #getter
+     * Per-residue Kyte-Doolittle hydrophobicity mapped to alignment columns.
+     */
+    readonly hydrophobicityCells: {
+        col: number;
+        value: number;
+    }[];
     /**
      * #getter
      */
@@ -211,7 +239,7 @@ declare const Structure: import("@jbrowse/mobx-state-tree").IModelType<{
     /**
      * #getter
      */
-    readonly alignmentHoverPos: number | undefined;
+    readonly alignmentHoverPos: import("./coordinates").AlignmentCol | undefined;
     /**
      * #getter
      * Structure-residue range from a feature-bar hover, derived by mapping

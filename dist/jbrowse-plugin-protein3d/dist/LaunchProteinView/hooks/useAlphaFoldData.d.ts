@@ -1,4 +1,4 @@
-export default function useAlphaFoldData({ uniprotId }: {
+export default function useAlphaFoldData({ uniprotId, }: {
     uniprotId?: string;
 }): {
     isLoading: boolean;

@@ -13,7 +13,7 @@ export default function useProteinView({ showControls, model, }) {
                 if (!parentRef.current) {
                     return;
                 }
-                const { GeometryExport, PluginConfig, PluginSpec, DefaultPluginUISpec, createPluginUI, renderReact18, } = await loadMolstar();
+                const { GeometryExport, MAQualityAssessment, PluginConfig, PluginSpec, DefaultPluginUISpec, createPluginUI, renderReact18, } = await loadMolstar();
                 const d = document.createElement('div');
                 parentRef.current.append(d);
                 const defaultSpec = DefaultPluginUISpec();
@@ -25,6 +25,9 @@ export default function useProteinView({ showControls, model, }) {
                         behaviors: [
                             ...defaultSpec.behaviors,
                             PluginSpec.Behavior(GeometryExport),
+                            // Parses per-residue pLDDT from AlphaFold mmCIF and registers the
+                            // 'plddt-confidence' color theme used by the color-scheme menu.
+                            PluginSpec.Behavior(MAQualityAssessment),
                         ],
                         layout: {
                             initial: {

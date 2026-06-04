@@ -2,13 +2,30 @@ import React, { useEffect, useRef } from 'react';
 import { Tooltip, Typography } from '@mui/material';
 import { autorun } from 'mobx';
 import { observer } from 'mobx-react';
-import { CHAR_WIDTH, LABEL_WIDTH, ROW_HEIGHT } from '../constants';
+import { CHAR_WIDTH, LABEL_WIDTH, ROW_HEIGHT, TRACK_GAP, TRACK_HEIGHT, } from '../constants';
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton';
 import { ProteinFeatureTrackContent, ProteinFeatureTrackLabels, } from './ProteinFeatureTrack';
+import ResidueValueTrack from './ResidueValueTrack';
 import SplitString, { AlignmentHighlights } from './SplitString';
 import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData';
+import { hydrophobicityColor, plddtColor } from '../residueTracks';
+function GutterLabel({ label, title }) {
+    return (React.createElement(Tooltip, { title: title, placement: "left" },
+        React.createElement("div", { style: {
+                height: TRACK_HEIGHT + TRACK_GAP,
+                fontSize: 9,
+                fontFamily: 'monospace',
+                textAlign: 'right',
+                paddingRight: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+            } }, label)));
+}
 const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
-    const { pairwiseAlignment, showHighlight, showProteinTracks, uniprotId } = model;
+    const { pairwiseAlignment, showHighlight, showProteinTracks, uniprotId, confidenceCells, hydrophobicityCells, } = model;
     const containerRef = useRef(null);
     const { data: featureData, isLoading: featureLoading, error: featureError, } = useProteinFeatureTrackData(model, uniprotId);
     useEffect(() => autorun(() => {
@@ -64,7 +81,9 @@ const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
                 showProteinTracks ? (featureLoading ? (React.createElement("div", { style: { height: ROW_HEIGHT, fontSize: 8, color: '#666' } }, "Loading...")) : featureError ? (React.createElement(Tooltip, { title: featureError instanceof Error
                         ? featureError.message
                         : 'Error loading features' },
-                    React.createElement("div", { style: { height: ROW_HEIGHT, fontSize: 8, color: 'red' } }, "Error"))) : featureData ? (React.createElement(ProteinFeatureTrackLabels, { data: featureData, labelWidth: LABEL_WIDTH, model: model })) : null) : null),
+                    React.createElement("div", { style: { height: ROW_HEIGHT, fontSize: 8, color: 'red' } }, "Error"))) : featureData ? (React.createElement(ProteinFeatureTrackLabels, { data: featureData, labelWidth: LABEL_WIDTH, model: model })) : null) : null,
+                showProteinTracks && confidenceCells.length > 0 ? (React.createElement(GutterLabel, { label: "pLDDT", title: "AlphaFold per-residue confidence (pLDDT)" })) : null,
+                showProteinTracks && hydrophobicityCells.length > 0 ? (React.createElement(GutterLabel, { label: "hydro", title: "Kyte-Doolittle hydrophobicity (orange hydrophobic, blue hydrophilic)" })) : null),
             React.createElement("div", { ref: containerRef, style: {
                     overflow: 'auto',
                     whiteSpace: 'nowrap',
@@ -80,6 +99,8 @@ const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
                         React.createElement(SplitString, { model: model, str: con })),
                     React.createElement("div", { style: { height: ROW_HEIGHT } },
                         React.createElement(SplitString, { model: model, str: a1 }))),
-                showProteinTracks && featureData ? (React.createElement(ProteinFeatureTrackContent, { data: featureData, model: model })) : null))));
+                showProteinTracks && featureData ? (React.createElement(ProteinFeatureTrackContent, { data: featureData, model: model })) : null,
+                showProteinTracks && confidenceCells.length > 0 ? (React.createElement(ResidueValueTrack, { cells: confidenceCells, colorFor: plddtColor, formatValue: v => `pLDDT ${v.toFixed(0)}`, sequenceLength: a0.length, model: model })) : null,
+                showProteinTracks && hydrophobicityCells.length > 0 ? (React.createElement(ResidueValueTrack, { cells: hydrophobicityCells, colorFor: hydrophobicityColor, formatValue: v => `Kyte-Doolittle ${v.toFixed(1)}`, sequenceLength: a0.length, model: model })) : null))));
 });
 export default ProteinAlignment;

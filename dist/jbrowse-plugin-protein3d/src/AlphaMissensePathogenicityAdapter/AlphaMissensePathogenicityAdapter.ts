@@ -8,45 +8,61 @@ import type { Feature, Region } from '@jbrowse/core/util'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Observable } from 'rxjs'
 
+export interface AlphaMissenseRow {
+  uniqueId: string
+  start: number
+  end: number
+  score: number
+  ref: string
+  variant: string
+  am_class: string
+}
+
+/**
+ * Parses AlphaMissense CSV text (protein_variant,score,am_class). The
+ * protein_variant column looks like "V123L": a ref AA, a 1-based residue
+ * coordinate, and a variant AA. Rows that don't parse to a numeric coordinate
+ * are skipped rather than emitted as bogus position-0 features.
+ */
+export function parseAlphaMissense(text: string): AlphaMissenseRow[] {
+  return text
+    .split('\n')
+    .slice(1)
+    .map(f => f.trim())
+    .filter(f => !!f)
+    .flatMap((row, idx) => {
+      const [protein_variant = '', score, am_class] = row.split(',')
+      const ref = protein_variant[0]
+      const variant = protein_variant.at(-1)
+      const coord = +protein_variant.slice(1, -1)
+      return ref !== undefined &&
+        variant !== undefined &&
+        !Number.isNaN(coord) &&
+        score !== undefined &&
+        am_class !== undefined
+        ? [
+            {
+              uniqueId: `feat-${idx}`,
+              ref,
+              variant,
+              start: coord,
+              end: coord + 1,
+              score: +score,
+              am_class,
+            },
+          ]
+        : []
+    })
+}
+
 export default class AlphaMissensePathogenicityAdapter extends BaseFeatureDataAdapter {
   public static capabilities = ['getFeatures', 'getRefNames']
 
-  public feats:
-    | Promise<
-        {
-          uniqueId: string
-          start: number
-          end: number
-          score: number
-          ref: string
-          variant: string
-          am_class: string
-        }[]
-      >
-    | undefined
+  public feats: Promise<AlphaMissenseRow[]> | undefined
 
   private async loadDataP() {
     const scores = await openLocation(this.getConf('location')).readFile('utf8')
-    return scores
-      .split('\n')
-      .slice(1)
-      .map(f => f.trim())
-      .filter(f => !!f)
-      .map((row, idx) => {
-        const [protein_variant, score, am_class] = row.split(',')
-        const ref = protein_variant![0]
-        const variant = protein_variant!.at(-1)
-        const coord = protein_variant!.slice(1, -1)
-        return {
-          uniqueId: `feat-${idx}`,
-          ref: ref!,
-          variant: variant!,
-          start: +coord,
-          end: +coord + 1,
-          score: +score!,
-          am_class: am_class!,
-        }
-      })
+    return parseAlphaMissense(scores)
   }
 
   private async loadData(_opts: BaseOptions = {}) {

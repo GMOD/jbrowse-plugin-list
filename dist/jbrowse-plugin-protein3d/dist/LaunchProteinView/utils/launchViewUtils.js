@@ -17,7 +17,7 @@ export function getPdbStructureUrl(pdbId) {
 // Foldseek targets may contain a description after the ID separated by a
 // space, e.g. "AF-P16442-F1-model_v6 Histo-blood group ABO transferase".
 function extractTargetId(target) {
-    return target.split(' ')[0] ?? target;
+    return target.split(' ')[0];
 }
 export function getUniprotIdFromAlphaFoldTarget(target) {
     // Handles both "AF-P16442-F1-model_v6" and full URLs like
@@ -32,7 +32,7 @@ export function getStructureUrlFromTarget(target, db) {
     }
     if (db === 'pdb100') {
         const pdbId = targetId.split('_')[0];
-        if (pdbId?.length === 4) {
+        if (pdbId.length === 4) {
             return getPdbStructureUrl(pdbId);
         }
     }
@@ -46,7 +46,7 @@ export function getConfidenceUrlFromTarget(target) {
     }
     return undefined;
 }
-function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
+export function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
     return [
         ...new Set([
             prefix,
@@ -90,6 +90,12 @@ export async function launch1DProteinView({ session, view, feature, selectedTran
         connectedViewId: view.id,
     });
 }
+// CROSS-REPO DEPENDENCY: the 'MsaView' view type is registered by
+// jbrowse-plugin-msaview, which wraps the `react-msaview` library. The `init`
+// keys below (msaUrl, colorSchemeName) and the connected* props are a runtime
+// contract with that plugin's model — they are NOT type-checked here because we
+// only depend on it at runtime (gated by hasMsaViewPlugin()). If react-msaview
+// renames these, the launch silently degrades. Keep in step with that repo.
 export function launchMsaView({ session, view, feature, selectedTranscript, uniprotId, displayName, }) {
     if (!uniprotId) {
         return undefined;
@@ -110,15 +116,13 @@ export function hasMsaViewPlugin() {
     return window.JBrowsePluginMsaView !== undefined;
 }
 export function launch3DProteinViewWithMsa(params) {
-    const { feature, selectedTranscript, uniprotId } = params;
+    const { uniprotId } = params;
     if (!uniprotId) {
         return undefined;
     }
     const msaView = launchMsaView(params);
     return launch3DProteinView({
         ...params,
-        displayName: params.displayName ??
-            formatViewName('Protein view', feature, selectedTranscript, uniprotId),
         connectedMsaViewId: msaView?.id,
     });
 }

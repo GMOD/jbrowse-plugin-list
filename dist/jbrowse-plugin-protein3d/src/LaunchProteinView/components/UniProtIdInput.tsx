@@ -27,9 +27,6 @@ interface UniProtIdInputProps {
   endContent?: React.ReactNode
 }
 
-/**
- * Component to handle UniProt ID input mode selection
- */
 export default function UniProtIdInput({
   lookupMode,
   onLookupModeChange,

@@ -1,6 +1,6 @@
 import useRemoteStructureFileSequence from './useRemoteStructureFileSequence';
 import { getAlphaFoldConfidenceUrl, getAlphaFoldStructureUrl, } from '../utils/launchViewUtils';
-export default function useAlphaFoldData({ uniprotId }) {
+export default function useAlphaFoldData({ uniprotId, }) {
     const url = uniprotId ? getAlphaFoldStructureUrl(uniprotId) : undefined;
     const confidenceUrl = uniprotId
         ? getAlphaFoldConfidenceUrl(uniprotId)

@@ -1,9 +1,6 @@
 import React from 'react';
 import { FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
 import ExternalLink from '../../components/ExternalLink';
-/**
- * Component to handle UniProt ID input mode selection
- */
 export default function UniProtIdInput({ lookupMode, onLookupModeChange, manualUniprotId, onManualUniprotIdChange, featureUniprotId, hasProteinSequence, sequenceSearchType, onSequenceSearchTypeChange, endContent, }) {
     return (React.createElement(React.Fragment, null,
         React.createElement("div", { style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap' } },

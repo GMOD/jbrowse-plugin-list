@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui';
 import { getContainingView, getSession } from '@jbrowse/core/util';
-import { Button, DialogActions, DialogContent, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
+import { Button, DialogActions, DialogContent } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
-import HelpButton from './HelpButton';
 import MSATable from './MSATable';
 import SequenceMismatchNotice from './SequenceMismatchNotice';
+import StructureSourcePicker from './StructureSourcePicker';
 import TranscriptSelector from './TranscriptSelector';
 import ExternalLink from '../../components/ExternalLink';
 import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences';
 import useLocalStructureFileSequence from '../hooks/useLocalStructureFileSequence';
 import useRemoteStructureFileSequence from '../hooks/useRemoteStructureFileSequence';
 import useTranscriptSelection from '../hooks/useTranscriptSelection';
-import { getPdbStructureUrl, launch3DProteinView, } from '../utils/launchViewUtils';
+import { launch3DProteinView } from '../utils/launchViewUtils';
 import { getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptFeatures, stripStopCodon, } from '../utils/util';
 const useStyles = makeStyles()(theme => ({
     dialogContent: {
@@ -72,9 +72,6 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
         try {
             const structureData = activeFile ? await activeFile.text() : undefined;
             const url = activeURL ? activeURL : undefined;
-            if (!url && !structureData) {
-                return;
-            }
             launch3DProteinView({
                 session,
                 view,
@@ -97,37 +94,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
         React.createElement(DialogContent, { className: classes.dialogContent },
             error ? React.createElement(ErrorMessage, { error: error }) : null,
             React.createElement(HelpText, null),
-            React.createElement("div", { style: { display: 'flex', margin: 30 } },
-                React.createElement(Typography, null,
-                    "Open your structure file ",
-                    React.createElement(HelpButton, null)),
-                React.createElement(FormControl, { component: "fieldset" },
-                    React.createElement(RadioGroup, { value: choice, onChange: event => {
-                            setChoice(event.target.value);
-                        } },
-                        React.createElement(FormControlLabel, { value: "url", control: React.createElement(Radio, null), label: "URL" }),
-                        React.createElement(FormControlLabel, { value: "file", control: React.createElement(Radio, null), label: "File" }),
-                        React.createElement(FormControlLabel, { value: "pdb", control: React.createElement(Radio, null), label: "PDB ID" }))),
-                choice === 'url' ? (React.createElement("div", null,
-                    React.createElement(Typography, null, "Open a PDB/mmCIF/etc. file from remote URL"),
-                    React.createElement(TextField, { label: "URL", value: structureURL, onChange: event => {
-                            setStructureURL(event.target.value);
-                        } }))) : null,
-                choice === 'file' ? (React.createElement("div", { style: { paddingTop: 20 } },
-                    React.createElement(Typography, null, "Open a PDB/mmCIF/etc. file from your local drive"),
-                    React.createElement(Button, { variant: "outlined", component: "label" },
-                        "Choose File",
-                        React.createElement("input", { type: "file", hidden: true, onChange: ({ target }) => {
-                                const file = target.files?.[0];
-                                if (file) {
-                                    setFile(file);
-                                }
-                            } })))) : null,
-                choice === 'pdb' ? (React.createElement(TextField, { value: pdbId, onChange: event => {
-                        const s = event.target.value;
-                        setPdbId(s);
-                        setStructureURL(getPdbStructureUrl(s));
-                    }, label: "PDB ID" })) : null),
+            React.createElement(StructureSourcePicker, { choice: choice, setChoice: setChoice, structureURL: structureURL, setStructureURL: setStructureURL, file: file, setFile: setFile, pdbId: pdbId, setPdbId: setPdbId }),
             React.createElement("div", { style: { margin: 20 } }, isoformSequences ? (structureSequence ? (React.createElement(React.Fragment, null,
                 React.createElement(TranscriptSelector, { val: userSelection, setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, isoformSequences: isoformSequences }),
                 React.createElement("div", { style: { margin: 10 } },
