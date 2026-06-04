@@ -20,6 +20,7 @@ interface LaunchViewParams {
     selectedTranscript?: Feature;
     uniprotId?: string;
 }
+export declare function formatViewName(prefix: string, feature: Feature, selectedTranscript?: Feature, uniprotId?: string): string;
 export declare function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, alignmentAlgorithm, displayName, connectedMsaViewId, }: LaunchViewParams & {
     url?: string;
     data?: string;

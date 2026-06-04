@@ -4,4 +4,5 @@ export declare const ALIGNMENT_ALGORITHMS: {
     readonly SMITH_WATERMAN: "smith_waterman";
 };
 export declare const DEFAULT_ALIGNMENT_ALGORITHM: AlignmentAlgorithm;
+export declare function coerceAlignmentAlgorithm(value: string): AlignmentAlgorithm;
 export declare const ALIGNMENT_ALGORITHM_LABELS: Record<string, string>;

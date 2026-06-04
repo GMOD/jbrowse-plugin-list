@@ -3,16 +3,48 @@ import React from 'react'
 import { LoadingEllipses } from '@jbrowse/core/ui'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
 import { observer } from 'mobx-react'
 
 import AddStructureDialog from './AddStructureDialog'
 import HeaderStructureInfo from './HeaderStructureInfo'
 import ProteinAlignment from './ProteinAlignment'
+import { COLOR_SCHEMES } from '../applyColorTheme'
 
 import type {
   JBrowsePluginProteinStructureModel,
   JBrowsePluginProteinViewModel,
 } from '../model'
+
+const ColorSchemeSelect = observer(function ColorSchemeSelect({
+  model,
+}: {
+  model: JBrowsePluginProteinViewModel
+}) {
+  return (
+    <TextField
+      select
+      size="small"
+      label="Color"
+      value={model.colorScheme}
+      onChange={event => {
+        const scheme = COLOR_SCHEMES.find(s => s.value === event.target.value)
+        if (scheme) {
+          model.setColorScheme(scheme.value)
+        }
+      }}
+      slotProps={{ select: { native: false } }}
+      sx={{ minWidth: 180 }}
+    >
+      {COLOR_SCHEMES.map(scheme => (
+        <MenuItem key={scheme.value} value={scheme.value}>
+          {scheme.label}
+        </MenuItem>
+      ))}
+    </TextField>
+  )
+})
 
 function ToggleCheckbox({
   checked,
@@ -56,7 +88,8 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
         }}
       >
         <HeaderStructureInfo model={model} />
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <ColorSchemeSelect model={model} />
           <ToggleCheckbox
             checked={showAlignment}
             label="Show alignment"

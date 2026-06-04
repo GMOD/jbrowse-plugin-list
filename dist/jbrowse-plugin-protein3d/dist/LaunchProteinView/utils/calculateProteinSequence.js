@@ -21,11 +21,9 @@ export function revlist(list, seqlen) {
     }))
         .toSorted((a, b) => a.start - b.start);
 }
-// filter items if they have the same "ID" or location
 function getItemId(feat) {
     return `${feat.start}-${feat.end}`;
 }
-// filters if successive elements share same start/end
 export function dedupe(list) {
     return list.filter((item, pos, ary) => !pos || getItemId(item) !== getItemId(ary[pos - 1]));
 }

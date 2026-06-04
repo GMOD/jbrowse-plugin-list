@@ -19,35 +19,23 @@ export default function SequenceSearchStatus({
   hasProteinSequence,
   sequenceSearchType,
 }: SequenceSearchStatusProps) {
-  if (isLoading) {
-    return null
-  }
-
-  if (!uniprotId && hasProteinSequence) {
-    return (
-      <Typography color="warning.main">
-        No AlphaFold structure found for this sequence (searched by{' '}
-        {sequenceSearchType === 'md5' ? 'MD5 checksum' : 'full sequence'})
-      </Typography>
-    )
-  }
-
-  if (uniprotId) {
-    return (
-      <Typography color="success.main">
-        Found AlphaFold structure: {uniprotId}
-        {url && (
-          <>
-            {' '}
-            -{' '}
-            <a href={url} target="_blank" rel="noreferrer">
-              {url}
-            </a>
-          </>
-        )}
-      </Typography>
-    )
-  }
-
-  return null
+  return isLoading ? null : !uniprotId && hasProteinSequence ? (
+    <Typography color="warning.main">
+      No AlphaFold structure found for this sequence (searched by{' '}
+      {sequenceSearchType === 'md5' ? 'MD5 checksum' : 'full sequence'})
+    </Typography>
+  ) : uniprotId ? (
+    <Typography color="success.main">
+      Found AlphaFold structure: {uniprotId}
+      {url ? (
+        <>
+          {' '}
+          -{' '}
+          <a href={url} target="_blank" rel="noreferrer">
+            {url}
+          </a>
+        </>
+      ) : null}
+    </Typography>
+  ) : null
 }

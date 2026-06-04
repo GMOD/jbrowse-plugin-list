@@ -18,7 +18,12 @@ export default function useUniProtSearch({ recognizedIds = [], geneId, geneName,
     const hasValidId = idsToSearch.some(id => isRecognizedDatabaseId(id)) ||
         Boolean(geneNameToSearch);
     const { data, error, isLoading } = useSWR(enabled && hasValidId
-        ? ['uniprotSearch', selectedQueryId, idsToSearch.join(','), geneNameToSearch]
+        ? [
+            'uniprotSearch',
+            selectedQueryId,
+            idsToSearch.join(','),
+            geneNameToSearch,
+        ]
         : null, async () => searchUniProtEntries({
         recognizedIds: idsToSearch,
         geneId,

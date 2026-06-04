@@ -29,9 +29,7 @@ export default function useAlphaFoldDBSearch({
   const [lookupMode, setLookupMode] = useState<LookupMode>('auto')
   const [manualUniprotId, setManualUniprotId] = useState('')
   const geneIds = extractFeatureIdentifiers(feature)
-  const [selectedQueryId, setSelectedQueryId] = useState(
-    geneIds.recognizedIds[0] ?? 'auto',
-  )
+  const [selectedQueryId, setSelectedQueryId] = useState('auto')
   const [sequenceSearchType, setSequenceSearchType] =
     useState<SequenceSearchType>('md5')
   const [selectedUniprotId, setSelectedUniprotId] = useState<string>()

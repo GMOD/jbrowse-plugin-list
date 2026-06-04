@@ -62,11 +62,7 @@ export default function UniProtResultsTable({
 }: UniProtResultsTableProps) {
   const { classes, cx } = useStyles()
 
-  if (entries.length === 0) {
-    return null
-  }
-
-  return (
+  return entries.length === 0 ? null : (
     <div>
       <Typography variant="body2" sx={{ mb: 1 }}>
         Found {entries.length} UniProt entries. Select one:

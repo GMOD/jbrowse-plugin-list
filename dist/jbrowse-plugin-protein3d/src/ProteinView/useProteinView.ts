@@ -27,6 +27,7 @@ export default function useProteinView({
         }
         const {
           GeometryExport,
+          MAQualityAssessment,
           PluginConfig,
           PluginSpec,
           DefaultPluginUISpec,
@@ -45,6 +46,9 @@ export default function useProteinView({
             behaviors: [
               ...defaultSpec.behaviors,
               PluginSpec.Behavior(GeometryExport),
+              // Parses per-residue pLDDT from AlphaFold mmCIF and registers the
+              // 'plddt-confidence' color theme used by the color-scheme menu.
+              PluginSpec.Behavior(MAQualityAssessment),
             ],
             layout: {
               initial: {

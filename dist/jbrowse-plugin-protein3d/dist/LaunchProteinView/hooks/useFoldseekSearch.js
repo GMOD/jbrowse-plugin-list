@@ -17,6 +17,7 @@ export default function useFoldseekSearch() {
             return result;
         }
         catch (e) {
+            console.error(e);
             setError(e);
             return undefined;
         }
@@ -36,6 +37,7 @@ export default function useFoldseekSearch() {
             return result;
         }
         catch (e) {
+            console.error(e);
             setError(e);
             return undefined;
         }

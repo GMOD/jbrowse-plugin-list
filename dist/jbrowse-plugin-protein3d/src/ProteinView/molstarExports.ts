@@ -1,4 +1,5 @@
 export { GeometryExport } from 'molstar/lib/extensions/geo-export'
+export { MAQualityAssessment } from 'molstar/lib/extensions/model-archive/quality-assessment/behavior'
 export { Mat4 } from 'molstar/lib/mol-math/linear-algebra'
 export {
   QueryContext,

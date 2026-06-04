@@ -1,15 +1,11 @@
 import { setupProteinAssembly } from './proteinAssemblySetup'
 import { addAllProteinTracks } from './proteinTrackSetup'
 import { protein1DViewRegistry } from '../../Protein1DViewRegistry'
-import { getGeneDisplayName, getTranscriptDisplayName } from '../utils/util'
+import { formatViewName } from '../utils/launchViewUtils'
 
 import type { Feature, SessionWithAddTracks } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
-/**
- * Launches a protein annotation view for a UniProt entry
- * Creates assembly, adds annotation tracks, and navigates to the protein view
- */
 export async function launchProteinAnnotationView({
   session,
   feature,
@@ -25,30 +21,25 @@ export async function launchProteinAnnotationView({
   confidenceUrl?: string
   connectedViewId?: string
 }) {
-  // Set up the protein assembly
   setupProteinAssembly(session, uniprotId)
 
-  // Add all annotation tracks
   await addAllProteinTracks({
     session,
     uniprotId,
     confidenceUrl,
   })
 
-  // Create and navigate to the view
   const view = session.addView('LinearGenomeView', {
     type: 'LinearGenomeView',
-    displayName: [
+    displayName: formatViewName(
       'Protein view',
+      feature,
+      selectedTranscript,
       uniprotId,
-      getGeneDisplayName(feature),
-      getTranscriptDisplayName(selectedTranscript),
-    ]
-      .filter(s => !!s)
-      .join(' - '),
+    ),
   }) as LinearGenomeViewModel
 
-  // Register the 1D view for linked highlighting
+  // Register for linked highlighting between 1D and 3D views
   if (connectedViewId && selectedTranscript) {
     protein1DViewRegistry.register({
       viewId: view.id,

@@ -83,15 +83,9 @@ const FoldseekSearch = observer(function FoldseekSearch({ feature, model, handle
                     reset();
                 } }, "New search")) : null,
             !di3Sequence ? (React.createElement(Button, { variant: "contained", color: "primary", disabled: !canPredict, onClick: () => {
-                    if (sequence.trim()) {
-                        void predictStructure(sequence.trim());
-                    }
+                    void predictStructure(sequence.trim());
                 } }, isPredicting ? 'Predicting...' : 'Predict 3Di structure')) : (React.createElement(Button, { variant: "contained", color: "primary", disabled: !canSearch, onClick: () => {
-                    if (cleanedAaSequence &&
-                        di3Sequence &&
-                        selectedDatabases.length > 0) {
-                        void search(cleanedAaSequence, di3Sequence, selectedDatabases);
-                    }
+                    void search(cleanedAaSequence, di3Sequence, selectedDatabases);
                 } }, isLoading ? 'Searching...' : 'Search Foldseek')))));
 });
 export default FoldseekSearch;

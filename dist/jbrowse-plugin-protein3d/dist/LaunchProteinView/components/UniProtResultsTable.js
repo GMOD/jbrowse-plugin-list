@@ -34,10 +34,7 @@ const useStyles = makeStyles()({
 });
 export default function UniProtResultsTable({ entries, selectedAccession, onSelect, }) {
     const { classes, cx } = useStyles();
-    if (entries.length === 0) {
-        return null;
-    }
-    return (React.createElement("div", null,
+    return entries.length === 0 ? null : (React.createElement("div", null,
         React.createElement(Typography, { variant: "body2", sx: { mb: 1 } },
             "Found ",
             entries.length,

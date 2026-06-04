@@ -1,6 +1,5 @@
 import { jsonfetch } from '../../fetchUtils';
 import { getDatabaseTypeForId, isRecognizedDatabaseId, stripTrailingVersion, } from '../utils/util';
-// Re-export for backward compatibility
 const UNIPROT_FIELDS = 'accession,id,gene_names,organism_name,protein_name,reviewed';
 function mapApiResultToEntry(result) {
     return {
@@ -59,20 +58,12 @@ function deduplicateEntries(entries) {
     }
     return result;
 }
-/**
- * Search UniProt for entries matching a gene, returning multiple results.
- * Tries multiple strategies in order of specificity:
- * 1. Recognized database IDs (Ensembl, RefSeq, CCDS, HGNC) via xref search
- * 2. Gene name search (fallback if no reviewed entries found)
- */
 export async function searchUniProtEntries({ recognizedIds = [], geneId, geneName, organismId = 9606, }) {
-    // Collect all IDs to search, including legacy geneId if applicable
     const idsToSearch = new Set(recognizedIds);
     const strippedGeneId = geneId ? stripTrailingVersion(geneId) : undefined;
     if (strippedGeneId && isRecognizedDatabaseId(strippedGeneId)) {
         idsToSearch.add(strippedGeneId);
     }
-    // Search all xrefs in parallel
     const xrefResults = await Promise.all([...idsToSearch].map(searchByXref));
     let entries = deduplicateEntries(xrefResults.flatMap(r => r.entries));
     const xrefErrors = xrefResults.filter(r => r.error !== undefined);
@@ -99,6 +90,5 @@ export async function searchUniProtEntries({ recognizedIds = [], geneId, geneNam
             throw (geneNameError ?? xrefErrors[0]?.error);
         }
     }
-    // Sort reviewed entries first
     return entries.toSorted((a, b) => Number(b.isReviewed) - Number(a.isReviewed));
 }

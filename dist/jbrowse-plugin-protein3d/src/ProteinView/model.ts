@@ -7,14 +7,17 @@ import { autorun } from 'mobx'
 
 import { addStructureFromData } from './addStructureFromData'
 import { addStructureFromURL } from './addStructureFromURL'
+import {
+  COLOR_SCHEMES,
+  COLOR_SCHEME_VALUES,
+  type ProteinColorScheme,
+  applyColorTheme,
+} from './applyColorTheme'
+import { extractPerResidueConfidence } from './extractPerResidueConfidence'
 import { extractStructureSequences } from './extractStructureSequences'
 import Structure from './structureModel'
 import { superposeStructures } from './superposeStructures'
-import {
-  ALIGNMENT_ALGORITHMS,
-  type AlignmentAlgorithm,
-  DEFAULT_ALIGNMENT_ALGORITHM,
-} from './types'
+import { type AlignmentAlgorithm, DEFAULT_ALIGNMENT_ALGORITHM } from './types'
 
 const SETTINGS_KEY = 'proteinView-settings'
 const PERSISTED_SETTINGS = [
@@ -28,7 +31,7 @@ const PERSISTED_SETTINGS = [
 import type { Instance } from '@jbrowse/mobx-state-tree'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
-async function loadStructureSequences({
+async function loadStructureData({
   structure,
   plugin,
 }: {
@@ -40,7 +43,11 @@ async function loadStructureSequences({
     : structure.url
       ? await addStructureFromURL({ url: structure.url, plugin })
       : { model: undefined }
-  return model ? extractStructureSequences(model) : undefined
+  const sequences = model ? extractStructureSequences(model) : undefined
+  const confidence = model
+    ? extractPerResidueConfidence(model, sequences?.[0]?.length)
+    : undefined
+  return { sequences, confidence }
 }
 
 export interface ProteinViewInitState {
@@ -99,6 +106,17 @@ function stateModelFactory() {
         autoScrollAlignment: false,
         /**
          * #property
+         * molstar color-theme name applied to all loaded structures
+         */
+        colorScheme: types.optional(
+          types.enumeration<ProteinColorScheme>(
+            'ColorScheme',
+            COLOR_SCHEME_VALUES,
+          ),
+          'default',
+        ),
+        /**
+         * #property
          */
         showAlignment: true,
         /**
@@ -109,10 +127,7 @@ function stateModelFactory() {
          * #property
          */
         alignmentAlgorithm: types.optional(
-          types.enumeration<AlignmentAlgorithm>('AlignmentAlgorithm', [
-            ALIGNMENT_ALGORITHMS.NEEDLEMAN_WUNSCH,
-            ALIGNMENT_ALGORITHMS.SMITH_WATERMAN,
-          ]),
+          types.string,
           DEFAULT_ALIGNMENT_ALGORITHM,
         ),
 
@@ -220,6 +235,12 @@ function stateModelFactory() {
       /**
        * #action
        */
+      setColorScheme(scheme: ProteinColorScheme) {
+        self.colorScheme = scheme
+      },
+      /**
+       * #action
+       */
       setMolstarPluginContext(p?: PluginContext) {
         // Reset loadedToMolstar for all structures when plugin context changes
         // This ensures structures get reloaded when the view is moved/remounted
@@ -290,8 +311,8 @@ function stateModelFactory() {
         self.structures.push(newStructure)
 
         try {
-          newStructure.setSequences(
-            await loadStructureSequences({
+          newStructure.setStructureData(
+            await loadStructureData({
               structure,
               plugin: molstarPluginContext,
             }),
@@ -365,6 +386,28 @@ function stateModelFactory() {
           }),
         )
 
+        // Apply the chosen color theme whenever it changes or once a structure
+        // finishes loading (structureSequences is set after its molstar
+        // representation is built, so the theme has something to recolor).
+        addDisposer(
+          self,
+          autorun(() => {
+            const { molstarPluginContext, colorScheme } = self
+            const readyCount = self.structures.filter(
+              s => s.structureSequences !== undefined,
+            ).length
+            if (molstarPluginContext && readyCount > 0) {
+              applyColorTheme({
+                plugin: molstarPluginContext,
+                colorScheme,
+              }).catch((e: unknown) => {
+                console.error(e)
+                self.setError(e)
+              })
+            }
+          }),
+        )
+
         addDisposer(
           self,
           autorun(async () => {
@@ -373,8 +416,8 @@ function stateModelFactory() {
               for (const structure of structures) {
                 if (!structure.loadedToMolstar) {
                   try {
-                    structure.setSequences(
-                      await loadStructureSequences({
+                    structure.setStructureData(
+                      await loadStructureData({
                         structure,
                         plugin: molstarPluginContext,
                       }),
@@ -392,28 +435,50 @@ function stateModelFactory() {
       },
     }))
     .views(self => ({
+      get primaryStructure() {
+        return self.structures[0]
+      },
       menuItems() {
         return [
           {
-            label: 'Show...',
+            label: 'Pairwise alignment',
             icon: Visibility,
+            type: 'checkbox',
+            checked: self.showAlignment,
+            onClick: () => {
+              self.setShowAlignment(!self.showAlignment)
+            },
+          },
+          {
+            label: 'Protein feature tracks',
+            icon: Visibility,
+            type: 'checkbox',
+            checked: self.showProteinTracks,
+            onClick: () => {
+              self.setShowProteinTracks(!self.showProteinTracks)
+            },
+          },
+          {
+            label: 'Color scheme...',
+            subMenu: COLOR_SCHEMES.map(scheme => ({
+              label: scheme.label,
+              type: 'radio' as const,
+              checked: self.colorScheme === scheme.value,
+              onClick: () => {
+                self.setColorScheme(scheme.value)
+              },
+            })),
+          },
+          {
+            label: 'Add structure...',
+            onClick: () => {
+              self.setShowAddStructureDialog(true)
+            },
+          },
+          {
+            label: 'Advanced...',
+            icon: SettingsIcon,
             subMenu: [
-              {
-                label: 'Pairwise alignment',
-                type: 'checkbox',
-                checked: self.showAlignment,
-                onClick: () => {
-                  self.setShowAlignment(!self.showAlignment)
-                },
-              },
-              {
-                label: 'Protein feature tracks',
-                type: 'checkbox',
-                checked: self.showProteinTracks,
-                onClick: () => {
-                  self.setShowProteinTracks(!self.showProteinTracks)
-                },
-              },
               {
                 label: 'Pairwise alignment as green highlight',
                 type: 'checkbox',
@@ -430,12 +495,25 @@ function stateModelFactory() {
                   }
                 },
               },
-            ],
-          },
-          {
-            label: 'Settings...',
-            icon: SettingsIcon,
-            subMenu: [
+              {
+                label: 'Import manual alignment...',
+                onClick: () => {
+                  self.setShowManualAlignmentDialog(true)
+                },
+              },
+              {
+                label: 'Re-align structures (TM-align)',
+                onClick: () => {
+                  if (self.molstarPluginContext) {
+                    superposeStructures(self.molstarPluginContext).catch(
+                      (e: unknown) => {
+                        console.error(e)
+                        self.setError(e)
+                      },
+                    )
+                  }
+                },
+              },
               {
                 label: 'Zoom to base level on click',
                 type: 'checkbox',
@@ -453,30 +531,6 @@ function stateModelFactory() {
                 },
               },
             ],
-          },
-          {
-            label: 'Import manual alignment...',
-            onClick: () => {
-              self.setShowManualAlignmentDialog(true)
-            },
-          },
-          {
-            label: 'Add structure...',
-            onClick: () => {
-              self.setShowAddStructureDialog(true)
-            },
-          },
-          {
-            label: 'Re-align structures (TM-align)',
-            onClick: () => {
-              if (self.molstarPluginContext) {
-                superposeStructures(self.molstarPluginContext).catch(
-                  (e: unknown) => {
-                    console.error(e)
-                  },
-                )
-              }
-            },
           },
         ]
       },
