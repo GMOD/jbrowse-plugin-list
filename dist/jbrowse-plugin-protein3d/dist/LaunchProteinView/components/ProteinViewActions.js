@@ -43,24 +43,16 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
         void safeLaunch(fn, handleClose, setLaunchError);
     };
     const handleLaunch3DView = runLaunch(() => {
-        if (selectedTranscript) {
-            launch3DProteinView(launch3DParams);
-        }
+        launch3DProteinView(launch3DParams);
     });
     const handleLaunch1DView = runLaunch(async () => {
-        if (uniprotId && selectedTranscript) {
-            await launch1DProteinView({ ...baseParams, confidenceUrl });
-        }
+        await launch1DProteinView({ ...baseParams, confidenceUrl });
     });
     const handleLaunchMsa = runLaunch(() => {
-        if (selectedTranscript && uniprotId) {
-            launchMsaView(baseParams);
-        }
+        launchMsaView(baseParams);
     });
     const handleLaunch3DWithMsa = runLaunch(() => {
-        if (selectedTranscript && uniprotId) {
-            launch3DProteinViewWithMsa(launch3DParams);
-        }
+        launch3DProteinViewWithMsa(launch3DParams);
     });
     const launchOptions = [
         {

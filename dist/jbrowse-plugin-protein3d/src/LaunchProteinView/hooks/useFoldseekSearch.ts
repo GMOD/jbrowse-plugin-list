@@ -32,6 +32,7 @@ export default function useFoldseekSearch() {
       setPredictData(result)
       return result
     } catch (e) {
+      console.error(e)
       setError(e)
       return undefined
     } finally {
@@ -54,6 +55,7 @@ export default function useFoldseekSearch() {
       setResults(result)
       return result
     } catch (e) {
+      console.error(e)
       setError(e)
       return undefined
     } finally {

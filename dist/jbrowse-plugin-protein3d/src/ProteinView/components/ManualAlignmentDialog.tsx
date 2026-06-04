@@ -21,7 +21,7 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({
 }) {
   const [alignment, setAlignment] = useState('')
   const [parseError, setParseError] = useState<string>()
-  const { showManualAlignmentDialog, structures } = model
+  const { showManualAlignmentDialog, primaryStructure } = model
 
   const handleClose = () => {
     setAlignment('')
@@ -35,10 +35,11 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({
     }
     try {
       const parsed = parsePairwise(alignment.trim())
-      const structure = structures[0]
-      if (structure) {
-        structure.setAlignment(parsed)
+      if (!primaryStructure) {
+        setParseError('No structure loaded to apply alignment to')
+        return
       }
+      primaryStructure.setAlignment(parsed)
       handleClose()
     } catch (e) {
       setParseError(`Failed to parse alignment: ${e}`)
@@ -62,16 +63,16 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({
           rows={12}
           fullWidth
           placeholder={`Example:
-a  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG
-   |||||||||||||||||||||||||||||||||||||
-b  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG`}
+transcript  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG
+            |||||||||||||||||||||||||||||||||||||
+structure   MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG`}
           value={alignment}
           onChange={e => {
             setAlignment(e.target.value)
             setParseError(undefined)
           }}
-          InputProps={{
-            sx: { fontFamily: 'monospace', fontSize: 12 },
+          slotProps={{
+            htmlInput: { style: { fontFamily: 'monospace', fontSize: 12 } },
           }}
         />
         {parseError ? (

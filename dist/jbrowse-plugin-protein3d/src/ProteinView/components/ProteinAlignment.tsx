@@ -4,24 +4,61 @@ import { Tooltip, Typography } from '@mui/material'
 import { autorun } from 'mobx'
 import { observer } from 'mobx-react'
 
-import { CHAR_WIDTH, LABEL_WIDTH, ROW_HEIGHT } from '../constants'
+import {
+  CHAR_WIDTH,
+  LABEL_WIDTH,
+  ROW_HEIGHT,
+  TRACK_GAP,
+  TRACK_HEIGHT,
+} from '../constants'
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton'
 import {
   ProteinFeatureTrackContent,
   ProteinFeatureTrackLabels,
 } from './ProteinFeatureTrack'
+import ResidueValueTrack from './ResidueValueTrack'
 import SplitString, { AlignmentHighlights } from './SplitString'
 import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData'
+import { hydrophobicityColor, plddtColor } from '../residueTracks'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
+
+function GutterLabel({ label, title }: { label: string; title: string }) {
+  return (
+    <Tooltip title={title} placement="left">
+      <div
+        style={{
+          height: TRACK_HEIGHT + TRACK_GAP,
+          fontSize: 9,
+          fontFamily: 'monospace',
+          textAlign: 'right',
+          paddingRight: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </div>
+    </Tooltip>
+  )
+}
 
 const ProteinAlignment = observer(function ProteinAlignment({
   model,
 }: {
   model: JBrowsePluginProteinStructureModel
 }) {
-  const { pairwiseAlignment, showHighlight, showProteinTracks, uniprotId } =
-    model
+  const {
+    pairwiseAlignment,
+    showHighlight,
+    showProteinTracks,
+    uniprotId,
+    confidenceCells,
+    hydrophobicityCells,
+  } = model
   const containerRef = useRef<HTMLDivElement>(null)
   const {
     data: featureData,
@@ -127,6 +164,18 @@ const ProteinAlignment = observer(function ProteinAlignment({
               />
             ) : null
           ) : null}
+          {showProteinTracks && confidenceCells.length > 0 ? (
+            <GutterLabel
+              label="pLDDT"
+              title="AlphaFold per-residue confidence (pLDDT)"
+            />
+          ) : null}
+          {showProteinTracks && hydrophobicityCells.length > 0 ? (
+            <GutterLabel
+              label="hydro"
+              title="Kyte-Doolittle hydrophobicity (orange hydrophobic, blue hydrophilic)"
+            />
+          ) : null}
         </div>
         <div
           ref={containerRef}
@@ -156,6 +205,24 @@ const ProteinAlignment = observer(function ProteinAlignment({
           </div>
           {showProteinTracks && featureData ? (
             <ProteinFeatureTrackContent data={featureData} model={model} />
+          ) : null}
+          {showProteinTracks && confidenceCells.length > 0 ? (
+            <ResidueValueTrack
+              cells={confidenceCells}
+              colorFor={plddtColor}
+              formatValue={v => `pLDDT ${v.toFixed(0)}`}
+              sequenceLength={a0.length}
+              model={model}
+            />
+          ) : null}
+          {showProteinTracks && hydrophobicityCells.length > 0 ? (
+            <ResidueValueTrack
+              cells={hydrophobicityCells}
+              colorFor={hydrophobicityColor}
+              formatValue={v => `Kyte-Doolittle ${v.toFixed(1)}`}
+              sequenceLength={a0.length}
+              model={model}
+            />
           ) : null}
         </div>
       </div>

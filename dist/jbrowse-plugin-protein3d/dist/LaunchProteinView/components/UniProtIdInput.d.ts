@@ -12,8 +12,5 @@ interface UniProtIdInputProps {
     onSequenceSearchTypeChange?: (type: SequenceSearchType) => void;
     endContent?: React.ReactNode;
 }
-/**
- * Component to handle UniProt ID input mode selection
- */
 export default function UniProtIdInput({ lookupMode, onLookupModeChange, manualUniprotId, onManualUniprotIdChange, featureUniprotId, hasProteinSequence, sequenceSearchType, onSequenceSearchTypeChange, endContent, }: UniProtIdInputProps): React.JSX.Element;
 export {};

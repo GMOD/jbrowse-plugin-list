@@ -2,15 +2,19 @@ import { SimpleFeature, getSession } from '@jbrowse/core/util';
 import { addDisposer, getParent, types, } from '@jbrowse/mobx-state-tree';
 import { autorun } from 'mobx';
 import { applyLociInteractivityMultiple, applyLociInteractivitySingle, } from './applyLociInteractivity';
+import { alignmentCol, makeCoordinateMapper, structurePos, } from './coordinates';
+import { looksLikePlddt } from './extractPerResidueConfidence';
 import highlightResidueRange from './highlightResidueRange';
 import { runLocalAlignment } from './pairwiseAlignment';
 import { proteinAbbreviationMapping } from './proteinAbbreviationMapping';
 import { clickProteinToGenome, proteinRangeToGenomeMapping, proteinToGenomeMapping, } from './proteinToGenomeMapping';
+import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks';
 import subscribeMolstarInteraction from './subscribeMolstarInteraction';
-import { checkHovered, invertMap } from './util';
+import { checkHovered } from './util';
 import { getUniprotIdFromAlphaFoldTarget } from '../LaunchProteinView/utils/launchViewUtils';
 import { stripStopCodon } from '../LaunchProteinView/utils/util';
-import { genomeToTranscriptSeqMapping, structurePositionToAlignmentMap, structureSeqVsTranscriptSeqMap, transcriptPositionToAlignmentMap, } from '../mappings';
+import { genomeToTranscriptSeqMapping } from '../mappings';
+import { coerceAlignmentAlgorithm } from './types';
 const Structure = types
     .model({
     /**
@@ -55,6 +59,12 @@ const Structure = types
     structureSequences: undefined,
     /**
      * #volatile
+     * Per-residue B-factor / pLDDT for the first chain, indexed by 0-based
+     * structure sequence position. Drives the confidence feature track.
+     */
+    structureConfidence: undefined,
+    /**
+     * #volatile
      */
     isMouseInAlignment: false,
     /**
@@ -79,8 +89,9 @@ const Structure = types
     hiddenFeatureTypes: new Set(),
 }))
     .actions(self => ({
-    setSequences(str) {
-        self.structureSequences = str;
+    setStructureData(data) {
+        self.structureSequences = data.sequences;
+        self.structureConfidence = data.confidence;
     },
     /**
      * #action
@@ -170,55 +181,72 @@ const Structure = types
     },
     /**
      * #getter
+     * All structure/transcript/alignment coordinate conversions, built once
+     * from the pairwise alignment (see coordinates.ts). Use its typed methods
+     * for point conversions; the getters below expose the raw maps for
+     * whole-map consumers.
      */
-    get structureTranscriptMaps() {
+    get coordinateMapper() {
         return self.pairwiseAlignment
-            ? structureSeqVsTranscriptSeqMap(self.pairwiseAlignment)
+            ? makeCoordinateMapper(self.pairwiseAlignment)
             : undefined;
     },
     /**
      * #getter
      */
     get structureSeqToTranscriptSeqPosition() {
-        return this.structureTranscriptMaps?.structureSeqToTranscriptSeqPosition;
+        return this.coordinateMapper?.maps.structureSeqToTranscriptSeqPosition;
     },
     /**
      * #getter
      */
     get transcriptSeqToStructureSeqPosition() {
-        return this.structureTranscriptMaps?.transcriptSeqToStructureSeqPosition;
+        return this.coordinateMapper?.maps.transcriptSeqToStructureSeqPosition;
     },
     /**
      * #getter
      */
     get structurePositionToAlignmentMap() {
-        return self.pairwiseAlignment
-            ? structurePositionToAlignmentMap(self.pairwiseAlignment)
-            : undefined;
+        return this.coordinateMapper?.maps.structurePositionToAlignmentMap;
     },
     /**
      * #getter
      */
     get transcriptPositionToAlignmentMap() {
-        return self.pairwiseAlignment
-            ? transcriptPositionToAlignmentMap(self.pairwiseAlignment)
-            : undefined;
+        return this.coordinateMapper?.maps.transcriptPositionToAlignmentMap;
+    },
+    /**
+     * #getter
+     * Per-residue pLDDT values mapped to alignment columns, shown only when the
+     * structure's B-factor column actually looks like AlphaFold confidence.
+     */
+    get confidenceCells() {
+        const c = self.structureConfidence;
+        return looksLikePlddt(c)
+            ? mapResidueValuesToColumns(c, this.structurePositionToAlignmentMap)
+            : [];
+    },
+    /**
+     * #getter
+     * Per-residue Kyte-Doolittle hydrophobicity mapped to alignment columns.
+     */
+    get hydrophobicityCells() {
+        const seq = self.structureSequences?.[0];
+        return seq
+            ? mapResidueValuesToColumns(kyteDoolittleScores(stripStopCodon(seq)), this.structurePositionToAlignmentMap)
+            : [];
     },
     /**
      * #getter
      */
     get pairwiseAlignmentToTranscriptPosition() {
-        return this.transcriptPositionToAlignmentMap
-            ? invertMap(this.transcriptPositionToAlignmentMap)
-            : undefined;
+        return this.coordinateMapper?.maps.alignmentToTranscriptPosition;
     },
     /**
      * #getter
      */
     get pairwiseAlignmentToStructurePosition() {
-        return this.structurePositionToAlignmentMap
-            ? invertMap(this.structurePositionToAlignmentMap)
-            : undefined;
+        return this.coordinateMapper?.maps.alignmentToStructurePosition;
     },
     /**
      * #getter
@@ -266,7 +294,7 @@ const Structure = types
         const pos = this.structureSeqHoverPos;
         return pos === undefined
             ? undefined
-            : this.structurePositionToAlignmentMap?.[pos];
+            : this.coordinateMapper?.structureToAlignment(structurePos(pos));
     },
     /**
      * #getter
@@ -431,7 +459,7 @@ const Structure = types
         return this.parentView.showProteinTracks;
     },
     get alignmentAlgorithm() {
-        return this.parentView.alignmentAlgorithm;
+        return coerceAlignmentAlgorithm(this.parentView.alignmentAlgorithm);
     },
     get molstarPluginContext() {
         return this.parentView.molstarPluginContext;
@@ -466,7 +494,7 @@ const Structure = types
      */
     hoverAlignmentPosition(alignmentPos) {
         if (!self.alignmentHoverRange) {
-            const structureSeqPos = self.pairwiseAlignmentToStructurePosition?.[alignmentPos];
+            const structureSeqPos = self.coordinateMapper?.alignmentToStructure(alignmentCol(alignmentPos));
             self.setHoveredPosition(structureSeqPos !== undefined ? { structureSeqPos } : undefined);
         }
     },
@@ -474,7 +502,7 @@ const Structure = types
      * #action
      */
     clickAlignmentPosition(alignmentPos) {
-        const structureSeqPos = self.pairwiseAlignmentToStructurePosition?.[alignmentPos];
+        const structureSeqPos = self.coordinateMapper?.alignmentToStructure(alignmentCol(alignmentPos));
         self.setSelectedFeatureId(undefined);
         if (structureSeqPos !== undefined) {
             clickProteinToGenome({

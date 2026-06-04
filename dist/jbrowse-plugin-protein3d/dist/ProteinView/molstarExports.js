@@ -1,4 +1,5 @@
 export { GeometryExport } from 'molstar/lib/extensions/geo-export';
+export { MAQualityAssessment } from 'molstar/lib/extensions/model-archive/quality-assessment/behavior';
 export { Mat4 } from 'molstar/lib/mol-math/linear-algebra';
 export { QueryContext, Structure, StructureElement, StructureProperties, StructureSelection, } from 'molstar/lib/mol-model/structure';
 export { tmAlign } from 'molstar/lib/mol-model/structure/structure/util/tm-align';

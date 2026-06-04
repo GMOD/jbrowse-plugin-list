@@ -2,31 +2,48 @@ import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { SimpleFeature, doesIntersect2, max, min } from '@jbrowse/core/util';
 import { openLocation } from '@jbrowse/core/util/io';
 import { ObservableCreate } from '@jbrowse/core/util/rxjs';
+/**
+ * Parses AlphaMissense CSV text (protein_variant,score,am_class). The
+ * protein_variant column looks like "V123L": a ref AA, a 1-based residue
+ * coordinate, and a variant AA. Rows that don't parse to a numeric coordinate
+ * are skipped rather than emitted as bogus position-0 features.
+ */
+export function parseAlphaMissense(text) {
+    return text
+        .split('\n')
+        .slice(1)
+        .map(f => f.trim())
+        .filter(f => !!f)
+        .flatMap((row, idx) => {
+        const [protein_variant = '', score, am_class] = row.split(',');
+        const ref = protein_variant[0];
+        const variant = protein_variant.at(-1);
+        const coord = +protein_variant.slice(1, -1);
+        return ref !== undefined &&
+            variant !== undefined &&
+            !Number.isNaN(coord) &&
+            score !== undefined &&
+            am_class !== undefined
+            ? [
+                {
+                    uniqueId: `feat-${idx}`,
+                    ref,
+                    variant,
+                    start: coord,
+                    end: coord + 1,
+                    score: +score,
+                    am_class,
+                },
+            ]
+            : [];
+    });
+}
 export default class AlphaMissensePathogenicityAdapter extends BaseFeatureDataAdapter {
     static capabilities = ['getFeatures', 'getRefNames'];
     feats;
     async loadDataP() {
         const scores = await openLocation(this.getConf('location')).readFile('utf8');
-        return scores
-            .split('\n')
-            .slice(1)
-            .map(f => f.trim())
-            .filter(f => !!f)
-            .map((row, idx) => {
-            const [protein_variant, score, am_class] = row.split(',');
-            const ref = protein_variant[0];
-            const variant = protein_variant.at(-1);
-            const coord = protein_variant.slice(1, -1);
-            return {
-                uniqueId: `feat-${idx}`,
-                ref: ref,
-                variant: variant,
-                start: +coord,
-                end: +coord + 1,
-                score: +score,
-                am_class: am_class,
-            };
-        });
+        return parseAlphaMissense(scores);
     }
     async loadData(_opts = {}) {
         this.feats ??= this.loadDataP().catch((e) => {

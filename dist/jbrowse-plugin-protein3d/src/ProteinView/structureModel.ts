@@ -11,6 +11,13 @@ import {
   applyLociInteractivityMultiple,
   applyLociInteractivitySingle,
 } from './applyLociInteractivity'
+import {
+  type CoordinateMapper,
+  alignmentCol,
+  makeCoordinateMapper,
+  structurePos,
+} from './coordinates'
+import { looksLikePlddt } from './extractPerResidueConfidence'
 import highlightResidueRange from './highlightResidueRange'
 import { runLocalAlignment } from './pairwiseAlignment'
 import { proteinAbbreviationMapping } from './proteinAbbreviationMapping'
@@ -19,16 +26,13 @@ import {
   proteinRangeToGenomeMapping,
   proteinToGenomeMapping,
 } from './proteinToGenomeMapping'
+import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
 import subscribeMolstarInteraction from './subscribeMolstarInteraction'
-import { checkHovered, invertMap } from './util'
+import { checkHovered } from './util'
 import { getUniprotIdFromAlphaFoldTarget } from '../LaunchProteinView/utils/launchViewUtils'
 import { stripStopCodon } from '../LaunchProteinView/utils/util'
-import {
-  genomeToTranscriptSeqMapping,
-  structurePositionToAlignmentMap,
-  structureSeqVsTranscriptSeqMap,
-  transcriptPositionToAlignmentMap,
-} from '../mappings'
+import { genomeToTranscriptSeqMapping } from '../mappings'
+import { coerceAlignmentAlgorithm } from './types'
 
 import type { PairwiseAlignment } from '../mappings'
 import type { AlignmentAlgorithm } from './types'
@@ -46,7 +50,7 @@ export interface ParentProteinView {
   autoScrollAlignment: boolean
   showHighlight: boolean
   showProteinTracks: boolean
-  alignmentAlgorithm: AlignmentAlgorithm
+  alignmentAlgorithm: string
   molstarPluginContext: PluginContext | undefined
   structures: { url?: string }[]
   setShowAlignment: (f: boolean) => void
@@ -106,6 +110,12 @@ const Structure = types
     structureSequences: undefined as string[] | undefined,
     /**
      * #volatile
+     * Per-residue B-factor / pLDDT for the first chain, indexed by 0-based
+     * structure sequence position. Drives the confidence feature track.
+     */
+    structureConfidence: undefined as number[] | undefined,
+    /**
+     * #volatile
      */
     isMouseInAlignment: false,
     /**
@@ -132,8 +142,9 @@ const Structure = types
     hiddenFeatureTypes: new Set<string>(),
   }))
   .actions(self => ({
-    setSequences(str?: string[]) {
-      self.structureSequences = str
+    setStructureData(data: { sequences?: string[]; confidence?: number[] }) {
+      self.structureSequences = data.sequences
+      self.structureConfidence = data.confidence
     },
     /**
      * #action
@@ -227,55 +238,75 @@ const Structure = types
     },
     /**
      * #getter
+     * All structure/transcript/alignment coordinate conversions, built once
+     * from the pairwise alignment (see coordinates.ts). Use its typed methods
+     * for point conversions; the getters below expose the raw maps for
+     * whole-map consumers.
      */
-    get structureTranscriptMaps() {
+    get coordinateMapper(): CoordinateMapper | undefined {
       return self.pairwiseAlignment
-        ? structureSeqVsTranscriptSeqMap(self.pairwiseAlignment)
+        ? makeCoordinateMapper(self.pairwiseAlignment)
         : undefined
     },
     /**
      * #getter
      */
     get structureSeqToTranscriptSeqPosition() {
-      return this.structureTranscriptMaps?.structureSeqToTranscriptSeqPosition
+      return this.coordinateMapper?.maps.structureSeqToTranscriptSeqPosition
     },
     /**
      * #getter
      */
     get transcriptSeqToStructureSeqPosition() {
-      return this.structureTranscriptMaps?.transcriptSeqToStructureSeqPosition
+      return this.coordinateMapper?.maps.transcriptSeqToStructureSeqPosition
     },
     /**
      * #getter
      */
     get structurePositionToAlignmentMap() {
-      return self.pairwiseAlignment
-        ? structurePositionToAlignmentMap(self.pairwiseAlignment)
-        : undefined
+      return this.coordinateMapper?.maps.structurePositionToAlignmentMap
     },
     /**
      * #getter
      */
     get transcriptPositionToAlignmentMap() {
-      return self.pairwiseAlignment
-        ? transcriptPositionToAlignmentMap(self.pairwiseAlignment)
-        : undefined
+      return this.coordinateMapper?.maps.transcriptPositionToAlignmentMap
+    },
+    /**
+     * #getter
+     * Per-residue pLDDT values mapped to alignment columns, shown only when the
+     * structure's B-factor column actually looks like AlphaFold confidence.
+     */
+    get confidenceCells() {
+      const c = self.structureConfidence
+      return looksLikePlddt(c)
+        ? mapResidueValuesToColumns(c, this.structurePositionToAlignmentMap)
+        : []
+    },
+    /**
+     * #getter
+     * Per-residue Kyte-Doolittle hydrophobicity mapped to alignment columns.
+     */
+    get hydrophobicityCells() {
+      const seq = self.structureSequences?.[0]
+      return seq
+        ? mapResidueValuesToColumns(
+            kyteDoolittleScores(stripStopCodon(seq)),
+            this.structurePositionToAlignmentMap,
+          )
+        : []
     },
     /**
      * #getter
      */
     get pairwiseAlignmentToTranscriptPosition() {
-      return this.transcriptPositionToAlignmentMap
-        ? invertMap(this.transcriptPositionToAlignmentMap)
-        : undefined
+      return this.coordinateMapper?.maps.alignmentToTranscriptPosition
     },
     /**
      * #getter
      */
     get pairwiseAlignmentToStructurePosition() {
-      return this.structurePositionToAlignmentMap
-        ? invertMap(this.structurePositionToAlignmentMap)
-        : undefined
+      return this.coordinateMapper?.maps.alignmentToStructurePosition
     },
     /**
      * #getter
@@ -329,7 +360,7 @@ const Structure = types
       const pos = this.structureSeqHoverPos
       return pos === undefined
         ? undefined
-        : this.structurePositionToAlignmentMap?.[pos]
+        : this.coordinateMapper?.structureToAlignment(structurePos(pos))
     },
 
     /**
@@ -509,7 +540,7 @@ const Structure = types
       return this.parentView.showProteinTracks
     },
     get alignmentAlgorithm(): AlignmentAlgorithm {
-      return this.parentView.alignmentAlgorithm
+      return coerceAlignmentAlgorithm(this.parentView.alignmentAlgorithm)
     },
     get molstarPluginContext(): PluginContext | undefined {
       return this.parentView.molstarPluginContext
@@ -544,8 +575,9 @@ const Structure = types
      */
     hoverAlignmentPosition(alignmentPos: number) {
       if (!self.alignmentHoverRange) {
-        const structureSeqPos =
-          self.pairwiseAlignmentToStructurePosition?.[alignmentPos]
+        const structureSeqPos = self.coordinateMapper?.alignmentToStructure(
+          alignmentCol(alignmentPos),
+        )
         self.setHoveredPosition(
           structureSeqPos !== undefined ? { structureSeqPos } : undefined,
         )
@@ -555,8 +587,9 @@ const Structure = types
      * #action
      */
     clickAlignmentPosition(alignmentPos: number) {
-      const structureSeqPos =
-        self.pairwiseAlignmentToStructurePosition?.[alignmentPos]
+      const structureSeqPos = self.coordinateMapper?.alignmentToStructure(
+        alignmentCol(alignmentPos),
+      )
       self.setSelectedFeatureId(undefined)
       if (structureSeqPos !== undefined) {
         clickProteinToGenome({

@@ -4,15 +4,41 @@ import { getSession } from '@jbrowse/core/util'
 import { autorun, untracked } from 'mobx'
 import { observer } from 'mobx-react'
 
+import { findStructureRowName } from './msaRowMatch'
 import { getProteinView } from './util'
+import { stripStopCodon } from '../LaunchProteinView/utils/util'
 
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
+// CROSS-REPO DEPENDENCY: react-msaview (https://github.com/GMOD/react-msaview)
+//
+// This file reaches into the live MsaView model exposed by the `react-msaview`
+// library (via the jbrowse-plugin-msaview wrapper) to drive a bidirectional
+// hover highlight between a 3D structure and its alignment. The member names
+// below are part of react-msaview's public model API — see
+// react-msaview/packages/lib/src/model.ts (`mouseCol`, `setMousePos`). If those
+// names change there, this sync silently stops working, so the two repos must
+// be kept in step.
+//
+// NOTE on coordinates: `mouseCol` is an MSA *visible column* (accounts for both
+// alignment gaps and hidden gappy columns), whereas `structureSeqHoverPos` is an
+// ungapped residue index in the structure's sequence. We translate across gaps
+// with react-msaview's `visibleColToSeqPos(rowName, col)` /
+// `seqPosToVisibleCol(rowName, seqPos)`, anchoring the structure to its MSA row
+// by matching sequences (see findStructureRowName). When the row can't be
+// resolved (MSA not loaded, no matching row) we fall back to the 1:1 mapping,
+// which is correct when the structure's row has no gaps and no columns hidden.
 interface MsaView {
   id: string
   type: string
-  setMouseoveredColumn?: (col: number | undefined) => void
-  mouseoveredColumn?: number
+  mouseCol?: number
+  setMousePos?: (col?: number, row?: number) => void
+  rowMap?: Map<string, string>
+  seqPosToVisibleCol?: (rowName: string, seqPos: number) => number | undefined
+  visibleColToSeqPos?: (
+    rowName: string,
+    visibleCol: number,
+  ) => number | undefined
 }
 
 const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({
@@ -37,13 +63,34 @@ const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({
 
     const disposers: (() => void)[] = []
 
-    if (msaView.setMouseoveredColumn) {
-      const { setMouseoveredColumn } = msaView
+    // Resolve which MSA row corresponds to the structure once the MSA loads.
+    // Recomputes only when the alignment rows or structure sequence change, not
+    // on every hover, so the per-hover conversions below stay cheap.
+    let structureRowName: string | undefined
+    disposers.push(
+      autorun(() => {
+        const seq = proteinView.primaryStructure?.structureSequences?.[0]
+        structureRowName = findStructureRowName(
+          msaView.rowMap,
+          seq === undefined ? undefined : stripStopCodon(seq),
+        )
+      }),
+    )
+
+    if (msaView.setMousePos) {
+      const { setMousePos } = msaView
       disposers.push(
         autorun(() => {
-          const structure = proteinView.structures[0]
+          const structure = proteinView.primaryStructure
           if (structure) {
-            setMouseoveredColumn(structure.structureSeqHoverPos)
+            const seqPos = structure.structureSeqHoverPos
+            const col =
+              seqPos !== undefined &&
+              structureRowName !== undefined &&
+              msaView.seqPosToVisibleCol
+                ? msaView.seqPosToVisibleCol(structureRowName, seqPos)
+                : seqPos
+            setMousePos(col)
           }
         }),
       )
@@ -51,15 +98,21 @@ const ProteinToMsaHoverSync = observer(function ProteinToMsaHoverSync({
 
     disposers.push(
       autorun(() => {
-        const col = msaView.mouseoveredColumn
-        const structure = proteinView.structures[0]
+        const col = msaView.mouseCol
+        const structure = proteinView.primaryStructure
         if (structure) {
           const hasFeatureHoverRange = untracked(
             () => !!structure.alignmentHoverRange,
           )
           if (!hasFeatureHoverRange) {
+            const structureSeqPos =
+              col !== undefined &&
+              structureRowName !== undefined &&
+              msaView.visibleColToSeqPos
+                ? msaView.visibleColToSeqPos(structureRowName, col)
+                : col
             structure.setHoveredPosition(
-              col === undefined ? undefined : { structureSeqPos: col },
+              structureSeqPos === undefined ? undefined : { structureSeqPos },
             )
           }
         }

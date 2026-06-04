@@ -5,7 +5,7 @@ import { observer } from 'mobx-react';
 const ManualAlignmentDialog = observer(function ManualAlignmentDialog({ model, }) {
     const [alignment, setAlignment] = useState('');
     const [parseError, setParseError] = useState();
-    const { showManualAlignmentDialog, structures } = model;
+    const { showManualAlignmentDialog, primaryStructure } = model;
     const handleClose = () => {
         setAlignment('');
         setParseError(undefined);
@@ -17,10 +17,11 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({ model, }
         }
         try {
             const parsed = parsePairwise(alignment.trim());
-            const structure = structures[0];
-            if (structure) {
-                structure.setAlignment(parsed);
+            if (!primaryStructure) {
+                setParseError('No structure loaded to apply alignment to');
+                return;
             }
+            primaryStructure.setAlignment(parsed);
             handleClose();
         }
         catch (e) {
@@ -35,13 +36,13 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({ model, }
         React.createElement(DialogContent, null,
             React.createElement(Typography, { variant: "body2", color: "text.secondary", sx: { mb: 2 } }, "Paste a pre-computed alignment in Clustal format. The first sequence should be the transcript and the second should be the structure."),
             React.createElement(TextField, { multiline: true, rows: 12, fullWidth: true, placeholder: `Example:
-a  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG
-   |||||||||||||||||||||||||||||||||||||
-b  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG`, value: alignment, onChange: e => {
+transcript  MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG
+            |||||||||||||||||||||||||||||||||||||
+structure   MKAAYLSMFGKEDHKPFGDDEVELFRAVPGLKLKIAG`, value: alignment, onChange: e => {
                     setAlignment(e.target.value);
                     setParseError(undefined);
-                }, InputProps: {
-                    sx: { fontFamily: 'monospace', fontSize: 12 },
+                }, slotProps: {
+                    htmlInput: { style: { fontFamily: 'monospace', fontSize: 12 } },
                 } }),
             parseError ? (React.createElement(Typography, { color: "error", variant: "body2", sx: { mt: 1 } }, parseError)) : null),
         React.createElement(DialogActions, null,
