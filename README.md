@@ -35,3 +35,13 @@ A plugin is described with the following data:
   displayed in the store, please provide an 800 x 200 screenshot of the feature
   you want to show to the img directory. Please provide the download URL for
   that file in your plugin entry. Examples can be found in the existing entries.
+
+## Publishing updates
+
+Once your plugin is in the store you do not need to open another PR for new
+releases. A nightly GitHub Action checks NPM, downloads any new published
+version into a version-pinned, rehosted folder, and opens an "Update plugins" PR
+that a maintainer reviews and deploys. Plugins that pin explicit `versions` are
+only updated when that list changes; all others track the latest NPM release.
+
+See [DEVELOPERS.md](DEVELOPERS.md) for the full pipeline and deploy steps.

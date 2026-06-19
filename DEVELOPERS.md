@@ -4,13 +4,24 @@ This repo uploads plugin code to our jbrowse.org s3 bucket
 
 We used to use unpkg.org as a CDN but it was a bit unrelaible at times
 
-We now synchronize our CDN from NPM daily at midnight using a github action
+A GitHub Action (`.github/workflows/deploy.yml`) runs nightly at midnight (and
+on manual dispatch). It **only regenerates and opens a PR — it does not deploy
+to S3.** It runs `pnpm update-plugins` (see Pipeline below); when a plugin has a
+new published version, it commits the new versioned artifacts + regenerated
+manifests and opens an "Update plugins" PR for review. When nothing changed it
+opens nothing.
 
-It makes a PR and then you have to manually upload the results to s3 with
+**Deploying is a separate manual step**, run after the PR is merged. This is
+deliberate: the artifacts are immutable and append-only, so a human reviews the
+diff before anything is published.
 
 ```bash
-pnpm upload
+pnpm upload      # sync dist/ artifacts (immutable) + the v2 manifest to S3
+pnpm invalidate  # CloudFront invalidation for /plugin-store/v2/*
 ```
+
+`upload` uploads artifacts before the manifest, so v2 never points at a 404. It
+does not touch the v1 `plugin-store/plugins.json` (left as currently served).
 
 ## Pipeline
 
@@ -27,12 +38,12 @@ pnpm upload
   `build-manifest.json` and writes two published manifests:
   - `new_plugins.json` → `plugin-store/plugins.json` — the **v1** legacy flat
     shape existing JBrowse clients expect. Left unchanged: its `url` keeps the
-    existing unversioned path so deployed clients see no behavior change. The v2
-    rollout does not re-upload this file.
+    existing unversioned path so deployed clients see no behavior change, and
+    `pnpm upload` does not push this file.
   - `v2_plugins.json` → `plugin-store/v2/plugins.json` — the **v2** shape with
     `packageName`, per-version `jbrowseRange`/`url`/`integrity` pointing at
-    immutable, version-pinned artifacts, so version-aware clients can resolve the
-    right build for their JBrowse version.
+    immutable, version-pinned artifacts, so version-aware clients can resolve
+    the right build for their JBrowse version.
 
 ## Why version-pinned + immutable
 
