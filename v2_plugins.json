@@ -365,14 +365,14 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-hubs",
       "plug_n_play": 0,
       "license": "MIT",
-      "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.6/dist/jbrowse-plugin-hubs.umd.production.min.js",
-      "integrity": "sha384-KXFBVZstNVXCA05f1b3BZbe0x84eHGR3RvMjfgEg+9h6z6nJUIOnWrtvb9wwUJOQ",
+      "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.9/dist/jbrowse-plugin-hubs.umd.production.min.js",
+      "integrity": "sha384-gdCvNu9QA133n4u2ZbThSEBRDnH77Z+gxgn5FhMVYQkY+I6JendVNc6pgn+oOIrj",
       "versions": [
         {
-          "pluginVersion": "1.0.6",
+          "pluginVersion": "1.0.9",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.6/dist/jbrowse-plugin-hubs.umd.production.min.js",
-          "integrity": "sha384-KXFBVZstNVXCA05f1b3BZbe0x84eHGR3RvMjfgEg+9h6z6nJUIOnWrtvb9wwUJOQ"
+          "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.9/dist/jbrowse-plugin-hubs.umd.production.min.js",
+          "integrity": "sha384-gdCvNu9QA133n4u2ZbThSEBRDnH77Z+gxgn5FhMVYQkY+I6JendVNc6pgn+oOIrj"
         }
       ]
     },
