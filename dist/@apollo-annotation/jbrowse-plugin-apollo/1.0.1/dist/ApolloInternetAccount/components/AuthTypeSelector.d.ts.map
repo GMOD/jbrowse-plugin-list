@@ -1,0 +1,1 @@
+{"version":3,"file":"AuthTypeSelector.d.ts","sourceRoot":"","sources":["../../../src/ApolloInternetAccount/components/AuthTypeSelector.tsx"],"names":[],"mappings":"AAwBA,eAAO,MAAM,gBAAgB,oCAI1B;IACD,OAAO,EAAE,MAAM,CAAA;IACf,IAAI,EAAE,MAAM,CAAA;IACZ,WAAW,EAAE,CAAC,IAAI,CAAC,EAAE,QAAQ,GAAG,WAAW,GAAG,OAAO,GAAG,KAAK,KAAK,IAAI,CAAA;CACvE,4CAyGA,CAAA"}

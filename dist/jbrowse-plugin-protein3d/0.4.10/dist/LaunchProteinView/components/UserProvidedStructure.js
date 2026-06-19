@@ -1,0 +1,116 @@
+import React, { useState } from 'react';
+import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui';
+import { getContainingView, getSession } from '@jbrowse/core/util';
+import { Button, DialogActions, DialogContent } from '@mui/material';
+import { observer } from 'mobx-react';
+import { makeStyles } from 'tss-react/mui';
+import MSATable from './MSATable';
+import SequenceMismatchNotice from './SequenceMismatchNotice';
+import StructureSourcePicker from './StructureSourcePicker';
+import TranscriptSelector from './TranscriptSelector';
+import ExternalLink from '../../components/ExternalLink';
+import useIsoformProteinSequences from '../hooks/useIsoformProteinSequences';
+import useLocalStructureFileSequence from '../hooks/useLocalStructureFileSequence';
+import useRemoteStructureFileSequence from '../hooks/useRemoteStructureFileSequence';
+import useTranscriptSelection from '../hooks/useTranscriptSelection';
+import { launch3DProteinView } from '../utils/launchViewUtils';
+import { getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptFeatures, stripStopCodon, } from '../utils/util';
+const useStyles = makeStyles()(theme => ({
+    dialogContent: {
+        marginTop: theme.spacing(6),
+        width: '80em',
+    },
+    textAreaFont: {
+        fontFamily: 'Courier New',
+    },
+}));
+function HelpText() {
+    return (React.createElement("div", { style: { marginBottom: 20 } },
+        "Manually supply a protein structure (PDB, mmCIF, etc) for a given transcript. You can open the file from the result of running, for example,",
+        ' ',
+        React.createElement(ExternalLink, { href: "https://github.com/sokrypton/ColabFold" }, "ColabFold"),
+        ". This plugin will align the protein sequence calculated from the genome to the protein sequence embedded in the structure file which allows for slight differences in these two representations."));
+}
+const UserProvidedStructure = observer(function UserProvidedStructure({ feature, model, handleClose, alignmentAlgorithm, onAlignmentAlgorithmChange, }) {
+    const { classes } = useStyles();
+    const session = getSession(model);
+    const [file, setFile] = useState();
+    const [pdbId, setPdbId] = useState('');
+    const [choice, setChoice] = useState('file');
+    const [submitError, setSubmitError] = useState();
+    const [structureURL, setStructureURL] = useState('');
+    const [showAllProteinSequences, setShowAllProteinSequences] = useState(false);
+    const activeFile = choice === 'file' ? file : undefined;
+    const activeURL = choice === 'file' ? '' : structureURL;
+    const options = getTranscriptFeatures(feature);
+    const view = getContainingView(model);
+    const { isoformSequences, error: isoformError } = useIsoformProteinSequences({
+        feature,
+        view,
+    });
+    const { sequences: localSequences, error: localFileError } = useLocalStructureFileSequence({ file: activeFile });
+    const { sequences: remoteSequences, error: remoteFileError } = useRemoteStructureFileSequence({ url: activeURL });
+    const structureName = activeFile?.name ?? activeURL.slice(activeURL.lastIndexOf('/') + 1);
+    const structureSequences = activeFile ? localSequences : remoteSequences;
+    const structureSequence = structureSequences?.[0];
+    const { userSelection, setUserSelection } = useTranscriptSelection({
+        options,
+        isoformSequences,
+        structureSequence,
+    });
+    const selectedTranscript = options.find(val => getId(val) === userSelection);
+    const protein = userSelection ? isoformSequences?.[userSelection] : undefined;
+    const error = isoformError ?? submitError ?? localFileError ?? remoteFileError;
+    const canLaunch = !!(activeURL || activeFile) && !!protein && !!selectedTranscript;
+    const sequencesDiffer = !!protein?.seq &&
+        !!structureSequence &&
+        stripStopCodon(protein.seq) !== structureSequence;
+    const handleLaunch = async () => {
+        if (!protein || !selectedTranscript) {
+            return;
+        }
+        try {
+            const structureData = activeFile ? await activeFile.text() : undefined;
+            const url = activeURL ? activeURL : undefined;
+            launch3DProteinView({
+                session,
+                view,
+                feature,
+                selectedTranscript,
+                url,
+                data: structureData,
+                userProvidedTranscriptSequence: protein.seq,
+                alignmentAlgorithm,
+                displayName: `Protein view ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(selectedTranscript)}`,
+            });
+            handleClose();
+        }
+        catch (e) {
+            console.error(e);
+            setSubmitError(e);
+        }
+    };
+    return (React.createElement(React.Fragment, null,
+        React.createElement(DialogContent, { className: classes.dialogContent },
+            error ? React.createElement(ErrorMessage, { error: error }) : null,
+            React.createElement(HelpText, null),
+            React.createElement(StructureSourcePicker, { choice: choice, setChoice: setChoice, structureURL: structureURL, setStructureURL: setStructureURL, file: file, setFile: setFile, pdbId: pdbId, setPdbId: setPdbId }),
+            React.createElement("div", { style: { margin: 20 } }, isoformSequences ? (structureSequence ? (React.createElement(React.Fragment, null,
+                React.createElement(TranscriptSelector, { val: userSelection, setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, isoformSequences: isoformSequences }),
+                React.createElement("div", { style: { margin: 10 } },
+                    React.createElement(Button, { variant: "contained", color: "primary", onClick: () => {
+                            setShowAllProteinSequences(!showAllProteinSequences);
+                        } }, showAllProteinSequences
+                        ? 'Hide all isoform protein sequences'
+                        : 'Show all isoform protein sequences'),
+                    showAllProteinSequences ? (React.createElement(MSATable, { structureSequence: structureSequence, structureName: structureName, isoformSequences: isoformSequences })) : null))) : null) : (React.createElement(LoadingEllipses, { title: "Loading protein sequences", variant: "h6" })))),
+        React.createElement(DialogActions, null,
+            sequencesDiffer ? (React.createElement(SequenceMismatchNotice, { alignmentAlgorithm: alignmentAlgorithm, onAlignmentAlgorithmChange: onAlignmentAlgorithmChange })) : null,
+            React.createElement(Button, { variant: "contained", color: "secondary", onClick: () => {
+                    handleClose();
+                } }, "Cancel"),
+            React.createElement(Button, { variant: "contained", color: "primary", disabled: !canLaunch, onClick: () => {
+                    void handleLaunch();
+                } }, "Launch 3-D protein structure view"))));
+});
+export default UserProvidedStructure;
