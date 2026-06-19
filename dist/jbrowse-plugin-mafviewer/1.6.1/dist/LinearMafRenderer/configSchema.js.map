@@ -1,0 +1,1 @@
+{"version":3,"file":"configSchema.js","sourceRoot":"","sources":["../../src/LinearMafRenderer/configSchema.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,mBAAmB,EAAE,MAAM,6BAA6B,CAAA;AAEjE;;GAEG;AACH,SAAS,CAAC,KAAI,CAAC,CAAC,wDAAwD;AAExE,MAAM,YAAY,GAAG,mBAAmB,CACtC,mBAAmB,EACnB,EAAE,EACF;IACE;;OAEG;IACH,eAAe,EAAE,IAAI;CACtB,CACF,CAAA;AAED,eAAe,YAAY,CAAA"}

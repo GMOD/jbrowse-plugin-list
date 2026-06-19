@@ -1,0 +1,741 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ICGCTrack widget renders a gene with the required model elements 1`] = `
+<div
+  class="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded"
+  data-testid="icgc-widget"
+>
+  <div
+    class="MuiPaper-root MuiAccordion-root Mui-expanded MuiAccordion-rounded MuiPaper-elevation1 MuiPaper-rounded"
+  >
+    <div
+      aria-disabled="false"
+      aria-expanded="true"
+      class="MuiButtonBase-root MuiAccordionSummary-root Mui-expanded"
+      role="button"
+      tabindex="0"
+    >
+      <div
+        class="MuiAccordionSummary-content Mui-expanded"
+      >
+        <span
+          class="MuiTypography-root MuiTypography-button"
+        >
+           
+          DO52170 - MU128994531
+        </span>
+      </div>
+      <div
+        aria-disabled="false"
+        aria-hidden="true"
+        class="MuiButtonBase-root MuiIconButton-root MuiAccordionSummary-expandIcon Mui-expanded MuiIconButton-edgeEnd"
+      >
+        <span
+          class="MuiIconButton-label"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root makeStyles-expandIcon-12"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+            />
+          </svg>
+        </span>
+        <span
+          class="MuiTouchRipple-root"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiCollapse-root MuiCollapse-entered"
+      style="min-height: 0px;"
+    >
+      <div
+        class="MuiCollapse-wrapper"
+      >
+        <div
+          class="MuiCollapse-wrapperInner"
+        >
+          <div
+            role="region"
+          >
+            <div
+              class="MuiAccordionDetails-root makeStyles-expansionPanelDetails-11"
+            >
+              <p
+                class="MuiTypography-root MuiTypography-body1"
+              >
+                Core details
+              </p>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                >
+                  Position
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    chr3:124,909,351..124,909,349 
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                >
+                  Length
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    -1
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                >
+                  Type
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    MU128994531
+                  </div>
+                </div>
+              </div>
+              <hr
+                class="MuiDivider-root"
+              />
+              <p
+                class="MuiTypography-root MuiTypography-body1"
+              >
+                Attributes
+              </p>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                  style="width: 80px;"
+                >
+                  id
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    DO52170
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                  style="width: 80px;"
+                >
+                  donorId
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    DO52170
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                  style="width: 80px;"
+                >
+                  mutationId
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    MU128994531
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                  style="width: 80px;"
+                >
+                  chromosome
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    3
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                  style="width: 80px;"
+                >
+                  projectId
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    LIHC-US
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-13"
+              >
+                <div
+                  class="makeStyles-fieldName-15"
+                  style="width: 80px;"
+                >
+                  mutation
+                </div>
+                <div
+                  class="makeStyles-fieldValue-16"
+                >
+                  <div>
+                    G&gt;T
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiPaper-root MuiAccordion-root Mui-expanded MuiAccordion-rounded MuiPaper-elevation1 MuiPaper-rounded"
+  >
+    <div
+      aria-disabled="false"
+      aria-expanded="true"
+      class="MuiButtonBase-root MuiAccordionSummary-root Mui-expanded"
+      role="button"
+      tabindex="0"
+    >
+      <div
+        class="MuiAccordionSummary-content Mui-expanded"
+      >
+        <span
+          class="MuiTypography-root MuiTypography-button"
+        >
+           
+          External Links
+        </span>
+      </div>
+      <div
+        aria-disabled="false"
+        aria-hidden="true"
+        class="MuiButtonBase-root MuiIconButton-root MuiAccordionSummary-expandIcon Mui-expanded MuiIconButton-edgeEnd"
+      >
+        <span
+          class="MuiIconButton-label"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root makeStyles-expandIcon-12"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+            />
+          </svg>
+        </span>
+        <span
+          class="MuiTouchRipple-root"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiCollapse-root MuiCollapse-entered"
+      style="min-height: 0px;"
+    >
+      <div
+        class="MuiCollapse-wrapper"
+      >
+        <div
+          class="MuiCollapse-wrapperInner"
+        >
+          <div
+            role="region"
+          >
+            <div
+              class="MuiAccordionDetails-root makeStyles-expansionPanelDetails-11"
+            >
+              <div
+                class="makeStyles-innerCard-20"
+              >
+                <table
+                  class="MuiTable-root makeStyles-table-18"
+                >
+                  <tbody
+                    class="MuiTableBody-root"
+                  >
+                    <tr
+                      class="MuiTableRow-root"
+                    >
+                      <td
+                        class="MuiTableCell-root MuiTableCell-body"
+                      >
+                        ICGC Data Portal
+                      </td>
+                      <td
+                        class="MuiTableCell-root MuiTableCell-body"
+                      >
+                        <a
+                          class="MuiTypography-root MuiLink-root MuiLink-underlineAlways makeStyles-link-19 MuiTypography-colorPrimary"
+                          href="https://dcc.icgc.org/mutations/MU128994531"
+                          rel="noopener"
+                          target="_blank"
+                        >
+                          MU128994531
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ICGCTrack widget renders a mutation with the required model elements 1`] = `
+<div
+  class="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded"
+  data-testid="icgc-widget"
+>
+  <div
+    class="MuiPaper-root MuiAccordion-root Mui-expanded MuiAccordion-rounded MuiPaper-elevation1 MuiPaper-rounded"
+  >
+    <div
+      aria-disabled="false"
+      aria-expanded="true"
+      class="MuiButtonBase-root MuiAccordionSummary-root Mui-expanded"
+      role="button"
+      tabindex="0"
+    >
+      <div
+        class="MuiAccordionSummary-content Mui-expanded"
+      >
+        <span
+          class="MuiTypography-root MuiTypography-button"
+        >
+           
+          MU125557849 - single base substitution
+        </span>
+      </div>
+      <div
+        aria-disabled="false"
+        aria-hidden="true"
+        class="MuiButtonBase-root MuiIconButton-root MuiAccordionSummary-expandIcon Mui-expanded MuiIconButton-edgeEnd"
+      >
+        <span
+          class="MuiIconButton-label"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root makeStyles-expandIcon-2"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+            />
+          </svg>
+        </span>
+        <span
+          class="MuiTouchRipple-root"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiCollapse-root MuiCollapse-entered"
+      style="min-height: 0px;"
+    >
+      <div
+        class="MuiCollapse-wrapper"
+      >
+        <div
+          class="MuiCollapse-wrapperInner"
+        >
+          <div
+            role="region"
+          >
+            <div
+              class="MuiAccordionDetails-root makeStyles-expansionPanelDetails-1"
+            >
+              <p
+                class="MuiTypography-root MuiTypography-body1"
+              >
+                Core details
+              </p>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                >
+                  Position
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    chr3:124,907,171..124,907,171 
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                >
+                  Length
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    1
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                >
+                  Type
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    single base substitution
+                  </div>
+                </div>
+              </div>
+              <hr
+                class="MuiDivider-root"
+              />
+              <p
+                class="MuiTypography-root MuiTypography-body1"
+              >
+                Attributes
+              </p>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  id
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    MU125557849
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  chromosome
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    3
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  mutation
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    G&gt;T
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  assemblyVersion
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    GRCh37
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  referenceGenomeAllele
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    G
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  testedDonorCount
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    186
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  affectedDonorCountTotal
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    1
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  affectedDonorCountFiltered
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    1
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  affectedProjectCount
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    1
+                  </div>
+                </div>
+              </div>
+              <div
+                class="makeStyles-field-3"
+              >
+                <div
+                  class="makeStyles-fieldName-5"
+                  style="width: 158px;"
+                >
+                  functionalImpact
+                </div>
+                <div
+                  class="makeStyles-fieldValue-6"
+                >
+                  <div>
+                    Unknown
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="MuiPaper-root MuiAccordion-root Mui-expanded MuiAccordion-rounded MuiPaper-elevation1 MuiPaper-rounded"
+  >
+    <div
+      aria-disabled="false"
+      aria-expanded="true"
+      class="MuiButtonBase-root MuiAccordionSummary-root Mui-expanded"
+      role="button"
+      tabindex="0"
+    >
+      <div
+        class="MuiAccordionSummary-content Mui-expanded"
+      >
+        <span
+          class="MuiTypography-root MuiTypography-button"
+        >
+           
+          External Links
+        </span>
+      </div>
+      <div
+        aria-disabled="false"
+        aria-hidden="true"
+        class="MuiButtonBase-root MuiIconButton-root MuiAccordionSummary-expandIcon Mui-expanded MuiIconButton-edgeEnd"
+      >
+        <span
+          class="MuiIconButton-label"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root makeStyles-expandIcon-2"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+            />
+          </svg>
+        </span>
+        <span
+          class="MuiTouchRipple-root"
+        />
+      </div>
+    </div>
+    <div
+      class="MuiCollapse-root MuiCollapse-entered"
+      style="min-height: 0px;"
+    >
+      <div
+        class="MuiCollapse-wrapper"
+      >
+        <div
+          class="MuiCollapse-wrapperInner"
+        >
+          <div
+            role="region"
+          >
+            <div
+              class="MuiAccordionDetails-root makeStyles-expansionPanelDetails-1"
+            >
+              <div
+                class="makeStyles-innerCard-10"
+              >
+                <table
+                  class="MuiTable-root makeStyles-table-8"
+                >
+                  <tbody
+                    class="MuiTableBody-root"
+                  >
+                    <tr
+                      class="MuiTableRow-root"
+                    >
+                      <td
+                        class="MuiTableCell-root MuiTableCell-body"
+                      >
+                        ICGC Data Portal
+                      </td>
+                      <td
+                        class="MuiTableCell-root MuiTableCell-body"
+                      >
+                        <a
+                          class="MuiTypography-root MuiLink-root MuiLink-underlineAlways makeStyles-link-9 MuiTypography-colorPrimary"
+                          href="https://dcc.icgc.org/mutations/MU125557849"
+                          rel="noopener"
+                          target="_blank"
+                        >
+                          MU125557849
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

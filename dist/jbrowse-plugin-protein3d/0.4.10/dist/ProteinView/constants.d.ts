@@ -1,0 +1,9 @@
+export declare const CHAR_WIDTH = 6;
+export declare const ROW_HEIGHT = 14;
+export declare const TRACK_HEIGHT = 12;
+export declare const TRACK_GAP = 2;
+export declare const LABEL_WIDTH = 50;
+export declare const HOVER_MARKER_COLOR = "rgba(255, 105, 180, 0.5)";
+export declare const SELECTED_BORDER = "2px solid #333";
+export declare const HOVERED_BORDER = "1px solid black";
+export declare const HIDE_BUTTON_COLOR = "#999";

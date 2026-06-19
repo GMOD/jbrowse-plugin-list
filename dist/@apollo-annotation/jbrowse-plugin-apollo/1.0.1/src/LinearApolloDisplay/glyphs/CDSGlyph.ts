@@ -1,0 +1,145 @@
+import type {
+  AnnotationFeature,
+  TranscriptPartCoding,
+} from '@apollo-annotation/mst'
+import type { MenuItem } from '@jbrowse/core/ui'
+import { getFrame } from '@jbrowse/core/util'
+import type { ContentBlock } from '@jbrowse/core/util/blockTypes'
+
+import { isSelectedFeature } from '../../util'
+import type { LinearApolloDisplay } from '../stateModel'
+
+import { boxGlyph } from './BoxGlyph'
+import type { Glyph, OverlayType } from './Glyph'
+import { drawOverlayBox, getFeatureBox, strokeRectInner } from './util'
+
+function drawCDSLocation(
+  display: LinearApolloDisplay,
+  ctx: CanvasRenderingContext2D,
+  cdsLocation: TranscriptPartCoding,
+  strand: 1 | -1 | undefined,
+  row: number,
+  block: ContentBlock,
+) {
+  const { apolloRowHeight, canvasPatterns, theme } = display
+  const [top, left, width] = getFeatureBox(display, cdsLocation, row, block)
+  const halfHeight = Math.round(apolloRowHeight / 2)
+  if (width > 2) {
+    const frame = getFrame(
+      cdsLocation.min,
+      cdsLocation.max,
+      strand ?? 1,
+      cdsLocation.phase,
+    )
+    const frameColor = theme.palette.framesCDS.at(frame)?.main
+    ctx.fillStyle = frameColor ?? 'black'
+    ctx.fillRect(left, top, width, apolloRowHeight)
+    const forwardFill = canvasPatterns.forward
+    const backwardFill = canvasPatterns.backward
+    if (forwardFill && backwardFill && strand) {
+      const { reversed } = block
+      const reversal = reversed ? -1 : 1
+      const [topFill, bottomFill] =
+        strand * reversal === 1
+          ? [forwardFill, backwardFill]
+          : [backwardFill, forwardFill]
+      ctx.fillStyle = topFill
+      ctx.fillRect(left, top, width, halfHeight)
+      ctx.fillStyle = bottomFill
+      ctx.fillRect(left, top + halfHeight, width, halfHeight)
+    }
+  }
+  strokeRectInner(
+    ctx,
+    left,
+    top,
+    width,
+    apolloRowHeight,
+    theme.palette.text.primary,
+  )
+}
+
+function draw(
+  display: LinearApolloDisplay,
+  ctx: CanvasRenderingContext2D,
+  cds: AnnotationFeature,
+  row: number,
+  rowInFeature: number,
+  block: ContentBlock,
+) {
+  const transcript = cds.parent
+  if (!transcript) {
+    boxGlyph.draw(display, ctx, cds, row, 0, block)
+    return
+  }
+  const { cdsLocations } = transcript
+  const thisCDSLocations = cdsLocations.find((loc) => {
+    const min = loc.at(cds.strand === 1 ? 0 : -1)?.min
+    const max = loc.at(cds.strand === 1 ? -1 : 0)?.max
+    return cds.min === min && cds.max === max
+  })
+  if (!thisCDSLocations) {
+    return
+  }
+  for (const cdsLocation of thisCDSLocations) {
+    drawCDSLocation(display, ctx, cdsLocation, cds.strand, row, block)
+  }
+  const { selectedFeature } = display
+  if (isSelectedFeature(cds, selectedFeature)) {
+    drawOverlay(display, ctx, cds, row, block, 'select')
+  }
+}
+
+function drawOverlay(
+  display: LinearApolloDisplay,
+  overlayCtx: CanvasRenderingContext2D,
+  cds: AnnotationFeature,
+  row: number,
+  block: ContentBlock,
+  overlayType: OverlayType,
+) {
+  const { apolloRowHeight } = display
+  const [top, left, width] = getFeatureBox(display, cds, row, block)
+  const height = getRowCount() * apolloRowHeight
+  drawOverlayBox(
+    display,
+    overlayCtx,
+    left,
+    top,
+    width,
+    height,
+    cds,
+    overlayType,
+  )
+}
+
+function getLayout(display: LinearApolloDisplay, feature: AnnotationFeature) {
+  return {
+    byFeature: new Map([[feature._id, 0]]),
+    byRow: [[{ feature, rowInFeature: 0 }]],
+    min: feature.min,
+    max: feature.max,
+  }
+}
+
+function getRowCount() {
+  return 1
+}
+
+function getContextMenuItems(): MenuItem[] {
+  return []
+}
+
+// False positive here, none of these functions use "this"
+/* eslint-disable @typescript-eslint/unbound-method */
+const { drawDragPreview } = boxGlyph
+/* eslint-enable @typescript-eslint/unbound-method */
+
+export const cdsGlyph: Glyph = {
+  draw,
+  drawDragPreview,
+  drawOverlay,
+  getContextMenuItems,
+  getLayout,
+  isDraggable: true,
+}
