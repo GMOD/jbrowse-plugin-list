@@ -4,19 +4,31 @@ import fs from 'fs'
 import path from 'path'
 import { Readable } from 'stream'
 import { createGunzip } from 'zlib'
+
 import * as tar from 'tar'
 
-const outputDir = path.join(import.meta.dirname, 'dist')
-fs.mkdirSync(outputDir, { recursive: true })
+import { rehostedUrl, subresourceIntegrity } from './manifest-types.ts'
+import type {
+  BuildManifest,
+  BuiltPlugin,
+  BuiltVersion,
+  SourceManifest,
+  SourcePlugin,
+  SourceVersion,
+} from './manifest-types.ts'
 
-interface Plugin {
-  name: string
-  packageName: string
-}
+// Output dir mirrors the served path layout: dist/<packageName>/<version>/...
+// Overridable so the pipeline can be exercised without touching the committed dist.
+const outputDir = process.env.PLUGIN_DIST_DIR
+  ? path.resolve(process.env.PLUGIN_DIST_DIR)
+  : path.join(import.meta.dirname, 'dist')
 
-interface PluginsData {
-  plugins: Plugin[]
-}
+const buildManifestPath = process.env.PLUGIN_BUILD_MANIFEST
+  ? path.resolve(process.env.PLUGIN_BUILD_MANIFEST)
+  : path.join(import.meta.dirname, 'build-manifest.json')
+
+// Optional CLI args restrict the run to specific package names.
+const only = new Set(process.argv.slice(2))
 
 interface NpmPackageMetadata {
   'dist-tags': { latest: string }
@@ -25,7 +37,7 @@ interface NpmPackageMetadata {
 
 const { plugins } = JSON.parse(
   fs.readFileSync(path.join(import.meta.dirname, 'plugins.json'), 'utf8'),
-) as PluginsData
+) as SourceManifest
 
 async function fetchPackageMetadata(
   packageName: string,
@@ -62,68 +74,109 @@ async function downloadAndExtractTarball(
       .pipe(
         tar.t({
           onentry: entry => {
-            if (!entry.path.startsWith('package/')) {
-              return
+            if (entry.path.startsWith('package/')) {
+              const relativePath = entry.path.slice('package/'.length)
+              if (relativePath && entry.type !== 'Directory') {
+                const destPath = path.join(destDir, relativePath)
+                fs.mkdirSync(path.dirname(destPath), { recursive: true })
+                const writeStream = fs.createWriteStream(destPath)
+                pendingWrites.push(
+                  new Promise<void>((resolveWrite, rejectWrite) => {
+                    writeStream.on('finish', resolveWrite)
+                    writeStream.on('error', rejectWrite)
+                  }),
+                )
+                entry.pipe(writeStream)
+              }
             }
-            const relativePath = entry.path.slice('package/'.length)
-            if (!relativePath || entry.type === 'Directory') {
-              return
-            }
-            const destPath = path.join(destDir, relativePath)
-            fs.mkdirSync(path.dirname(destPath), { recursive: true })
-            const writeStream = fs.createWriteStream(destPath)
-            pendingWrites.push(
-              new Promise<void>((resolveWrite, rejectWrite) => {
-                writeStream.on('finish', resolveWrite)
-                writeStream.on('error', rejectWrite)
-              }),
-            )
-            entry.pipe(writeStream)
           },
         }),
       )
-      .on('finish', async () => {
-        try {
-          await Promise.all(pendingWrites)
-          resolve()
-        } catch (error) {
-          reject(error)
-        }
+      .on('finish', () => {
+        Promise.all(pendingWrites).then(() => resolve(), reject)
       })
       .on('error', reject)
   })
 }
 
+// The set of versions to publish for a plugin: explicit pins when declared,
+// otherwise the single npm `latest`.
+function resolveTargetVersions(
+  plugin: SourcePlugin,
+  metadata: NpmPackageMetadata,
+): SourceVersion[] {
+  if (plugin.versions && plugin.versions.length > 0) {
+    return plugin.versions
+  }
+  return [{ pluginVersion: metadata['dist-tags'].latest, jbrowseRange: '*' }]
+}
+
+// Downloads one version into dist/<packageName>/<version>/ (append-only: an
+// existing, complete extraction is reused) and returns its served URL + hash.
+async function buildVersion(
+  plugin: SourcePlugin,
+  version: SourceVersion,
+  metadata: NpmPackageMetadata,
+): Promise<BuiltVersion> {
+  const { packageName, umdPath } = plugin
+  const { pluginVersion } = version
+  const versionDir = path.join(outputDir, packageName, pluginVersion)
+  const bundlePath = path.join(versionDir, umdPath)
+
+  if (fs.existsSync(bundlePath)) {
+    console.log(`✓ ${packageName}@${pluginVersion} already present`)
+  } else {
+    const release = metadata.versions[pluginVersion]
+    if (!release) {
+      throw new Error(`${packageName}: version ${pluginVersion} not on npm`)
+    }
+    console.log(`  Downloading ${packageName}@${pluginVersion}...`)
+    await downloadAndExtractTarball(release.dist.tarball, versionDir)
+    if (!fs.existsSync(bundlePath)) {
+      throw new Error(
+        `${packageName}@${pluginVersion}: umdPath "${umdPath}" not found in package`,
+      )
+    }
+    console.log(`✓ Downloaded ${packageName}@${pluginVersion}`)
+  }
+
+  return {
+    pluginVersion,
+    jbrowseRange: version.jbrowseRange,
+    url: rehostedUrl(packageName, pluginVersion, umdPath),
+    integrity: subresourceIntegrity(bundlePath),
+  }
+}
+
 async function downloadPlugins(): Promise<void> {
-  for (const { name, packageName } of plugins) {
+  const built: BuiltPlugin[] = []
+
+  for (const plugin of plugins) {
+    if (only.size > 0 && !only.has(plugin.packageName)) {
+      continue
+    }
     try {
-      console.log(`Fetching ${name}...`)
-      const metadata = await fetchPackageMetadata(packageName)
-      const latestVersion = metadata['dist-tags'].latest
-      const tarballUrl = metadata.versions[latestVersion].dist.tarball
-      const pluginDestDir = path.join(outputDir, packageName)
-      const packageJsonPath = path.join(pluginDestDir, 'package.json')
-
-      if (fs.existsSync(packageJsonPath)) {
-        const { version: existingVersion } = JSON.parse(
-          fs.readFileSync(packageJsonPath, 'utf8'),
-        ) as { version: string }
-        if (existingVersion === latestVersion) {
-          console.log(`✓ ${name} already at v${latestVersion}`)
-          continue
-        }
-        console.log(`  Updating ${name}: v${existingVersion} → v${latestVersion}`)
+      console.log(`Fetching ${plugin.name}...`)
+      const metadata = await fetchPackageMetadata(plugin.packageName)
+      const targets = resolveTargetVersions(plugin, metadata)
+      const versions: BuiltVersion[] = []
+      for (const target of targets) {
+        versions.push(await buildVersion(plugin, target, metadata))
       }
-
-      await downloadAndExtractTarball(tarballUrl, pluginDestDir)
-      console.log(`✓ Downloaded ${name} v${latestVersion}`)
+      built.push({
+        packageName: plugin.packageName,
+        latest: versions[versions.length - 1].pluginVersion,
+        versions,
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.error(`✗ Failed ${name}: ${message}`)
+      console.error(`✗ Failed ${plugin.name}: ${message}`)
     }
   }
 
-  console.log('\nDownload complete!')
+  const manifest: BuildManifest = { plugins: built }
+  fs.writeFileSync(buildManifestPath, JSON.stringify(manifest, null, 2) + '\n')
+  console.log(`\nWrote ${buildManifestPath} (${built.length} plugins)`)
 }
 
 downloadPlugins().catch(err => {
