@@ -1,0 +1,257 @@
+import { getSession } from '@jbrowse/core/util';
+import { doLaunchBlast } from './doLaunchBlast';
+import { genomeToMSA } from './genomeToMSA';
+import { cleanupOldData, generateDataStoreId, retrieveMsaData, storeMsaData, } from './msaDataStore';
+import { gappedToUngappedPosition, getProteinViews, } from './structureConnection';
+import { getUniprotIdFromAlphaFoldUrl } from './util';
+export function loadStoredData(self) {
+    const { dataStoreId, rows } = self;
+    if (dataStoreId && rows.length === 0) {
+        void (async () => {
+            try {
+                self.setLoadingStoredData(true);
+                const storedData = await retrieveMsaData(dataStoreId);
+                if (storedData) {
+                    if (storedData.msa) {
+                        self.setMSA(storedData.msa);
+                    }
+                    if (storedData.tree) {
+                        self.setTree(storedData.tree);
+                    }
+                }
+            }
+            catch (e) {
+                console.error('Failed to load MSA data from IndexedDB:', e);
+            }
+            finally {
+                self.setLoadingStoredData(false);
+            }
+        })();
+    }
+}
+export function storeDataToIndexedDB(self) {
+    const { rows, dataStoreId, isStoringData } = self;
+    if (rows.length > 0 && !dataStoreId && !isStoringData) {
+        if (self.msaFilehandle || self.treeFilehandle) {
+            return;
+        }
+        const msaData = self.data.msa;
+        const treeData = self.data.tree;
+        if (msaData || treeData) {
+            // mark as storing synchronously so re-runs of this autorun (e.g. when
+            // data observables change while the write is pending) don't kick off a
+            // duplicate write and leave an orphan IndexedDB entry
+            self.setIsStoringData(true);
+            void (async () => {
+                try {
+                    const newId = generateDataStoreId();
+                    const success = await storeMsaData(newId, {
+                        msa: msaData,
+                        tree: treeData,
+                        treeMetadata: self.data.treeMetadata,
+                    });
+                    if (success) {
+                        self.setDataStoreId(newId);
+                    }
+                }
+                catch (e) {
+                    console.error('Failed to store MSA data to IndexedDB:', e);
+                }
+                finally {
+                    self.setIsStoringData(false);
+                }
+            })();
+        }
+    }
+}
+export function launchBlastIfNeeded(self) {
+    if (self.blastParams) {
+        void (async () => {
+            try {
+                self.setProgress('Submitting query');
+                self.setError(undefined);
+                const data = await doLaunchBlast({ self });
+                self.setData(data);
+                self.setBlastParams(undefined);
+            }
+            catch (e) {
+                self.setError(e);
+                console.error(e);
+            }
+            finally {
+                self.setProgress('');
+            }
+        })();
+    }
+}
+export function processInit(self) {
+    const { init } = self;
+    if (init) {
+        void (async () => {
+            try {
+                self.setError(undefined);
+                const { msaData, msaUrl, treeData, treeUrl, querySeqName } = init;
+                if (msaUrl) {
+                    const id = getUniprotIdFromAlphaFoldUrl(msaUrl);
+                    if (id) {
+                        self.setUniprotId(id);
+                        self.setQuerySeqName('query');
+                    }
+                }
+                if (querySeqName) {
+                    self.setQuerySeqName(querySeqName);
+                }
+                if (msaData) {
+                    self.setMSA(msaData);
+                }
+                else if (msaUrl) {
+                    const response = await fetch(msaUrl);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch MSA: ${response.status}`);
+                    }
+                    const data = await response.text();
+                    self.setMSA(data);
+                }
+                if (treeData) {
+                    self.setTree(treeData);
+                }
+                else if (treeUrl) {
+                    const response = await fetch(treeUrl);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch tree: ${response.status}`);
+                    }
+                    const data = await response.text();
+                    self.setTree(data);
+                }
+                self.setInit(undefined);
+            }
+            catch (e) {
+                self.setError(e);
+                console.error(e);
+            }
+        })();
+    }
+}
+/**
+ * Mirror the connected genome view's hover position onto the MSA's hovered
+ * column. Returns the autorun body so it can keep a flag tracking whether the
+ * MSA's mouseCol was set by this sync: that way an unrelated session hover
+ * change clears the column only when the genome put it there, never wiping a
+ * column the user is hovering directly in the MSA.
+ */
+export function syncGenomeHoverToMsaColumn(self) {
+    let genomeDrivenCol = false;
+    return () => {
+        const col = genomeToMSA({ model: self });
+        if (col !== undefined) {
+            self.setMousePos(col);
+            genomeDrivenCol = true;
+        }
+        else if (genomeDrivenCol) {
+            self.setMousePos(undefined);
+            genomeDrivenCol = false;
+        }
+    };
+}
+export function highlightConnectedStructures(self) {
+    const { mouseCol, connectedProteinViews } = self;
+    if (connectedProteinViews.length === 0) {
+        return;
+    }
+    for (const conn of connectedProteinViews) {
+        const structure = conn.proteinView.structures[conn.structureIdx];
+        if (!structure) {
+            continue;
+        }
+        if (mouseCol === undefined) {
+            structure.clearHighlightFromExternal?.();
+            continue;
+        }
+        const seq = self.getSequenceByRowName(conn.msaRowName);
+        if (!seq) {
+            continue;
+        }
+        const msaUngapped = gappedToUngappedPosition(seq, mouseCol);
+        if (msaUngapped === undefined) {
+            structure.clearHighlightFromExternal?.();
+            continue;
+        }
+        const structurePos = conn.msaToStructure[msaUngapped];
+        if (structurePos === undefined) {
+            structure.clearHighlightFromExternal?.();
+        }
+        else {
+            structure.highlightFromExternal?.(structurePos);
+        }
+    }
+}
+export function autoConnectStructures(self) {
+    const { connectedViewId, uniprotId, rows, connectedStructures } = self;
+    if (!uniprotId || rows.length === 0) {
+        return;
+    }
+    for (const view of getProteinViews(getSession(self).views)) {
+        for (let structureIdx = 0; structureIdx < view.structures.length; structureIdx++) {
+            const structure = view.structures[structureIdx];
+            if (!structure) {
+                continue;
+            }
+            if (structure.connectedViewId !== connectedViewId) {
+                continue;
+            }
+            if (structure.uniprotId !== uniprotId) {
+                continue;
+            }
+            const alreadyConnected = connectedStructures.some(c => c.proteinViewId === view.id && c.structureIdx === structureIdx);
+            if (alreadyConnected) {
+                continue;
+            }
+            if (!structure.structureSequences?.[0]) {
+                continue;
+            }
+            try {
+                self.connectToStructure(view.id, structureIdx);
+            }
+            catch (e) {
+                console.error('Failed to auto-connect to ProteinView:', e);
+            }
+        }
+    }
+}
+export function observeProteinHighlights(self) {
+    const { connectedViewId, transcriptToMsaMap, querySeqName } = self;
+    if (!connectedViewId || !transcriptToMsaMap) {
+        return;
+    }
+    const columns = new Set();
+    for (const view of getProteinViews(getSession(self).views)) {
+        for (const structure of view.structures) {
+            if (structure.connectedViewId !== connectedViewId) {
+                continue;
+            }
+            const highlights = structure.hoverGenomeHighlights;
+            if (!highlights || highlights.length === 0) {
+                continue;
+            }
+            const { g2p } = transcriptToMsaMap;
+            for (const highlight of highlights) {
+                for (let coord = highlight.start; coord < highlight.end; coord++) {
+                    const proteinPos = g2p[coord];
+                    if (proteinPos !== undefined) {
+                        const col = self.seqPosToGlobalCol(querySeqName, proteinPos);
+                        columns.add(col);
+                    }
+                }
+            }
+        }
+    }
+    const visibleColumns = Array.from(columns)
+        .map(col => self.globalColToVisibleCol(col))
+        .filter((col) => col !== undefined);
+    self.setHighlightedColumns(visibleColumns.length > 0 ? visibleColumns : undefined);
+}
+export function runCleanup() {
+    cleanupOldData().catch((e) => {
+        console.error('Failed to cleanup old MSA data:', e);
+    });
+}

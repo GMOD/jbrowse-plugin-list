@@ -1,0 +1,8 @@
+{
+  "plugins": [
+    {
+      "name": "TrackHubRegistry",
+      "url": "https://unpkg.com/jbrowse-plugin-trackhub-registry/dist/jbrowse-plugin-trackhub-registry.umd.production.min.js"
+    }
+  ]
+}
