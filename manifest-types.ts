@@ -100,6 +100,16 @@ export function legacyRehostedUrl(packageName: string, umdPath: string) {
   return `${REHOST_BASE}${packageName}/${umdPath}`
 }
 
+// Explicit "always latest" url: a stable, version-agnostic path that always
+// serves the newest published version (the build copies the latest version into
+// a `latest/` dir). Lives under its own `latest/` segment so it never overwrites
+// the v1 unversioned artifacts at `<pkg>/<umdPath>`. Must be served no-cache
+// (see the `upload` script) since its target changes on each release; let
+// configs reference this instead of pinning a version or using a CDN like unpkg.
+export function latestRehostedUrl(packageName: string, umdPath: string) {
+  return `${REHOST_BASE}${packageName}/latest/${umdPath}`
+}
+
 export function subresourceIntegrity(filePath: string) {
   const digest = crypto
     .createHash('sha384')

@@ -148,6 +148,17 @@ async function buildVersion(
   }
 }
 
+// Mirror a plugin's newest version into a stable `latest/` dir so it's served at
+// the version-agnostic `latestRehostedUrl`. Rebuilt from scratch each run so a
+// version with fewer files doesn't leave stale ones behind. Git dedups the
+// copied blobs against the versioned dir (same content, same hash).
+function copyToLatest(packageName: string, version: string) {
+  const versionDir = path.join(outputDir, packageName, version)
+  const latestDir = path.join(outputDir, packageName, 'latest')
+  fs.rmSync(latestDir, { recursive: true, force: true })
+  fs.cpSync(versionDir, latestDir, { recursive: true })
+}
+
 async function downloadPlugins(): Promise<void> {
   const built: BuiltPlugin[] = []
 
@@ -163,9 +174,11 @@ async function downloadPlugins(): Promise<void> {
       for (const target of targets) {
         versions.push(await buildVersion(plugin, target, metadata))
       }
+      const latest = versions[versions.length - 1].pluginVersion
+      copyToLatest(plugin.packageName, latest)
       built.push({
         packageName: plugin.packageName,
-        latest: versions[versions.length - 1].pluginVersion,
+        latest,
         versions,
       })
     } catch (error) {
