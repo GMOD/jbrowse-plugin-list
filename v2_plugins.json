@@ -344,14 +344,14 @@
       "plug_n_play": 0,
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.4.13/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-      "integrity": "sha384-8eohUyEFjpR59vzujH1BZP69qMtCtRKkZXU8+smGxNgyNHG6ds9QbLs4F+YOwdyu",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.4.14/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+      "integrity": "sha384-GgQ53M/EwJyStiLZE7PUUzRei+nFGIya8h5csHLjLzwZD07ttvm3FhtQSCzlBTUw",
       "versions": [
         {
-          "pluginVersion": "0.4.13",
+          "pluginVersion": "0.4.14",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.4.13/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-          "integrity": "sha384-8eohUyEFjpR59vzujH1BZP69qMtCtRKkZXU8+smGxNgyNHG6ds9QbLs4F+YOwdyu"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.4.14/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+          "integrity": "sha384-GgQ53M/EwJyStiLZE7PUUzRei+nFGIya8h5csHLjLzwZD07ttvm3FhtQSCzlBTUw"
         }
       ]
     },
