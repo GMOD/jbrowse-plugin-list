@@ -151,7 +151,9 @@ async function buildVersion(
 // Mirror a plugin's newest version into a stable `latest/` dir so it's served at
 // the version-agnostic `latestRehostedUrl`. Rebuilt from scratch each run so a
 // version with fewer files doesn't leave stale ones behind. Git dedups the
-// copied blobs against the versioned dir (same content, same hash).
+// copied blobs against the versioned dir (same content, same hash). The upload
+// step compares by content hash (rclone --checksum), so the fresh mtimes here
+// don't trigger needless re-uploads.
 function copyToLatest(packageName: string, version: string) {
   const versionDir = path.join(outputDir, packageName, version)
   const latestDir = path.join(outputDir, packageName, 'latest')

@@ -6,7 +6,7 @@
     "format": "pnpm prettier --write .",
     "generate": "node generate-plugins.ts",
     "update-plugins": "pnpm download && pnpm generate",
-    "upload": "aws s3 sync dist s3://jbrowse.org/plugins/ --exclude '*/latest/*' --cache-control 'public, max-age=31536000, immutable' && aws s3 sync dist s3://jbrowse.org/plugins/ --exclude '*' --include '*/latest/*' --cache-control 'no-cache, must-revalidate' && aws s3 cp v2_plugins.json s3://jbrowse.org/plugin-store/v2/plugins.json --cache-control 'no-cache, must-revalidate'",
+    "upload": "rclone --config rclone.conf copy disthash: s3:jbrowse.org/plugins --checksum --fast-list --exclude '**/latest/**' --header-upload 'Cache-Control: public, max-age=31536000, immutable' && rclone --config rclone.conf copy disthash: s3:jbrowse.org/plugins --checksum --fast-list --include '**/latest/**' --header-upload 'Cache-Control: no-cache, must-revalidate' && rclone --config rclone.conf copyto v2_plugins.json s3:jbrowse.org/plugin-store/v2/plugins.json --checksum --header-upload 'Cache-Control: no-cache, must-revalidate'",
     "invalidate": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E13LGELJOT4GQO --paths \"/plugin-store/v2/*\" \"/plugins/*/latest/*\"",
     "dep": "pnpm update-plugins && git add dist v2_plugins.json && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload && pnpm invalidate"
   },
