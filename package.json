@@ -11,10 +11,10 @@
     "dep": "pnpm update-plugins && git add dist v2_plugins.json && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload"
   },
   "dependencies": {
-    "tar": "^7.5.15"
+    "tar": "^7.5.17"
   },
   "devDependencies": {
-    "@types/node": "^25.7.0",
-    "prettier": "^3.8.3"
+    "@types/node": "^25.9.4",
+    "prettier": "^3.8.4"
   }
 }
