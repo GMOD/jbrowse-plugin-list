@@ -1,0 +1,156 @@
+import { getCachedDomains, saveDomains } from './domainCache';
+import { efetchUrl } from './eutils';
+import { textfetch } from './fetch';
+function field(xml, tag) {
+    return new RegExp(`<${tag}>(.*?)</${tag}>`, 's').exec(xml)?.[1];
+}
+function parseQualifiers(featureXml) {
+    const quals = {};
+    const re = /<GBQualifier>([\s\S]*?)<\/GBQualifier>/g;
+    let m;
+    while ((m = re.exec(featureXml)) !== null) {
+        const name = field(m[1], 'GBQualifier_name');
+        const value = field(m[1], 'GBQualifier_value');
+        // keep the first occurrence: NCBI lists the canonical value first
+        if (name && value !== undefined && quals[name] === undefined) {
+            quals[name] = value;
+        }
+    }
+    return quals;
+}
+// A feature can span several intervals: domains are usually one contiguous
+// range, but CDD Sites (e.g. an active site) are a set of scattered residues
+// expressed as multiple GBInterval ranges and single GBInterval_point residues.
+// We collapse those to a single bounding span so a site renders as one box
+// rather than a spray of 1px specks.
+function parseBoundingSpan(featureXml) {
+    const starts = [];
+    const ends = [];
+    const re = /<GBInterval>([\s\S]*?)<\/GBInterval>/g;
+    let m;
+    while ((m = re.exec(featureXml)) !== null) {
+        const block = m[1];
+        const from = field(block, 'GBInterval_from');
+        const to = field(block, 'GBInterval_to');
+        const point = field(block, 'GBInterval_point');
+        if (from && to) {
+            starts.push(Number(from));
+            ends.push(Number(to));
+        }
+        else if (point) {
+            starts.push(Number(point));
+            ends.push(Number(point));
+        }
+    }
+    return starts.length > 0
+        ? { start: Math.min(...starts), end: Math.max(...ends) }
+        : undefined;
+}
+// Drop single-residue specks (acetylation/phospho points) but keep every
+// genuine domain and functional site; react-msaview draws longest-first, so
+// smaller features (binding sites, loops) layer on top of the domain they sit
+// inside.
+const MIN_FEATURE_LENGTH = 2;
+function parseFeature(featureXml) {
+    const key = field(featureXml, 'GBFeature_key');
+    const quals = parseQualifiers(featureXml);
+    const xref = quals.db_xref;
+    const span = parseBoundingSpan(featureXml);
+    // only CDD-backed Regions/Sites are conserved-domain annotations; Regions and
+    // Sites without a CDD xref are UniProt-propagated point motifs we don't want
+    if ((key === 'Region' || key === 'Site') &&
+        xref?.startsWith('CDD:') &&
+        span &&
+        span.end - span.start + 1 >= MIN_FEATURE_LENGTH) {
+        const cddId = xref.replace('CDD:', '');
+        const isDomain = key === 'Region';
+        // a site's note (e.g. "ATP binding site [chemical binding]") is more
+        // specific than its generic site_type ("other"), so prefer it for the name
+        // — that gives each functional site its own color/legend/filter entry
+        const noteName = quals.note?.split(/[[(]/)[0]?.trim();
+        const name = isDomain
+            ? (quals.region_name ?? cddId)
+            : noteName || quals.site_type || 'site';
+        const accession = isDomain ? cddId : `${cddId}:${name}`;
+        return {
+            signature: {
+                entry: { name, description: quals.note ?? name, accession },
+            },
+            locations: [span],
+        };
+    }
+    return undefined;
+}
+/**
+ * Parse a GenPept (efetch db=protein&rettype=gp&retmode=xml) document into CDD
+ * domain and site annotations, keyed by both the versioned and primary
+ * accession so callers can look up by whichever NCBI returned.
+ */
+export function parseCddDomains(xml) {
+    const byAccession = new Map();
+    const seqRe = /<GBSeq>([\s\S]*?)<\/GBSeq>/g;
+    let seqMatch;
+    while ((seqMatch = seqRe.exec(xml)) !== null) {
+        const seqXml = seqMatch[1];
+        const matches = [];
+        const featRe = /<GBFeature>([\s\S]*?)<\/GBFeature>/g;
+        let featMatch;
+        while ((featMatch = featRe.exec(seqXml)) !== null) {
+            const match = parseFeature(featMatch[1]);
+            if (match) {
+                matches.push(match);
+            }
+        }
+        for (const acc of [
+            field(seqXml, 'GBSeq_accession-version'),
+            field(seqXml, 'GBSeq_primary-accession'),
+        ]) {
+            if (acc) {
+                byAccession.set(acc, matches);
+            }
+        }
+    }
+    return byAccession;
+}
+/**
+ * Fetch pre-computed CDD domain and site annotations for NCBI protein
+ * accessions. These come baked into the GenPept records, so a single batched
+ * efetch returns them with no job submission or polling. Results are cached in
+ * IndexedDB so reopening a view doesn't refetch.
+ */
+export async function fetchProteinDomains(accessions) {
+    const unique = [...new Set(accessions)].filter(Boolean);
+    const byAccession = new Map();
+    const cached = await getCachedDomains(unique);
+    const uncached = [];
+    unique.forEach((acc, i) => {
+        const hit = cached[i];
+        if (hit) {
+            byAccession.set(acc, hit.matches);
+        }
+        else {
+            uncached.push(acc);
+        }
+    });
+    const toCache = [];
+    const batchSize = 100;
+    for (let i = 0; i < uncached.length; i += batchSize) {
+        const batch = uncached.slice(i, i + batchSize);
+        const xml = await textfetch(efetchUrl({
+            db: 'protein',
+            id: batch.join(','),
+            rettype: 'gp',
+            retmode: 'xml',
+        }));
+        const parsed = parseCddDomains(xml);
+        for (const acc of batch) {
+            const matches = parsed.get(acc) ?? [];
+            byAccession.set(acc, matches);
+            toCache.push({ accession: acc, matches });
+        }
+    }
+    if (toCache.length > 0) {
+        await saveDomains(toCache);
+    }
+    return byAccession;
+}
