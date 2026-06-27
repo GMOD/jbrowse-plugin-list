@@ -1,0 +1,101 @@
+import React, { useState } from 'react'
+
+import { Button, MenuItem, TextField } from '@mui/material'
+import { makeStyles } from 'tss-react/mui'
+
+import ReadOnlyTextField2 from '../../components/ReadOnlyTextField2'
+import {
+  featureMatchesId,
+  getGeneDisplayName,
+  getId,
+  getTranscriptDisplayName,
+  getTranscriptLength,
+} from '../util'
+
+import type { Feature } from '@jbrowse/core/util'
+
+const useStyles = makeStyles()({
+  flex: {
+    display: 'flex',
+  },
+  minWidth: {
+    minWidth: 300,
+  },
+  centered: {
+    alignContent: 'center',
+    marginLeft: 20,
+  },
+})
+
+export default function TranscriptSelector({
+  feature,
+  options,
+  selectedId,
+  selectedTranscript,
+  setSelectedId,
+  proteinSequence,
+  validIds,
+}: {
+  feature: Feature
+  options: Feature[]
+  selectedId: string
+  selectedTranscript: Feature | undefined
+  setSelectedId: (transcriptId: string) => void
+  proteinSequence: string | undefined
+  validIds?: string[]
+}) {
+  const { classes } = useStyles()
+  const [showSequence, setShowSequence] = useState(false)
+
+  return (
+    <>
+      <div className={classes.flex}>
+        <TextField
+          variant="outlined"
+          label={`Choose isoform of ${getGeneDisplayName(feature)}`}
+          select
+          className={classes.minWidth}
+          value={selectedId}
+          onChange={event => {
+            setSelectedId(event.target.value)
+          }}
+        >
+          {options.map(val => {
+            const inSet = validIds
+              ? validIds.some(id => featureMatchesId(val, id))
+              : true
+            const { len, mod } = getTranscriptLength(val)
+            return (
+              <MenuItem value={getId(val)} key={val.id()} disabled={!inSet}>
+                {getTranscriptDisplayName(val)} ({len} aa){' '}
+                {mod ? ` (possible fragment)` : ''}
+                {validIds ? (inSet ? ' (has data)' : ' (no data)') : ''}
+              </MenuItem>
+            )
+          })}
+        </TextField>
+        <div className={classes.centered}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setShowSequence(!showSequence)
+            }}
+          >
+            {showSequence ? 'Hide sequence' : 'Show sequence'}
+          </Button>
+        </div>
+      </div>
+
+      {showSequence ? (
+        <ReadOnlyTextField2
+          value={
+            proteinSequence
+              ? `>${getTranscriptDisplayName(selectedTranscript)}\n${proteinSequence}`
+              : 'Loading...'
+          }
+        />
+      ) : null}
+    </>
+  )
+}
