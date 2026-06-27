@@ -11,14 +11,14 @@
       "plug_n_play": 2,
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.6.3/dist/jbrowse-plugin-msaview.umd.production.min.js",
-      "integrity": "sha384-pozXJeRI2sBComDLS7xWTHVu4W/mhGzjuiR1FhONdfqnVLPN4B0GTGClc2k55FRL",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.6.4/dist/jbrowse-plugin-msaview.umd.production.min.js",
+      "integrity": "sha384-f4pt+yIJR63wbUP58VJE0vkxCXYKWIBGHHmnFRDe55KIF9QiT3zECXvWijaigop2",
       "versions": [
         {
-          "pluginVersion": "2.6.3",
+          "pluginVersion": "2.6.4",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.6.3/dist/jbrowse-plugin-msaview.umd.production.min.js",
-          "integrity": "sha384-pozXJeRI2sBComDLS7xWTHVu4W/mhGzjuiR1FhONdfqnVLPN4B0GTGClc2k55FRL"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.6.4/dist/jbrowse-plugin-msaview.umd.production.min.js",
+          "integrity": "sha384-f4pt+yIJR63wbUP58VJE0vkxCXYKWIBGHHmnFRDe55KIF9QiT3zECXvWijaigop2"
         }
       ]
     },
