@@ -11,14 +11,14 @@
       "plug_n_play": 2,
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.5.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
-      "integrity": "sha384-hXCkCjAj57JXwUCZhj0r4tcoe/kft3oFt9Xlvl7vYsGbfPH7ZqZFIdbb3qNeyPUz",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.5.1/dist/jbrowse-plugin-msaview.umd.production.min.js",
+      "integrity": "sha384-W6qUWgX9dt76fVgS/MnhYZuKWBrF0bricFGA4nQSUF/5gdVp4A0NoF7rSpmNB0gT",
       "versions": [
         {
-          "pluginVersion": "2.5.0",
+          "pluginVersion": "2.5.1",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.5.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
-          "integrity": "sha384-hXCkCjAj57JXwUCZhj0r4tcoe/kft3oFt9Xlvl7vYsGbfPH7ZqZFIdbb3qNeyPUz"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.5.1/dist/jbrowse-plugin-msaview.umd.production.min.js",
+          "integrity": "sha384-W6qUWgX9dt76fVgS/MnhYZuKWBrF0bricFGA4nQSUF/5gdVp4A0NoF7rSpmNB0gT"
         }
       ]
     },
@@ -344,14 +344,14 @@
       "plug_n_play": 0,
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.4.14/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-      "integrity": "sha384-GgQ53M/EwJyStiLZE7PUUzRei+nFGIya8h5csHLjLzwZD07ttvm3FhtQSCzlBTUw",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.5.0/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+      "integrity": "sha384-coHyKtOHH22Hjvb8JkC7NvhEAc5U0Z8dsiXmlwFJZTaHEc8XGUdA8PTf299iVqIx",
       "versions": [
         {
-          "pluginVersion": "0.4.14",
+          "pluginVersion": "0.5.0",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.4.14/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-          "integrity": "sha384-GgQ53M/EwJyStiLZE7PUUzRei+nFGIya8h5csHLjLzwZD07ttvm3FhtQSCzlBTUw"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.5.0/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+          "integrity": "sha384-coHyKtOHH22Hjvb8JkC7NvhEAc5U0Z8dsiXmlwFJZTaHEc8XGUdA8PTf299iVqIx"
         }
       ]
     },

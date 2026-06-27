@@ -1,0 +1,75 @@
+import { getConf } from '@jbrowse/core/configuration';
+import { defaultCodonTable, generateCodonTable, revcom, } from '@jbrowse/core/util';
+export function stitch(subfeats, sequence) {
+    return subfeats.map(sub => sequence.slice(sub.start, sub.end)).join('');
+}
+export function calculateProteinSequence({ cds, sequence, codonTable, }) {
+    const str = stitch(cds, sequence);
+    let protein = '';
+    for (let i = 0; i < str.length; i += 3) {
+        // use & symbol for undefined codon, or partial slice
+        protein += codonTable[str.slice(i, i + 3)] ?? '&';
+    }
+    return protein;
+}
+export function revlist(list, seqlen) {
+    return list
+        .map(sub => ({
+        ...sub,
+        start: seqlen - sub.end,
+        end: seqlen - sub.start,
+    }))
+        .toSorted((a, b) => a.start - b.start);
+}
+function getItemId(feat) {
+    return `${feat.start}-${feat.end}`;
+}
+export function dedupe(list) {
+    return list.filter((item, pos, ary) => !pos || getItemId(item) !== getItemId(ary[pos - 1]));
+}
+export function getProteinSequence({ feature, seq, }) {
+    const featureStart = feature.get('start');
+    const strand = feature.get('strand');
+    const subfeatures = feature.get('subfeatures') ?? [];
+    const cds = dedupe(subfeatures
+        .toSorted((a, b) => a.get('start') - b.get('start'))
+        .map(sub => ({
+        start: sub.get('start') - featureStart,
+        end: sub.get('end') - featureStart,
+        type: sub.get('type'),
+    }))
+        .filter(f => f.type === 'CDS'));
+    return calculateProteinSequence({
+        cds: strand === -1 ? revlist(cds, seq.length) : cds,
+        sequence: strand === -1 ? revcom(seq) : seq,
+        codonTable: generateCodonTable(defaultCodonTable),
+    });
+}
+export async function fetchProteinSeq({ feature, session, assemblyName, }) {
+    const start = feature.get('start');
+    const end = feature.get('end');
+    const refName = feature.get('refName');
+    const { assemblyManager, rpcManager } = session;
+    const assembly = assemblyName
+        ? await assemblyManager.waitForAssembly(assemblyName)
+        : undefined;
+    if (!assembly) {
+        throw new Error('assembly not found');
+    }
+    const sessionId = 'getSequence';
+    const feats = await rpcManager.call(sessionId, 'CoreGetFeatures', {
+        adapterConfig: getConf(assembly, ['sequence', 'adapter']),
+        sessionId,
+        regions: [
+            {
+                start,
+                end,
+                refName: assembly.getCanonicalRefName(refName),
+                assemblyName,
+            },
+        ],
+    });
+    const [feat] = feats;
+    const seq = feat?.get('seq');
+    return seq ? getProteinSequence({ seq, feature }) : undefined;
+}
