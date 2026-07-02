@@ -57,12 +57,19 @@ function latestVersion(built: BuiltPlugin) {
   return found
 }
 
-const v2: V2Plugin[] = plugins.map(plugin => {
+// A plugin missing from the build manifest failed to download (network, npm
+// 404, renamed package). Skip it with a warning rather than aborting the whole
+// v2 manifest — one bad plugin shouldn't take the other 17 down with it. This
+// mirrors download-plugins-npm-api.ts, which already tolerates per-plugin
+// failure. A malformed jbrowseRange still throws (assertValidRange): that's an
+// author error to fix, not a transient one to skip.
+const v2: V2Plugin[] = plugins.flatMap(plugin => {
   const built = builtByName.get(plugin.packageName)
   if (!built) {
-    throw new Error(
-      `${plugin.packageName}: no build-manifest entry (run download first)`,
+    console.warn(
+      `⚠ ${plugin.packageName}: no build-manifest entry, skipping (download failed or not run)`,
     )
+    return []
   }
   for (const version of built.versions) {
     assertValidRange(plugin.packageName, version.jbrowseRange)
@@ -70,20 +77,30 @@ const v2: V2Plugin[] = plugins.map(plugin => {
   const latest = latestVersion(built)
   const { name, authors, description, location, plug_n_play, license, image } =
     plugin
-  return {
-    name,
-    packageName: plugin.packageName,
-    authors,
-    description,
-    location,
-    ...(plug_n_play === undefined ? {} : { plug_n_play }),
-    license,
-    ...(image === undefined ? {} : { image }),
-    url: latest.url,
-    integrity: latest.integrity,
-    versions: built.versions,
-  }
+  return [
+    {
+      name,
+      packageName: plugin.packageName,
+      authors,
+      description,
+      location,
+      ...(plug_n_play === undefined ? {} : { plug_n_play }),
+      license,
+      ...(image === undefined ? {} : { image }),
+      url: latest.url,
+      integrity: latest.integrity,
+      versions: built.versions,
+    },
+  ]
 })
+
+// Guard the "download never ran" case: an entirely empty result is a pipeline
+// mistake, not a per-plugin hiccup, so fail loudly.
+if (v2.length === 0) {
+  throw new Error(
+    'no plugins generated — run download-plugins-npm-api first to build the manifest',
+  )
+}
 
 const v2Path = path.join(dir, 'v2_plugins.json')
 fs.writeFileSync(v2Path, JSON.stringify({ plugins: v2 }, null, 2) + '\n')
