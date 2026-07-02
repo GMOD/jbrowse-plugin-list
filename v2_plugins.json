@@ -312,28 +312,6 @@
       ]
     },
     {
-      "name": "MafViewer",
-      "packageName": "jbrowse-plugin-mafviewer",
-      "authors": [
-        "Colin Diesh"
-      ],
-      "description": "View multiple alignment format (MAF) files as tracks",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-mafviewer",
-      "plug_n_play": 1,
-      "license": "MIT",
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mafviewer.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-mafviewer/1.6.1/dist/jbrowse-plugin-mafviewer.umd.production.min.js",
-      "integrity": "sha384-ks3tXJ7fd5dODjBEKDc1xsbjLjCVhcDq527HIAS75anxreQaO0eSRhHjbhtqe4Q+",
-      "versions": [
-        {
-          "pluginVersion": "1.6.1",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-mafviewer/1.6.1/dist/jbrowse-plugin-mafviewer.umd.production.min.js",
-          "integrity": "sha384-ks3tXJ7fd5dODjBEKDc1xsbjLjCVhcDq527HIAS75anxreQaO0eSRhHjbhtqe4Q+"
-        }
-      ]
-    },
-    {
       "name": "Protein3d",
       "packageName": "jbrowse-plugin-protein3d",
       "authors": [

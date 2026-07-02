@@ -11,6 +11,7 @@
     "dep": "pnpm update-plugins && git add dist v2_plugins.json && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload"
   },
   "dependencies": {
+    "compare-versions": "^6.1.1",
     "tar": "^7.5.17"
   },
   "devDependencies": {

@@ -3,8 +3,9 @@
 import fs from 'fs'
 import path from 'path'
 import { Readable } from 'stream'
-import { createGunzip } from 'zlib'
+import { pipeline } from 'stream/promises'
 
+import { compareVersions } from 'compare-versions'
 import * as tar from 'tar'
 
 import { rehostedUrl, subresourceIntegrity } from './manifest-types.ts'
@@ -64,39 +65,13 @@ async function downloadAndExtractTarball(
   if (!response.body) {
     throw new Error('No response body')
   }
-
-  const pendingWrites: Promise<void>[] = []
-
-  return new Promise((resolve, reject) => {
-    // response.body is ReadableStream<Uint8Array> (Web API) — cast needed for Node/DOM boundary
-    Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0])
-      .pipe(createGunzip())
-      .pipe(
-        tar.t({
-          onentry: entry => {
-            if (entry.path.startsWith('package/')) {
-              const relativePath = entry.path.slice('package/'.length)
-              if (relativePath && entry.type !== 'Directory') {
-                const destPath = path.join(destDir, relativePath)
-                fs.mkdirSync(path.dirname(destPath), { recursive: true })
-                const writeStream = fs.createWriteStream(destPath)
-                pendingWrites.push(
-                  new Promise<void>((resolveWrite, rejectWrite) => {
-                    writeStream.on('finish', resolveWrite)
-                    writeStream.on('error', rejectWrite)
-                  }),
-                )
-                entry.pipe(writeStream)
-              }
-            }
-          },
-        }),
-      )
-      .on('finish', () => {
-        Promise.all(pendingWrites).then(() => resolve(), reject)
-      })
-      .on('error', reject)
-  })
+  fs.mkdirSync(destDir, { recursive: true })
+  // tar auto-detects the gzip; strip:1 drops npm's leading `package/` segment.
+  // response.body is ReadableStream<Uint8Array> (Web API) — cast needed for Node/DOM boundary.
+  await pipeline(
+    Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]),
+    tar.x({ cwd: destDir, strip: 1 }),
+  )
 }
 
 // The set of versions to publish for a plugin: explicit pins when declared,
@@ -111,8 +86,39 @@ function resolveTargetVersions(
   return [{ pluginVersion: metadata['dist-tags'].latest, jbrowseRange: '*' }]
 }
 
+// Newest by semver — never by array position, so an author listing `versions`
+// out of order can't desync which build is served as `latest` from the version
+// the consumer resolves (it sorts by semver too).
+function newestVersion(versions: BuiltVersion[]): BuiltVersion {
+  return [...versions].sort((a, b) =>
+    compareVersions(b.pluginVersion, a.pluginVersion),
+  )[0]
+}
+
+// Extract a tarball into versionDir atomically: files land in a `.partial`
+// sibling and the dir is renamed into place only once the umd bundle is
+// confirmed present. So a versionDir is either absent or a complete package —
+// the umd and any lazily-loaded sidecar chunks (e.g. protein3d's
+// `molstar-chunk.js`) can never be split across a half-written extraction that
+// the append-only skip below would then reuse.
+async function downloadVersionAtomic(
+  tarballUrl: string,
+  versionDir: string,
+  umdPath: string,
+  label: string,
+): Promise<void> {
+  const partialDir = `${versionDir}.partial`
+  fs.rmSync(partialDir, { recursive: true, force: true })
+  await downloadAndExtractTarball(tarballUrl, partialDir)
+  if (!fs.existsSync(path.join(partialDir, umdPath))) {
+    fs.rmSync(partialDir, { recursive: true, force: true })
+    throw new Error(`${label}: umdPath "${umdPath}" not found in package`)
+  }
+  fs.renameSync(partialDir, versionDir)
+}
+
 // Downloads one version into dist/<packageName>/<version>/ (append-only: an
-// existing, complete extraction is reused) and returns its served URL + hash.
+// existing extraction is reused) and returns its served URL + hash.
 async function buildVersion(
   plugin: SourcePlugin,
   version: SourceVersion,
@@ -121,30 +127,30 @@ async function buildVersion(
   const { packageName, umdPath } = plugin
   const { pluginVersion } = version
   const versionDir = path.join(outputDir, packageName, pluginVersion)
-  const bundlePath = path.join(versionDir, umdPath)
+  const label = `${packageName}@${pluginVersion}`
 
-  if (fs.existsSync(bundlePath)) {
-    console.log(`✓ ${packageName}@${pluginVersion} already present`)
+  if (fs.existsSync(versionDir)) {
+    console.log(`✓ ${label} already present`)
   } else {
     const release = metadata.versions[pluginVersion]
     if (!release) {
       throw new Error(`${packageName}: version ${pluginVersion} not on npm`)
     }
-    console.log(`  Downloading ${packageName}@${pluginVersion}...`)
-    await downloadAndExtractTarball(release.dist.tarball, versionDir)
-    if (!fs.existsSync(bundlePath)) {
-      throw new Error(
-        `${packageName}@${pluginVersion}: umdPath "${umdPath}" not found in package`,
-      )
-    }
-    console.log(`✓ Downloaded ${packageName}@${pluginVersion}`)
+    console.log(`  Downloading ${label}...`)
+    await downloadVersionAtomic(
+      release.dist.tarball,
+      versionDir,
+      umdPath,
+      label,
+    )
+    console.log(`✓ Downloaded ${label}`)
   }
 
   return {
     pluginVersion,
     jbrowseRange: version.jbrowseRange,
     url: rehostedUrl(packageName, pluginVersion, umdPath),
-    integrity: subresourceIntegrity(bundlePath),
+    integrity: subresourceIntegrity(path.join(versionDir, umdPath)),
   }
 }
 
@@ -176,7 +182,7 @@ async function downloadPlugins(): Promise<void> {
       for (const target of targets) {
         versions.push(await buildVersion(plugin, target, metadata))
       }
-      const latest = versions[versions.length - 1].pluginVersion
+      const latest = newestVersion(versions).pluginVersion
       copyToLatest(plugin.packageName, latest)
       built.push({
         packageName: plugin.packageName,

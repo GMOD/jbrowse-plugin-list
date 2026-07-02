@@ -20,8 +20,9 @@ pnpm upload      # sync dist/ artifacts (immutable) + the v2 manifest to S3
 pnpm invalidate  # CloudFront invalidation for /plugin-store/v2/*
 ```
 
-`upload` uploads artifacts before the manifest, so v2 never points at a 404. It
-does not touch the v1 `plugin-store/plugins.json` (left as currently served).
+`upload` uploads artifacts before the manifest, so v2 never points at a 404. The
+old v1 `plugin-store/plugins.json` is no longer generated or updated by this repo
+(its previously-published objects stay frozen on S3 for any legacy client).
 
 ## Pipeline
 
@@ -35,15 +36,11 @@ does not touch the v1 `plugin-store/plugins.json` (left as currently served).
   [subresource integrity](https://developer.mozilla.org/docs/Web/Security/Subresource_Integrity)
   hash, and writes the intermediate `build-manifest.json`.
 - **generate** (`generate-plugins.ts`) reads `plugins.json` +
-  `build-manifest.json` and writes two published manifests:
-  - `new_plugins.json` → `plugin-store/plugins.json` — the **v1** legacy flat
-    shape existing JBrowse clients expect. Left unchanged: its `url` keeps the
-    existing unversioned path so deployed clients see no behavior change, and
-    `pnpm upload` does not push this file.
-  - `v2_plugins.json` → `plugin-store/v2/plugins.json` — the **v2** shape with
-    `packageName`, per-version `jbrowseRange`/`url`/`integrity` pointing at
-    immutable, version-pinned artifacts, so version-aware clients can resolve
-    the right build for their JBrowse version.
+  `build-manifest.json`, validates each `jbrowseRange`, and writes
+  `v2_plugins.json` → `plugin-store/v2/plugins.json` — the **v2** manifest with
+  `packageName`, per-version `jbrowseRange`/`url`/`integrity` pointing at
+  immutable, version-pinned artifacts, so version-aware clients can resolve the
+  right build for their JBrowse version.
 
 ## Why version-pinned + immutable
 

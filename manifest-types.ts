@@ -55,19 +55,6 @@ export interface BuildManifest {
   plugins: BuiltPlugin[]
 }
 
-// Published v1 manifest entry (legacy flat shape) — what existing JBrowse clients
-// expect from https://jbrowse.org/plugin-store/plugins.json.
-export interface V1Plugin {
-  name: string
-  authors: string[]
-  description: string
-  location: string
-  plug_n_play?: number
-  url: string
-  license: string
-  image?: string
-}
-
 // Published v2 manifest entry — served at https://jbrowse.org/plugin-store/v2/plugins.json.
 // Top-level `url`/`integrity` are the `latest` fallback; `versions` drives semver
 // range selection by the consumer.
@@ -93,19 +80,13 @@ export function rehostedUrl(
   return `${REHOST_BASE}${packageName}/${version}/${umdPath}`
 }
 
-// Legacy, unversioned artifact URL used by the v1 manifest. Kept stable so
-// existing clients keep fetching the same path they always have; v2 uses the
-// version-pinned `rehostedUrl` instead.
-export function legacyRehostedUrl(packageName: string, umdPath: string) {
-  return `${REHOST_BASE}${packageName}/${umdPath}`
-}
-
 // Explicit "always latest" url: a stable, version-agnostic path that always
 // serves the newest published version (the build copies the latest version into
-// a `latest/` dir). Lives under its own `latest/` segment so it never overwrites
-// the v1 unversioned artifacts at `<pkg>/<umdPath>`. Must be served no-cache
-// (see the `upload` script) since its target changes on each release; let
-// configs reference this instead of pinning a version or using a CDN like unpkg.
+// a `latest/` dir). Must be served no-cache (see the `upload` script) since its
+// target changes on each release. Safe for self-contained bundles; a code-split
+// plugin (e.g. protein3d, which lazy-loads a `molstar-chunk.js` sibling) should
+// be referenced by a pinned `rehostedUrl` instead, so its bundle and sidecar
+// chunk stay a matched, immutable set.
 export function latestRehostedUrl(packageName: string, umdPath: string) {
   return `${REHOST_BASE}${packageName}/latest/${umdPath}`
 }
