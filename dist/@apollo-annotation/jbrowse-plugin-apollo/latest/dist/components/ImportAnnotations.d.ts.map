@@ -1,0 +1,1 @@
+{"version":3,"file":"ImportAnnotations.d.ts","sourceRoot":"","sources":["../../src/components/ImportAnnotations.tsx"],"names":[],"mappings":"AAiBA,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,YAAY,CAAA;AAIpD,UAAU,sBAAsB;IAC9B,OAAO,EAAE,kBAAkB,CAAA;IAC3B,WAAW,IAAI,IAAI,CAAA;IACnB,YAAY,EAAE,MAAM,CAAA;CACrB;AAED,wBAAgB,iBAAiB,CAAC,EAChC,YAAY,EACZ,WAAW,EACX,OAAO,GACR,EAAE,sBAAsB,2CA4ExB"}
