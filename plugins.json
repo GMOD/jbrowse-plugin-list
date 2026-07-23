@@ -196,6 +196,17 @@
       "license": "Apache License 2.0",
       "plug_n_play": 0,
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png"
+    },
+    {
+      "name": "GraphGenomeView",
+      "packageName": "jbrowse-plugin-graphgenomeviewer",
+      "authors": ["Colin Diesh"],
+      "description": "Graph genome (pangenome) view: rGFA reference-anchored layouts plus the Bandage force-directed engine",
+      "location": "https://github.com/GMOD/jbrowse-plugin-graphgenomeviewer",
+      "umdPath": "dist/jbrowse-plugin-graphgenomeviewer.umd.production.min.js",
+      "license": "GPL-3.0-or-later",
+      "plug_n_play": 0,
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview-screenshot-800x200.png"
     }
   ]
 }
