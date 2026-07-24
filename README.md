@@ -20,10 +20,16 @@ A plugin is described with the following data:
 - **packageName:** the NPM package name your plugin is published under. We
   download the package tarball from NPM and rehost it, so this must be published
   to NPM.
-- **umdPath:** the path to the UMD bundle _inside_ your published package, e.g.
-  `dist/jbrowse-plugin-msaview.umd.production.min.js`. We build the served URL
-  from `packageName`, the version, and this path, and verify the file exists in
-  the published tarball — so we never have to guess where your bundle lives.
+- **umdPath / esmPath:** the path to your bundle _inside_ your published
+  package. Set exactly one. Use **umdPath** for a classic UMD bundle (e.g.
+  `dist/jbrowse-plugin-msaview.umd.production.min.js`); it is pinned with
+  subresource integrity. Use **esmPath** for a native ES module (e.g.
+  `dist/jbrowse-plugin-msaview.esm.js`) loaded via `import()` — it carries no
+  integrity hash (dynamic import can't), and it may load code-split chunks
+  relative to its own url, which works because we rehost the whole package
+  `dist/`. We build the served URL from `packageName`, the version, and this
+  path, and verify the file exists in the published tarball — so we never have
+  to guess where your bundle lives.
 - **license:** the type of software license that your code is provided under. If
   you haven't specified a value, specify `"NONE"`.
 - **versions (optional):** an array of

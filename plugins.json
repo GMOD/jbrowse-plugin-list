@@ -203,7 +203,7 @@
       "authors": ["Colin Diesh"],
       "description": "Graph genome (pangenome) view: rGFA reference-anchored layouts plus the Bandage force-directed engine",
       "location": "https://github.com/GMOD/jbrowse-plugin-graphgenomeviewer",
-      "umdPath": "dist/jbrowse-plugin-graphgenomeviewer.umd.production.min.js",
+      "esmPath": "dist/jbrowse-plugin-graphgenomeviewer.esm.js",
       "license": "GPL-3.0-or-later",
       "plug_n_play": 0,
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png"

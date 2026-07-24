@@ -31,10 +31,11 @@ old v1 `plugin-store/plugins.json` is no longer generated or updated by this rep
 - **download** (`download-plugins-npm-api.ts`) reads `plugins.json`, downloads
   the relevant NPM tarballs into version-pinned dirs
   `dist/<packageName>/<version>/` (append-only — existing versions are never
-  re-downloaded or overwritten), verifies each declared `umdPath` exists,
-  computes its sha384
+  re-downloaded or overwritten), verifies each declared `umdPath`/`esmPath`
+  exists, computes a sha384
   [subresource integrity](https://developer.mozilla.org/docs/Web/Security/Subresource_Integrity)
-  hash, and writes the intermediate `build-manifest.json`.
+  hash for a UMD bundle (ESM entries get an `esmUrl` and no hash — dynamic
+  import can't enforce SRI), and writes the intermediate `build-manifest.json`.
 - **generate** (`generate-plugins.ts`) reads `plugins.json` +
   `build-manifest.json`, validates each `jbrowseRange`, and writes
   `v2_plugins.json` → `plugin-store/v2/plugins.json` — the **v2** manifest with

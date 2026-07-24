@@ -5,6 +5,7 @@ import path from 'path'
 
 import { satisfies } from 'compare-versions'
 
+import { builtUrlFields } from './manifest-types.ts'
 import type {
   BuildManifest,
   BuiltPlugin,
@@ -87,8 +88,7 @@ const v2: V2Plugin[] = plugins.flatMap(plugin => {
       ...(plug_n_play === undefined ? {} : { plug_n_play }),
       license,
       ...(image === undefined ? {} : { image }),
-      url: latest.url,
-      integrity: latest.integrity,
+      ...builtUrlFields(latest),
       versions: built.versions,
     },
   ]
