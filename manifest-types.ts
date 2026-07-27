@@ -14,8 +14,8 @@ export interface SourceVersion {
 }
 
 // Hand-edited source manifest entry (plugins.json). The authoritative bundle
-// location is `packageName` + `umdPath`; all served URLs are constructed from
-// these plus a version, so nothing in the pipeline parses URLs.
+// location is `packageName` + one of `umdPath`/`esmPath`; all served URLs are
+// constructed from these plus a version, so nothing in the pipeline parses URLs.
 export interface SourcePlugin {
   name: string
   packageName: string
@@ -23,7 +23,14 @@ export interface SourcePlugin {
   description: string
   location: string
   plug_n_play?: number
-  umdPath: string
+  // Exactly one of these. `umdPath` is a classic UMD bundle loaded via <script>
+  // and pinned with subresource integrity. `esmPath` is a native ES module
+  // loaded via import(); it carries no integrity hash (dynamic import can't) and
+  // resolves its own code-split chunks relative to its url, so the whole package
+  // `dist/` is rehosted together (which it already is — the tarball is extracted
+  // wholesale).
+  umdPath?: string
+  esmPath?: string
   license: string
   image?: string
   // Optional explicit version pins, listed oldest-to-newest. When omitted the
@@ -31,16 +38,44 @@ export interface SourcePlugin {
   versions?: SourceVersion[]
 }
 
+// A source entry names its bundle under exactly one of umdPath/esmPath. Returns
+// which kind it is plus the in-package path, and rejects a malformed entry (both
+// or neither) loudly rather than silently picking one.
+export function bundleLocation(plugin: SourcePlugin) {
+  if (plugin.umdPath !== undefined && plugin.esmPath !== undefined) {
+    throw new Error(
+      `${plugin.packageName}: set only one of umdPath / esmPath, not both`,
+    )
+  } else if (plugin.esmPath !== undefined) {
+    return { kind: 'esm' as const, path: plugin.esmPath }
+  } else if (plugin.umdPath !== undefined) {
+    return { kind: 'umd' as const, path: plugin.umdPath }
+  } else {
+    throw new Error(`${plugin.packageName}: needs a umdPath or esmPath`)
+  }
+}
+
 export interface SourceManifest {
   plugins: SourcePlugin[]
 }
 
-// One resolved + downloaded version, with its immutable URL and integrity hash.
+// One resolved + downloaded version. A UMD build carries `url` + `integrity`; an
+// ESM build carries `esmUrl` and no integrity (dynamic import has no SRI).
 export interface BuiltVersion {
   pluginVersion: string
   jbrowseRange: string
-  url: string
-  integrity: string
+  url?: string
+  integrity?: string
+  esmUrl?: string
+}
+
+// The url-bearing fields of a built version, picked by kind. Spread onto a
+// V2Plugin / version entry so a UMD build emits url+integrity and an ESM build
+// emits esmUrl — matching what the JBrowse consumer's definitionFrom reads.
+export function builtUrlFields(v: BuiltVersion) {
+  return v.esmUrl !== undefined
+    ? { esmUrl: v.esmUrl }
+    : { url: v.url, integrity: v.integrity }
 }
 
 // Intermediate build output (build-manifest.json) bridging download and generate.
@@ -67,8 +102,10 @@ export interface V2Plugin {
   plug_n_play?: number
   license: string
   image?: string
-  url: string
-  integrity: string
+  // UMD entries carry url + integrity; ESM entries carry esmUrl (no SRI).
+  url?: string
+  integrity?: string
+  esmUrl?: string
   versions: BuiltVersion[]
 }
 

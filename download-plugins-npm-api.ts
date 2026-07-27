@@ -8,7 +8,11 @@ import { pipeline } from 'stream/promises'
 import { compareVersions } from 'compare-versions'
 import * as tar from 'tar'
 
-import { rehostedUrl, subresourceIntegrity } from './manifest-types.ts'
+import {
+  bundleLocation,
+  rehostedUrl,
+  subresourceIntegrity,
+} from './manifest-types.ts'
 import type {
   BuildManifest,
   BuiltPlugin,
@@ -96,23 +100,23 @@ function newestVersion(versions: BuiltVersion[]): BuiltVersion {
 }
 
 // Extract a tarball into versionDir atomically: files land in a `.partial`
-// sibling and the dir is renamed into place only once the umd bundle is
+// sibling and the dir is renamed into place only once the entry bundle is
 // confirmed present. So a versionDir is either absent or a complete package —
-// the umd and any lazily-loaded sidecar chunks (e.g. protein3d's
-// `molstar-chunk.js`) can never be split across a half-written extraction that
-// the append-only skip below would then reuse.
+// the entry and any lazily-loaded sidecar chunks (protein3d's
+// `molstar-chunk.js`, an ESM plugin's `chunks/`) can never be split across a
+// half-written extraction that the append-only skip below would then reuse.
 async function downloadVersionAtomic(
   tarballUrl: string,
   versionDir: string,
-  umdPath: string,
+  bundleFile: string,
   label: string,
 ): Promise<void> {
   const partialDir = `${versionDir}.partial`
   fs.rmSync(partialDir, { recursive: true, force: true })
   await downloadAndExtractTarball(tarballUrl, partialDir)
-  if (!fs.existsSync(path.join(partialDir, umdPath))) {
+  if (!fs.existsSync(path.join(partialDir, bundleFile))) {
     fs.rmSync(partialDir, { recursive: true, force: true })
-    throw new Error(`${label}: umdPath "${umdPath}" not found in package`)
+    throw new Error(`${label}: bundle "${bundleFile}" not found in package`)
   }
   fs.renameSync(partialDir, versionDir)
 }
@@ -124,7 +128,8 @@ async function buildVersion(
   version: SourceVersion,
   metadata: NpmPackageMetadata,
 ): Promise<BuiltVersion> {
-  const { packageName, umdPath } = plugin
+  const { packageName } = plugin
+  const { kind, path: bundleFile } = bundleLocation(plugin)
   const { pluginVersion } = version
   const versionDir = path.join(outputDir, packageName, pluginVersion)
   const label = `${packageName}@${pluginVersion}`
@@ -140,17 +145,24 @@ async function buildVersion(
     await downloadVersionAtomic(
       release.dist.tarball,
       versionDir,
-      umdPath,
+      bundleFile,
       label,
     )
     console.log(`✓ Downloaded ${label}`)
   }
 
+  const rehosted = rehostedUrl(packageName, pluginVersion, bundleFile)
+  // ESM entries carry no subresource integrity (dynamic import has no SRI); UMD
+  // entries are hashed so JBrowse can enforce integrity on the <script> load.
   return {
     pluginVersion,
     jbrowseRange: version.jbrowseRange,
-    url: rehostedUrl(packageName, pluginVersion, umdPath),
-    integrity: subresourceIntegrity(path.join(versionDir, umdPath)),
+    ...(kind === 'esm'
+      ? { esmUrl: rehosted }
+      : {
+          url: rehosted,
+          integrity: subresourceIntegrity(path.join(versionDir, bundleFile)),
+        }),
   }
 }
 
