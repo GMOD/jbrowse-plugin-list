@@ -29,7 +29,7 @@ export default function stateModelFactory() {
         /**
          * #property
          */
-        querySeqName: types.stripDefault(types.string, 'QUERY'),
+        querySeqName: 'QUERY',
         /**
          * #property
          */
@@ -37,7 +37,7 @@ export default function stateModelFactory() {
         /**
          * #property
          */
-        zoomToBaseLevel: types.stripDefault(types.boolean, false),
+        zoomToBaseLevel: false,
         /**
          * #property
          */
@@ -138,10 +138,7 @@ export default function stateModelFactory() {
          * #getter
          */
         get connectedHighlights() {
-            return [
-                this.connectedHoverHighlight,
-                this.connectedClickHighlight,
-            ].filter((r) => r !== undefined);
+            return [this.connectedHoverHighlight, this.connectedClickHighlight].filter((r) => r !== undefined);
         },
     }))
         .actions(self => ({

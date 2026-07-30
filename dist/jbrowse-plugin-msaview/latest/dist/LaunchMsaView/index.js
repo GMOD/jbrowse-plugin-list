@@ -9,10 +9,10 @@ function extendStateModel(stateModel) {
         const superContextMenuItems = self.contextMenuItems;
         return {
             contextMenuItems() {
+                const feature = self.contextMenuFeature;
                 const track = getContainingTrack(self);
-                const session = getSession(track);
-                const info = self.contextMenuInfo;
-                const showMsaMenuItem = info && self.isGeneLike;
+                const featureType = feature?.get('type');
+                const showMsaMenuItem = feature && ['gene', 'mRNA', 'transcript'].includes(featureType);
                 return [
                     ...superContextMenuItems(),
                     ...(showMsaMenuItem
@@ -21,22 +21,14 @@ function extendStateModel(stateModel) {
                                 label: 'Launch MSA view',
                                 icon: AddIcon,
                                 onClick: () => {
-                                    self
-                                        .fetchFullFeature(info.item.featureId, info.displayedRegionIndex)
-                                        .then(feature => {
-                                        if (feature) {
-                                            session.queueDialog(handleClose => [
-                                                LaunchMsaViewDialog,
-                                                { model: track, handleClose, feature },
-                                            ]);
-                                        }
-                                        else {
-                                            session.notify('Could not load feature for MSA view', 'warning');
-                                        }
-                                    })
-                                        .catch((e) => {
-                                        session.notifyError(`${e}`, e);
-                                    });
+                                    getSession(track).queueDialog(handleClose => [
+                                        LaunchMsaViewDialog,
+                                        {
+                                            model: track,
+                                            handleClose,
+                                            feature,
+                                        },
+                                    ]);
                                 },
                             },
                         ]

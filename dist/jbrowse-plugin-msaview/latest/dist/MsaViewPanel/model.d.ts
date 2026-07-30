@@ -29,66 +29,33 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     minimized: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-}, "height" | "id" | "type" | "drawLabels" | "labelsAlignRight" | "treeAreaWidth" | "treeWidth" | "showBranchLen" | "drawTree" | "drawNodeBubbles" | "autoTreeAreaWidth" | "bgColor" | "colorSchemeName" | "showColumnStats" | "msaFormat" | "data" | "showDomains" | "hideGaps" | "allowedGappyness" | "subFeatureRows" | "drawMsaLetters" | "scrollZoom" | "rowHeight" | "scrollY" | "scrollX" | "colWidth" | "treeFilehandle" | "msaFilehandle" | "treeMetadataFilehandle" | "gffFilehandle" | "currentAlignment" | "collapsed" | "showOnly" | "turnedOffTracks" | "featureFilters" | "relativeTo" | "highlightColumns"> & Omit<Omit<Omit<{}, "drawLabels" | "labelsAlignRight" | "treeAreaWidth" | "treeWidth" | "showBranchLen" | "drawTree" | "drawNodeBubbles" | "autoTreeAreaWidth"> & {
-    drawLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    labelsAlignRight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
+}, "height" | "id" | "type" | "drawLabels" | "labelsAlignRight" | "treeAreaWidth" | "treeWidth" | "showBranchLen" | "drawTree" | "drawNodeBubbles" | "bgColor" | "colorSchemeName" | "msaFormat" | "data" | "showDomains" | "hideGaps" | "allowedGappyness" | "subFeatureRows" | "drawMsaLetters" | "scrollZoom" | "rowHeight" | "scrollY" | "scrollX" | "colWidth" | "currentAlignment" | "treeFilehandle" | "msaFilehandle" | "treeMetadataFilehandle" | "gffFilehandle" | "collapsed" | "showOnly" | "turnedOffTracks" | "featureFilters" | "relativeTo" | "highlightColumns"> & Omit<Omit<Omit<{}, "drawLabels" | "labelsAlignRight" | "treeAreaWidth" | "treeWidth" | "showBranchLen" | "drawTree" | "drawNodeBubbles"> & {
+    drawLabels: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    labelsAlignRight: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     treeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
     treeWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    showBranchLen: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    drawTree: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    drawNodeBubbles: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    autoTreeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-}, "bgColor" | "colorSchemeName" | "showColumnStats" | "msaFormat"> & {
-    bgColor: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    colorSchemeName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-    showColumnStats: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
+    showBranchLen: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    drawTree: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    drawNodeBubbles: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+}, "bgColor" | "colorSchemeName" | "msaFormat"> & {
+    bgColor: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    colorSchemeName: import("@jbrowse/mobx-state-tree").IType<string | undefined, string, string>;
     msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("msa-parsers").MSAFormat>>;
-}, "height" | "id" | "type" | "data" | "showDomains" | "hideGaps" | "allowedGappyness" | "subFeatureRows" | "drawMsaLetters" | "scrollZoom" | "rowHeight" | "scrollY" | "scrollX" | "colWidth" | "treeFilehandle" | "msaFilehandle" | "treeMetadataFilehandle" | "gffFilehandle" | "currentAlignment" | "collapsed" | "showOnly" | "turnedOffTracks" | "featureFilters" | "relativeTo" | "highlightColumns"> & {
+}, "height" | "id" | "type" | "data" | "showDomains" | "hideGaps" | "allowedGappyness" | "subFeatureRows" | "drawMsaLetters" | "scrollZoom" | "rowHeight" | "scrollY" | "scrollX" | "colWidth" | "currentAlignment" | "treeFilehandle" | "msaFilehandle" | "treeMetadataFilehandle" | "gffFilehandle" | "collapsed" | "showOnly" | "turnedOffTracks" | "featureFilters" | "relativeTo" | "highlightColumns"> & {
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-    showDomains: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    hideGaps: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    allowedGappyness: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    subFeatureRows: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
+    showDomains: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    hideGaps: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    allowedGappyness: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    subFeatureRows: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     type: import("@jbrowse/mobx-state-tree").ISimpleType<"MsaView">;
-    drawMsaLetters: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    scrollZoom: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
+    drawMsaLetters: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    scrollZoom: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     height: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    rowHeight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    scrollY: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    scrollX: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    colWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    treeFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
-        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-        blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
-        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-        handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    rowHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    scrollY: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    scrollX: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    colWidth: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    treeFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -96,85 +63,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    }, ({
-        locationType: "UriLocation";
-        uri: string;
-    } & Partial<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>) | ({
-        blobId: string;
-        locationType: "BlobLocation";
-        name: string;
-    } & Partial<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }>) | ({
-        handleId: string;
-        locationType: "FileHandleLocation";
-        name: string;
-    } & Partial<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }>) | ({
-        localPath: string;
-        locationType: "LocalPathLocation";
-    } & Partial<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }>)>, import("@jbrowse/core/util/types/mst").LegacyFileLocation | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
-    msaFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -182,7 +71,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    msaFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -190,85 +83,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    }, ({
-        locationType: "UriLocation";
-        uri: string;
-    } & Partial<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>) | ({
-        blobId: string;
-        locationType: "BlobLocation";
-        name: string;
-    } & Partial<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }>) | ({
-        handleId: string;
-        locationType: "FileHandleLocation";
-        name: string;
-    } & Partial<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }>) | ({
-        localPath: string;
-        locationType: "LocalPathLocation";
-    } & Partial<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }>)>, import("@jbrowse/core/util/types/mst").LegacyFileLocation | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
-    treeMetadataFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -276,7 +91,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    treeMetadataFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -284,85 +103,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    }, ({
-        locationType: "UriLocation";
-        uri: string;
-    } & Partial<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>) | ({
-        blobId: string;
-        locationType: "BlobLocation";
-        name: string;
-    } & Partial<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }>) | ({
-        handleId: string;
-        locationType: "FileHandleLocation";
-        name: string;
-    } & Partial<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }>) | ({
-        localPath: string;
-        locationType: "LocalPathLocation";
-    } & Partial<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }>)>, import("@jbrowse/core/util/types/mst").LegacyFileLocation | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
-    gffFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -370,7 +111,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    gffFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -378,65 +123,22 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    }, ({
-        locationType: "UriLocation";
-        uri: string;
-    } & Partial<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>) | ({
-        blobId: string;
-        locationType: "BlobLocation";
-        name: string;
-    } & Partial<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }>) | ({
-        handleId: string;
-        locationType: "FileHandleLocation";
-        name: string;
-    } & Partial<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }>) | ({
-        localPath: string;
-        locationType: "LocalPathLocation";
-    } & Partial<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }>)>, import("@jbrowse/core/util/types/mst").LegacyFileLocation | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "LocalPathLocation";
-        localPath: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "BlobLocation";
-        name: string;
-        blobId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "FileHandleLocation";
-        name: string;
-        handleId: string;
-    }> | import("@jbrowse/mobx-state-tree").ModelCreationType<{
-        locationType: "UriLocation";
-        uri: string;
-        baseUri: string | undefined;
-        internetAccountId: string | undefined;
-        internetAccountPreAuthorization: import("@jbrowse/mobx-state-tree").ModelCreationType<{
-            internetAccountType: string;
-            authInfo: any;
-        }> | undefined;
-    }>, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
-    currentAlignment: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    collapsed: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>, [undefined]>;
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
+        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+        blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
+        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+        handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    currentAlignment: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    collapsed: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     showOnly: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
-    turnedOffTracks: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>, [undefined]>;
+    turnedOffTracks: import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
     data: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IModelType<{
         tree: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
         msa: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
@@ -453,45 +155,18 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         treeMetadata: string | undefined;
         gff: string | undefined;
     }>, [undefined]>;
-    featureFilters: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>, [undefined]>;
+    featureFilters: import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
     relativeTo: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     highlightColumns: import("@jbrowse/mobx-state-tree").IType<number[] | undefined, number[] | undefined, number[] | undefined>;
-}, "init" | "connectedViewId" | "connectedFeature" | "blastParams" | "querySeqName" | "uniprotId" | "zoomToBaseLevel" | "dataStoreId" | "mafRegion"> & {
-    /**
-     * #property
-     */
+}, "init" | "querySeqName" | "zoomToBaseLevel" | "connectedViewId" | "connectedFeature" | "blastParams" | "uniprotId" | "dataStoreId" | "mafRegion"> & {
     connectedViewId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
-    /**
-     * #property
-     */
     connectedFeature: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
-    /**
-     * #property
-     */
     blastParams: import("@jbrowse/mobx-state-tree").IType<BlastParams | undefined, BlastParams | undefined, BlastParams | undefined>;
-    /**
-     * #property
-     */
-    querySeqName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
-    /**
-     * #property
-     */
+    querySeqName: import("@jbrowse/mobx-state-tree").IType<string | undefined, string, string>;
     uniprotId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
-    /**
-     * #property
-     */
-    zoomToBaseLevel: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    /**
-     * #property
-     */
+    zoomToBaseLevel: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     init: import("@jbrowse/mobx-state-tree").IType<MsaViewInitState | undefined, MsaViewInitState | undefined, MsaViewInitState | undefined>;
-    /**
-     * #property
-     */
     dataStoreId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
-    /**
-     * #property
-     */
     mafRegion: import("@jbrowse/mobx-state-tree").IType<MafRegion | undefined, MafRegion | undefined, MafRegion | undefined>;
 }, {
     width: number;
@@ -514,14 +189,12 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     setTreeWidth(n: number): void;
     setLabelsAlignRight(arg: boolean): void;
     setDrawTree(arg: boolean): void;
-    setAutoTreeAreaWidth(arg: boolean): void;
     setShowBranchLen(arg: boolean): void;
     setDrawNodeBubbles(arg: boolean): void;
     setDrawLabels(arg: boolean): void;
 } & {
     setColorSchemeName(name: string): void;
     setBgColor(arg: boolean): void;
-    setShowColumnStats(arg: boolean): void;
     setMSAFormat(arg?: import("msa-parsers").MSAFormat): void;
 } & {
     headerHeight: number;
@@ -644,7 +317,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     }[];
     readonly colClustalX: Record<string, string>[];
     readonly conservation: number[];
-    readonly propertyConservation: number[];
     readonly hierarchy: import("react-msaview").HierarchyNode<import("react-msaview").NodeWithIdsAndLength>;
     readonly totalHeight: number;
     readonly leaves: import("react-msaview").HierarchyNode<import("react-msaview").NodeWithIdsAndLength>[];
@@ -798,18 +470,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         end: number;
         strand: number | undefined;
     }[];
-    readonly mouseOverColumnStats: {
-        col: number;
-        total: number;
-        gaps: number;
-        gapFraction: number;
-        conservation: number;
-        propertyConservation: number | undefined;
-        consensusLetter: string;
-        consensusCount: number;
-        consensusFraction: number;
-        distribution: [string, number][];
-    } | undefined;
     getRowData(name: string): {
         data: {
             name?: string;
@@ -961,49 +621,33 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     minimized: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
-}> & {
-    data: {
-        treeMetadata?: string | undefined;
-        msa?: string | undefined;
-        tree?: string | undefined;
-    };
-    drawLabels: boolean;
-    labelsAlignRight: boolean;
-    treeAreaWidth: number;
-    treeWidth: number;
-    showBranchLen: boolean;
-    drawTree: boolean;
-    drawNodeBubbles: boolean;
-    autoTreeAreaWidth: boolean;
-    bgColor: boolean;
-    colorSchemeName: string;
-    showColumnStats: boolean;
-    msaFormat: import("msa-parsers").MSAFormat | undefined;
-    id: string;
-    showDomains: boolean;
-    hideGaps: boolean;
-    allowedGappyness: number;
-    subFeatureRows: boolean;
-    type: "MsaView";
-    drawMsaLetters: boolean;
-    scrollZoom: boolean;
-    height: number;
-    rowHeight: number;
-    scrollY: number;
-    scrollX: number;
-    colWidth: number;
-    treeFilehandle: import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
-        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-        blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
-        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-        handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+}> & Omit<import("@jbrowse/mobx-state-tree").ModelSnapshotType<Omit<Omit<Omit<{}, "drawLabels" | "labelsAlignRight" | "treeAreaWidth" | "treeWidth" | "showBranchLen" | "drawTree" | "drawNodeBubbles"> & {
+    drawLabels: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    labelsAlignRight: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    treeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
+    treeWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
+    showBranchLen: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    drawTree: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    drawNodeBubbles: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+}, "bgColor" | "colorSchemeName" | "msaFormat"> & {
+    bgColor: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    colorSchemeName: import("@jbrowse/mobx-state-tree").IType<string | undefined, string, string>;
+    msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("msa-parsers").MSAFormat>>;
+}, "height" | "id" | "type" | "data" | "showDomains" | "hideGaps" | "allowedGappyness" | "subFeatureRows" | "drawMsaLetters" | "scrollZoom" | "rowHeight" | "scrollY" | "scrollX" | "colWidth" | "currentAlignment" | "treeFilehandle" | "msaFilehandle" | "treeMetadataFilehandle" | "gffFilehandle" | "collapsed" | "showOnly" | "turnedOffTracks" | "featureFilters" | "relativeTo" | "highlightColumns"> & {
+    id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
+    showDomains: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    hideGaps: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    allowedGappyness: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    subFeatureRows: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    type: import("@jbrowse/mobx-state-tree").ISimpleType<"MsaView">;
+    drawMsaLetters: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    scrollZoom: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
+    height: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
+    rowHeight: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    scrollY: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    scrollX: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    colWidth: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    treeFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -1011,11 +655,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    } | undefined;
-    msaFilehandle: import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -1023,7 +663,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    msaFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -1031,11 +675,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    } | undefined;
-    treeMetadataFilehandle: import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -1043,7 +683,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    treeMetadataFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -1051,11 +695,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    } | undefined;
-    gffFilehandle: import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
-        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
-        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
@@ -1063,7 +703,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
         name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
         handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
-    }> | {
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    gffFilehandle: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISnapshotProcessor<import("@jbrowse/mobx-state-tree").ITypeUnion<any, {
         locationType: "UriLocation";
         uri: string;
         internetAccountId: string | undefined;
@@ -1071,15 +715,42 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
             internetAccountType: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
             authInfo: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
         }> | undefined;
-    } | undefined;
-    currentAlignment: number;
-    collapsed: string[];
-    showOnly: string | undefined;
-    turnedOffTracks: import("mobx").IKeyValueMap<boolean>;
-    featureFilters: import("mobx").IKeyValueMap<boolean>;
-    relativeTo: string | undefined;
-    highlightColumns: number[] | undefined;
-} & import("@jbrowse/mobx-state-tree")._NotCustomized>;
+    } | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"BlobLocation">;
+        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+        blobId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"FileHandleLocation">;
+        name: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+        handleId: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }> | import("@jbrowse/mobx-state-tree").ModelSnapshotType<{
+        locationType: import("@jbrowse/mobx-state-tree").ISimpleType<"LocalPathLocation">;
+        localPath: import("@jbrowse/mobx-state-tree").ISimpleType<string>;
+    }>, any>, import("@jbrowse/mobx-state-tree")._NotCustomized, import("@jbrowse/mobx-state-tree")._NotCustomized>>;
+    currentAlignment: import("@jbrowse/mobx-state-tree").IType<number | undefined, number, number>;
+    collapsed: import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+    showOnly: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+    turnedOffTracks: import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
+    data: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IModelType<{
+        tree: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+        msa: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+        treeMetadata: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+        gff: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+    }, {
+        setTree(tree?: string): void;
+        setMSA(msa?: string): void;
+        setTreeMetadata(treeMetadata?: string): void;
+        setGFF(gff?: string): void;
+    }, import("@jbrowse/mobx-state-tree")._NotCustomized, {
+        tree: string | undefined;
+        msa: string | undefined;
+        treeMetadata: string | undefined;
+        gff: string | undefined;
+    }>, [undefined]>;
+    featureFilters: import("@jbrowse/mobx-state-tree").IMapType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>>;
+    relativeTo: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
+    highlightColumns: import("@jbrowse/mobx-state-tree").IType<number[] | undefined, number[] | undefined, number[] | undefined>;
+}>, symbol> & import("@jbrowse/mobx-state-tree")._NotCustomized>;
 export type JBrowsePluginMsaViewStateModel = ReturnType<typeof stateModelFactory>;
 export type JBrowsePluginMsaViewModel = Instance<JBrowsePluginMsaViewStateModel>;
 export { type MafRegion, type MsaViewInitState } from './types';
