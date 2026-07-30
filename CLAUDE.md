@@ -27,23 +27,31 @@ node scripts/checkConfigCompat.mjs --configs hg38,genark \
   --plugin MsaView=~/src/jbrowse-plugin-list/dist/jbrowse-plugin-msaview/latest/dist/jbrowse-plugin-msaview.umd.production.min.js
 ```
 
-### MsaView `latest/` is pinned to 3.4.11 on purpose
+### What broke on 2026-07-29, and what to check instead of pinning
 
-3.4.12 requires `JBrowseExports["@mui/material/SvgIcon"]`, which no released core
-provides (absent in v4.3.0; present only on `main`). The lookup yields undefined,
-the bundle throws while evaluating, `JBrowsePluginMsaView` is never defined, and
-every config naming it error-pages on v4.0.0 through latest. Uploading it did
-exactly that to hg38/hg19 on 2026-07-29 until `latest/` was rolled back.
+msaview 2.7.0 error-paged every `jbrowse.org/ucsc` launch on v4.0.0 through
+latest, and promoting it here is what shipped that. `latest/` was pinned back to
+2.6.8 for a few hours; 2.7.1 fixes it and no pin remains.
 
-`pnpm update-plugins` regenerates `latest/` from npm, so it will re-promote 3.4.12
-and **re-break production** unless msaview stops importing from
-`@mui/material/SvgIcon` (import `SvgIcon` from `@mui/material` instead) or core
-ships that re-export in a release. Until then, after `update-plugins`, restore it:
+Two causes, both from a plugin built against an unreleased MUI-v9 `@jbrowse/core`:
+
+- `@mui/material/SvgIcon` was externalized, but its exported **shape** differs by
+  MUI major. Released hosts expose it as the SvgIcon component (`$$typeof`,
+  `render`, `displayName`); MUI 9 also hangs `createSvgIcon` off it, which
+  `@mui/icons-material` v9 calls. So a key-presence check sees nothing wrong -- the
+  key is there on every host. Fixed by bundling that module in the plugin.
+- `types.stripDefault` exists only in the mobx-state-tree that ships with
+  unreleased core. react-msaview 5.6.3 degrades to `types.optional` where absent.
+
+The lesson is not "pin things." It is that **shape, not presence, is what varies**,
+so the only reliable check boots the bundle on a real host:
 
 ```
-git checkout HEAD -- dist/jbrowse-plugin-msaview/latest
+cd ~/src/jb2hubs
+node scripts/checkConfigCompat.mjs --configs hg38,genark \
+  --versions v4.0.0,v4.3.0,latest \
+  --plugin MsaView=dist/jbrowse-plugin-msaview/latest/dist/jbrowse-plugin-msaview.umd.production.min.js
 ```
 
-A plugin's new import is only safe once the oldest host in jb2hubs'
-`HOST_VERSIONS` re-exports it. `packages/core/ReExports/list.ts` in
-jbrowse-components is the authority; compare against `git show v4.0.0:` etc.
+Run that on any `latest/` bundle this regeneration changes, before uploading.
+`git status --porcelain dist | grep 'latest/dist.*umd'` lists them.
