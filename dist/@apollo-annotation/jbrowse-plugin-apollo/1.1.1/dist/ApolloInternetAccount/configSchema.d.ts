@@ -1,0 +1,44 @@
+import type { Instance } from '@jbrowse/mobx-state-tree';
+declare const ApolloConfigSchema: import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
+    baseURL: {
+        description: string;
+        type: string;
+        defaultValue: string;
+    };
+    tokenType: {
+        description: string;
+        type: string;
+        defaultValue: string;
+    };
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaType<{
+    name: {
+        description: string;
+        type: string;
+        defaultValue: string;
+    };
+    description: {
+        description: string;
+        type: string;
+        defaultValue: string;
+    };
+    authHeader: {
+        description: string;
+        type: string;
+        defaultValue: string;
+    };
+    tokenType: {
+        description: string;
+        type: string;
+        defaultValue: string;
+    };
+    domains: {
+        description: string;
+        type: string;
+        defaultValue: never[];
+    };
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<undefined, "internetAccountId">>, undefined>>;
+export type ApolloInternetAccountConfigModel = typeof ApolloConfigSchema;
+export interface ApolloInternetAccountConfig extends Instance<ApolloInternetAccountConfigModel> {
+}
+export default ApolloConfigSchema;
+//# sourceMappingURL=configSchema.d.ts.map
