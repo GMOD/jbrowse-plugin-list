@@ -11,14 +11,14 @@
       "plug_n_play": 2,
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.6.8/dist/jbrowse-plugin-msaview.umd.production.min.js",
-      "integrity": "sha384-9lva7n3xgS3fgQdpRqt6SeWRnDhWGrvz7SHn3JS3nuiEi9d4uNb/AIKK9lq4yTPG",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.7.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
+      "integrity": "sha384-eHEHbbI513SL7QgMDLstvQj1e6vcx5ZDY5YNruHBVWn3Mhc/i4vksxqHBKMGLVN+",
       "versions": [
         {
-          "pluginVersion": "2.6.8",
+          "pluginVersion": "2.7.0",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.6.8/dist/jbrowse-plugin-msaview.umd.production.min.js",
-          "integrity": "sha384-9lva7n3xgS3fgQdpRqt6SeWRnDhWGrvz7SHn3JS3nuiEi9d4uNb/AIKK9lq4yTPG"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.7.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
+          "integrity": "sha384-eHEHbbI513SL7QgMDLstvQj1e6vcx5ZDY5YNruHBVWn3Mhc/i4vksxqHBKMGLVN+"
         }
       ]
     },
@@ -322,14 +322,14 @@
       "plug_n_play": 0,
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.5.8/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-      "integrity": "sha384-Dgp4/HMG8IdRiXRhTdTcPNXTsxRbFyrVetBi7P/fOheFYidPQ1dG12PZjjYug9qF",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.8.0/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+      "integrity": "sha384-nV+uqvsb+0hYTIcU9T9shHEVSKT8v0hrLZ7F0u0BzyuJmntmjMaWERk1vUaXuGp3",
       "versions": [
         {
-          "pluginVersion": "0.5.8",
+          "pluginVersion": "0.8.0",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.5.8/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-          "integrity": "sha384-Dgp4/HMG8IdRiXRhTdTcPNXTsxRbFyrVetBi7P/fOheFYidPQ1dG12PZjjYug9qF"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.8.0/dist/jbrowse-plugin-protein3d.umd.production.min.js",
+          "integrity": "sha384-nV+uqvsb+0hYTIcU9T9shHEVSKT8v0hrLZ7F0u0BzyuJmntmjMaWERk1vUaXuGp3"
         }
       ]
     },
@@ -370,14 +370,14 @@
       "plug_n_play": 0,
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png",
-      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
-      "integrity": "sha384-uhrabzeEi4YL4xUnA+0ElOsKeOGeJN2nfrDSg27HG9sPHJggNICefY8pKCFhhufM",
+      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.1/dist/jbrowse-plugin-apollo.umd.production.min.js",
+      "integrity": "sha384-BjhtgDxydZMiel43Z7EAjjWf8tqeyZeXwGD+j9z3WirFp3OBGVIZdyISIwWhK2Xq",
       "versions": [
         {
-          "pluginVersion": "1.1.0",
+          "pluginVersion": "1.1.1",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
-          "integrity": "sha384-uhrabzeEi4YL4xUnA+0ElOsKeOGeJN2nfrDSg27HG9sPHJggNICefY8pKCFhhufM"
+          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.1/dist/jbrowse-plugin-apollo.umd.production.min.js",
+          "integrity": "sha384-BjhtgDxydZMiel43Z7EAjjWf8tqeyZeXwGD+j9z3WirFp3OBGVIZdyISIwWhK2Xq"
         }
       ]
     }
