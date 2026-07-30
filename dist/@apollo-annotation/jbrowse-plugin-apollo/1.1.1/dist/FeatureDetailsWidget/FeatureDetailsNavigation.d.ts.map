@@ -1,0 +1,1 @@
+{"version":3,"file":"FeatureDetailsNavigation.d.ts","sourceRoot":"","sources":["../../src/FeatureDetailsWidget/FeatureDetailsNavigation.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,wBAAwB,CAAA;AAO/D,OAAO,KAAK,EAAE,0BAA0B,IAAI,oBAAoB,EAAE,MAAM,SAAS,CAAA;AAEjF,eAAO,MAAM,wBAAwB,UACM;IACvC,KAAK,EAAE,oBAAoB,CAAA;IAC3B,OAAO,EAAE,iBAAiB,CAAA;CAC3B,mDAqDF,CAAA"}
