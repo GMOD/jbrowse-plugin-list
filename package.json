@@ -6,9 +6,12 @@
     "format": "pnpm prettier --write .",
     "generate": "node generate-plugins.ts",
     "update-plugins": "pnpm download && pnpm generate",
+    "verify": "node check-plugins.ts --changed",
+    "verify-all": "node check-plugins.ts",
+    "canary": "node check-plugins.ts --published",
     "upload": "rclone --config rclone.conf copy disthash: s3:jbrowse.org/plugins --checksum --fast-list --exclude '**/latest/**' --header-upload 'Cache-Control: public, max-age=31536000, immutable' && rclone --config rclone.conf copy disthash: s3:jbrowse.org/plugins --checksum --fast-list --include '**/latest/**' --header-upload 'Cache-Control: no-cache, must-revalidate' && rclone --config rclone.conf copyto v2_plugins.json s3:jbrowse.org/plugin-store/v2/plugins.json --checksum --header-upload 'Cache-Control: no-cache, must-revalidate'",
     "invalidate": "AWS_PAGER=\"\" aws cloudfront create-invalidation --distribution-id E13LGELJOT4GQO --paths \"/plugin-store/v2/*\" \"/plugins/*/latest/*\"",
-    "dep": "pnpm update-plugins && git add dist v2_plugins.json && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload"
+    "dep": "pnpm update-plugins && pnpm verify && git add dist v2_plugins.json && (git diff --cached --quiet || (git commit -m 'Updates' && git push)) && pnpm upload"
   },
   "dependencies": {
     "compare-versions": "^6.1.1",
@@ -16,6 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.4",
-    "prettier": "^3.8.4"
+    "prettier": "^3.8.4",
+    "puppeteer-core": "^25.4.0"
   }
 }

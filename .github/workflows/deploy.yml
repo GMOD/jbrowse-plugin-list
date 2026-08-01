@@ -22,14 +22,51 @@ jobs:
           pnpm i
           pnpm update-plugins
 
+      # Boots each newly-promoted bundle on the released hosts it will reach.
+      # `latest/` is uploaded no-cache and named by permanent jb2hubs config urls,
+      # so a bundle that throws while loading error-pages every one of them the
+      # moment someone runs `pnpm upload` — there is no staging step that would
+      # catch it after the fact.
+      #
+      # This records the verdict rather than failing the job, so the PR still
+      # opens: one plugin publishing a broken version must not hold back the
+      # other sixteen, and the diff is what you need in order to drop just that
+      # version. The run still goes red, and the PR body says which bundle broke.
+      #
+      # Runs before anything is staged — `--changed` reads `git status` for which
+      # `latest/` dirs actually moved — and logs outside the tree so the log does
+      # not end up in `git add .`.
+      - name: Verify promoted bundles boot
+        id: verify
+        env:
+          # preinstalled on the ubuntu runner image, so no browser action and no
+          # Chromium download
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          set +e
+          pnpm verify 2>&1 | tee "$RUNNER_TEMP/verify.log"
+          echo "status=${PIPESTATUS[0]}" >>"$GITHUB_OUTPUT"
+
+      - run: |
           if [ -n "$(git status --porcelain)" ]; then
+            if [ "${{ steps.verify.outputs.status }}" = "0" ]; then
+              body='Automated updates. Bundle verification passed.'
+            else
+              body="$(printf '%s\n\n```\n%s\n```\n' \
+                '⚠️ **A promoted bundle failed to boot on a released host.** Do not merge as-is — drop the offending version or pin it in `plugins.json`.' \
+                "$(tail -c 60000 "$RUNNER_TEMP/verify.log")")"
+            fi
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git checkout -b update-plugins
             git add .
             git commit -m "Update plugins"
             git push origin update-plugins --force
-            gh pr create --title "Update plugins" --body "Automated updates" --base main --head update-plugins || true
+            gh pr create --title "Update plugins" --body "$body" --base main --head update-plugins || true
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Fail the run when a bundle broke
+        if: steps.verify.outputs.status != '0'
+        run: exit 1
