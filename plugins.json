@@ -94,18 +94,6 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/civic-screenshot-fs8.png"
     },
     {
-      "name": "ICGC",
-      "packageName": "jbrowse-plugin-icgc",
-      "authors": ["Caroline Bridge"],
-      "description": "JBrowse 2 plugin to integrate resources from the ICGC",
-      "location": "https://github.com/GMOD/jbrowse-plugin-icgc",
-      "umdPath": "dist/jbrowse-plugin-icgc.umd.production.min.js",
-      "license": "Apache License 2.0",
-      "plug_n_play": 2,
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/icgc-screenshot-fs8.png",
-      "versions": [{ "pluginVersion": "1.0.2", "jbrowseRange": "<2.0.0" }]
-    },
-    {
       "name": "Reactome",
       "packageName": "jbrowse-plugin-reactome",
       "authors": ["Caroline Bridge"],
