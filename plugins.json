@@ -185,6 +185,15 @@
       "license": "Apache License 2.0",
       "plug_n_play": 0,
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png"
+    },
+    {
+      "name": "TView",
+      "packageName": "jbrowse-plugin-tview",
+      "authors": ["Colin Diesh"],
+      "description": "Loads BAM/CRAM read pileups into react-msaview for a `samtools tview` style interface inside JBrowse 2",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-tview",
+      "umdPath": "dist/jbrowse-plugin-tview.umd.production.min.js",
+      "license": "MIT"
     }
   ]
 }

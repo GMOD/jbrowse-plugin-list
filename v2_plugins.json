@@ -358,6 +358,26 @@
           "integrity": "sha384-BjhtgDxydZMiel43Z7EAjjWf8tqeyZeXwGD+j9z3WirFp3OBGVIZdyISIwWhK2Xq"
         }
       ]
+    },
+    {
+      "name": "TView",
+      "packageName": "jbrowse-plugin-tview",
+      "authors": [
+        "Colin Diesh"
+      ],
+      "description": "Loads BAM/CRAM read pileups into react-msaview for a `samtools tview` style interface inside JBrowse 2",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-tview",
+      "license": "MIT",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.0.6/dist/jbrowse-plugin-tview.umd.production.min.js",
+      "integrity": "sha384-St6W8ekPfyErDDUl6sY0QM8M27ciY0nipP+VWFN+6iG+vM9clZVonGMVCyww70Ws",
+      "versions": [
+        {
+          "pluginVersion": "2.0.6",
+          "jbrowseRange": "*",
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.0.6/dist/jbrowse-plugin-tview.umd.production.min.js",
+          "integrity": "sha384-St6W8ekPfyErDDUl6sY0QM8M27ciY0nipP+VWFN+6iG+vM9clZVonGMVCyww70Ws"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,8 @@
+{
+  "plugins": [
+    {
+      "name": "TView",
+      "url": "https://unpkg.com/jbrowse-plugin-tview/dist/jbrowse-plugin-tview.umd.production.min.js"
+    }
+  ]
+}
