@@ -6,6 +6,9 @@ Plugin metadata and S3 rehosting for the JBrowse 2 plugin store.
 
 - Downloads from NPM are intentionally serial to avoid hammering registry
   servers
+- Decisions that still bind, with the measurements behind them, are in
+  [agent-docs/architectural-decision-records/](agent-docs/architectural-decision-records/).
+  This file states the invariants; the ADRs say why they are what they are.
 
 ## `dist/` is a staging area, not the archive
 
@@ -120,6 +123,20 @@ plugin's fix release.
 msaview 2.7.0 error-paged every `jbrowse.org/ucsc` launch on v4.0.0 through
 latest, and promoting it here is what shipped that. `latest/` was pinned back to
 2.6.8 for a few hours; 2.7.1 fixes it and no pin remains.
+
+**Rolling back `latest/` is only half a rollback.** `ebc8eb7` changed 12 files,
+all under `dist/jbrowse-plugin-msaview/latest/`, and touched neither
+`plugins.json` nor the manifest — so the store went on offering **2.7.0** for
+the entire window, and anyone clicking _Install_ got the bundle that
+error-pages. The store-side lever is a `versions` pin in `plugins.json`:
+
+```json
+"versions": [{ "pluginVersion": "2.6.8", "jbrowseRange": "*" }]
+```
+
+then `pnpm update-plugins && pnpm verify && pnpm upload`. Pull both levers, or
+name explicitly which population you are leaving broken. See
+[ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md).
 
 Two causes, both from a plugin built against an unreleased MUI-v9
 `@jbrowse/core`:

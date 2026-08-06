@@ -120,6 +120,13 @@ Hosts outside a plugin's declared `jbrowseRange` are skipped rather than failed
 **Scope**: this proves a bundle loads. It does not prove a track renders; that
 needs test data and belongs in the plugin's own repo.
 
+## Background
+
+Why the pipeline is shaped this way — the SRI constraint that forces pinning,
+the two url shapes and their rollback levers, why bundles are booted rather than
+trusted, and why `dist/` is pruned — is recorded in
+[agent-docs/architectural-decision-records/](agent-docs/architectural-decision-records/).
+
 ## Why version-pinned + immutable
 
 Artifacts live at `<packageName>/<version>/...` and are uploaded with a long
