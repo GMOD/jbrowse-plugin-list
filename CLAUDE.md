@@ -50,29 +50,38 @@ at once and takes effect immediately, for everyone, with no staging step.
 A plugin whose bundle throws while loading doesn't degrade — `PluginLoader` runs
 `Promise.all`, so the whole session becomes an error page.
 
-### But most jb2hubs configs do not name `latest/` yet
+### genark configs still name the v1 flat path; UCSC has moved to `latest/`
 
-Counted on 2026-08-06, per plugin url across `~/src/jb2hubs`:
+Checked against **deployed** configs on 2026-08-06 (not the working tree — the
+local `ucsc2jbrowse/configs*` files lag deployment and reading them gives the
+wrong answer):
 
-| path                               | configs | serves                           |
-| ---------------------------------- | ------- | -------------------------------- |
-| `/plugins/<pkg>/dist/…` (v1, flat) | ~51,113 | frozen 2026-06-03, msaview 2.5.0 |
-| `/plugins/<pkg>/latest/dist/…`     | 64      | current, msaview 2.7.3           |
+| surface                         | names                          | regenerated |
+| ------------------------------- | ------------------------------ | ----------- |
+| `jbrowse.org/ucsc/hg38`, `hg19` | `/plugins/<pkg>/latest/dist/…` | 2026-08-05  |
+| `jbrowse.org/hubs/genark/**`    | `/plugins/<pkg>/dist/…` (v1)   | 2026-07-22  |
 
-Both are live. The flat v1 layout is no longer written by this repo's build —
-`dist/<pkg>/dist/` is a leftover extraction that nothing regenerates — but
-`rclone copy` never deletes, so S3 keeps serving it, and jb2hubs' own
-`checkPluginUrls.mjs` flags it (`isLegacy`). It is how protein3d served 0.4.1
-against a published 0.8.0.
+jb2hubs' `hubtools/src/enhanceConfig.ts` already names `latest/` for all four
+plugins and says so in a comment — "Never name the bare path here." So the
+generator is correct and the intent is settled; genark is simply stale output
+that predates the fix. **Regenerating genark is the whole remaining fix — no
+code change is needed anywhere.**
+
+The v1 flat layout is no longer written by this repo's build either
+(`dist/<pkg>/dist/` is a leftover extraction that nothing regenerates), but
+`rclone copy` never deletes, so S3 keeps serving it. It is how protein3d served
+0.4.1 against a published 0.8.0, and jb2hubs' `checkPluginUrls.mjs` flags it
+(`isLegacy`).
 
 Two consequences worth holding onto:
 
-- **`pnpm verify` does not cover the path most configs use.** `check-plugins.ts`
-  boots `latest/` only. The flat bundles are frozen, so an upload cannot regress
-  them — but it also cannot fix them, and nothing here watches them.
+- **`pnpm verify` does not cover the flat path.** `check-plugins.ts` boots
+  `latest/` only. Those bundles are frozen, so an upload cannot regress them —
+  but it also cannot fix them, and nothing here watches them. As of 2026-08-06
+  all four still boot on v4.0.0..latest; the risk is a future JBrowse release,
+  not a present failure.
 - **Retiring the flat layout is a jb2hubs change, not one here.** Deleting
-  `dist/<pkg>/dist/` locally would not unpublish anything. The configs have to
-  be regenerated onto `latest/` first.
+  `dist/<pkg>/dist/` locally would not unpublish anything.
 
 **Verify before uploading**, not after:
 
