@@ -2,200 +2,129 @@
 
 Plugin metadata and S3 rehosting for the JBrowse 2 plugin store.
 
-## Notes
+This file is the invariants and the runbook. **Why** any of it is true — with
+the measurements behind it — is in
+[agent-docs/architectural-decision-records/](agent-docs/architectural-decision-records/).
+Don't restate an ADR here; link it.
 
-- Downloads from NPM are intentionally serial to avoid hammering registry
-  servers
-- Decisions that still bind, with the measurements behind them, are in
-  [agent-docs/architectural-decision-records/](agent-docs/architectural-decision-records/).
-  This file states the invariants; the ADRs say why they are what they are.
+## Invariants
 
-## `dist/` is a staging area, not the archive
+Breaking any of these is a production incident, not a code-review comment.
 
-S3 is the system of record. Every version this repo has ever published is still
-there, immutably, and **`pnpm upload` is `rclone copy`, which never deletes** —
-so what `dist/` contains only decides what gets _added_.
+1. **`pnpm upload` is live, for everyone, with no staging step.** `latest/` is
+   uploaded `no-cache` and named directly by jb2hubs configs sitting at
+   permanent urls that published links and old desktop installs keep loading. A
+   bundle that throws while loading doesn't degrade — `PluginLoader` runs
+   `Promise.all`, so the whole session becomes an error page. **Verify before
+   uploading, not after.**
+   ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md))
 
-`dist/` therefore keeps just what an upload needs:
+2. **The published `url` must stay version-pinned.** It carries an `integrity`
+   hash the browser enforces, so pointing it at `latest/` would invalidate every
+   install's hash on the next publish. `latest/` must never appear in
+   `v2_plugins.json`.
+   ([ADR 0001](agent-docs/architectural-decision-records/0001-version-pinned-immutable-artifacts.md))
 
-- each plugin's `latest/`, and
-- every version the build manifest names — normally one per plugin, or all of
-  them for a plugin pinning explicit `versions`.
+3. **The upload is `rclone copy`. Never change it to `sync`.** `dist/` holds
+   only the current versions; S3 holds every version ever published, and those
+   older objects are what installed plugins and saved configs point at. A sync
+   would delete them. This is the most dangerous single edit available in this
+   repo.
+   ([ADR 0005](agent-docs/architectural-decision-records/0005-dist-is-a-staging-area-not-an-archive.md))
 
-**`pnpm download` maintains this itself**, deleting each superseded version dir
-once the new one is in place, so the rule stays true instead of decaying after
-one nightly. It never touches the legacy v1 flat tree or a package that is no
-longer in `plugins.json` (icgc, mafviewer), since nothing in the pipeline knows
-what those should keep. `--no-prune` opts out, e.g. while you have an old
-version fetched for debugging.
+4. **A rollback needs both levers.** Rolling back `dist/<pkg>/latest/` fixes
+   jb2hubs configs; pinning `versions` in `plugins.json` fixes store installs.
+   Pull both, or say explicitly which population you are leaving broken. Only
+   one was pulled on 2026-07-29 and the store served the broken bundle for the
+   whole window.
+   ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md),
+   [post-mortem](agent-docs/2026-07-29-msaview-2.7.0-postmortem.md))
 
-The initial prune was 2026-08-06: 493M → 246M, 30 dirs, after confirming all
-9,856 files were already on S3. Those versions are still published and still
-installable; git simply stopped keeping a second copy of immutable public
-artifacts. Get one back with `node fetch-version.ts <packageName> <version>`,
-which refetches from npm and then checks the result byte-for-byte against what
-S3 is serving — a stronger guarantee than the git copy gave, since it verifies
-what users actually load rather than what someone committed.
+5. **A store listing must never shrink by accident.** `v2_plugins.json` _is_ the
+   store; an entry that vanishes is a plugin nobody can install. The pipeline
+   carries forward what it could not rebuild and refuses to publish a manifest
+   missing an entry.
+   ([ADR 0004](agent-docs/architectural-decision-records/0004-fail-only-when-publishing-would-lose-something.md))
 
-**The landmine:** this is only safe because the upload is `copy`. If anyone ever
-changes it to `rclone sync`, the next upload would delete every pruned version
-from S3 and break every install and config that pinned one — which is most of
-them, since the store hands out version-pinned urls. Do not change that verb.
+Also: downloads from npm are deliberately serial, to avoid hammering the
+registry.
 
-## `pnpm upload` is a live change to configs already in the wild
+## Runbook
 
-`latest/` is uploaded `Cache-Control: no-cache`, and the jb2hubs configs
-(`jbrowse.org/ucsc/*`, `jbrowse.org/hubs/genark/*`) name those `latest/` urls.
-Those configs sit at permanent urls that published links and old desktop
-installs keep loading. So `pnpm upload` republishes **every** plugin's `latest/`
-at once and takes effect immediately, for everyone, with no staging step.
-
-A plugin whose bundle throws while loading doesn't degrade — `PluginLoader` runs
-`Promise.all`, so the whole session becomes an error page.
-
-### genark configs still name the v1 flat path; UCSC has moved to `latest/`
-
-Checked against **deployed** configs on 2026-08-06 (not the working tree — the
-local `ucsc2jbrowse/configs*` files lag deployment and reading them gives the
-wrong answer):
-
-| surface                         | names                          | regenerated |
-| ------------------------------- | ------------------------------ | ----------- |
-| `jbrowse.org/ucsc/hg38`, `hg19` | `/plugins/<pkg>/latest/dist/…` | 2026-08-05  |
-| `jbrowse.org/hubs/genark/**`    | `/plugins/<pkg>/dist/…` (v1)   | 2026-07-22  |
-
-jb2hubs' `hubtools/src/enhanceConfig.ts` already names `latest/` for all four
-plugins and says so in a comment — "Never name the bare path here." So the
-generator is correct and the intent is settled; genark is simply stale output
-that predates the fix. **Regenerating genark is the whole remaining fix — no
-code change is needed anywhere.**
-
-The v1 flat layout is no longer written by this repo's build either
-(`dist/<pkg>/dist/` is a leftover extraction that nothing regenerates), but
-`rclone copy` never deletes, so S3 keeps serving it. It is how protein3d served
-0.4.1 against a published 0.8.0, and jb2hubs' `checkPluginUrls.mjs` flags it
-(`isLegacy`).
-
-Two consequences worth holding onto:
-
-- **`pnpm verify` does not cover the flat path.** `check-plugins.ts` boots
-  `latest/` only. Those bundles are frozen, so an upload cannot regress them —
-  but it also cannot fix them, and nothing here watches them. As of 2026-08-06
-  all four still boot on v4.0.0..latest; the risk is a future JBrowse release,
-  not a present failure.
-- **Retiring the flat layout is a jb2hubs change, not one here.** Deleting
-  `dist/<pkg>/dist/` locally would not unpublish anything.
-
-**Verify before uploading**, not after:
+### Before uploading
 
 ```
-pnpm verify   # boots every bundle this run promoted, on v4.0.0..latest
+pnpm verify       # boots every bundle this run promoted, on v4.0.0..latest
+pnpm verify-all   # every plugin, not just the changed ones
+pnpm canary       # every plugin, as S3 is serving it right now
 ```
 
-`pnpm dep` already runs this between `update-plugins` and `upload`, so the
-normal path is gated. Run it by hand when uploading any other way.
-`pnpm verify-all` checks every plugin, not just the changed ones; `pnpm canary`
-checks what S3 is serving right now.
+`pnpm dep` runs `verify` between `update-plugins` and `upload`, so the normal
+path is gated. Run it by hand when uploading any other way.
 
-The gate only knows about hosts, not about data. A plugin whose _track_ renders
-wrong still needs its own repo's e2e tests — of the 17 plugins here, only
-msaview and protein3d have any.
+The gate proves a bundle **loads**. It does not prove a track **renders** — that
+needs test data and belongs in the plugin's own repo, and of the 17 plugins here
+only msaview and protein3d have any e2e tests at all.
 
 ### A failed `verify` leaves the bad bundle in the working tree
 
 `download` copies the newly promoted version into `dist/<pkg>/latest/` _before_
 `verify` runs, so a failure stops the upload but does not undo the copy.
 Re-running `pnpm download` will not fix it either: an existing version dir is
-reused rather than re-downloaded, so `buildVersion` sees `dist/<pkg>/<version>/`
-already there, skips the download, and copies the same bad build into `latest/`
-again. Revert explicitly:
+reused rather than re-downloaded, so `buildVersion` skips it and copies the same
+bad build into `latest/` again. Revert explicitly:
 
 ```
 git checkout -- dist/<pkg>/latest        # back to the last good promoted build
 rm -rf dist/<pkg>/<bad-version>          # only if you want the download retried
 ```
 
-Then pin `versions` in plugins.json to the last good release, or wait for the
+Then pin `versions` in `plugins.json` to the last good release, or wait for the
 plugin's fix release.
 
-### What broke on 2026-07-29, and what to check instead of pinning
-
-msaview 2.7.0 error-paged every `jbrowse.org/ucsc` launch on v4.0.0 through
-latest, and promoting it here is what shipped that. `latest/` was pinned back to
-2.6.8 for a few hours; 2.7.1 fixes it and no pin remains.
-
-**Rolling back `latest/` is only half a rollback.** `ebc8eb7` changed 12 files,
-all under `dist/jbrowse-plugin-msaview/latest/`, and touched neither
-`plugins.json` nor the manifest — so the store went on offering **2.7.0** for
-the entire window, and anyone clicking _Install_ got the bundle that
-error-pages. The store-side lever is a `versions` pin in `plugins.json`:
+### Rolling a plugin back
 
 ```json
 "versions": [{ "pluginVersion": "2.6.8", "jbrowseRange": "*" }]
 ```
 
-then `pnpm update-plugins && pnpm verify && pnpm upload`. Pull both levers, or
-name explicitly which population you are leaving broken. See
-[ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md).
+then `pnpm update-plugins && pnpm verify && pnpm upload`. That is the store-side
+lever; see invariant 4 for the other one.
 
-Two causes, both from a plugin built against an unreleased MUI-v9
-`@jbrowse/core`:
+### Reproducing a past break
 
-- `@mui/material/SvgIcon` was externalized, but its exported **shape** differs
-  by MUI major. Released hosts expose it as the SvgIcon component (`$$typeof`,
-  `render`, `displayName`); MUI 9 also hangs `createSvgIcon` off it, which
-  `@mui/icons-material` v9 calls. So a key-presence check sees nothing wrong --
-  the key is there on every host. Fixed by bundling that module in the plugin.
-- `types.stripDefault` exists only in the mobx-state-tree that ships with
-  unreleased core. react-msaview 5.6.3 degrades to `types.optional` where
-  absent.
+```
+node fetch-version.ts <packageName> <version>
+node check-plugins.ts --only <packageName> \
+  --bundle <packageName>=dist/<packageName>/<version> \
+  --versions v4.0.0,v4.3.0,latest
+```
 
-The lesson is not "pin things." It is that **shape, not presence, is what
-varies**, so the only reliable check boots the bundle on a real host. That is
-what `check-plugins.ts` does, and it reproduces this exact break:
+`fetch-version.ts` is needed first because `dist/` keeps only current versions.
+`--bundle` also accepts a plugin repo's own `dist/`, so a candidate build can be
+checked before it is published to npm at all.
+
+### Getting an old version back
 
 ```
 node fetch-version.ts jbrowse-plugin-msaview 2.7.0
-node check-plugins.ts --only jbrowse-plugin-msaview \
-  --bundle jbrowse-plugin-msaview=dist/jbrowse-plugin-msaview/2.7.0 \
-  --versions v4.0.0,v4.3.0,latest
-# v4.0.0  FATAL ... JBrowsePluginMsaView is undefined
 ```
 
-`--bundle` also points at a plugin repo's own `dist/`, so a candidate build can
-be checked before it is published to npm at all.
+Refetches from npm and verifies the result byte-for-byte against what S3 serves.
 
-For a break that only shows up with real config content (an unknown track type,
-a plugin's menu contribution), jb2hubs' `checkConfigCompat.mjs` boots the actual
-shipped configs and takes the same `--plugin Name=path` override. This repo's
-checker deliberately uses an empty config so a failure names one bundle.
+## Current state worth knowing
 
-### ICGC was dropped, and `jbrowseRange` now has no live user
+Point-in-time, checked 2026-08-06 — re-check rather than trust:
 
-`jbrowse-plugin-icgc` 1.0.2 (Oct 2022, `@jbrowse/core: ^1.5.0`) externalizes
-`@material-ui/core` — MUI **v4**, which no host since JBrowse 2 has provided. It
-error-paged on v4.0.0 through latest for years, and npm `latest` is still 1.0.2,
-so no fix was coming.
-
-It was first pinned to `jbrowseRange: "<2.0.0"` so range-aware clients would
-stop offering it, then removed from `plugins.json` outright in c5ec0d5 — because
-the range only helps clients that read it, and the manifest's top-level `url`
-fallback still pointed at the broken bundle for everyone else. `dist/` still
-holds the artifacts (`rclone copy` never deletes, so S3 serves them either way);
-only the store listing changed.
-
-The consequence worth knowing: **as of 2026-08-06 no entry in `plugins.json`
-declares `versions` at all**, so every one of the 17 gets a single
-auto-generated version at `jbrowseRange: "*"`. The whole range apparatus —
-`assertValidRange` here, `rangeMatches`/`supportedRanges`/`compatible` in core,
-the `outOfRange` skip in `check-plugins.ts` — currently has zero live users.
-Keep it, since it is the honest way to retire a plugin, but do not mistake it
-for the thing that keeps the store working. What actually catches breakage is
-booting the bundle (`pnpm verify`): a range is a promise the author wrote down,
-the checker is a fact.
-
-What `versions` _does_ still earn its keep for is version-pinned install urls —
-`installedVersionFromUrl` in core recovers the installed version from the
-`/<packageName>/<version>/` path segment, which is what powers the "update
-available" affordance. That, and SRI: the published `url` must be immutable or
-its `integrity` hash goes stale on the next publish and every install fails.
+- **No entry in `plugins.json` declares `versions`**, so all 17 get a single
+  auto-generated version at `jbrowseRange: "*"` and the range apparatus has zero
+  live users. It is still the right tool for rollback and retirement
+  ([ADR 0007](agent-docs/architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)).
+- **genark configs still name the superseded v1 flat path**; UCSC has moved to
+  `latest/`. jb2hubs' generator already emits `latest/`, so regenerating genark
+  is the whole remaining fix — no code change anywhere. All four frozen flat
+  bundles still booted on v4.0.0..latest when last measured, so this is latent,
+  not live. Read the _deployed_ `config.json` to check this, never the jb2hubs
+  working tree — those files lag deployment and gave the wrong answer once
+  already.
+  ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md))

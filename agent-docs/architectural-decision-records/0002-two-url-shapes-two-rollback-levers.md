@@ -83,11 +83,14 @@ the right tool, nobody reached for it.
 - `latest/` cannot carry an integrity hash, so config-named bundles are not
   SRI-verified. Accepted: the alternative is freezing them.
 - The v1 flat layout `/plugins/<pkg>/dist/…` is a third, superseded shape that
-  nothing regenerates but S3 still serves. As of 2026-08-06 UCSC has moved off
-  it and genark has not; jb2hubs' `hubtools/src/enhanceConfig.ts` already emits
-  `latest/`, so regenerating genark is the whole remaining fix. Measured the
-  same day: all four frozen flat bundles still boot on v4.0.0..latest, so this
-  is a latent risk rather than a live failure.
+  nothing regenerates but S3 still serves — `dist/<pkg>/dist/` here is a
+  leftover extraction. jb2hubs' `scripts/checkPluginUrls.mjs` flags any config
+  naming it (`isLegacy`), and `hubtools/src/enhanceConfig.ts` already emits
+  `latest/` for all four plugins with the reason in a comment: _"Never name the
+  bare path here."_ As of 2026-08-06 UCSC has moved off it and genark has not,
+  so regenerating genark is the whole remaining fix. Measured the same day: all
+  four frozen flat bundles still boot on v4.0.0..latest, so this is a latent
+  risk rather than a live failure.
 - Do not read the jb2hubs working tree to answer "which shape do configs name?"
   — those files lag deployment and gave the wrong answer once already. Fetch the
   deployed `config.json`.

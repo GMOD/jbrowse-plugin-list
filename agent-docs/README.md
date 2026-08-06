@@ -23,6 +23,15 @@ run the pipeline, see [../DEVELOPERS.md](../DEVELOPERS.md).
   become `sync`
 - [architectural-decision-records/0006-free-form-tags-over-an-enumerated-scale.md](architectural-decision-records/0006-free-form-tags-over-an-enumerated-scale.md)
   — why plugin classification is free-form tags rather than an enum
+- [architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md](architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)
+  — why narrowing `jbrowseRange` does not retire a broken plugin, and what
+  ranges are still for
+
+## Incidents
+
+- [2026-07-29-msaview-2.7.0-postmortem.md](2026-07-29-msaview-2.7.0-postmortem.md)
+  — a plugin built against unreleased core error-paged every released host; the
+  two shape mismatches behind it, and how to reproduce it
 
 ## Writing a new one
 
