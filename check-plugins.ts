@@ -44,7 +44,11 @@ import { parseArgs } from 'node:util'
 import { satisfies } from 'compare-versions'
 import { launch, type Browser } from 'puppeteer-core'
 
-import { REHOST_BASE, type SourceManifest } from './manifest-types.ts'
+import {
+  latestRehostedPrefix,
+  latestRehostedUrl,
+  type SourceManifest,
+} from './manifest-types.ts'
 
 // puppeteer-core, not puppeteer: this repo's other scripts are plain fetch+tar
 // and shouldn't grow a ~150MB Chromium download in every install. Point
@@ -92,13 +96,19 @@ const HOST_VERSIONS = [
   { label: 'main', semver: '999.999.999' },
 ]
 
-// Plugins core now bundles. jbrowse-web drops a config entry naming one of
-// these before loading it (PluginLoader's `vendoredPluginNames`), so the url is
-// never fetched and the UMD global is legitimately absent. Reporting those as a
-// failed load would be wrong — but so would reporting them as a pass, since the
-// bundle was never exercised. Keep in step with
-// jbrowse-components/packages/core/src/PluginLoader.ts.
-const VENDORED_BY_HOST = new Set(['MafViewer', 'GWAS'])
+// Plugins core now bundles, and the range of hosts that bundle them. jbrowse-web
+// drops a config entry naming one of these before loading it (core's
+// `vendoredPluginNames`), so the url is never fetched and the UMD global is
+// legitimately absent. Reporting those as a failed load would be wrong — but so
+// would reporting them as a pass, since the bundle was never exercised. Keep in
+// step with jbrowse-components/packages/core/src/pluginDefinitions.ts.
+//
+// Matched on `semver`, not on the host label: a label-equality test ('v4.0.0')
+// silently reads `--versions 4.0.0` as a vendoring host and skips the check.
+const VENDORED_BY_HOST = new Map([
+  ['MafViewer', '>4.0.0'],
+  ['GWAS', '>4.0.0'],
+])
 
 const { values } = parseArgs({
   options: {
@@ -131,6 +141,10 @@ const { plugins } = JSON.parse(
 // this repo would publish — a plugin repo's own dist/, or an older version dir
 // to reproduce a past break. The directory stands in for the whole `latest/`
 // prefix, so sidecar chunks come from the same build.
+//
+// `dist/` only keeps the currently-published versions, so to point at an older
+// one first run `node fetch-version.ts <packageName> <version>`, which refetches
+// it and verifies it byte-for-byte against what S3 serves.
 const bundleOverrides = new Map(
   values.bundle.map(spec => {
     const eq = spec.indexOf('=')
@@ -144,13 +158,24 @@ const bundleOverrides = new Map(
 // The bundles worth checking are the ones this run would publish. `latest/` is
 // rebuilt from scratch every download, so git sees a real content change only
 // when the promoted version actually moved.
+//
+// `-uall` matters: without it git collapses an untracked directory to its top
+// level, so a plugin added to plugins.json for the first time reports as
+// `?? dist/jbrowse-plugin-tview/` — no `/latest/` segment, no regex match, and
+// the pre-upload gate skips the one bundle with no prior evidence at all. With
+// `-uall` each file is listed, so the new plugin's `latest/` files match like
+// any other change.
 function changedPackages() {
-  const status = execFileSync('git', ['status', '--porcelain', '--', 'dist'], {
-    cwd: dir,
-    encoding: 'utf8',
-  })
+  const status = execFileSync(
+    'git',
+    ['status', '--porcelain', '-uall', '--', 'dist'],
+    { cwd: dir, encoding: 'utf8' },
+  )
   const names = new Set<string>()
   for (const line of status.split('\n')) {
+    // Paths containing spaces or non-ASCII come back quoted ("dist/a b/..."),
+    // which the regex tolerates: it anchors on `dist/` and `/latest/`, both
+    // inside the quotes.
     const match = /dist\/(.+?)\/latest\//.exec(line)
     if (match) {
       names.add(match[1])
@@ -202,14 +227,14 @@ async function probe(
   plugin: { name: string; packageName: string; umdPath: string },
 ): Promise<Probe> {
   const { name, packageName, umdPath } = plugin
-  const bundleUrl = `${REHOST_BASE}${packageName}/latest/${umdPath}`
+  const bundleUrl = latestRehostedUrl(packageName, umdPath)
   // Same origin as the app, so the config fetch is not a CORS case. Nothing is
   // ever published here — the request is answered from memory below.
   const configUrl = `https://jbrowse.org/plugin-smoke/${encodeURIComponent(packageName)}.json`
   const localLatest =
     bundleOverrides.get(packageName) ??
     path.join(distDir, packageName, 'latest')
-  const bundlePrefix = `${REHOST_BASE}${packageName}/latest/`
+  const bundlePrefix = latestRehostedPrefix(packageName)
 
   const page = await browser.newPage()
   const errors: string[] = []
@@ -256,7 +281,7 @@ async function probe(
   try {
     await page.goto(`${app}?config=${encodeURIComponent(configUrl)}`, {
       waitUntil: 'domcontentloaded',
-      timeout: 60_000,
+      timeout,
     })
     // Readiness is the session global or the error page — NOT the presence of
     // any element: the loading spinner is an svg, so waiting on markup returns
@@ -319,8 +344,9 @@ for (const plugin of targets) {
       (declaredRange === '*' ? '' : ` jbrowseRange ${declaredRange}`),
   )
   for (const host of hosts) {
+    const vendoredRange = VENDORED_BY_HOST.get(plugin.name)
     const vendored =
-      VENDORED_BY_HOST.has(plugin.name) && host.label !== 'v4.0.0'
+      vendoredRange !== undefined && satisfies(host.semver, vendoredRange)
     // A host the plugin never claimed to support is not a failure — it is the
     // manifest working. Probing it anyway would make the canary permanently red
     // for a plugin the store already refuses to offer, and a canary you have

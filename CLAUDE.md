@@ -7,6 +7,38 @@ Plugin metadata and S3 rehosting for the JBrowse 2 plugin store.
 - Downloads from NPM are intentionally serial to avoid hammering registry
   servers
 
+## `dist/` is a staging area, not the archive
+
+S3 is the system of record. Every version this repo has ever published is still
+there, immutably, and **`pnpm upload` is `rclone copy`, which never deletes** —
+so what `dist/` contains only decides what gets _added_.
+
+`dist/` therefore keeps just what an upload needs:
+
+- each plugin's `latest/`, and
+- every version the build manifest names — normally one per plugin, or all of
+  them for a plugin pinning explicit `versions`.
+
+**`pnpm download` maintains this itself**, deleting each superseded version dir
+once the new one is in place, so the rule stays true instead of decaying after
+one nightly. It never touches the legacy v1 flat tree or a package that is no
+longer in `plugins.json` (icgc, mafviewer), since nothing in the pipeline knows
+what those should keep. `--no-prune` opts out, e.g. while you have an old
+version fetched for debugging.
+
+The initial prune was 2026-08-06: 493M → 246M, 30 dirs, after confirming all
+9,856 files were already on S3. Those versions are still published and still
+installable; git simply stopped keeping a second copy of immutable public
+artifacts. Get one back with `node fetch-version.ts <packageName> <version>`,
+which refetches from npm and then checks the result byte-for-byte against what
+S3 is serving — a stronger guarantee than the git copy gave, since it verifies
+what users actually load rather than what someone committed.
+
+**The landmine:** this is only safe because the upload is `copy`. If anyone ever
+changes it to `rclone sync`, the next upload would delete every pruned version
+from S3 and break every install and config that pinned one — which is most of
+them, since the store hands out version-pinned urls. Do not change that verb.
+
 ## `pnpm upload` is a live change to configs already in the wild
 
 `latest/` is uploaded `Cache-Control: no-cache`, and the jb2hubs configs
@@ -17,6 +49,30 @@ at once and takes effect immediately, for everyone, with no staging step.
 
 A plugin whose bundle throws while loading doesn't degrade — `PluginLoader` runs
 `Promise.all`, so the whole session becomes an error page.
+
+### But most jb2hubs configs do not name `latest/` yet
+
+Counted on 2026-08-06, per plugin url across `~/src/jb2hubs`:
+
+| path                               | configs | serves                           |
+| ---------------------------------- | ------- | -------------------------------- |
+| `/plugins/<pkg>/dist/…` (v1, flat) | ~51,113 | frozen 2026-06-03, msaview 2.5.0 |
+| `/plugins/<pkg>/latest/dist/…`     | 64      | current, msaview 2.7.3           |
+
+Both are live. The flat v1 layout is no longer written by this repo's build —
+`dist/<pkg>/dist/` is a leftover extraction that nothing regenerates — but
+`rclone copy` never deletes, so S3 keeps serving it, and jb2hubs' own
+`checkPluginUrls.mjs` flags it (`isLegacy`). It is how protein3d served 0.4.1
+against a published 0.8.0.
+
+Two consequences worth holding onto:
+
+- **`pnpm verify` does not cover the path most configs use.** `check-plugins.ts`
+  boots `latest/` only. The flat bundles are frozen, so an upload cannot regress
+  them — but it also cannot fix them, and nothing here watches them.
+- **Retiring the flat layout is a jb2hubs change, not one here.** Deleting
+  `dist/<pkg>/dist/` locally would not unpublish anything. The configs have to
+  be regenerated onto `latest/` first.
 
 **Verify before uploading**, not after:
 
@@ -32,6 +88,23 @@ checks what S3 is serving right now.
 The gate only knows about hosts, not about data. A plugin whose _track_ renders
 wrong still needs its own repo's e2e tests — of the 17 plugins here, only
 msaview and protein3d have any.
+
+### A failed `verify` leaves the bad bundle in the working tree
+
+`download` copies the newly promoted version into `dist/<pkg>/latest/` _before_
+`verify` runs, so a failure stops the upload but does not undo the copy.
+Re-running `pnpm download` will not fix it either: an existing version dir is
+reused rather than re-downloaded, so `buildVersion` sees `dist/<pkg>/<version>/`
+already there, skips the download, and copies the same bad build into `latest/`
+again. Revert explicitly:
+
+```
+git checkout -- dist/<pkg>/latest        # back to the last good promoted build
+rm -rf dist/<pkg>/<bad-version>          # only if you want the download retried
+```
+
+Then pin `versions` in plugins.json to the last good release, or wait for the
+plugin's fix release.
 
 ### What broke on 2026-07-29, and what to check instead of pinning
 
@@ -56,6 +129,7 @@ varies**, so the only reliable check boots the bundle on a real host. That is
 what `check-plugins.ts` does, and it reproduces this exact break:
 
 ```
+node fetch-version.ts jbrowse-plugin-msaview 2.7.0
 node check-plugins.ts --only jbrowse-plugin-msaview \
   --bundle jbrowse-plugin-msaview=dist/jbrowse-plugin-msaview/2.7.0 \
   --versions v4.0.0,v4.3.0,latest
@@ -70,16 +144,32 @@ a plugin's menu contribution), jb2hubs' `checkConfigCompat.mjs` boots the actual
 shipped configs and takes the same `--plugin Name=path` override. This repo's
 checker deliberately uses an empty config so a failure names one bundle.
 
-### ICGC is deliberately out of range
+### ICGC was dropped, and `jbrowseRange` now has no live user
 
 `jbrowse-plugin-icgc` 1.0.2 (Oct 2022, `@jbrowse/core: ^1.5.0`) externalizes
 `@material-ui/core` — MUI **v4**, which no host since JBrowse 2 has provided. It
-error-pages on v4.0.0 through latest, and has for years. npm `latest` is still
-1.0.2, so no fix is coming.
+error-paged on v4.0.0 through latest for years, and npm `latest` is still 1.0.2,
+so no fix was coming.
 
-Its `plugins.json` entry pins `jbrowseRange: "<2.0.0"`, which is the honest
-statement and stops range-aware clients offering it. The checker skips hosts
-outside a declared range, so this does not keep the canary permanently red — a
-canary you have learned to ignore is worse than none. Note the manifest's
-top-level `url` fallback still points at the broken bundle for clients that
-don't read ranges; removing the entry entirely is the only fix for those.
+It was first pinned to `jbrowseRange: "<2.0.0"` so range-aware clients would
+stop offering it, then removed from `plugins.json` outright in c5ec0d5 — because
+the range only helps clients that read it, and the manifest's top-level `url`
+fallback still pointed at the broken bundle for everyone else. `dist/` still
+holds the artifacts (`rclone copy` never deletes, so S3 serves them either way);
+only the store listing changed.
+
+The consequence worth knowing: **as of 2026-08-06 no entry in `plugins.json`
+declares `versions` at all**, so every one of the 17 gets a single
+auto-generated version at `jbrowseRange: "*"`. The whole range apparatus —
+`assertValidRange` here, `rangeMatches`/`supportedRanges`/`compatible` in core,
+the `outOfRange` skip in `check-plugins.ts` — currently has zero live users.
+Keep it, since it is the honest way to retire a plugin, but do not mistake it
+for the thing that keeps the store working. What actually catches breakage is
+booting the bundle (`pnpm verify`): a range is a promise the author wrote down,
+the checker is a fact.
+
+What `versions` _does_ still earn its keep for is version-pinned install urls —
+`installedVersionFromUrl` in core recovers the installed version from the
+`/<packageName>/<version>/` path segment, which is what powers the "update
+available" affordance. That, and SRI: the published `url` must be immutable or
+its `integrity` hash goes stale on the next publish and every install fails.

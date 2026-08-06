@@ -8,7 +8,7 @@
       "location": "https://github.com/GMOD/jbrowse-plugin-msaview",
       "umdPath": "dist/jbrowse-plugin-msaview.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 2,
+      "tags": ["plug-and-play", "alignment"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png"
     },
     {
@@ -24,7 +24,7 @@
       "location": "https://github.com/GMOD/jbrowse-plugin-gdc",
       "umdPath": "dist/jbrowse-plugin-gdc.umd.production.min.js",
       "license": "MIT",
-      "plug_n_play": 0,
+      "tags": ["needs-setup", "cancer", "remote-api"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/gdc-screenshot-fs8.png"
     },
     {
@@ -35,7 +35,7 @@
       "location": "https://github.com/GMOD/jbrowse-plugin-quantseq",
       "umdPath": "dist/jbrowse-plugin-quantseq.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 0,
+      "tags": ["needs-setup", "quantitative"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/quantseq-screenshot-fs8.png"
     },
     {
@@ -46,7 +46,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-gwas",
       "umdPath": "dist/jbrowse-plugin-gwas.umd.production.min.js",
       "license": "MIT",
-      "plug_n_play": 1,
+      "tags": ["bring-your-own-data", "variants"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/gwas-screenshot-fs8.png"
     },
     {
@@ -57,7 +57,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-ucsc-api",
       "umdPath": "dist/jbrowse-plugin-ucsc.umd.production.min.js",
       "license": "MIT",
-      "plug_n_play": 0,
+      "tags": ["needs-setup", "remote-api"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ucsc-screenshot-fs8.png"
     },
     {
@@ -68,7 +68,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-biothings-api",
       "umdPath": "dist/jbrowse-plugin-biothings.umd.production.min.js",
       "license": "MIT",
-      "plug_n_play": 2,
+      "tags": ["plug-and-play", "annotation", "remote-api"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/biothings-screenshot-fs8.png"
     },
     {
@@ -79,7 +79,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
       "umdPath": "dist/jbrowse-plugin-ideogram.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 1,
+      "tags": ["bring-your-own-data", "ideogram"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ideogram-screenshot-fs8.png"
     },
     {
@@ -90,7 +90,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-civic-api",
       "umdPath": "dist/jbrowseplugincivic.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 2,
+      "tags": ["plug-and-play", "cancer", "variants", "remote-api"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/civic-screenshot-fs8.png"
     },
     {
@@ -101,7 +101,7 @@
       "location": "https://github.com/GMOD/jbrowse-plugin-reactome",
       "umdPath": "dist/jbrowse-plugin-reactome.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 2,
+      "tags": ["plug-and-play", "pathways", "remote-api"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/reactome-screenshot-fs8.png"
     },
     {
@@ -112,7 +112,7 @@
       "location": "https://github.com/GMOD/jbrowse-plugin-multilevel-linear-view",
       "umdPath": "dist/jbrowse-plugin-multilevel-linear-view2.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 2,
+      "tags": ["plug-and-play", "view"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mllv-screenshot-fs8.png"
     },
     {
@@ -123,7 +123,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-trackhub-registry",
       "umdPath": "dist/jbrowse-plugin-trackhub-registry.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 2,
+      "tags": ["plug-and-play", "track-hubs", "remote-api"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/trackhub-fs8.png"
     },
     {
@@ -134,7 +134,7 @@
       "location": "https://github.com/emiliorighi/jbrowse-plugin-refget-api",
       "umdPath": "dist/jbrowse-plugin-refget-api.umd.production.min.js",
       "license": "ISC",
-      "plug_n_play": 0
+      "tags": ["needs-setup", "sequence", "remote-api"]
     },
     {
       "name": "Linkout",
@@ -144,7 +144,7 @@
       "location": "https://github.com/NAL-i5K/jbrowse-plugin-linkout",
       "umdPath": "dist/jbrowse-plugin-linkout.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 0,
+      "tags": ["needs-setup", "annotation"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/linkout-screenshot-fs8.png"
     },
     {
@@ -155,7 +155,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-protein3d",
       "umdPath": "dist/jbrowse-plugin-protein3d.umd.production.min.js",
       "license": "MIT",
-      "plug_n_play": 0,
+      "tags": ["needs-setup", "protein", "structure"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png"
     },
     {
@@ -166,7 +166,7 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-hubs",
       "umdPath": "dist/jbrowse-plugin-hubs.umd.production.min.js",
       "license": "MIT",
-      "plug_n_play": 0
+      "tags": ["needs-setup", "track-hubs"]
     },
     {
       "name": "Apollo",
@@ -183,7 +183,7 @@
       "location": "https://github.com/GMOD/Apollo3",
       "umdPath": "dist/jbrowse-plugin-apollo.umd.production.min.js",
       "license": "Apache License 2.0",
-      "plug_n_play": 0,
+      "tags": ["needs-setup", "annotation", "editing"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png"
     },
     {
@@ -193,7 +193,8 @@
       "description": "Loads BAM/CRAM read pileups into react-msaview for a `samtools tview` style interface inside JBrowse 2",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-tview",
       "umdPath": "dist/jbrowse-plugin-tview.umd.production.min.js",
-      "license": "MIT"
+      "license": "MIT",
+      "tags": ["bring-your-own-data", "alignment"]
     }
   ]
 }

@@ -2,7 +2,11 @@ import crypto from 'crypto'
 import fs from 'fs'
 
 // Base URL where rehosted, version-pinned plugin artifacts are served from. The
-// path layout mirrors `dist/` so that `aws s3 sync dist` publishes to it.
+// path layout mirrors `dist/`, so publishing is a straight copy of the tree (see
+// the `upload` script). It must stay a *copy* and never a sync: `dist/` holds
+// only the currently-published versions, while S3 holds every version ever
+// published, and those older objects are exactly what installed plugins and
+// saved configs point at. A sync would delete them.
 export const REHOST_BASE = 'https://jbrowse.org/plugins/'
 
 // A plugin version's compatibility with a range of JBrowse versions. `pluginVersion`
@@ -16,13 +20,20 @@ export interface SourceVersion {
 // Hand-edited source manifest entry (plugins.json). The authoritative bundle
 // location is `packageName` + `umdPath`; all served URLs are constructed from
 // these plus a version, so nothing in the pipeline parses URLs.
+// Free-form labels shown and filtered on in the plugin store. Deliberately not
+// an enum: the vocabulary is data, so a new axis (a setup level, a data type, a
+// domain) is a plugins.json edit rather than a schema change in three repos.
+// Replaced the old numeric `plug_n_play` 0/1/2 scale, which needed a legend that
+// was never written down and could only express one axis.
+export type PluginTag = string
+
 export interface SourcePlugin {
   name: string
   packageName: string
   authors: string[]
   description: string
   location: string
-  plug_n_play?: number
+  tags?: PluginTag[]
   umdPath: string
   license: string
   image?: string
@@ -64,7 +75,7 @@ export interface V2Plugin {
   authors: string[]
   description: string
   location: string
-  plug_n_play?: number
+  tags?: PluginTag[]
   license: string
   image?: string
   url: string
@@ -80,6 +91,13 @@ export function rehostedUrl(
   return `${REHOST_BASE}${packageName}/${version}/${umdPath}`
 }
 
+// The whole `latest/` prefix for a plugin. Everything under it belongs to one
+// build, which is what lets a consumer serve or intercept a code-split plugin's
+// sidecar chunks alongside its umd entry point.
+export function latestRehostedPrefix(packageName: string) {
+  return `${REHOST_BASE}${packageName}/latest/`
+}
+
 // Explicit "always latest" url: a stable, version-agnostic path that always
 // serves the newest published version (the build copies the latest version into
 // a `latest/` dir). Must be served no-cache (see the `upload` script) since its
@@ -88,7 +106,7 @@ export function rehostedUrl(
 // be referenced by a pinned `rehostedUrl` instead, so its bundle and sidecar
 // chunk stay a matched, immutable set.
 export function latestRehostedUrl(packageName: string, umdPath: string) {
-  return `${REHOST_BASE}${packageName}/latest/${umdPath}`
+  return `${latestRehostedPrefix(packageName)}${umdPath}`
 }
 
 export function subresourceIntegrity(filePath: string) {

@@ -26,6 +26,33 @@ A plugin is described with the following data:
   the published tarball — so we never have to guess where your bundle lives.
 - **license:** the type of software license that your code is provided under. If
   you haven't specified a value, specify `"NONE"`.
+- **tags (optional):** free-form labels. The plugin store shows them on your
+  card and lets users filter the list by them, so they are how someone browsing
+  finds your plugin. Any string works — the store builds its filter list from
+  whatever tags actually appear, so adding a new one needs no code change.
+
+  Two kinds are in use today. Please include one **setup** tag, since it is what
+  tells a user whether they can try your plugin right now:
+
+  - `plug-and-play` — installing it is enough. It adds a working entry point (a
+    view, a connection, a public-API track) needing no data and no config. e.g.
+    MsaView, TrackHubRegistry, Reactome.
+  - `bring-your-own-data` — it adds a capability, but you supply the file or
+    track it acts on. Nothing external to set up. e.g. GWAS (your GWAS file),
+    TView (your BAM/CRAM track).
+  - `needs-setup` — a config entry, an account, or a backend you have to run.
+    e.g. Apollo (an Apollo server), RefGet (a refget server).
+
+  Then any **topic** tags that fit. Existing ones, so we don't end up with three
+  spellings of the same idea — reuse where you can, add where you can't:
+  `alignment`, `annotation`, `cancer`, `editing`, `ideogram`, `pathways`,
+  `protein`, `quantitative`, `remote-api`, `sequence`, `structure`,
+  `track-hubs`, `variants`, `view`.
+
+  ```json
+  "tags": ["bring-your-own-data", "alignment"]
+  ```
+
 - **versions (optional):** an array of
   `{ "pluginVersion": "...", "jbrowseRange": "..." }` entries, listed
   oldest-to-newest, declaring which published versions to host and the semver

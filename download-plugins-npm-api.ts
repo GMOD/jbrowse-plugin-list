@@ -2,12 +2,15 @@
 
 import fs from 'fs'
 import path from 'path'
-import { Readable } from 'stream'
-import { pipeline } from 'stream/promises'
+import { parseArgs } from 'node:util'
 
 import { compareVersions } from 'compare-versions'
-import * as tar from 'tar'
 
+import {
+  downloadVersionAtomic,
+  fetchPackageMetadata,
+  type NpmPackageMetadata,
+} from './npm-fetch.ts'
 import { rehostedUrl, subresourceIntegrity } from './manifest-types.ts'
 import type {
   BuildManifest,
@@ -28,51 +31,19 @@ const buildManifestPath = process.env.PLUGIN_BUILD_MANIFEST
   ? path.resolve(process.env.PLUGIN_BUILD_MANIFEST)
   : path.join(import.meta.dirname, 'build-manifest.json')
 
-// Optional CLI args restrict the run to specific package names.
-const only = new Set(process.argv.slice(2))
-
-interface NpmPackageMetadata {
-  'dist-tags': { latest: string }
-  versions: Record<string, { dist: { tarball: string } }>
-}
+// Optional positional args restrict the run to specific package names.
+const { values, positionals } = parseArgs({
+  options: {
+    'allow-failures': { type: 'boolean', default: false },
+    'no-prune': { type: 'boolean', default: false },
+  },
+  allowPositionals: true,
+})
+const only = new Set(positionals)
 
 const { plugins } = JSON.parse(
   fs.readFileSync(path.join(import.meta.dirname, 'plugins.json'), 'utf8'),
 ) as SourceManifest
-
-async function fetchPackageMetadata(
-  packageName: string,
-): Promise<NpmPackageMetadata> {
-  const response = await fetch(`https://registry.npmjs.org/${packageName}`)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch package metadata: ${response.status} ${response.statusText}`,
-    )
-  }
-  return response.json() as Promise<NpmPackageMetadata>
-}
-
-async function downloadAndExtractTarball(
-  tarballUrl: string,
-  destDir: string,
-): Promise<void> {
-  const response = await fetch(tarballUrl)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download tarball: ${response.status} ${response.statusText}`,
-    )
-  }
-  if (!response.body) {
-    throw new Error('No response body')
-  }
-  fs.mkdirSync(destDir, { recursive: true })
-  // tar auto-detects the gzip; strip:1 drops npm's leading `package/` segment.
-  // response.body is ReadableStream<Uint8Array> (Web API) — cast needed for Node/DOM boundary.
-  await pipeline(
-    Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]),
-    tar.x({ cwd: destDir, strip: 1 }),
-  )
-}
 
 // The set of versions to publish for a plugin: explicit pins when declared,
 // otherwise the single npm `latest`.
@@ -95,30 +66,8 @@ function newestVersion(versions: BuiltVersion[]): BuiltVersion {
   )[0]
 }
 
-// Extract a tarball into versionDir atomically: files land in a `.partial`
-// sibling and the dir is renamed into place only once the umd bundle is
-// confirmed present. So a versionDir is either absent or a complete package —
-// the umd and any lazily-loaded sidecar chunks (e.g. protein3d's
-// `molstar-chunk.js`) can never be split across a half-written extraction that
-// the append-only skip below would then reuse.
-async function downloadVersionAtomic(
-  tarballUrl: string,
-  versionDir: string,
-  umdPath: string,
-  label: string,
-): Promise<void> {
-  const partialDir = `${versionDir}.partial`
-  fs.rmSync(partialDir, { recursive: true, force: true })
-  await downloadAndExtractTarball(tarballUrl, partialDir)
-  if (!fs.existsSync(path.join(partialDir, umdPath))) {
-    fs.rmSync(partialDir, { recursive: true, force: true })
-    throw new Error(`${label}: umdPath "${umdPath}" not found in package`)
-  }
-  fs.renameSync(partialDir, versionDir)
-}
-
-// Downloads one version into dist/<packageName>/<version>/ (append-only: an
-// existing extraction is reused) and returns its served URL + hash.
+// Downloads one version into dist/<packageName>/<version>/ (an existing
+// extraction is reused, never re-downloaded) and returns its served URL + hash.
 async function buildVersion(
   plugin: SourcePlugin,
   version: SourceVersion,
@@ -167,8 +116,80 @@ function copyToLatest(packageName: string, version: string) {
   fs.cpSync(versionDir, latestDir, { recursive: true })
 }
 
+// Anything this run did not rebuild keeps its previous manifest entry, which
+// covers two cases that would otherwise silently shrink the published store:
+//
+//   - a filtered run (`… jbrowse-plugin-msaview`) touches one package, so
+//     without this the next `generate` writes a v2 manifest of exactly one
+//     plugin and drops the other sixteen;
+//   - a plugin that failed to download keeps its last good version rather than
+//     vanishing. Its bundle is still on S3 and still works, so carrying it
+//     forward is both safe and the honest result: npm was unreachable for
+//     thirty seconds, which is not a reason to unpublish a plugin.
+//
+// Emitted in plugins.json order so the manifest diff stays readable.
+function mergeWithPrevious(built: BuiltPlugin[]): BuiltPlugin[] {
+  const byName = new Map(built.map(p => [p.packageName, p]))
+  if (fs.existsSync(buildManifestPath)) {
+    const previous = JSON.parse(
+      fs.readFileSync(buildManifestPath, 'utf8'),
+    ) as BuildManifest
+    for (const p of previous.plugins) {
+      if (!byName.has(p.packageName)) {
+        byName.set(p.packageName, p)
+      }
+    }
+  }
+  return plugins.flatMap(p => {
+    const found = byName.get(p.packageName)
+    return found ? [found] : []
+  })
+}
+
+// `dist/` is a staging area for the upload, not an archive: S3 keeps every
+// version ever published and the upload never deletes, so a version dir the
+// manifest no longer names is a second copy of an immutable public artifact.
+// Drop it, or the tree grows without bound (protein3d alone is ~23M a release)
+// and the retention rule the docs describe stops being true after one nightly.
+// `fetch-version.ts` brings any of them back, verified against S3.
+//
+// Keeps every version the manifest names — a plugin pinning several `versions`
+// keeps all of them — plus `latest/`. Two things are deliberately never touched:
+// directories that don't look like a version (the legacy v1 flat tree,
+// `dist/`, `src/`, `package.json`), and packages absent from the manifest
+// (retired ones like icgc, whose artifacts are still served), since nothing
+// here knows what those should keep.
+function pruneUnpublished(manifest: BuiltPlugin[]): string[] {
+  const removed: string[] = []
+  for (const plugin of manifest) {
+    const pkgDir = path.join(outputDir, plugin.packageName)
+    if (!fs.existsSync(pkgDir)) {
+      continue
+    }
+    const keep = new Set([
+      'latest',
+      ...plugin.versions.map(v => v.pluginVersion),
+    ])
+    for (const entry of fs.readdirSync(pkgDir, { withFileTypes: true })) {
+      if (
+        entry.isDirectory() &&
+        !keep.has(entry.name) &&
+        /^\d+\.\d+\.\d+/.test(entry.name)
+      ) {
+        fs.rmSync(path.join(pkgDir, entry.name), {
+          recursive: true,
+          force: true,
+        })
+        removed.push(`${plugin.packageName}/${entry.name}`)
+      }
+    }
+  }
+  return removed
+}
+
 async function downloadPlugins(): Promise<void> {
   const built: BuiltPlugin[] = []
+  const failures: { packageName: string; message: string }[] = []
 
   for (const plugin of plugins) {
     if (only.size > 0 && !only.has(plugin.packageName)) {
@@ -192,12 +213,68 @@ async function downloadPlugins(): Promise<void> {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error(`✗ Failed ${plugin.name}: ${message}`)
+      failures.push({ packageName: plugin.packageName, message })
     }
   }
 
-  const manifest: BuildManifest = { plugins: built }
+  const merged = mergeWithPrevious(built)
+  const manifest: BuildManifest = { plugins: merged }
   fs.writeFileSync(buildManifestPath, JSON.stringify(manifest, null, 2) + '\n')
-  console.log(`\nWrote ${buildManifestPath} (${built.length} plugins)`)
+  console.log(`\nWrote ${buildManifestPath} (${merged.length} plugins)`)
+
+  // Keep going through every plugin so one run surfaces all the breakage, then
+  // grade the outcome by what publishing would actually lose — not by whether
+  // anything failed.
+  //
+  // A failure whose plugin still has a previous manifest entry costs nothing:
+  // the store keeps offering the last good version, whose bundle is still on
+  // S3. Report it, but let the pipeline continue, so one flaky npm response
+  // does not hold back the other sixteen plugins' updates.
+  //
+  // A failure with no entry to fall back on is different — that plugin would be
+  // absent from v2_plugins.json, and since v2_plugins.json *is* the store
+  // listing, publishing would unpublish it. `pnpm verify --changed` cannot catch
+  // that either (no download means no dist/ change, so it is not in the changed
+  // set), so this is the only place it can be stopped.
+  const publishable = new Set(merged.map(p => p.packageName))
+  const lost = failures.filter(f => !publishable.has(f.packageName))
+
+  // Only on a run that is otherwise good. Deleting is safe regardless (S3 has
+  // every version), but mixing a destructive step into an error path makes a
+  // bad run harder to reason about, and the tree is worth leaving as-is while
+  // someone diagnoses.
+  if (lost.length === 0 && !values['no-prune']) {
+    const removed = pruneUnpublished(merged)
+    if (removed.length > 0) {
+      console.log(
+        `\nPruned ${removed.length} superseded version dir(s) — still on S3, ` +
+          'refetch with `node fetch-version.ts <packageName> <version>`:\n' +
+          removed.map(r => `  ${r}`).join('\n'),
+      )
+    }
+  }
+
+  if (failures.length > 0) {
+    console.error(
+      `\n${failures.length} plugin(s) failed to download:\n` +
+        failures.map(f => `  ${f.packageName}: ${f.message}`).join('\n'),
+    )
+  }
+  if (lost.length > 0 && !values['allow-failures']) {
+    console.error(
+      `\n${lost.length} of those have no previous build-manifest entry to fall back on:\n` +
+        lost.map(f => `  ${f.packageName}`).join('\n') +
+        '\nRefusing to continue: publishing now would drop them from the store.\n' +
+        'Re-run to retry, or pass --allow-failures if the package is gone for good.',
+    )
+    process.exitCode = 1
+  } else if (failures.length > 0) {
+    console.error(
+      lost.length > 0
+        ? 'Dropping them anyway (--allow-failures).'
+        : 'All of them keep their previous version, so the store loses nothing.',
+    )
+  }
 }
 
 downloadPlugins().catch(err => {

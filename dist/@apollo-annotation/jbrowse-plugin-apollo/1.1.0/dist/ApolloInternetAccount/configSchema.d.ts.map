@@ -1,1 +1,0 @@
-{"version":3,"file":"configSchema.d.ts","sourceRoot":"","sources":["../../src/ApolloInternetAccount/configSchema.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,0BAA0B,CAAA;AAExD,QAAA,MAAM,kBAAkB;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;qIAevB,CAAA;AAED,MAAM,MAAM,gCAAgC,GAAG,OAAO,kBAAkB,CAAA;AAKxE,MAAM,WAAW,2BACf,SAAQ,QAAQ,CAAC,gCAAgC,CAAC;CAAG;AACvD,eAAe,kBAAkB,CAAA"}
