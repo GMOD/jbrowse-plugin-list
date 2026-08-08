@@ -26,35 +26,6 @@
       ]
     },
     {
-      "name": "GDC",
-      "packageName": "jbrowse-plugin-gdc",
-      "authors": [
-        "Garrett Stevens",
-        "Colin Diesh",
-        "Rob Buels",
-        "Caroline Bridge"
-      ],
-      "description": "JBrowse 2 plugin for integrating with GDC resources",
-      "location": "https://github.com/GMOD/jbrowse-plugin-gdc",
-      "tags": [
-        "needs-setup",
-        "cancer",
-        "remote-api"
-      ],
-      "license": "MIT",
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/gdc-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-gdc/2.3.4/dist/jbrowse-plugin-gdc.umd.production.min.js",
-      "integrity": "sha384-RkthqCyVcv9LxzYb+9UWlpeBpSbraIWQ/YBS1Xo/ygmiQHGIWfi0uUQcyflmOzpa",
-      "versions": [
-        {
-          "pluginVersion": "2.3.4",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-gdc/2.3.4/dist/jbrowse-plugin-gdc.umd.production.min.js",
-          "integrity": "sha384-RkthqCyVcv9LxzYb+9UWlpeBpSbraIWQ/YBS1Xo/ygmiQHGIWfi0uUQcyflmOzpa"
-        }
-      ]
-    },
-    {
       "name": "Quantseq",
       "packageName": "jbrowse-plugin-quantseq",
       "authors": [
@@ -76,31 +47,6 @@
           "jbrowseRange": "*",
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-quantseq/0.0.6/dist/jbrowse-plugin-quantseq.umd.production.min.js",
           "integrity": "sha384-Izvkepeh6NjUwAGVAatS6agUfs2VJ3w9hJVoXzK71D8sc0p6suuDunnJ/NHUscqL"
-        }
-      ]
-    },
-    {
-      "name": "GWAS",
-      "packageName": "jbrowse-plugin-gwas",
-      "authors": [
-        "Colin Diesh"
-      ],
-      "description": "Plugin for displaying GWAS results such as manhattan plot renderings",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-gwas",
-      "tags": [
-        "bring-your-own-data",
-        "variants"
-      ],
-      "license": "MIT",
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/gwas-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-gwas/2.1.6/dist/jbrowse-plugin-gwas.umd.production.min.js",
-      "integrity": "sha384-lZtJJiL+bGvLGoUohlXtMDtrqZskegeqrYOUqEo9+cAzYf5HjqxM33SQbL26DtkZ",
-      "versions": [
-        {
-          "pluginVersion": "2.1.6",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-gwas/2.1.6/dist/jbrowse-plugin-gwas.umd.production.min.js",
-          "integrity": "sha384-lZtJJiL+bGvLGoUohlXtMDtrqZskegeqrYOUqEo9+cAzYf5HjqxM33SQbL26DtkZ"
         }
       ]
     },
@@ -156,32 +102,6 @@
       ]
     },
     {
-      "name": "Ideogram",
-      "packageName": "jbrowse-plugin-ideogram",
-      "authors": [
-        "Colin Diesh",
-        "Caroline Bridge"
-      ],
-      "description": "JBrowse 2 plugin for rendering ideograms",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
-      "tags": [
-        "bring-your-own-data",
-        "ideogram"
-      ],
-      "license": "Apache License 2.0",
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ideogram-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/1.2.3/dist/jbrowse-plugin-ideogram.umd.production.min.js",
-      "integrity": "sha384-mYqi72aMjnXERNAWAmP1TNloDpD+FLdIpJpEM80aE4+zJSHxU+dfPzBNNPKw5L8b",
-      "versions": [
-        {
-          "pluginVersion": "1.2.3",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/1.2.3/dist/jbrowse-plugin-ideogram.umd.production.min.js",
-          "integrity": "sha384-mYqi72aMjnXERNAWAmP1TNloDpD+FLdIpJpEM80aE4+zJSHxU+dfPzBNNPKw5L8b"
-        }
-      ]
-    },
-    {
       "name": "CIVIC",
       "packageName": "jbrowse-plugin-civic",
       "authors": [
@@ -231,31 +151,6 @@
           "jbrowseRange": "*",
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-reactome/1.0.1/dist/jbrowse-plugin-reactome.umd.production.min.js",
           "integrity": "sha384-2vjjWJFcTPXaCTUnIHL3hCC6O0k1CNyxBTyh2CMQjMJ/4qx3SVK2cedAOLwywLiu"
-        }
-      ]
-    },
-    {
-      "name": "MultilevelLinearView",
-      "packageName": "jbrowse-plugin-multilevel-linear-view2",
-      "authors": [
-        "Caroline Bridge"
-      ],
-      "description": "JBrowse 2 plugin that adds a linear genome view that can show multiple zoom levels",
-      "location": "https://github.com/GMOD/jbrowse-plugin-multilevel-linear-view",
-      "tags": [
-        "plug-and-play",
-        "view"
-      ],
-      "license": "Apache License 2.0",
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/mllv-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-multilevel-linear-view2/1.0.2/dist/jbrowse-plugin-multilevel-linear-view2.umd.production.min.js",
-      "integrity": "sha384-B4tDaU0dlZPbxnACo0eIGElKvpMSn72C/Fyb/0L7bWLjvw7WGe9i74CZqgyKQBod",
-      "versions": [
-        {
-          "pluginVersion": "1.0.2",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-multilevel-linear-view2/1.0.2/dist/jbrowse-plugin-multilevel-linear-view2.umd.production.min.js",
-          "integrity": "sha384-B4tDaU0dlZPbxnACo0eIGElKvpMSn72C/Fyb/0L7bWLjvw7WGe9i74CZqgyKQBod"
         }
       ]
     },
