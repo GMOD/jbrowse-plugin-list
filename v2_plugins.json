@@ -14,14 +14,14 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.7.4/dist/jbrowse-plugin-msaview.umd.production.min.js",
-      "integrity": "sha384-7WLNajCI0R89BVspONnYyHOFazzXPYojBT5En1n87UAKq+UB9DgpGB0zlfQjtPC4",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.8.1/dist/jbrowse-plugin-msaview.umd.production.min.js",
+      "integrity": "sha384-s50umKTUVzO5iT9nObvAvqDhpQi6CL1Q0ZSg+iUkJWN1ixOhVWepe/AIwNMANx91",
       "versions": [
         {
-          "pluginVersion": "2.7.4",
+          "pluginVersion": "2.8.1",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.7.4/dist/jbrowse-plugin-msaview.umd.production.min.js",
-          "integrity": "sha384-7WLNajCI0R89BVspONnYyHOFazzXPYojBT5En1n87UAKq+UB9DgpGB0zlfQjtPC4"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/2.8.1/dist/jbrowse-plugin-msaview.umd.production.min.js",
+          "integrity": "sha384-s50umKTUVzO5iT9nObvAvqDhpQi6CL1Q0ZSg+iUkJWN1ixOhVWepe/AIwNMANx91"
         }
       ]
     },
@@ -350,14 +350,14 @@
         "alignment"
       ],
       "license": "MIT",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.0.6/dist/jbrowse-plugin-tview.umd.production.min.js",
-      "integrity": "sha384-St6W8ekPfyErDDUl6sY0QM8M27ciY0nipP+VWFN+6iG+vM9clZVonGMVCyww70Ws",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.0/dist/jbrowse-plugin-tview.umd.production.min.js",
+      "integrity": "sha384-kyOwce0QP1FXX1p6Ye6CBbLc+5/4RCQJvRyvXdZ+RtPAeTJeKVY2GH7q20uhCwOp",
       "versions": [
         {
-          "pluginVersion": "2.0.6",
+          "pluginVersion": "2.2.0",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.0.6/dist/jbrowse-plugin-tview.umd.production.min.js",
-          "integrity": "sha384-St6W8ekPfyErDDUl6sY0QM8M27ciY0nipP+VWFN+6iG+vM9clZVonGMVCyww70Ws"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.0/dist/jbrowse-plugin-tview.umd.production.min.js",
+          "integrity": "sha384-kyOwce0QP1FXX1p6Ye6CBbLc+5/4RCQJvRyvXdZ+RtPAeTJeKVY2GH7q20uhCwOp"
         }
       ]
     }
