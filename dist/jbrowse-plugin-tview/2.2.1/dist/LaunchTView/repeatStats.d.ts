@@ -6,7 +6,15 @@ export interface Tally {
 /** Each distinct value with how many rows carried it, smallest value first. */
 export declare function tally(values: number[]): Tally[];
 /**
- * The copy counts a sample carries, as the counts enough of its reads agree on.
+ * The copy counts a sample carries, each with the reads that fell on it or in
+ * its skirt.
+ *
+ * Reads scatter around an allele — slippage in the molecule, slippage in the
+ * aligner — so a rule that reported only exact agreement credited an allele
+ * with a fraction of the reads that actually support it, and left the rest
+ * looking like disagreement. Counts are gathered strongest first, so an allele
+ * is established before anything can be read as its shoulder, and a value joins
+ * one only if it is both near it and much weaker than it.
  *
  * This is a report of what the reads say, not a genotype call: it does not know
  * a ploidy, so a homozygote and a haploid locus both come back as one number,
@@ -17,11 +25,11 @@ export interface SampleArrayStats {
     sample: string;
     /** rows that reached both ends of the interval, i.e. that were measured */
     spanning: number;
-    /** copy counts enough of them agreed on */
+    /** the alleles found, each with the reads counted into it */
     modes: Tally[];
     /** every copy count seen, with its support */
     copies: Tally[];
-    /** rows whose copy count is not one of the modes */
+    /** rows counted into no allele at all */
     offMode: number;
 }
 export interface ArrayStats {

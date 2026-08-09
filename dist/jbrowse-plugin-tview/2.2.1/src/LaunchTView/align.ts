@@ -301,26 +301,34 @@ function splitIntoUnits(seq: string, consensus: string) {
   return units
 }
 
-// The tiled alignment below is O(len * len), so it scores a prefix rather than
-// the whole insert. A sequence that is copies of the unit for its first 300
-// bases is copies of the unit.
+// The tiled alignment below is O(len^2), so it scores windows of the insert
+// rather than all of it.
 const IDENTITY_PROBE_LEN = 300
 
 /**
- * How much of `seq` is explained by `unit` repeated end to end: the fraction of
- * `seq`'s bases that align to a matching base of the tiling.
+ * Head, middle and tail of `seq`, or the whole of it when it is short enough to
+ * score outright.
  *
- * Free at both ends of the tiling, since an inserted run of copies can start
- * and stop mid-copy, and global on `seq`, since the question is about all of it.
- * That is what separates "more copies of this array" from "something else that
- * landed next to it" without asking the sequence to be in phase with the unit:
- * measured against the trio, the repeat alleles the aligner anchored just
- * outside an array score 0.94-1.00 and unrelated sequence of the same length
- * scores 0.67 or below.
+ * Scoring only the head is how a prefix probe lies: `unit x 12` followed by a
+ * kilobase of something else scores 1.00 on its first 300 bases and is not the
+ * array's. Three windows cost the same and cannot be fooled that way, because
+ * the sequence has to still be the unit where it ends as well as where it
+ * starts.
  */
-export function unitIdentity(seq: string, unit: string) {
-  const probe =
-    seq.length > IDENTITY_PROBE_LEN ? seq.slice(0, IDENTITY_PROBE_LEN) : seq
+function probeWindows(seq: string) {
+  if (seq.length <= IDENTITY_PROBE_LEN) {
+    return [seq]
+  }
+  const middle = Math.floor((seq.length - IDENTITY_PROBE_LEN) / 2)
+  return [
+    seq.slice(0, IDENTITY_PROBE_LEN),
+    seq.slice(middle, middle + IDENTITY_PROBE_LEN),
+    seq.slice(-IDENTITY_PROBE_LEN),
+  ]
+}
+
+/** the fraction of `probe`'s bases that match `unit` tiled end to end */
+function tiledIdentity(probe: string, unit: string) {
   const n = probe.length
   if (!n || !unit.length) {
     return 0
@@ -362,6 +370,27 @@ export function unitIdentity(seq: string, unit: string) {
     }
   }
   return bestMatches / n
+}
+
+/**
+ * How much of `seq` is explained by `unit` repeated end to end, scored at three
+ * places along it and reported as the worst of them.
+ *
+ * Each window is aligned free at both ends of the tiling, since an inserted run
+ * of copies can start and stop mid-copy, and global on the window, since the
+ * question is about all of it. That is what separates "more copies of this
+ * array" from "something else that landed next to it" without asking the
+ * sequence to be in phase with the unit — the ABCA7 read that carries 1207bp of
+ * VNTR anchored outside the array begins six bases into a copy, and the FMR1
+ * one begins on the wrong base of the unit and carries the locus's own AGG
+ * interruptions.
+ *
+ * Measured against the trio: the repeat alleles the aligner anchored just
+ * outside an array score 0.9 and up, and unrelated sequence of the same length
+ * scores 0.67 or below.
+ */
+export function unitIdentity(seq: string, unit: string) {
+  return Math.min(...probeWindows(seq).map(w => tiledIdentity(w, unit)))
 }
 
 export interface PeriodicAlignment {

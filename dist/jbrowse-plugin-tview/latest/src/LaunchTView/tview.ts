@@ -1,5 +1,5 @@
 import { alignInsertionSite } from './align'
-import { absorbAdjacentInsertions, buildArrayBlocks } from './alleles'
+import { buildArrayBlocks, reanchorInsertions } from './alleles'
 import {
   ABSENT,
   SPANNED_GAP,
@@ -311,18 +311,16 @@ export function planTviewMsa({
     end,
   )
 
-  // the interval comes from the reference, then widens over the repeat alleles
-  // the aligner anchored just outside it — see absorbAdjacentInsertions, which
-  // has to see the reads and so cannot live in the reference scan
-  const arrays = sequence
-    ? buildArrayBlocks(
-        clipped,
-        absorbAdjacentInsertions(
-          clipped,
-          mergeArrays(findReferenceArrays(sequence, start)),
-        ),
-      )
+  // The intervals come from the reference and nothing here moves them. What
+  // moves is each read's insertions, re-filed under the array they belong to
+  // before anything is measured or laid out — see reanchorInsertions. Both
+  // steps below read the re-anchored reads, so an insertion the array took over
+  // is rendered inside its block and not also as a column of its own.
+  const intervals = sequence
+    ? mergeArrays(findReferenceArrays(sequence, start))
     : []
+  const anchored = reanchorInsertions(clipped, intervals)
+  const arrays = buildArrayBlocks(anchored, intervals)
   const ownedByArray = new Set<number>()
   for (const array of arrays) {
     for (let pos = array.start; pos <= array.end; pos++) {
@@ -330,7 +328,7 @@ export function planTviewMsa({
     }
   }
 
-  const aligned = alignInsertionColumns(clipped, ownedByArray)
+  const aligned = alignInsertionColumns(anchored, ownedByArray)
 
   // With several arrays in view the subject is the one the rows disagree most
   // about, since ordering rows by two copy numbers at once is not a thing rows

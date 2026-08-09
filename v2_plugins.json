@@ -350,14 +350,14 @@
         "alignment"
       ],
       "license": "MIT",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.0/dist/jbrowse-plugin-tview.umd.production.min.js",
-      "integrity": "sha384-kyOwce0QP1FXX1p6Ye6CBbLc+5/4RCQJvRyvXdZ+RtPAeTJeKVY2GH7q20uhCwOp",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.1/dist/jbrowse-plugin-tview.umd.production.min.js",
+      "integrity": "sha384-Vc1G3Qh/dKm4OkevlPf5lqJUjQkXz648ddkoJs+SM1ZIQogmNaGv7uVhp1AEbY2w",
       "versions": [
         {
-          "pluginVersion": "2.2.0",
+          "pluginVersion": "2.2.1",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.0/dist/jbrowse-plugin-tview.umd.production.min.js",
-          "integrity": "sha384-kyOwce0QP1FXX1p6Ye6CBbLc+5/4RCQJvRyvXdZ+RtPAeTJeKVY2GH7q20uhCwOp"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.1/dist/jbrowse-plugin-tview.umd.production.min.js",
+          "integrity": "sha384-Vc1G3Qh/dKm4OkevlPf5lqJUjQkXz648ddkoJs+SM1ZIQogmNaGv7uVhp1AEbY2w"
         }
       ]
     }
