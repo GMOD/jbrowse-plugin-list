@@ -66,6 +66,26 @@ The gate proves a bundle **loads**. It does not prove a track **renders** — th
 needs test data and belongs in the plugin's own repo, and of the 17 plugins here
 only msaview and protein3d have any e2e tests at all.
 
+### After uploading, invalidate and then wait
+
+`upload` writes `latest/` and `plugins.json` with `no-cache`, but CloudFront is
+still holding the previous objects, so `pnpm invalidate` is part of publishing
+rather than an optional extra.
+
+**Nothing should load a page against the store while an invalidation is in
+flight.** The edge can answer with a partially updated object, and a browser
+reports that as `Unexpected token ')'` plus `<PluginGlobal> is undefined`, which
+is exactly what a bundle throwing while it evaluates looks like (invariant 1).
+So the first thing to do with that failure is not to believe it. Wait for
+`Completed`:
+
+```
+aws cloudfront get-invalidation --distribution-id E13LGELJOT4GQO --id <id>
+```
+
+then fetch the bundle once by hand and check that its `etag` matches the md5 of
+what came back. The second run loads fine.
+
 ### A failed `verify` leaves the bad bundle in the working tree
 
 `download` copies the newly promoted version into `dist/<pkg>/latest/` _before_
