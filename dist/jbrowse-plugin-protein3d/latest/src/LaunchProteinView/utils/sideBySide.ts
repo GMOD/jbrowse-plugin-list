@@ -43,20 +43,37 @@ function isSessionWithWorkspaces(
   // Missing BOTH is an embedded session: it has no workspaces, there is nothing
   // to ask for, and silence is the right answer.
   //
-  // Missing ONE is a host that has workspaces but has changed how a view is
-  // placed in them — and silence there is how this broke before. jbrowse-web
-  // folded `setPendingMove` into its layout `init`, this guard went false, and
-  // the plugin simply stopped asking for the split: no error, no missing
-  // feature, just two views quietly stacking instead of sitting side by side.
-  // Nobody noticed for weeks. Feature detection cannot ask the host to announce
-  // a change, but it can tell "not supported here" from "supported, and gone".
+  // Missing ONE is a host that has workspaces but places views some other way —
+  // and silence there is how this broke before. jbrowse-web folded
+  // `setPendingMove` into its layout `init`, this guard went false, and the
+  // plugin simply stopped asking for the split: no error, no missing feature,
+  // just two views quietly stacking. Nobody noticed for weeks. Feature
+  // detection cannot ask the host to announce a change, but it can tell "not
+  // supported here" from "supported, and gone".
+  //
+  // Two very different hosts produce this one shape, and nothing on the session
+  // tells them apart, so the message carries both rather than the guess:
+  //
+  // - Releases through v4.3.0, where placement is `setPendingMoveToSplitRight`,
+  //   a module function in @jbrowse/app-core's DockviewContext, not a session
+  //   action. Nothing is wrong and nothing needs fixing; this plugin targets v5+
+  //   and does not reach for v4's door. Measured 2026-08-17: v4.3.0 and latest
+  //   stack, main splits.
+  // - A newer host that moved the action out from under us, which is the
+  //   regression this warning exists to catch.
+  //
+  // Do not quiet the first case by sniffing the version. The alarm is only worth
+  // having if it fires on a shape it cannot explain, and these two shapes are
+  // identical.
   if (canEnable !== canPlace && !warnedPartial) {
     warnedPartial = true
     console.warn(
       `jbrowse-plugin-protein3d: this session supports workspaces but not ` +
         `${canPlace ? 'setUseWorkspaces' : 'setPendingMove'}, so the ` +
-        `side-by-side launch was skipped and the views will stack. The host's ` +
-        `session API changed; the plugin needs updating to match.`,
+        `side-by-side launch was skipped and the views will stack. Expected on ` +
+        `releases through v4.3.0, which place views through @jbrowse/app-core ` +
+        `instead; on a newer host it means the session API moved and the plugin ` +
+        `needs updating to match.`,
     )
   }
   return canEnable && canPlace

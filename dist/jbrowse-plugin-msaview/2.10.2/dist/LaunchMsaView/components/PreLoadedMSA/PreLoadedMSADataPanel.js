@@ -1,0 +1,84 @@
+import React, { useState } from 'react';
+import { LoadingEllipses, SanitizedHTML } from '@jbrowse/core/ui';
+import { getEnv, getSession } from '@jbrowse/core/util';
+import { MenuItem } from '@mui/material';
+import { observer } from 'mobx-react';
+import { makeStyles } from 'tss-react/mui';
+import TextField2 from '../../../components/TextField2';
+import { useFetch } from '../../../utils/useFetch';
+import { getGeneDisplayName, getLinearGenomeView } from '../../util';
+import LaunchPanelContent from '../LaunchPanelContent';
+import SubmitCancelActions from '../SubmitCancelActions';
+import TranscriptSelector from '../TranscriptSelector';
+import { useTranscriptSelection } from '../useTranscriptSelection';
+import { fetchMSA, fetchMSAList } from './fetchMSAData';
+import { preCalculatedLaunchView } from './preCalculatedLaunchView';
+import { readMsaDatasets } from './types';
+const useStyles = makeStyles()({
+    selectedContainer: {
+        marginTop: 50,
+    },
+});
+const PreLoadedMSA = observer(function ({ model, feature, handleClose, }) {
+    const session = getSession(model);
+    const view = getLinearGenomeView(model);
+    const { classes } = useStyles();
+    const { pluginManager } = getEnv(model);
+    const { assemblyNames } = view;
+    const [viewError, setViewError] = useState();
+    const datasets = readMsaDatasets(session.jbrowse);
+    const [selectedDatasetId, setSelectedDatasetId] = useState(datasets?.[0]?.datasetId);
+    const selectedDataset = datasets?.find(d => d.datasetId === selectedDatasetId);
+    const { data: msaList, isLoading: msaListLoading, error: msaListFetchError, } = useFetch(selectedDataset ? `${selectedDataset.datasetId}-msa-list` : null, () => fetchMSAList({ config: selectedDataset.adapter, pluginManager }));
+    const transcriptSelection = useTranscriptSelection({
+        feature,
+        view,
+        validIds: msaList,
+    });
+    const { selectedId, selectedTranscript } = transcriptSelection;
+    const { data: msaData, isLoading: msaDataLoading, error: msaDataFetchError, } = useFetch(selectedId && selectedDataset && msaList
+        ? `${selectedDataset.datasetId}-${selectedId}-msa`
+        : null, () => fetchMSA({
+        msaId: selectedId,
+        config: selectedDataset.adapter,
+        pluginManager,
+    }));
+    const e = msaListFetchError ??
+        msaDataFetchError ??
+        transcriptSelection.error ??
+        viewError;
+    return (React.createElement(React.Fragment, null,
+        React.createElement(LaunchPanelContent, { error: e },
+            React.createElement(TextField2, { select: true, label: "Select MSA dataset", value: selectedDatasetId, onChange: event => {
+                    setSelectedDatasetId(event.target.value);
+                } }, datasets?.map(d => (React.createElement(MenuItem, { key: d.datasetId, value: d.datasetId }, d.name)))),
+            selectedDataset ? (React.createElement("div", { className: classes.selectedContainer },
+                !msaListLoading && msaDataLoading ? (React.createElement(LoadingEllipses, { variant: "h6", message: `Loading MSA for (${selectedId})` })) : null,
+                msaListLoading ? (React.createElement(LoadingEllipses, { variant: "h6", message: `Loading available MSAs for (${selectedDataset.name})` })) : null,
+                msaList ? (React.createElement("div", null,
+                    React.createElement(SanitizedHTML, { html: selectedDataset.description }),
+                    React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }))) : null)) : null),
+        React.createElement(SubmitCancelActions, { submitDisabled: !selectedTranscript || !msaData?.length, onSubmit: () => {
+                try {
+                    if (selectedTranscript && msaData) {
+                        const querySeqName = `${selectedId}_${assemblyNames[0]}`;
+                        preCalculatedLaunchView({
+                            newViewTitle: getGeneDisplayName(selectedTranscript),
+                            view,
+                            querySeqName,
+                            feature: selectedTranscript,
+                            data: {
+                                msa: msaData
+                                    .map(r => `>${r.get('refName')}\n${r.get('seq')}`)
+                                    .join('\n'),
+                            },
+                        });
+                        handleClose();
+                    }
+                }
+                catch (e) {
+                    setViewError(e);
+                }
+            }, onCancel: handleClose })));
+});
+export default PreLoadedMSA;

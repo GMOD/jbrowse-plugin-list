@@ -1,5 +1,5 @@
 {
-  "version": "2.10.1",
+  "version": "2.10.2",
   "license": "MIT",
   "name": "jbrowse-plugin-msaview",
   "repository": {
@@ -40,6 +40,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unicorn": "^72.0.0",
+    "git-cliff": "^2.13.1",
     "mobx": "^6.16.1",
     "mobx-react": "^9.2.2",
     "msa-parsers": "^5.10.0",
@@ -66,6 +67,7 @@
     "build": "tsc && NODE_ENV=production node esbuild.mjs && cp distconfig.json dist/config.json",
     "prebuild": "pnpm clean",
     "lint": "eslint src --report-unused-disable-directives --max-warnings 0",
+    "check-text-source": "node scripts/check-text-source.mjs",
     "pretest": "rm -rf .test-jbrowse && npx @jbrowse/cli create .test-jbrowse --nightly",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -76,7 +78,7 @@
     "host-compat": "node scripts/host-compat-probe.mjs --bundle dist/jbrowse-plugin-msaview.umd.production.min.js",
     "check-ci": "node scripts/require-green-ci.mjs",
     "preversion": "pnpm check-ci && pnpm lint && pnpm build && pnpm host-compat",
-    "version": "node -e \"console.log('export const version = \\'' + require('./package.json').version + '\\'')\" > src/version.ts && git add src/version.ts",
+    "version": "node -e \"console.log('export const version = \\'' + require('./package.json').version + '\\'')\" > src/version.ts && git-cliff --tag v$npm_package_version --unreleased --prepend CHANGELOG.md && git add src/version.ts CHANGELOG.md",
     "postversion": "git push --follow-tags"
   }
 }

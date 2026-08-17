@@ -1,0 +1,34 @@
+import React from 'react';
+import { getSession } from '@jbrowse/core/util';
+import { observer } from 'mobx-react';
+import Highlight from './Highlight';
+import { protein1DViewRegistry } from '../Protein1DViewRegistry';
+import { checkHovered } from '../ProteinView/util';
+const Protein1DToGenomeHoverHighlight = observer(function Protein1DToGenomeHoverHighlight({ model, }) {
+    const session = getSession(model);
+    const { hovered } = session;
+    const { assemblyNames, id: viewId } = model;
+    if (!checkHovered(hovered)) {
+        return null;
+    }
+    const { coord, refName } = hovered.hoverPosition;
+    const protein1DInfo = protein1DViewRegistry.getByUniprotId(refName, session);
+    if (protein1DInfo?.connectedViewId !== viewId) {
+        return null;
+    }
+    const assemblyName = assemblyNames[0];
+    if (!assemblyName) {
+        return null;
+    }
+    const genomeHighlight = protein1DViewRegistry.getGenomeHighlightForProteinPosition(refName, coord - 1, session);
+    if (!genomeHighlight) {
+        return null;
+    }
+    return (React.createElement(Highlight, { model: model, region: {
+            start: genomeHighlight.start,
+            end: genomeHighlight.end,
+            refName: genomeHighlight.refName,
+            assemblyName,
+        } }));
+});
+export default Protein1DToGenomeHoverHighlight;

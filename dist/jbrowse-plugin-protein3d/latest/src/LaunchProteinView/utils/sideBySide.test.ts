@@ -43,5 +43,11 @@ test('warns when the host has workspaces but not the placement action', () => {
   launchViewSideBySide(makeSession({ setUseWorkspaces: () => {} }), 'view-1')
 
   expect(warn).toHaveBeenCalledWith(expect.stringContaining('setPendingMove'))
+  // Both hosts this one shape can mean, because the session cannot tell them
+  // apart: a v4 release that never had the action, and a newer one that lost
+  // it. Naming only the second sent a reader hunting a regression on v4.3.0,
+  // where nothing is wrong.
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('v4.3.0'))
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('newer host'))
   warn.mockRestore()
 })

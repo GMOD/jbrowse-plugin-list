@@ -1,5 +1,5 @@
 {
-  "version": "0.8.3",
+  "version": "0.8.4",
   "name": "jbrowse-plugin-protein3d",
   "repository": {
     "type": "git",
@@ -48,6 +48,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unicorn": "^64.0.0",
     "fp-ts": "^2.16.11",
+    "git-cliff": "^2.13.1",
     "jsdom": "^29.1.1",
     "mobx": "^6.16.1",
     "mobx-react": "^9.2.2",
@@ -93,7 +94,7 @@
     "lint": "eslint src --report-unused-disable-directives --max-warnings 0",
     "pretest": "node scripts/ensure-nightly.mjs",
     "preversion": "pnpm format:check && pnpm lint && pnpm build && pnpm host-compat:candidate",
-    "version": "node scripts/sync-version.mjs && git add src/version.ts",
+    "version": "node scripts/sync-version.mjs && git-cliff --tag v$npm_package_version --unreleased --prepend CHANGELOG.md && git add src/version.ts CHANGELOG.md",
     "postversion": "git push --follow-tags"
   }
 }
