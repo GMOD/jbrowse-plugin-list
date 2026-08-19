@@ -14,7 +14,7 @@ export declare function launchBlastIfNeeded(self: JBrowsePluginMsaViewModel): vo
  * Once an accession-bearing alignment is present (fresh from BLAST or restored
  * from cache), fetch NCBI CDD domains for those accessions and overlay them.
  * Runs once per view; the domainsRequested guard prevents refiring when NCBI
- * returns no domains (which leaves interProAnnotations undefined).
+ * returns no domains (which leaves the annotation list empty).
  */
 export declare function autoLoadProteinDomains(self: JBrowsePluginMsaViewModel): void;
 export declare function processInit(self: JBrowsePluginMsaViewModel): void;

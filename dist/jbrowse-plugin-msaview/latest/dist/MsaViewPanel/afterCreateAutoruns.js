@@ -121,14 +121,14 @@ export function launchBlastIfNeeded(self) {
  * Once an accession-bearing alignment is present (fresh from BLAST or restored
  * from cache), fetch NCBI CDD domains for those accessions and overlay them.
  * Runs once per view; the domainsRequested guard prevents refiring when NCBI
- * returns no domains (which leaves interProAnnotations undefined).
+ * returns no domains (which leaves the annotation list empty).
  */
 export function autoLoadProteinDomains(self) {
-    const { rows, domainsRequested, interProAnnotations } = self;
+    const { rows, domainsRequested, annotations } = self;
     const hasAccessions = self.data.treeMetadata?.includes('"Accession"') ?? false;
     if (rows.length > 0 &&
         hasAccessions &&
-        !interProAnnotations &&
+        annotations.length === 0 &&
         !domainsRequested) {
         self.setDomainsRequested(true);
         void (async () => {

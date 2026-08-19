@@ -552,7 +552,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     conservationTrackHeight: number;
     marginLeft: number;
     error: unknown;
-    interProAnnotations: undefined | Record<string, import("react-msaview").InterProScanResults>;
+    annotations: import("msa-parsers").Annotation[];
 } & {
     drawRelativeTo(id: string | undefined): void;
     setHideGaps(arg: boolean): void;
@@ -571,7 +571,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     setMouseClickPos(col?: number, row?: number): void;
     setRowHeight(n: number): void;
     setColWidth(n: number): void;
-    setScrollY(n: number): void;
     setCurrentAlignment(n: number): void;
     toggleCollapsed(node: string): void;
     setShowOnly(node?: string): void;
@@ -628,7 +627,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly msaAreaWidth: number;
     readonly treeAreaWidthMinusMargin: number;
     readonly blanks: number[];
-    readonly blanksSet: Set<number>;
     readonly insertionPositions: Map<string, {
         pos: number;
         letters: string;
@@ -641,7 +639,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly columns2d: string[];
     readonly fontSize: number;
     readonly colStats: import("react-msaview").ColumnCounts;
-    readonly colStatsSums: Uint32Array<ArrayBufferLike>;
     readonly sequenceType: "dna" | "rna" | "amino";
     readonly colConsensus: {
         letter: string;
@@ -684,7 +681,9 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     zoomOut(): void;
     zoomToPos(scaleFactor: number, offsetX: number, offsetY: number): void;
     doScrollY(deltaY: number): void;
-    setDomains(data?: Record<string, import("react-msaview").InterProScanResults>): void;
+    setScrollY(n: number): void;
+    setAnnotations(annotations: import("msa-parsers").Annotation[]): void;
+    setDomains(data?: Record<string, import("msa-parsers").InterProScanResults>): void;
     applyGFFText(gffText: string): void;
     doScrollX(deltaX: number): void;
     setScrollX(n: number): void;
@@ -712,70 +711,16 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
 } & {
     readonly msaAreaHeight: number;
     readonly totalTrackAreaHeight: number;
-    readonly tidyInterProAnnotationTypes: Map<string, {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }>;
-    readonly tidyInterProAnnotations: {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }[];
-    readonly tidyFilteredInterProAnnotations: {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }[];
-    readonly tidyFilteredGatheredInterProAnnotations: Record<string, {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }[]>;
+    readonly annotationTypes: Map<string, import("msa-parsers").Annotation>;
+    readonly filteredAnnotations: import("msa-parsers").Annotation[];
+    readonly annotationsByRow: Record<string, import("msa-parsers").Annotation[]>;
 } & {
     readonly showVerticalScrollbar: boolean;
 } & {
     readonly verticalScrollbarWidth: 0 | 20;
-    readonly segmentDomainTypes: {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }[];
-    readonly categoricalDomainTypes: {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }[];
+    readonly msaCanvasWidth: number;
+    readonly segmentDomainTypes: import("msa-parsers").Annotation[];
+    readonly categoricalDomainTypes: import("msa-parsers").Annotation[];
     readonly fillPalette: {
         [x: string]: string;
     };
@@ -783,19 +728,10 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         [k: string]: string;
     };
     readonly segmentLabels: Map<string, string>;
-    readonly visibleDomainTypes: {
-        id: string;
-        name: string;
-        accession: string;
-        description: string;
-        featureType: string | undefined;
-        start: number;
-        end: number;
-        strand: number | undefined;
-    }[];
+    readonly visibleDomainTypes: import("msa-parsers").Annotation[];
     readonly domainBands: Map<string, import("react-msaview").DomainBand[]>;
     readonly domainBandsByStart: Map<string, import("react-msaview").DomainBand[]>;
-    readonly mouseOverDomains: import("react-msaview").TidyDomainAnnotation[];
+    readonly mouseOverDomains: import("msa-parsers").Annotation[];
     readonly referenceRowIndex: number | undefined;
     readonly hoveredRowIndices: number[];
     readonly highlightedColumnRuns: {
