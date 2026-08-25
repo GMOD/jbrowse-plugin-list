@@ -3,7 +3,6 @@ export declare function uniprotFastaUrl(uniprotId: string): string;
 export declare function uniprotEntryUrl(uniprotId: string): string;
 export declare function getAlphaFoldStructureUrl(uniprotId: string, version?: string): string;
 export declare function getAlphaFoldConfidenceUrl(uniprotId: string, version?: string): string;
-export declare function getAlphaFoldMsaUrl(uniprotId: string, version?: string): string;
 export declare function getPdbStructureUrl(pdbId: string): string;
 /**
  * Resolve the `{ uniprotId }` / `{ pdbId }` shorthand to a concrete structure

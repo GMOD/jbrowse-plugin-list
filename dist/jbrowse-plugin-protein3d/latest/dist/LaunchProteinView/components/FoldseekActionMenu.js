@@ -29,7 +29,7 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
             userProvidedTranscriptSequence,
         });
     });
-    const { launch1D, launchMsa } = getConditionalProteinLaunches({
+    const { launch1D } = getConditionalProteinLaunches({
         ...baseParams,
         confidenceUrl: getConfidenceUrlFromTarget(hit.target),
     });
@@ -42,6 +42,5 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
         React.createElement(Button, { size: "small", variant: "outlined", onClick: handleClick }, "Load"),
         React.createElement(Menu, { anchorEl: anchorEl, open: open, onClose: handleMenuClose },
             React.createElement(MenuItem, { "data-testid": "protein-launch-option-3d", onClick: handleLaunch3D }, PROTEIN_LAUNCH_LABELS['3d']),
-            launch1D ? (React.createElement(MenuItem, { "data-testid": "protein-launch-option-1d", onClick: runLaunch(launch1D) }, PROTEIN_LAUNCH_LABELS['1d'])) : null,
-            launchMsa ? (React.createElement(MenuItem, { "data-testid": "protein-launch-option-msa", onClick: runLaunch(launchMsa) }, PROTEIN_LAUNCH_LABELS.msa)) : null)));
+            launch1D ? (React.createElement(MenuItem, { "data-testid": "protein-launch-option-1d", onClick: runLaunch(launch1D) }, PROTEIN_LAUNCH_LABELS['1d'])) : null)));
 }

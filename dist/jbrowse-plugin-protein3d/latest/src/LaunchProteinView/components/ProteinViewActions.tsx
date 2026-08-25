@@ -20,7 +20,6 @@ import {
   PROTEIN_LAUNCH_LABELS,
   getConditionalProteinLaunches,
   launch3DProteinView,
-  launch3DProteinViewWithMsa,
 } from '../utils/launchViewUtils'
 
 import type { AlignmentAlgorithm } from '../../ProteinView/types'
@@ -101,7 +100,7 @@ export default function ProteinViewActions({
     launch3DProteinView(launch3DParams)
   })
 
-  const { launch1D, launchMsa } = getConditionalProteinLaunches({
+  const { launch1D } = getConditionalProteinLaunches({
     session,
     view,
     feature,
@@ -126,24 +125,6 @@ export default function ProteinViewActions({
             description:
               'View protein features and annotations as a linear track',
             onClick: runLaunch(launch1D),
-          },
-        ]
-      : []),
-    ...(launchMsa
-      ? [
-          {
-            key: 'msa',
-            title: PROTEIN_LAUNCH_LABELS.msa,
-            description: 'View AlphaFold a3m multiple sequence alignment',
-            onClick: runLaunch(launchMsa),
-          },
-          {
-            key: '3d-msa',
-            title: PROTEIN_LAUNCH_LABELS['3d-msa'],
-            description: 'Launch both views with AlphaFold a3m MSA',
-            onClick: runLaunch(() =>
-              launch3DProteinViewWithMsa(launch3DParams),
-            ),
           },
         ]
       : []),

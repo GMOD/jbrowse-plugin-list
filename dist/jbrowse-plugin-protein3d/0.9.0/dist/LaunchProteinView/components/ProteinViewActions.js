@@ -8,7 +8,7 @@ import LaunchSettingsDialog from './LaunchSettingsDialog';
 import SequenceMismatchNotice from './SequenceMismatchNotice';
 import { useSafeLaunch } from '../hooks/useSafeLaunch';
 import { getLaunchMissingReasons } from '../utils/launchHelpers';
-import { PROTEIN_LAUNCH_LABELS, getConditionalProteinLaunches, launch3DProteinView, launch3DProteinViewWithMsa, } from '../utils/launchViewUtils';
+import { PROTEIN_LAUNCH_LABELS, getConditionalProteinLaunches, launch3DProteinView, } from '../utils/launchViewUtils';
 export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, confidenceUrl, feature, view, session, alignmentAlgorithm, onAlignmentAlgorithmChange, sequencesMatch, isLoading, error, }) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
     const handleLaunch3DView = runLaunch(() => {
         launch3DProteinView(launch3DParams);
     });
-    const { launch1D, launchMsa } = getConditionalProteinLaunches({
+    const { launch1D } = getConditionalProteinLaunches({
         session,
         view,
         feature,
@@ -62,22 +62,6 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
                     title: PROTEIN_LAUNCH_LABELS['1d'],
                     description: 'View protein features and annotations as a linear track',
                     onClick: runLaunch(launch1D),
-                },
-            ]
-            : []),
-        ...(launchMsa
-            ? [
-                {
-                    key: 'msa',
-                    title: PROTEIN_LAUNCH_LABELS.msa,
-                    description: 'View AlphaFold a3m multiple sequence alignment',
-                    onClick: runLaunch(launchMsa),
-                },
-                {
-                    key: '3d-msa',
-                    title: PROTEIN_LAUNCH_LABELS['3d-msa'],
-                    description: 'Launch both views with AlphaFold a3m MSA',
-                    onClick: runLaunch(() => launch3DProteinViewWithMsa(launch3DParams)),
                 },
             ]
             : []),

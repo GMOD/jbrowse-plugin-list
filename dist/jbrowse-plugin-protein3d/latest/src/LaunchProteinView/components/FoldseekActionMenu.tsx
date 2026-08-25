@@ -72,7 +72,7 @@ export default function FoldseekActionMenu({
     })
   })
 
-  const { launch1D, launchMsa } = getConditionalProteinLaunches({
+  const { launch1D } = getConditionalProteinLaunches({
     ...baseParams,
     confidenceUrl: getConfidenceUrlFromTarget(hit.target),
   })
@@ -101,14 +101,6 @@ export default function FoldseekActionMenu({
             onClick={runLaunch(launch1D)}
           >
             {PROTEIN_LAUNCH_LABELS['1d']}
-          </MenuItem>
-        ) : null}
-        {launchMsa ? (
-          <MenuItem
-            data-testid="protein-launch-option-msa"
-            onClick={runLaunch(launchMsa)}
-          >
-            {PROTEIN_LAUNCH_LABELS.msa}
           </MenuItem>
         ) : null}
       </Menu>

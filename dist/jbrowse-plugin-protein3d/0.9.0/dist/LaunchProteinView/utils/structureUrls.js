@@ -21,9 +21,6 @@ export function getAlphaFoldStructureUrl(uniprotId, version = ALPHAFOLD_VERSION)
 export function getAlphaFoldConfidenceUrl(uniprotId, version = ALPHAFOLD_VERSION) {
     return `https://alphafold.ebi.ac.uk/files/AF-${uniprotId}-F1-confidence_${version}.json`;
 }
-export function getAlphaFoldMsaUrl(uniprotId, version = ALPHAFOLD_VERSION) {
-    return `https://alphafold.ebi.ac.uk/files/msa/AF-${uniprotId}-F1-msa_${version}.a3m`;
-}
 export function getPdbStructureUrl(pdbId) {
     return `https://files.rcsb.org/download/${pdbId}.cif`;
 }

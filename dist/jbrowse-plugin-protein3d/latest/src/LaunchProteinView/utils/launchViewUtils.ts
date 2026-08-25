@@ -1,7 +1,6 @@
 import { isSessionWithAddTracks } from '@jbrowse/core/util'
 
 import { maybeLaunchSideBySide } from './sideBySide'
-import { getAlphaFoldMsaUrl } from './structureUrls'
 import { getGeneDisplayName, getTranscriptDisplayName } from './util'
 import { proteinViewSnapshot } from '../../ProteinView/proteinViewSpec'
 import { launchProteinAnnotationView } from '../components/launchProteinAnnotationView'
@@ -13,12 +12,6 @@ import type {
   SessionWithAddTracks,
 } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
-
-declare global {
-  interface Window {
-    JBrowsePluginMsaView?: unknown
-  }
-}
 
 interface LaunchViewParams {
   session: AbstractSessionModel
@@ -121,67 +114,20 @@ async function launch1DProteinView({
   })
 }
 
-// CROSS-REPO DEPENDENCY: the 'MsaView' view type is registered by
-// jbrowse-plugin-msaview, which wraps the `react-msaview` library. The top-level
-// props here (colorSchemeName, connectedViewId, connectedFeature) are native
-// react-msaview model properties applied directly from the snapshot; only `init`
-// (msaUrl) is a declarative launch contract that the plugin resolves once and
-// clears. These are NOT type-checked here because we only depend on it at runtime
-// (gated by hasMsaViewPlugin()). If react-msaview renames these, the launch
-// silently degrades. Keep in step with that repo.
-function launchMsaView({
-  session,
-  view,
-  feature,
-  selectedTranscript,
-  uniprotId,
-  displayName,
-}: LaunchViewParams & { displayName?: string }) {
-  if (!uniprotId) {
-    return undefined
-  }
-  return session.addView('MsaView', {
-    type: 'MsaView',
-    displayName:
-      displayName ??
-      formatViewName('MSA view', feature, selectedTranscript, uniprotId),
-    connectedViewId: view.id,
-    connectedFeature: selectedTranscript?.toJSON(),
-    colorSchemeName: 'percent_identity',
-    init: {
-      msaUrl: getAlphaFoldMsaUrl(uniprotId),
-    },
-  })
-}
-
-function hasMsaViewPlugin() {
-  return window.JBrowsePluginMsaView !== undefined
-}
-
 // What the launches below are CALLED, shared for the same reason their
-// availability is: the AlphaFold and Foldseek menus offer the same three
-// actions, and had drifted to different names for two of them ("Launch 3D
-// protein structure view" vs "Launch 3D protein view", and an MSA item that
-// named its source on one menu and not the other). Two names for one action
-// reads as two actions.
-//
-// The MSA item says "(AlphaFold a3m)" rather than a bare "Launch MSA view"
-// because msaview contributes a gene right-click item by that exact name, and
-// the two build different things: msaview's is one row per species from NCBI's
-// orthologs, this one is the deep unlabelled alignment AlphaFold folded from.
+// availability is: the AlphaFold and Foldseek menus offer the same actions, and
+// had drifted to different names ("Launch 3D protein structure view" vs "Launch
+// 3D protein view"). Two names for one action reads as two actions.
 export const PROTEIN_LAUNCH_LABELS = {
   '3d': 'Launch 3D protein structure view',
   '1d': 'Launch 1D protein annotation view',
-  msa: 'Launch MSA view (AlphaFold a3m)',
-  '3d-msa': 'Launch 3D structure + MSA view',
 } as const
 
-// The 1D-annotation and MSA launches share identical availability rules across
-// the AlphaFold and Foldseek launch menus: the 1D view needs an add-tracks
-// session and a uniprotId, the MSA view needs the msaview plugin and a
-// uniprotId. Returning each as a ready-to-run thunk (or undefined when
-// unavailable) is the single source of truth — an unavailable action is
-// unrepresentable rather than a menu item that silently no-ops.
+// The 1D-annotation launch has the same availability rule on both the AlphaFold
+// and Foldseek launch menus: a session it can add tracks to, and a uniprotId.
+// Returning it as a ready-to-run thunk (or undefined when unavailable) is the
+// single source of truth — an unavailable action is unrepresentable rather than
+// a menu item that silently no-ops.
 export function getConditionalProteinLaunches({
   session,
   view,
@@ -204,30 +150,5 @@ export function getConditionalProteinLaunches({
               confidenceUrl,
             })
         : undefined,
-    launchMsa:
-      uniprotId && hasMsaViewPlugin()
-        ? () =>
-            launchMsaView({
-              session,
-              view,
-              feature,
-              selectedTranscript,
-              uniprotId,
-            })
-        : undefined,
   }
-}
-
-export function launch3DProteinViewWithMsa(
-  params: LaunchViewParams & Launch3DExtraParams,
-) {
-  const { uniprotId } = params
-  if (!uniprotId) {
-    return undefined
-  }
-  const msaView = launchMsaView(params)
-  return launch3DProteinView({
-    ...params,
-    connectedMsaViewId: msaView?.id,
-  })
 }

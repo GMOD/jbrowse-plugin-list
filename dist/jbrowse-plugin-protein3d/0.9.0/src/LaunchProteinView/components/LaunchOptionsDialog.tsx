@@ -11,10 +11,9 @@ import {
 
 interface LaunchOption {
   // also the suffix of the row's data-testid, so a test or a screenshot spec
-  // names the launch it wants ('3d', '1d', 'msa', '3d-msa') rather than
-  // matching the row's title text. Which options are present depends on the
-  // session (1D needs one it can add tracks to) and on whether msaview is
-  // loaded, so an index would not be stable either.
+  // names the launch it wants ('3d', '1d') rather than matching the row's title
+  // text. Which options are present depends on the session (1D needs one it can
+  // add tracks to), so an index would not be stable either.
   key: string
   title: string
   description: string
