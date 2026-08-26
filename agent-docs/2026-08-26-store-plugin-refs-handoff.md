@@ -51,26 +51,47 @@ stale-siblings claim). Details in the commit message.
 `build-manifest.json` is gitignored, so a fresh worktree needs it copied from
 the primary checkout before `node generate-plugins.ts` will run.
 
-## Not done — jb2hubs
+## Done — jb2hubs (`ae571200689`)
 
-This is the whole point of the change and none of it is written.
+`hubtools/src/enhanceConfig.ts` emits `storePlugin` alongside the existing
+`latest/` url for the three plugins the store lists (`msaview`, `protein3d`,
+`@cmdcolin/jbrowse-plugin-hubs`). MafViewer names no package — core vendors it,
+so it was removed from `plugins.json` and a ref to it cannot resolve; BLAT is
+deliberately not in the store either.
 
-1. `hubtools/src/enhanceConfig.ts` — add `storePlugin` to the three entries the
-   store actually lists: `jbrowse-plugin-msaview`, `jbrowse-plugin-protein3d`,
-   `@cmdcolin/jbrowse-plugin-hubs`. **Keep the `url` alongside it**: that is the
-   migration shape, and it is what every already-released host loads from. It is
-   safe to emit today — `plugins` is `types.array(types.frozen())`, so an
-   unknown key passes validation on every released JBrowse.
-2. **MafViewer stays url-only.** It is not in `plugins.json` — core vendors it
-   now — so a ref to it cannot resolve. Same for BLAT, which is deliberately not
-   in the store.
-3. The upsert loop in `enhanceConfig` writes `existing.url = plugin.url` and
-   nothing else, so a re-run over an already-enhanced config would never add
-   `storePlugin`. Assign the whole entry.
-4. `scripts/checkPluginUrls.mjs` — assert every `storePlugin` a config names is
-   in `plugin-store/v2/plugins.json`, and every fallback url equals that entry's
-   `latestUrl`. That replaces the `isLegacy`/`isOffStore` regexes with set
-   membership against what the store actually publishes.
+Three follow-on fixes that the ref field exposed:
+
+- the upsert assigned `existing.url` and nothing else, so an already-enhanced
+  config — which is most of the tree, since `enhanceConfigs.sh` re-runs over its
+  own output — would never have gained `storePlugin` no matter how often it ran.
+  It now assigns the whole entry.
+- `mergePlugins` picked "canonical" by a boolean `/latest/dist/` test, which a
+  ref and a bare `latest/` entry both pass, so whichever was seen first kept the
+  slot. Ranked now: ref > `latest/` > frozen.
+- `scripts/checkPluginUrls.mjs` asserts every ref is in the published manifest,
+  that the store's UMD name agrees with the config's, and that the fallback url
+  equals the store's `latestUrl`. Each failure demotes a ref to its fallback
+  with nothing else noticing.
+
+**The ref check is inert until two things happen**: no config on disk names a
+package yet (it takes a regeneration), and the deployed manifest has no
+`latestUrl` yet (it takes an upload from jbrowse-plugin-list). The url half of
+the check is guarded on `entry.latestUrl`, so it skips rather than false-fails
+in the meantime.
+
+`tsc --noEmit` is clean apart from four pre-existing `website/` errors that need
+`astro sync`; `oxlint` clean; 16 enhanceConfig + 7 mergeAll tests pass.
+
+## Order of operations, when landing
+
+1. **jbrowse-plugin-list** — upload, so the manifest carries `latestUrl`.
+2. **jbrowse-components** — release, so hosts resolve refs. Until this ships,
+   every config that names one loads from the fallback url, exactly as today.
+3. **jb2hubs** — regenerate, so configs carry the refs.
+
+Any order actually works, which is the point of the fallback: a ref no host
+understands and a manifest field nothing reads are both inert. But nothing is
+gained until all three have happened.
 
 ## Watch for
 
