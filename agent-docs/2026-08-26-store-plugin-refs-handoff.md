@@ -50,7 +50,15 @@ had gone wrong (invariant 1's error-page claim, genark's v1 path, ADR 0002's
 stale-siblings claim). Details in the commit message.
 
 `build-manifest.json` is gitignored, so a fresh worktree needs it copied from
-the primary checkout before `node generate-plugins.ts` will run.
+the primary checkout before `node generate-plugins.ts` will run — and a _stale_
+copy is worse than a missing one. Running `generate-plugins.ts` against one that
+predates a promotion on main silently rewrites `v2_plugins.json` **backwards**:
+it downgraded MsaView from the published 3.4.0 to 3.3.0, url and integrity
+included, with every gate passing. Nothing in the pipeline compares what it is
+about to write against what is already published, so invariant 5's "a listing
+must never shrink by accident" has no equivalent for a version going backwards.
+Re-copy `build-manifest.json` after any rebase, and read the `v2_plugins.json`
+diff before committing it.
 
 ## Done — jb2hubs (`ae571200689`)
 
