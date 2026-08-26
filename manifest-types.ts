@@ -81,6 +81,19 @@ export interface V2Plugin {
   url: string
   integrity: string
   versions: BuiltVersion[]
+  // The version-agnostic `latest/` path, published for config GENERATORS and
+  // never for installs. It is the one field here that names a mutable url, and
+  // the reason it is safe to name is that it carries no `integrity` and never
+  // will: an install pins `url` and enforces a hash against it (invariant 2),
+  // which is a promise `latest/` cannot keep.
+  //
+  // It exists so nothing downstream composes this path by hand. jb2hubs used to,
+  // and got the shape wrong: its configs named the superseded v1 flat layout and
+  // served protein3d 0.4.1 against a published 0.8.0. A generator reading this
+  // field cannot be wrong about the shape, and when a host that resolves
+  // `storePlugin` refs is the only one left in the wild, the fallback and this
+  // field both go away.
+  latestUrl: string
 }
 
 export function rehostedUrl(

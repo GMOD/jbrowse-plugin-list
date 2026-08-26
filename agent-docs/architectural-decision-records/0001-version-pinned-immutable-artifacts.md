@@ -74,6 +74,15 @@ top-level `url`/`integrity`. It is not: `resolvePlugin` sources `pluginVersion`
 only from `versions[]`, and `getPluginUpdate` returns `undefined` without it.
 Removing the array would silently retire the update-available affordance.
 
+### `latestUrl` is the one field that names `latest/`, and it is not an install url
+
+Added 2026-08-26. Config generators need the `latest/` path and were composing
+it by hand, which is how jb2hubs came to name the superseded v1 layout. The
+manifest publishes it so nothing composes it again. It carries no `integrity`
+and never will — that is the whole distinction this ADR draws, and a hash on a
+mutable url is the bug it exists to prevent. Nothing installs from it; see
+[ADR 0008](0008-configs-name-a-package-installs-name-a-version.md).
+
 ## Consequences
 
 - The manifest is roughly twice the size it needs to be today, since

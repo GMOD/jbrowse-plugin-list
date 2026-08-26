@@ -13,17 +13,32 @@ Breaking any of these is a production incident, not a code-review comment.
 
 1. **`pnpm upload` is live, for everyone, with no staging step.** `latest/` is
    uploaded `no-cache` and named directly by jb2hubs configs sitting at
-   permanent urls that published links and old desktop installs keep loading. A
-   bundle that throws while loading doesn't degrade — `PluginLoader` runs
-   `Promise.all`, so the whole session becomes an error page. **Verify before
-   uploading, not after.**
+   permanent urls that published links and old desktop installs keep loading.
+   **Verify before uploading, not after.**
+
+   How badly a bad bundle degrades depends on where it is loaded, and the
+   blanket "one bad plugin error-pages the session" this used to say stopped
+   being true: jbrowse-web loads through `PluginLoader.loadSettled` and opens
+   the session without the plugin, with a notification. Three cases still take
+   the whole thing down — the RPC worker and every embedded product, which use
+   the all-or-nothing `load`, and a bundle that loads and then throws from
+   `configure()`, which no loader can catch. Verified in jbrowse-components on
+   2026-08-26: `products/jbrowse-web/src/sessionLoaderHelpers.ts`,
+   `packages/product-core/src/rpcWorker.ts`,
+   `packages/product-core/src/loadPlugins.ts`.
    ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md))
 
 2. **The published `url` must stay version-pinned.** It carries an `integrity`
    hash the browser enforces, so pointing it at `latest/` would invalidate every
-   install's hash on the next publish. `latest/` must never appear in
-   `v2_plugins.json`.
-   ([ADR 0001](agent-docs/architectural-decision-records/0001-version-pinned-immutable-artifacts.md))
+   install's hash on the next publish. `url` and every `versions[].url` name a
+   version, never `latest/`.
+
+   The one field that does name `latest/` is `latestUrl`, which exists for
+   config generators and carries no `integrity` by construction. Nothing
+   installs from it. If you find yourself adding a hash to it, the field is
+   wrong, not the invariant.
+   ([ADR 0001](agent-docs/architectural-decision-records/0001-version-pinned-immutable-artifacts.md),
+   [ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md))
 
 3. **The upload is `rclone copy`. Never change it to `sync`.** `dist/` holds
    only the current versions; S3 holds every version ever published, and those
@@ -36,8 +51,11 @@ Breaking any of these is a production incident, not a code-review comment.
    jb2hubs configs; pinning `versions` in `plugins.json` fixes store installs.
    Pull both, or say explicitly which population you are leaving broken. Only
    one was pulled on 2026-07-29 and the store served the broken bundle for the
-   whole window.
+   whole window. A config that names a plugin by package rather than by url
+   moves on the `versions` pin alone, so this collapses to one lever for exactly
+   the configs that have migrated — and for no others.
    ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md),
+   [ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md),
    [post-mortem](agent-docs/2026-07-29-msaview-2.7.0-postmortem.md))
 
 5. **A store listing must never shrink by accident.** `v2_plugins.json` _is_ the
@@ -63,7 +81,7 @@ pnpm canary       # every plugin, as S3 is serving it right now
 path is gated. Run it by hand when uploading any other way.
 
 The gate proves a bundle **loads**. It does not prove a track **renders** — that
-needs test data and belongs in the plugin's own repo, and of the 17 plugins here
+needs test data and belongs in the plugin's own repo, and of the 14 plugins here
 only msaview and protein3d have any e2e tests at all.
 
 ### After uploading, invalidate and then wait
@@ -134,17 +152,28 @@ Refetches from npm and verifies the result byte-for-byte against what S3 serves.
 
 ## Current state worth knowing
 
-Point-in-time, checked 2026-08-06 — re-check rather than trust:
+Point-in-time, checked 2026-08-26 — re-check rather than trust:
 
-- **No entry in `plugins.json` declares `versions`**, so all 17 get a single
-  auto-generated version at `jbrowseRange: "*"` and the range apparatus has zero
-  live users. It is still the right tool for rollback and retirement
+- **`plugins.json` lists 14 plugins**, not the 17 several ADRs measured on
+  2026-08-06. Those numbers are dated records and are left as written; anything
+  here that reads as current says 14.
+- **No entry in `plugins.json` declares `versions`**, so all 14 get a single
+  auto-generated version at `jbrowseRange: "*"` and the range apparatus has no
+  live users _here_. A config naming a plugin by package is what gives it some
+  ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
+  and it remains the right tool for rollback and retirement
   ([ADR 0007](agent-docs/architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)).
-- **genark configs still name the superseded v1 flat path**; UCSC has moved to
-  `latest/`. jb2hubs' generator already emits `latest/`, so regenerating genark
-  is the whole remaining fix — no code change anywhere. All four frozen flat
-  bundles still booted on v4.0.0..latest when last measured, so this is latent,
-  not live. Read the _deployed_ `config.json` to check this, never the jb2hubs
-  working tree — those files lag deployment and gave the wrong answer once
-  already.
+- **genark is no longer on the v1 flat path — this is fixed.** The deployed
+  `hubs/genark/GCF/000/298/275/GCF_000298275.1/config.json` names `latest/` for
+  all four plugins, as UCSC already did. Read the _deployed_ `config.json` to
+  check this, never the jb2hubs working tree — those files lag deployment and
+  gave the wrong answer once already.
   ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md))
+- **`latest/` on S3 is append-only, whatever `copyToLatest` does locally.** The
+  upload is `rclone copy` (invariant 3), so a file that leaves a release stays
+  served under `latest/` forever.
+  `s3:jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/` holds four
+  `molstar-chunk-*.js` and their maps. Benign, and load-bearing by accident: a
+  browser that loaded the umd entry just before an upload lazy-loads its sidecar
+  after it, and the stale chunk is what answers. Also ~50MB of orphans in one
+  prefix, most of it `.js.map`.

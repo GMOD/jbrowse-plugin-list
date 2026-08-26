@@ -23,7 +23,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/3.4.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
           "integrity": "sha384-/ijmAg1JlpkXS47o95jwGqTkmhltAX9LzsIa/wCDbKePo8WtoZg2oMjwotx4c8oA"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/latest/dist/jbrowse-plugin-msaview.umd.production.min.js"
     },
     {
       "name": "Quantseq",
@@ -48,7 +49,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-quantseq/0.0.6/dist/jbrowse-plugin-quantseq.umd.production.min.js",
           "integrity": "sha384-Izvkepeh6NjUwAGVAatS6agUfs2VJ3w9hJVoXzK71D8sc0p6suuDunnJ/NHUscqL"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-quantseq/latest/dist/jbrowse-plugin-quantseq.umd.production.min.js"
     },
     {
       "name": "UCSC",
@@ -73,7 +75,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/1.0.3/dist/jbrowse-plugin-ucsc.umd.production.min.js",
           "integrity": "sha384-BKHSIkzSVv6OGQ31gBloEhhfhJIqoiKRIEz7/VhKLKAC9ZwYugEw/+QwZ6+IDI06"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/latest/dist/jbrowse-plugin-ucsc.umd.production.min.js"
     },
     {
       "name": "Biothings",
@@ -99,7 +102,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-biothings/1.1.1/dist/jbrowse-plugin-biothings.umd.production.min.js",
           "integrity": "sha384-1XdsDADUd/Ekq+A9hTxm9yYk1X0pzttsKvfITEwg3Zx0tmS0RNSgDVAmcC80vhre"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-biothings/latest/dist/jbrowse-plugin-biothings.umd.production.min.js"
     },
     {
       "name": "Ideogram",
@@ -125,7 +129,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/2.0.0/dist/jbrowse-plugin-ideogram.umd.production.min.js",
           "integrity": "sha384-LD/+MUK8XaVmNsslVgoxvtiSCqqzCM/OqO6tZqOjmslQg/l9luyQcvGNOmj3YBzH"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/latest/dist/jbrowse-plugin-ideogram.umd.production.min.js"
     },
     {
       "name": "CIVIC",
@@ -152,7 +157,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-civic/1.0.8/dist/jbrowseplugincivic.umd.production.min.js",
           "integrity": "sha384-BHmUP8mmES4n/QAFQKHhJoDJkXbFY4ku2sBdWgQekLu17m9mgzoCzN/C8+zp7kLW"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-civic/latest/dist/jbrowseplugincivic.umd.production.min.js"
     },
     {
       "name": "Reactome",
@@ -178,7 +184,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-reactome/1.0.1/dist/jbrowse-plugin-reactome.umd.production.min.js",
           "integrity": "sha384-2vjjWJFcTPXaCTUnIHL3hCC6O0k1CNyxBTyh2CMQjMJ/4qx3SVK2cedAOLwywLiu"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-reactome/latest/dist/jbrowse-plugin-reactome.umd.production.min.js"
     },
     {
       "name": "TrackHubRegistry",
@@ -204,7 +211,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-trackhub-registry/2.0.0/dist/jbrowse-plugin-trackhub-registry.umd.production.min.js",
           "integrity": "sha384-p0sicqzdK9HAyNpPPMPGhg+pjAo0DnjDnuJUJ3XFsg/29PS/2BD12e5L7NCzIyVw"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-trackhub-registry/latest/dist/jbrowse-plugin-trackhub-registry.umd.production.min.js"
     },
     {
       "name": "RefGet",
@@ -229,7 +237,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-refget-api/1.1.0/dist/jbrowse-plugin-refget-api.umd.production.min.js",
           "integrity": "sha384-0f0Glo8UMUTNUBDIG+xBJ05As1A4hV0yrZ4P3Zpu/3aElNsrly2OHEOglI1GTq57"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-refget-api/latest/dist/jbrowse-plugin-refget-api.umd.production.min.js"
     },
     {
       "name": "Linkout",
@@ -254,7 +263,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-linkout/0.2.2/dist/jbrowse-plugin-linkout.umd.production.min.js",
           "integrity": "sha384-NtnHpAQQB8qdoBPyFeeHUWt5yzxToyI1hH4EpSu978RDtt7kLL4zohhsOBkx67MH"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-linkout/latest/dist/jbrowse-plugin-linkout.umd.production.min.js"
     },
     {
       "name": "Protein3d",
@@ -280,7 +290,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.9.0/dist/jbrowse-plugin-protein3d.umd.production.min.js",
           "integrity": "sha384-KcSw7P1lr4Cwxc2zn43cgVkailEuGOe0oWE8ANLoGIE9bdl3Iic7j672XWB+uUnx"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/jbrowse-plugin-protein3d.umd.production.min.js"
     },
     {
       "name": "Hubs",
@@ -304,7 +315,8 @@
           "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.14/dist/jbrowse-plugin-hubs.umd.production.min.js",
           "integrity": "sha384-05B0+CiCOvGz4hZUdleI7oUvG4ZqKKvoVk3C3LEtduPJ0dzFEiRJEPYpwgMz99m5"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/latest/dist/jbrowse-plugin-hubs.umd.production.min.js"
     },
     {
       "name": "Apollo",
@@ -335,7 +347,8 @@
           "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.1/dist/jbrowse-plugin-apollo.umd.production.min.js",
           "integrity": "sha384-BjhtgDxydZMiel43Z7EAjjWf8tqeyZeXwGD+j9z3WirFp3OBGVIZdyISIwWhK2Xq"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/latest/dist/jbrowse-plugin-apollo.umd.production.min.js"
     },
     {
       "name": "TView",
@@ -359,7 +372,8 @@
           "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/2.2.1/dist/jbrowse-plugin-tview.umd.production.min.js",
           "integrity": "sha384-Vc1G3Qh/dKm4OkevlPf5lqJUjQkXz648ddkoJs+SM1ZIQogmNaGv7uVhp1AEbY2w"
         }
-      ]
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tview/latest/dist/jbrowse-plugin-tview.umd.production.min.js"
     }
   ]
 }

@@ -34,6 +34,23 @@ it, so a release with fewer files cannot leave stale siblings behind. The whole
 prefix moves together, which is what lets a code-split plugin (protein3d
 lazy-loads a molstar chunk) keep its bundle and sidecars a matched set.
 
+> **Correction, 2026-08-26.** True of `dist/`, false of S3. The upload is
+> `rclone copy`, which never deletes (invariant 3), so the served `latest/`
+> prefix is append-only: a file that leaves a release keeps being served under
+> `latest/` forever. Measured that day,
+> `s3:jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/` holds four
+> `molstar-chunk-*.js` (`JDIZPSL3`, `UJIWPKE3`, `Z2FKPQGY`, and the pre-hash
+> `molstar-chunk.js`) plus their `.js.map` siblings — ~50MB of orphans.
+>
+> The matched-set claim survives it, and depends on it. Chunk names are
+> content-hashed, so a browser that fetches the umd entry just before an upload
+> and lazy-loads its sidecar just after asks for a name the new build does not
+> contain, and gets it anyway because the old object is still there. Making
+> `latest/` atomic would break that window rather than fix it. The durable fix
+> is not serving a code-split plugin from `latest/` at all, which is what
+> [ADR 0008](0008-configs-name-a-package-installs-name-a-version.md) lets a
+> config do.
+
 ### The consequence that is easy to miss
 
 Because `latest/` is `no-cache` and named from permanent config urls,
@@ -91,6 +108,11 @@ the right tool, nobody reached for it.
   so regenerating genark is the whole remaining fix. Measured the same day: all
   four frozen flat bundles still boot on v4.0.0..latest, so this is a latent
   risk rather than a live failure.
+
+  > **Update, 2026-08-26.** Done. The deployed genark config
+  > (`hubs/genark/GCF/000/298/275/GCF_000298275.1/config.json`) names `latest/`
+  > for all four plugins, so no live config is on the v1 flat path.
+
 - Do not read the jb2hubs working tree to answer "which shape do configs name?"
   — those files lag deployment and gave the wrong answer once already. Fetch the
   deployed `config.json`.
