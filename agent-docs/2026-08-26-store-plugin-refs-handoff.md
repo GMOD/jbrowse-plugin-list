@@ -16,14 +16,15 @@ Neither has landed. Both are worktrees on a `store-refs` branch.
 
 ## Done — jbrowse-components (`7fafe18de4`)
 
-`{ storePlugin: 'jbrowse-plugin-msaview' }` in a config's `plugins[]` resolves
-against the published manifest at load time into the version-pinned,
-integrity-carrying definition for the running JBrowse.
+`{ storePlugin: 'MsaView' }` in a config's `plugins[]` resolves against the
+published manifest at load time into the version-pinned, integrity-carrying
+definition for the running JBrowse.
 
 - `pluginDefinitions.ts` — `StorePluginDefinition`, `isStorePluginDefinition`,
-  `storePluginPackage`; `samePlugin` matches on the package first (the only
+  `storePluginName`; `samePlugin` matches on the store name first (the only
   identity key that survives resolution); `pluginDescriptionString` names an
-  unresolved ref by package.
+  unresolved ref by it. The ref is the store's `name`, never the npm package —
+  see ADR 0008's key-choice section for why.
 - `util/pluginStore.ts` — `resolveStoreRefs` (pure) and `resolveStorePluginRefs`
   (fetches, and only when a ref is present).
 - `checkPlugins.ts` — a bare ref is trusted by construction; a ref carrying a
@@ -54,10 +55,10 @@ the primary checkout before `node generate-plugins.ts` will run.
 ## Done — jb2hubs (`ae571200689`)
 
 `hubtools/src/enhanceConfig.ts` emits `storePlugin` alongside the existing
-`latest/` url for the three plugins the store lists (`msaview`, `protein3d`,
-`@cmdcolin/jbrowse-plugin-hubs`). MafViewer names no package — core vendors it,
-so it was removed from `plugins.json` and a ref to it cannot resolve; BLAT is
-deliberately not in the store either.
+`latest/` url for the three plugins the store lists (`MsaView`, `Protein3d`,
+`Hubs`). MafViewer names no store entry — core vendors it, so it was removed
+from `plugins.json` and a ref to it cannot resolve; BLAT is deliberately not in
+the store either.
 
 Three follow-on fixes that the ref field exposed:
 
@@ -69,9 +70,10 @@ Three follow-on fixes that the ref field exposed:
   ref and a bare `latest/` entry both pass, so whichever was seen first kept the
   slot. Ranked now: ref > `latest/` > frozen.
 - `scripts/checkPluginUrls.mjs` asserts every ref is in the published manifest,
-  that the store's UMD name agrees with the config's, and that the fallback url
-  equals the store's `latestUrl`. Each failure demotes a ref to its fallback
-  with nothing else noticing.
+  that an entry's `name` and its ref agree (both are the store's `name`, so a
+  disagreement means the ref and the fallback describe different plugins), and
+  that the fallback url equals the store's `latestUrl`. Each failure demotes a
+  ref to its fallback with nothing else noticing.
 
 ### Measured, rather than argued
 

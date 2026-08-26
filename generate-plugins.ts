@@ -130,6 +130,28 @@ if (v2.length === 0) {
   throw new Error('no plugins generated — refusing to publish an empty store')
 }
 
+// `name` is the store's public identifier, not just a label: a config names a
+// plugin by it (`storePlugin`, ADR 0008) and a host resolves that against this
+// manifest. Two entries sharing one would make that lookup pick whichever came
+// first — and they could never both load anyway, since `name` is also the UMD
+// global and `globalThis` has one slot per name. Nothing enforced this while
+// `name` was only a label, so enforce it now that a permanent config depends on
+// it. Renaming an entry, or pointing an existing name at a different plugin,
+// breaks every config that named it: treat it like a retirement (ADR 0007).
+const byName = new Map<string, string[]>()
+for (const { name, packageName } of v2) {
+  byName.set(name, [...(byName.get(name) ?? []), packageName])
+}
+const collisions = [...byName].filter(([, pkgs]) => pkgs.length > 1)
+if (collisions.length > 0) {
+  throw new Error(
+    'store names must be unique — a config resolves a plugin by name:\n' +
+      collisions
+        .map(([name, pkgs]) => `  ${name}: ${pkgs.join(', ')}`)
+        .join('\n'),
+  )
+}
+
 // Overridable for the same reason PLUGIN_DIST_DIR and PLUGIN_BUILD_MANIFEST
 // are: so the pipeline can be exercised end to end without writing over the
 // committed manifest that `pnpm upload` publishes.

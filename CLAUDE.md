@@ -88,8 +88,8 @@ only msaview and protein3d have any e2e tests at all.
 ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
 to check the key is inert on hosts nobody can upgrade. Read it as a diff against
 the same run without the flag, never on its own — old hosts fail either way. Run
-it when a host joins `HOST_VERSIONS` or jb2hubs names a new package; last
-measured 2026-08-26 in
+it when a host joins `HOST_VERSIONS` or jb2hubs names a new entry; last measured
+2026-08-26 in
 [the older-client measurement](agent-docs/2026-08-26-store-plugin-refs-older-clients.md).
 
 ### After uploading, invalidate and then wait

@@ -28,6 +28,12 @@ export interface SourceVersion {
 export type PluginTag = string
 
 export interface SourcePlugin {
+  // The store's public identifier, and the UMD global the bundle defines
+  // (`window.JBrowsePlugin<name>`). A config names a plugin by this
+  // (`storePlugin`, ADR 0008), so it is a promise to every config that ever
+  // used it: never reuse one, never point one at a different plugin, and treat
+  // a rename as a retirement (ADR 0007). `generate-plugins.ts` refuses to
+  // publish two entries sharing one.
   name: string
   packageName: string
   authors: string[]
@@ -70,7 +76,13 @@ export interface BuildManifest {
 // Top-level `url`/`integrity` are the `latest` fallback; `versions` drives semver
 // range selection by the consumer.
 export interface V2Plugin {
+  // The key a config's `storePlugin` ref resolves against — see SourcePlugin.
   name: string
+  // The npm package. Authoritative for locating and pinning a build, and the
+  // key on the INSTALL side, where an install has already committed to a
+  // version. Deliberately not what a config names: npm and the plugin's author
+  // own this string and can rename or rescope it, which would strand every
+  // config that had named it (ADR 0008).
   packageName: string
   authors: string[]
   description: string

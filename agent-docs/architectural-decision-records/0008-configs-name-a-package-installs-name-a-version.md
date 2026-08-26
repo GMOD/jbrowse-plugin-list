@@ -10,8 +10,8 @@
 ## Context
 
 The published manifest is a resolver. It answers
-`(packageName, jbrowseVersion) → (pinned url, integrity)`, and `resolvePlugin`
-in jbrowse-components is that answer being computed.
+`(storeName, jbrowseVersion) → (pinned url, integrity)`, and `resolvePlugin` in
+jbrowse-components is that answer being computed.
 
 Only one of the two populations can ask it a question.
 
@@ -34,9 +34,10 @@ config could say.
 load time:
 
 ```json
-{ "plugins": [{ "storePlugin": "jbrowse-plugin-msaview" }] }
+{ "plugins": [{ "storePlugin": "MsaView" }] }
 ```
 
+`MsaView` is the store's `name` for the entry, not the npm package — see below.
 `resolveStorePluginRefs` turns that into the concrete definition this JBrowse
 should load, before the trust gate, `dropVendoredPlugins`, `PluginLoader` or the
 RPC worker sees anything. Everything downstream keeps operating on ordinary
@@ -47,14 +48,38 @@ which is exactly wrong for an install — a saved session must not change
 underneath its user, and the integrity hash must stay valid. The split is the
 point: _a config names a package, an install names a version._
 
-### The key is `packageName`, not the UMD global
+### The key is the store's `name`, not the npm package
 
-Three identities float around here — the npm package, the UMD global
-(`MsaView`), and the runtime Plugin class (`GWASPlugin`). Only the package is
-globally unique and namespaced. The manifest supplies the UMD name at
-resolution, which is why a config generator no longer has to know it; jb2hubs'
-comment that _"the name must be 'Blat' so PluginLoader finds the
-JBrowsePluginBlat UMD global"_ is a thing configs stop having to get right.
+Three identities float around here — the npm package
+(`@cmdcolin/jbrowse-plugin-hubs`), the store's `name`, which is also the UMD
+global (`Hubs`), and the runtime Plugin class (`HubsPlugin`).
+
+The package is the one that is globally unique and namespaced, and it is the
+wrong choice. For a config nobody can revisit, the property that matters is not
+uniqueness but **stability**: npm and the plugin's author own the package name,
+and a scope move or an org transfer renames it out from under every config that
+said it. That is the same failure as naming a url — an identifier owned by
+someone else, captured on the day the config was generated — one level up. The
+store owns its `name`, so it can point one at a different package and no config
+notices.
+
+Uniqueness is not given up in the trade. `name` is what `loadUMDPlugin` looks up
+as `globalThis['JBrowsePlugin' + name]`, and there is one slot per name, so two
+store entries sharing one could never both load in a session regardless.
+`generate-plugins.ts` now refuses to publish a manifest with a collision;
+nothing enforced that while `name` was only a label.
+
+**The cost, stated:** `name` is promoted from a label the store transcribes to a
+public identifier it guarantees. It can never be reused or repointed, and a
+plugin that renames its UMD global stops being that plugin's private business —
+it breaks every config that named it, and needs the handling a retirement gets
+(ADR 0007). That constraint reaches outside this repo, into every plugin repo
+whose build defines the global. Nothing enforces it there; this is the only
+place it is written down.
+
+An install still keys on `packageName`, which is right for the same reason a
+config does not: an install has already committed to a version, and
+`installedVersionFromUrl` reads the package out of a pinned url.
 
 ### A ref may carry a fallback url, and when it is honoured matters
 
@@ -104,6 +129,12 @@ flat layout and serve protein3d 0.4.1 against a published 0.8.0.
   the same CloudFront distribution as the bundles, so the failure is correlated
   rather than new, and resolution fetches nothing when no definition is a ref.
   Still: a config with refs now has one more thing that must answer.
+- **A store `name` becomes an API.** It was a label; it is now the thing ~52k
+  permanent configs resolve against. Renaming or repointing one is a breaking
+  change to that population. `generate-plugins.ts` gates the half it can see —
+  two entries claiming one name — and the rest is discipline: the string
+  originates in a plugin repo's own build, which has no idea it is now load
+  bearing.
 - **A ref can only name a plugin the store lists.** BLAT is deliberately not
   listed, and MafViewer/GWAS were removed when core vendored them. Those stay
   plain urls. Retiring a plugin (ADR 0007) now also breaks any config that refs

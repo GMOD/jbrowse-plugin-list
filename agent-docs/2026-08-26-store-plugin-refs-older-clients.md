@@ -13,8 +13,8 @@ measured, and `check-plugins.ts --hybrid` is the standing gate.
 ## What was measured
 
 **Boot matrix, paired.** Three plugins (`msaview`, `protein3d`,
-`@cmdcolin/jbrowse-plugin-hubs` — the three jb2hubs names a package for) against
-seven hosts (`v2.1.0`, `v3.0.0`, `v3.7.0`, `v4.0.0`, `v4.2.0`, `v4.3.0`,
+`@cmdcolin/jbrowse-plugin-hubs` — the three jb2hubs names a store entry for)
+against seven hosts (`v2.1.0`, `v3.0.0`, `v3.7.0`, `v4.0.0`, `v4.2.0`, `v4.3.0`,
 `latest`), bundles as S3 serves them, run twice:
 
 ```
@@ -99,7 +99,7 @@ is nothing to drop.
 ## Re-run this when
 
 - a host is added to `HOST_VERSIONS`
-- jb2hubs names a package it did not name before
+- jb2hubs names a store entry it did not name before
 - anything changes about which key a config carries alongside the url
 
 A row that differs between the two runs means the key is not inert on that host,

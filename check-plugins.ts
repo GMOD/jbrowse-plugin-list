@@ -208,7 +208,8 @@ const targets =
 // here would only add a second thing that can break.
 //
 // `--hybrid` adds the `storePlugin` key jb2hubs emits alongside the url
-// (ADR 0008). The claim it tests is that an older host ignores the key and
+// (ADR 0008) — the store's `name`, which is why it reads as a duplicate of
+// `name` here and why that duplication expires with the url. The claim it tests is that an older host ignores the key and
 // loads the url as it always did — which rests on the config model holding
 // `plugins` as `types.frozen`, so nothing validates the shape. That is true as
 // far back as the field goes, but it is a claim about someone else's released
@@ -227,13 +228,11 @@ const targets =
 //
 // A row that differs means the extra key is NOT inert on that host, and jb2hubs
 // must not emit it until the affected hosts are out of the wild.
-function configFor(name: string, packageName: string, url: string) {
+function configFor(name: string, url: string) {
   return JSON.stringify({
     assemblies: [],
     tracks: [],
-    plugins: [
-      values.hybrid ? { name, url, storePlugin: packageName } : { name, url },
-    ],
+    plugins: [values.hybrid ? { name, url, storePlugin: name } : { name, url }],
   })
 }
 
@@ -278,7 +277,7 @@ async function probe(
         status: 200,
         contentType: 'application/json',
         headers: { 'access-control-allow-origin': '*' },
-        body: configFor(name, packageName, bundleUrl),
+        body: configFor(name, bundleUrl),
       })
       // The whole `latest/` prefix, not just the umd entry point: a code-split
       // plugin (protein3d lazy-loads a molstar chunk) fetches siblings at load
