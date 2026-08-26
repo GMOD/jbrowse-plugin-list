@@ -51,9 +51,9 @@ Breaking any of these is a production incident, not a code-review comment.
    jb2hubs configs; pinning `versions` in `plugins.json` fixes store installs.
    Pull both, or say explicitly which population you are leaving broken. Only
    one was pulled on 2026-07-29 and the store served the broken bundle for the
-   whole window. A config that names a plugin by package rather than by url
-   moves on the `versions` pin alone, so this collapses to one lever for exactly
-   the configs that have migrated — and for no others.
+   whole window. A config that names a plugin by its store `name` rather than by
+   url moves on the `versions` pin alone, so this collapses to one lever for
+   exactly the configs that have migrated — and for no others.
    ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md),
    [ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md),
    [post-mortem](agent-docs/2026-07-29-msaview-2.7.0-postmortem.md))
@@ -167,7 +167,8 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   here that reads as current says 14.
 - **No entry in `plugins.json` declares `versions`**, so all 14 get a single
   auto-generated version at `jbrowseRange: "*"` and the range apparatus has no
-  live users _here_. A config naming a plugin by package is what gives it some
+  live users _here_. A config naming a plugin by its store `name` is what gives
+  it some
   ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
   and it remains the right tool for rollback and retirement
   ([ADR 0007](agent-docs/architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)).
