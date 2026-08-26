@@ -79,11 +79,15 @@ function findChrome() {
 
 // Every release is hosted at jbrowse.org/code/jb2/<version>/, so the matrix
 // needs no local install per version. These are the hosts a `latest/` bundle
-// actually reaches: v4.0.0 is the floor jb2hubs settled on (v2/v3 cannot load
-// these bundles at all), `latest` is what most links resolve to. `main` is
+// actually reaches: v4.0.0 is the floor jb2hubs settled on, `latest` is what
+// most links resolve to. `main` is
 // available but deliberately not a default — a break there is unreleased-core
 // news, not a shipped-config regression, and the plugin repos' `nightly` job
 // already watches it.
+//
+// The real bundle floor sits just under the declared one and is measured, not
+// assumed: msaview, protein3d and hubs all load on v3.7.0; v3.0.0 is the
+// highest host where they do not (agent-docs/2026-08-26-store-plugin-refs-older-clients.md).
 //
 // `semver` is what a plugin's jbrowseRange is tested against. The moving tags
 // get a sentinel above every real release, which is the honest reading: a plugin
@@ -113,6 +117,7 @@ const VENDORED_BY_HOST = new Map([
 const { values } = parseArgs({
   options: {
     versions: { type: 'string' },
+    hybrid: { type: 'boolean', default: false },
     only: { type: 'string', multiple: true, default: [] },
     changed: { type: 'boolean', default: false },
     published: { type: 'boolean', default: false },
@@ -201,11 +206,34 @@ const targets =
 // with no ambiguity. It has no assemblies on purpose: plugin load and
 // configure() both run before any assembly is touched, and inventing test data
 // here would only add a second thing that can break.
-function configFor(name: string, url: string) {
+//
+// `--hybrid` adds the `storePlugin` key jb2hubs emits alongside the url
+// (ADR 0008). The claim it tests is that an older host ignores the key and
+// loads the url as it always did — which rests on the config model holding
+// `plugins` as `types.frozen`, so nothing validates the shape. That is true as
+// far back as the field goes, but it is a claim about someone else's released
+// code, and this repo's whole position is that a claim is not a measurement
+// (ADR 0003).
+//
+// Read it as a DIFF against the same run without the flag, never as a pass/fail
+// on its own. Below v3.7.0 these bundles already fail for reasons that have
+// nothing to do with the key — v2 cannot run a bundle built against modern
+// ReExports at all — so `--hybrid` exits 1 on an old host either way, and the
+// only question the run answers is whether the two columns differ:
+//
+//   node check-plugins.ts --published --versions <hosts> --json control.json
+//   node check-plugins.ts --published --hybrid --versions <hosts> --json hybrid.json
+//   # compare, ignoring nothing: any row that differs is the finding
+//
+// A row that differs means the extra key is NOT inert on that host, and jb2hubs
+// must not emit it until the affected hosts are out of the wild.
+function configFor(name: string, packageName: string, url: string) {
   return JSON.stringify({
     assemblies: [],
     tracks: [],
-    plugins: [{ name, url }],
+    plugins: [
+      values.hybrid ? { name, url, storePlugin: packageName } : { name, url },
+    ],
   })
 }
 
@@ -250,7 +278,7 @@ async function probe(
         status: 200,
         contentType: 'application/json',
         headers: { 'access-control-allow-origin': '*' },
-        body: configFor(name, bundleUrl),
+        body: configFor(name, packageName, bundleUrl),
       })
       // The whole `latest/` prefix, not just the umd entry point: a code-split
       // plugin (protein3d lazy-loads a molstar chunk) fetches siblings at load

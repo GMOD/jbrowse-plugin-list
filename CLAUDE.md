@@ -84,6 +84,14 @@ The gate proves a bundle **loads**. It does not prove a track **renders** — th
 needs test data and belongs in the plugin's own repo, and of the 14 plugins here
 only msaview and protein3d have any e2e tests at all.
 
+`--hybrid` adds the `storePlugin` key a jb2hubs config carries alongside its url
+([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
+to check the key is inert on hosts nobody can upgrade. Read it as a diff against
+the same run without the flag, never on its own — old hosts fail either way. Run
+it when a host joins `HOST_VERSIONS` or jb2hubs names a new package; last
+measured 2026-08-26 in
+[the older-client measurement](agent-docs/2026-08-26-store-plugin-refs-older-clients.md).
+
 ### After uploading, invalidate and then wait
 
 `upload` writes `latest/` and `plugins.json` with `no-cache`, but CloudFront is
@@ -163,11 +171,12 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
   and it remains the right tool for rollback and retirement
   ([ADR 0007](agent-docs/architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)).
-- **genark is no longer on the v1 flat path — this is fixed.** The deployed
-  `hubs/genark/GCF/000/298/275/GCF_000298275.1/config.json` names `latest/` for
-  all four plugins, as UCSC already did. Read the _deployed_ `config.json` to
-  check this, never the jb2hubs working tree — those files lag deployment and
-  gave the wrong answer once already.
+- **genark is no longer on the v1 flat path — this is fixed.** Twenty deployed
+  `hubs/genark/GC[AF]/...` configs sampled at random name `latest/` for all four
+  plugins, as UCSC already did, and every one of the 52,086 in the jb2hubs
+  working tree agrees. Read the _deployed_ `config.json` to check this, never
+  the jb2hubs working tree alone — those files lag deployment and gave the wrong
+  answer once already.
   ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md))
 - **`latest/` on S3 is append-only, whatever `copyToLatest` does locally.** The
   upload is `rclone copy` (invariant 3), so a file that leaves a release stays

@@ -58,11 +58,15 @@ JBrowsePluginBlat UMD global"_ is a thing configs stop having to get right.
 
 ### A ref may carry a fallback url, and when it is honoured matters
 
-Old hosts do not resolve refs. `plugins` is `types.array(types.frozen())`, so an
-unknown key passes validation on every released JBrowse — which makes
-`{ name, url, storePlugin }` loadable everywhere: the ref for a host that reads
-it, the `latest/` url for one that does not. That is the migration shape, and it
-is why refs can be emitted before the release that understands them ships.
+Old hosts do not resolve refs. `{ name, url, storePlugin }` is loadable anyway —
+the ref for a host that reads it, the `latest/` url for one that does not — and
+that is the migration shape, which is why refs can be emitted before the release
+that understands them ships.
+
+That rests on the extra key being inert on hosts nobody can upgrade, so it is
+measured rather than argued:
+[the older-client measurement](../2026-08-26-store-plugin-refs-older-clients.md).
+`check-plugins.ts --hybrid` is the standing gate.
 
 The fallback fires when the store gives **no answer** (unreachable, or the
 package is not listed). It does **not** fire when the store answers _"no build

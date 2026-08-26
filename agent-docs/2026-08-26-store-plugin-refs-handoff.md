@@ -73,6 +73,18 @@ Three follow-on fixes that the ref field exposed:
   equals the store's `latestUrl`. Each failure demotes a ref to its fallback
   with nothing else noticing.
 
+### Measured, rather than argued
+
+The migration shape only works if an old host ignores the key and loads the url.
+That is now measured — paired boot matrix over `v2.1.0..latest`, plus the
+cross-origin trust gate, all rows identical with and without the key — in
+[the older-client measurement](2026-08-26-store-plugin-refs-older-clients.md).
+`check-plugins.ts --hybrid` is the gate that keeps it measured. The same doc
+records that the floor these configs already sit on is `v3.7.0`, set by the
+bundles rather than by the config shape, and that every plugin entry jb2hubs
+holds on disk is exactly `{ name, url }` — so replacing the whole entry drops
+nothing.
+
 **The ref check is inert until two things happen**: no config on disk names a
 package yet (it takes a regeneration), and the deployed manifest has no
 `latestUrl` yet (it takes an upload from jbrowse-plugin-list). The url half of
