@@ -83,3 +83,54 @@ author wrote down; booting the bundle is a fact.
   (ADR 0005).
 - Deciding to retire is a judgement call requiring evidence a bundle cannot work
   on any supported host. `pnpm verify-all` produces exactly that evidence.
+
+## Amendment 2026-09-02 — the levers invert for configs that carry a ref
+
+Everything above was written when nothing resolved the manifest at load time.
+ADR 0008 changed that, and for the population it created the two levers swap
+strength. Measured against `resolveStoreRefs` in jbrowse-components
+`packages/core/src/util/pluginStore.ts`, on `main` at `5374f27884`:
+
+| what the store does       | a config with `{ storePlugin, url }` on a host that resolves refs                                                           | a store install / a host that does not resolve refs          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| removes the entry         | "no answer" — **falls back to the url**, `latest/`, with a console warning. For a retired plugin that is the broken bundle. | store stops offering it; the url population is unchanged     |
+| narrows the range past it | "not for this JBrowse" — **fails with a message** naming the supported ranges; the url is deliberately not loaded           | card reads "Not compatible"; the url population is unchanged |
+
+So for refs, the narrowed range is the lever that actually stops the bundle
+being loaded, and removal is the one that leaves it armed. That is the opposite
+of the conclusion above, which stays true for every install and every config
+that names a url on a host without ref support.
+
+Two facts bound what a range can do at all, and neither is in the code here:
+
+- **Only JBrowse 5 reads the v2 manifest.** `v4.3.0` and every earlier host
+  fetch the frozen v1 `plugin-store/plugins.json` (its store widget at
+  `plugins/data-management/src/PluginStoreWidget/components/util.ts` in that
+  tag). A range binds no v4 host, which is why `fe8e252` retired three
+  v5-incompatible plugins by removal rather than by a `<5.0.0` pin.
+- **`latest/` ignores ranges.** The download step mirrors the newest pinned
+  version into `latest/` whatever its range declares, and a jb2hubs config on a
+  host without ref support loads `latest/` and never reads the manifest. Pin
+  2.6.8 for `<5` and 3.0.0 for `>=5`, and every v4 host loading such a config
+  still gets 3.0.0.
+
+Also a trap in the matching itself, raised with jbrowse-components on
+2026-09-02: the running version is `packageJSON.version`, which on the live
+`main` host and in every 5.0.0 pre-release is `5.0.0-beta.N`, and
+compare-versions reads `5.0.0-beta.1` as satisfying `<5.0.0` and not `>=5.0.0`.
+A range written to keep a plugin off v5 would have served it to every beta host.
+The policy asked of jbrowse-components is that a prerelease host is its release
+for compatibility purposes, so ranges here are written against release versions
+and never need a `-0` suffix. Until that ships, a bare-major upper bound is
+unsafe on beta hosts.
+
+### What this changes about the decision
+
+Nothing for the v4 population; removal is still the only thing that reaches it.
+For the ref population the honest tool is the range, and a first-class "retired"
+marker the v5 resolver could read — one that fails a ref with an explanation
+instead of falling back — would be the right shape for a plugin that should be
+off everywhere. That is a schema change in both repos and is not made here.
+Until it is, retiring a plugin that jb2hubs refs means doing both: narrow the
+range so v5 hosts refuse it, and accept that removal alone would hand those same
+hosts the `latest/` fallback.

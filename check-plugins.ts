@@ -17,9 +17,18 @@
 // core a plugin author develops against, which is precisely how msaview 2.7.0
 // passed its own matrix while error-paging every released host.
 //
-// The failure this catches is total, not partial: PluginLoader runs Promise.all
-// over the plugin list, so one bundle that throws while loading turns the whole
-// session into an error page.
+// How badly a failure degrades depends on the loader (CLAUDE.md invariant 1):
+// jbrowse-web opens the session without the plugin, the RPC worker and the
+// embedded products go down whole, and a throw from configure() takes down all
+// of them.
+//
+// A plugin that pins several `versions` gets each of them booted, on the hosts
+// that version's `jbrowseRange` names, from its own version dir. `latest/` is a
+// byte copy of the newest pinned version, so it is covered by that version's
+// row — but note what the range does NOT govern: `latest/` is served to every
+// host that names it, whatever range the newest version declares, because a
+// jb2hubs config on a host without ref support loads the url and never reads
+// the manifest (ADR 0008).
 //
 // SCOPE, because it is easy to over-trust: this proves a bundle loads, defines
 // its global, and survives configure() on a real host. It does NOT prove a track
@@ -45,9 +54,9 @@ import { satisfies } from 'compare-versions'
 import { launch, type Browser } from 'puppeteer-core'
 
 import {
-  latestRehostedPrefix,
-  latestRehostedUrl,
+  rehostedPrefix,
   type SourceManifest,
+  type SourcePlugin,
 } from './manifest-types.ts'
 
 // puppeteer-core, not puppeteer: this repo's other scripts are plain fetch+tar
@@ -144,8 +153,9 @@ const { plugins } = JSON.parse(
 
 // `--bundle <packageName>=<dir>` serves a candidate build in place of the one
 // this repo would publish — a plugin repo's own dist/, or an older version dir
-// to reproduce a past break. The directory stands in for the whole `latest/`
-// prefix, so sidecar chunks come from the same build.
+// to reproduce a past break. The directory stands in for the whole prefix of
+// every build the package publishes, so sidecar chunks come from the same
+// build.
 //
 // `dist/` only keeps the currently-published versions, so to point at an older
 // one first run `node fetch-version.ts <packageName> <version>`, which refetches
@@ -160,16 +170,18 @@ const bundleOverrides = new Map(
   }),
 )
 
-// The bundles worth checking are the ones this run would publish. `latest/` is
-// rebuilt from scratch every download, so git sees a real content change only
-// when the promoted version actually moved.
+// The bundles worth checking are the ones this run would publish: a package
+// whose `latest/` or any version dir moved. `latest/` is rebuilt from scratch
+// every download, so git sees a real content change only when the promoted
+// version actually moved; a version dir appears when a pin is added, which can
+// happen without `latest/` moving at all.
 //
 // `-uall` matters: without it git collapses an untracked directory to its top
 // level, so a plugin added to plugins.json for the first time reports as
-// `?? dist/jbrowse-plugin-tview/` — no `/latest/` segment, no regex match, and
-// the pre-upload gate skips the one bundle with no prior evidence at all. With
-// `-uall` each file is listed, so the new plugin's `latest/` files match like
-// any other change.
+// `?? dist/jbrowse-plugin-tview/` — no build segment, no regex match, and the
+// pre-upload gate skips the one bundle with no prior evidence at all. With
+// `-uall` each file is listed, so the new plugin's files match like any other
+// change.
 function changedPackages() {
   const status = execFileSync(
     'git',
@@ -179,9 +191,10 @@ function changedPackages() {
   const names = new Set<string>()
   for (const line of status.split('\n')) {
     // Paths containing spaces or non-ASCII come back quoted ("dist/a b/..."),
-    // which the regex tolerates: it anchors on `dist/` and `/latest/`, both
-    // inside the quotes.
-    const match = /dist\/(.+?)\/latest\//.exec(line)
+    // which the regex tolerates: it anchors on `dist/` and the build segment,
+    // both inside the quotes. Lazy on the package so a scoped one
+    // (`@cmdcolin/jbrowse-plugin-hubs`) keeps its slash.
+    const match = /dist\/(.+?)\/(?:latest|\d+\.\d+\.\d+[^/]*)\//.exec(line)
     if (match) {
       names.add(match[1])
     }
@@ -236,8 +249,22 @@ function configFor(name: string, url: string) {
   })
 }
 
+// One build of a plugin: a pinned version dir, or `latest/` when the entry
+// declares no `versions` and the download step tracks npm latest at `*`.
+interface Build {
+  pluginVersion: string
+  jbrowseRange: string
+}
+
+function buildsOf(plugin: SourcePlugin): Build[] {
+  return plugin.versions && plugin.versions.length > 0
+    ? plugin.versions
+    : [{ pluginVersion: 'latest', jbrowseRange: '*' }]
+}
+
 interface Probe {
   packageName: string
+  pluginVersion: string
   hostVersion: string
   vendored?: boolean
   outOfRange?: boolean
@@ -251,17 +278,19 @@ interface Probe {
 async function probe(
   browser: Browser,
   hostVersion: string,
-  plugin: { name: string; packageName: string; umdPath: string },
+  plugin: SourcePlugin,
+  build: Build,
 ): Promise<Probe> {
   const { name, packageName, umdPath } = plugin
-  const bundleUrl = latestRehostedUrl(packageName, umdPath)
+  const { pluginVersion } = build
+  const bundlePrefix = rehostedPrefix(packageName, pluginVersion)
+  const bundleUrl = `${bundlePrefix}${umdPath}`
   // Same origin as the app, so the config fetch is not a CORS case. Nothing is
   // ever published here — the request is answered from memory below.
   const configUrl = `https://jbrowse.org/plugin-smoke/${encodeURIComponent(packageName)}.json`
-  const localLatest =
+  const localBuild =
     bundleOverrides.get(packageName) ??
-    path.join(distDir, packageName, 'latest')
-  const bundlePrefix = latestRehostedPrefix(packageName)
+    path.join(distDir, packageName, pluginVersion)
 
   const page = await browser.newPage()
   const errors: string[] = []
@@ -279,7 +308,7 @@ async function probe(
         headers: { 'access-control-allow-origin': '*' },
         body: configFor(name, bundleUrl),
       })
-      // The whole `latest/` prefix, not just the umd entry point: a code-split
+      // The whole build prefix, not just the umd entry point: a code-split
       // plugin (protein3d lazy-loads a molstar chunk) fetches siblings at load
       // time, and serving a working-tree bundle beside production's chunks
       // would test a combination that never ships.
@@ -287,7 +316,7 @@ async function probe(
       (!values.published || bundleOverrides.has(packageName)) &&
       url.startsWith(bundlePrefix)
     ) {
-      const local = path.join(localLatest, url.slice(bundlePrefix.length))
+      const local = path.join(localBuild, url.slice(bundlePrefix.length))
       if (fs.existsSync(local)) {
         request.respond({
           status: 200,
@@ -304,7 +333,12 @@ async function probe(
   })
 
   const app = `https://jbrowse.org/code/jb2/${hostVersion}/`
-  const result: Probe = { packageName, hostVersion, pageErrors: [] }
+  const result: Probe = {
+    packageName,
+    pluginVersion,
+    hostVersion,
+    pageErrors: [],
+  }
   try {
     await page.goto(`${app}?config=${encodeURIComponent(configUrl)}`, {
       waitUntil: 'domcontentloaded',
@@ -363,54 +397,57 @@ if (targets.length === 0) {
 const results: Probe[] = []
 let failed = false
 for (const plugin of targets) {
-  // The range the manifest publishes for the version that would be promoted.
-  // Absent `versions` means the download step tracks npm latest at `*`.
-  const declaredRange = plugin.versions?.at(-1)?.jbrowseRange ?? '*'
-  console.log(
-    `\n${plugin.packageName} (${plugin.name})` +
-      (declaredRange === '*' ? '' : ` jbrowseRange ${declaredRange}`),
-  )
-  for (const host of hosts) {
-    const vendoredRange = VENDORED_BY_HOST.get(plugin.name)
-    const vendored =
-      vendoredRange !== undefined && satisfies(host.semver, vendoredRange)
-    // A host the plugin never claimed to support is not a failure — it is the
-    // manifest working. Probing it anyway would make the canary permanently red
-    // for a plugin the store already refuses to offer, and a canary you have
-    // learned to ignore is worse than none.
-    const outOfRange =
-      declaredRange !== '*' && !satisfies(host.semver, declaredRange)
-    const r =
-      vendored || outOfRange
-        ? {
-            packageName: plugin.packageName,
-            hostVersion: host.label,
-            vendored,
-            outOfRange,
-            pageErrors: [],
-          }
-        : await probe(browser, host.label, plugin)
-    results.push(r)
-    const problems = [
-      r.fatal && `FATAL ${r.fatal}`,
-      r.threw && `threw ${r.threw}`,
-      !r.vendored &&
-        !r.outOfRange &&
-        !r.settled &&
-        !r.fatal &&
-        'never settled (no session, no error page)',
-      r.settled && !r.globalDefined && `JBrowsePlugin${plugin.name} undefined`,
-    ].filter(p => typeof p === 'string')
-    const note = r.vendored
-      ? 'skipped, vendored into this host'
-      : r.outOfRange
-        ? 'skipped, outside declared jbrowseRange'
-        : 'ok'
+  for (const build of buildsOf(plugin)) {
+    const { pluginVersion, jbrowseRange } = build
     console.log(
-      `  ${host.label.padEnd(9)} ${problems.length > 0 ? problems.join(' | ') : note}`,
+      `\n${plugin.packageName} (${plugin.name}) ${pluginVersion}` +
+        (jbrowseRange === '*' ? '' : ` jbrowseRange ${jbrowseRange}`),
     )
-    if (problems.length > 0) {
-      failed = true
+    for (const host of hosts) {
+      const vendoredRange = VENDORED_BY_HOST.get(plugin.name)
+      const vendored =
+        vendoredRange !== undefined && satisfies(host.semver, vendoredRange)
+      // A host this build never claimed to support is not a failure — it is
+      // the manifest working. Probing it anyway would make the canary
+      // permanently red for a build the store already refuses to offer there,
+      // and a canary you have learned to ignore is worse than none.
+      const outOfRange =
+        jbrowseRange !== '*' && !satisfies(host.semver, jbrowseRange)
+      const r =
+        vendored || outOfRange
+          ? {
+              packageName: plugin.packageName,
+              pluginVersion,
+              hostVersion: host.label,
+              vendored,
+              outOfRange,
+              pageErrors: [],
+            }
+          : await probe(browser, host.label, plugin, build)
+      results.push(r)
+      const problems = [
+        r.fatal && `FATAL ${r.fatal}`,
+        r.threw && `threw ${r.threw}`,
+        !r.vendored &&
+          !r.outOfRange &&
+          !r.settled &&
+          !r.fatal &&
+          'never settled (no session, no error page)',
+        r.settled &&
+          !r.globalDefined &&
+          `JBrowsePlugin${plugin.name} undefined`,
+      ].filter(p => typeof p === 'string')
+      const note = r.vendored
+        ? 'skipped, vendored into this host'
+        : r.outOfRange
+          ? 'skipped, outside declared jbrowseRange'
+          : 'ok'
+      console.log(
+        `  ${host.label.padEnd(9)} ${problems.length > 0 ? problems.join(' | ') : note}`,
+      )
+      if (problems.length > 0) {
+        failed = true
+      }
     }
   }
 }

@@ -84,6 +84,32 @@ The gate proves a bundle **loads**. It does not prove a track **renders** — th
 needs test data and belongs in the plugin's own repo, and of the 14 plugins here
 only msaview and protein3d have any e2e tests at all.
 
+An entry that pins several `versions` gets each one booted from its own version
+dir, on the hosts that version's `jbrowseRange` names; hosts outside the range
+are reported as skipped. `--changed` selects a package when any of its version
+dirs moved, not only `latest/`.
+
+### Keeping a plugin off a range of hosts
+
+A `versions` entry whose range excludes a host does this already, for the hosts
+that can read it. On such a host the store card reads "Not compatible" and a
+config ref fails with a message naming the supported ranges; it does not fall
+back to the ref's url. Three things it cannot do:
+
+- Bind a host below 5.0.0. Those read the frozen v1 manifest and never see a
+  range. Removal is the only lever that reaches them (ADR 0007).
+- Stop a removed entry's ref from loading its `latest/` fallback. For refs,
+  removal is the weaker lever and the range the stronger one; ADR 0007's
+  amendment has the table. Retiring a plugin jb2hubs refs means doing both.
+- Govern `latest/`. It is the newest pinned version whatever its range says, and
+  every url-naming config on a host without ref support loads it.
+
+Write ranges against release versions (`<5.0.0`, `>=5.0.0`), never with a `-0`
+suffix. The live `main` host reports `5.0.0-beta.N`, and compare-versions reads
+that as satisfying `<5.0.0` and not `>=5.0.0`; the consumer has been asked to
+treat a prerelease as its release before matching. Until that ships a bare-major
+upper bound is unsafe on beta hosts.
+
 `--hybrid` adds the `storePlugin` key a jb2hubs config carries alongside its url
 ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
 to check the key is inert on hosts nobody can upgrade. Read it as a diff against
@@ -170,8 +196,15 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   live users _here_. A config naming a plugin by its store `name` is what gives
   it some
   ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
-  and it remains the right tool for rollback and retirement
+  and it remains the right tool for rollback; for retirement it is the stronger
+  lever for refs and no lever at all below 5.0.0
   ([ADR 0007](agent-docs/architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)).
+- **The ref resolver is on jbrowse-components `main`** (`8744a709ad`,
+  `2fed4b99e2`, `5374f27884`, all 2026-08-26), not in a worktree as the
+  2026-08-26 handoff first recorded. Only JBrowse 5 reads `v2/plugins.json`;
+  `v4.3.0` and earlier read the frozen v1 manifest. The web, desktop and
+  embedded seams all pass `packageJSON.version`, which is `5.0.0-beta.1` on the
+  live `main` host at the time of writing.
 - **genark is no longer on the v1 flat path — this is fixed.** Twenty deployed
   `hubs/genark/GC[AF]/...` configs sampled at random name `latest/` for all four
   plugins, as UCSC already did, and every one of the 52,086 in the jb2hubs

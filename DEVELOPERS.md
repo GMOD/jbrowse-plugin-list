@@ -114,8 +114,11 @@ PR (recording the verdict in the PR body rather than blocking it, so one broken
 plugin doesn't hold back the rest), and `plugin-canary.yml` runs `pnpm canary`
 every 6h against production, opening a rolling issue.
 
-Hosts outside a plugin's declared `jbrowseRange` are skipped rather than failed
-— see the ICGC note in `CLAUDE.md` for why that matters.
+A plugin that pins several `versions` has each build booted from its own
+`dist/<packageName>/<version>/` dir, on the hosts that version's `jbrowseRange`
+names. Hosts outside a build's range are skipped rather than failed — see ADR
+0007 for why that matters, and its amendment for what a range can and cannot
+switch off.
 
 **Scope**: this proves a bundle loads. It does not prove a track renders; that
 needs test data and belongs in the plugin's own repo.

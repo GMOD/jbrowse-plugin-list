@@ -6,7 +6,13 @@ This file is only what is done, what is not, and where the work sits.
 
 ## Where the branches are
 
-Neither has landed. Both are worktrees on a `store-refs` branch.
+Status re-checked 2026-09-02. The table below is the 2026-08-26 snapshot; the
+jbrowse-components half has since landed on `main` as `8744a709ad`, `2fed4b99e2`
+(ref names the store `name`) and `5374f27884` (a ref survives an upgrade in the
+permanent-plugins list), and the plugin-list half is on `main` as
+`d66b3a5`..`00e7267`. Two follow-ups from that re-check are in ADR 0007's
+amendment: the retirement levers invert for refs, and a `5.0.0-beta.N` host
+matches `<5.0.0` under compare-versions.
 
 | repo                  | worktree                       | commit                                                        |
 | --------------------- | ------------------------------ | ------------------------------------------------------------- |

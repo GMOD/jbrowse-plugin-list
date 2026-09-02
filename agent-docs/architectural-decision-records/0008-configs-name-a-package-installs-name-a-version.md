@@ -117,7 +117,16 @@ flat layout and serve protein3d 0.4.1 against a published 0.8.0.
 - **`jbrowseRange` gets its first live users.** It has had none (ADR 0007), and
   a config resolved per host is what gives it some: an old host and a new one
   loading the same genark config can be served different builds. Today they get
-  identical bytes, which is the shape of both the msaview and hubs breaks.
+  identical bytes, which is the shape of both the msaview and hubs breaks. Two
+  limits, recorded in ADR 0007's 2026-09-02 amendment: only JBrowse 5 reads this
+  manifest, so "an old host" here means an old _v5_ host, and `latest/` is the
+  newest pinned version regardless of range, so the url fallback never honours
+  one. `check-plugins.ts` boots each pinned version on the hosts its own range
+  names, so a pin is measured rather than declared.
+- **The two retirement levers swap for refs.** A removed entry makes a ref fall
+  back to its `latest/` url; a narrowed range makes it fail with a message. ADR
+  0007's conclusion holds only for the url population; its amendment has the
+  table.
 - **Config-named bundles can be integrity-checked.** The hash and the bytes come
   from the same manifest read in the same page load, so they cannot skew. This
   was the accepted cost in ADR 0002 and it stops being one.

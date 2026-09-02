@@ -116,11 +116,16 @@ export function rehostedUrl(
   return `${REHOST_BASE}${packageName}/${version}/${umdPath}`
 }
 
-// The whole `latest/` prefix for a plugin. Everything under it belongs to one
-// build, which is what lets a consumer serve or intercept a code-split plugin's
-// sidecar chunks alongside its umd entry point.
+// The whole prefix one build is served under. Everything below it belongs to
+// that build, which is what lets a consumer serve or intercept a code-split
+// plugin's sidecar chunks alongside its umd entry point. `version` is a pinned
+// version or `latest`.
+export function rehostedPrefix(packageName: string, version: string) {
+  return `${REHOST_BASE}${packageName}/${version}/`
+}
+
 export function latestRehostedPrefix(packageName: string) {
-  return `${REHOST_BASE}${packageName}/latest/`
+  return rehostedPrefix(packageName, 'latest')
 }
 
 // Explicit "always latest" url: a stable, version-agnostic path that always
