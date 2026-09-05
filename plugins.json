@@ -12,17 +12,6 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png"
     },
     {
-      "name": "Quantseq",
-      "packageName": "jbrowse-plugin-quantseq",
-      "authors": ["Elliot Hershberg"],
-      "description": "External JB2 plugin implementing a QuantitativeSequence track for displaying base-resolution models.",
-      "location": "https://github.com/GMOD/jbrowse-plugin-quantseq",
-      "umdPath": "dist/jbrowse-plugin-quantseq.umd.production.min.js",
-      "license": "Apache License 2.0",
-      "tags": ["needs-setup", "quantitative"],
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/quantseq-screenshot-fs8.png"
-    },
-    {
       "name": "UCSC",
       "packageName": "jbrowse-plugin-ucsc",
       "authors": ["Colin Diesh"],

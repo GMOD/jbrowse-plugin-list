@@ -134,3 +134,39 @@ off everywhere. That is a schema change in both repos and is not made here.
 Until it is, retiring a plugin that jb2hubs refs means doing both: narrow the
 range so v5 hosts refuse it, and accept that removal alone would hand those same
 hosts the `latest/` fallback.
+
+## Amendment 2026-09-04 — retiring ahead of the break, not after it
+
+The rule above retires a plugin that "can no longer work on any supported host".
+ICGC met that literally: it had error-paged every host for years. quantseq 0.0.6
+does not, and was retired anyway (`jbrowse-plugin-list` issue 34).
+
+It loads on v4.0.0, v4.2.0, v4.3.0 and `latest`, and throws from `configure()`
+on `main` — `TypeError: t.addRendererType is not a function`. Waiting for the
+criterion to be met literally means waiting for a 5.x release to carry the
+break, and a throw from `configure()` is the case no loader catches, so the day
+it releases is the day it error-pages jbrowse-web, the RPC worker and every
+embedded product at once. The store is the only population still available to
+protect at that point, and protecting it costs an install nobody can perform
+successfully anyway.
+
+So the criterion reads: **a plugin is retired when it cannot work on a host it
+will imminently be offered on**, and the advisory `main` row in
+`check-plugins.ts` is what makes "imminently" a measurement rather than a guess.
+
+Two things make this cheap enough to do on a prediction:
+
+- **Removal costs discovery, not function.** The artifacts stay on S3 (ADR
+  0005), so every existing install keeps loading its pinned url. Nothing that
+  works today stops working.
+- **Restoring is re-adding the entry.** There is no tombstone to clear and no
+  url to reissue, which is why the entry is pasted verbatim into the tracking
+  issue rather than left to be reconstructed.
+
+The range was the tempting alternative and could not do the job: the live `main`
+host reports `5.0.0-beta.N`, which compare-versions reads as satisfying
+`<5.0.0`, so a `<5.0.0` pin would have kept serving the bundle to exactly the
+hosts it breaks on. Until that trap is closed, a plugin that breaks on beta core
+can only be retired by removal — and here that is clean, since no jb2hubs config
+names quantseq and there is no ref population to leave holding the `latest/`
+fallback.

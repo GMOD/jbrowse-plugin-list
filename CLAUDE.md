@@ -90,7 +90,7 @@ for the host to ship. `--versions main` carries the same flag, so a hand-run
 against `main` alone also exits 0 whatever it finds.
 
 The gate proves a bundle **loads**. It does not prove a track **renders** — that
-needs test data and belongs in the plugin's own repo, and of the 14 plugins here
+needs test data and belongs in the plugin's own repo, and of the 13 plugins here
 only msaview and protein3d have any e2e tests at all.
 
 An entry that pins several `versions` gets each one booted from its own version
@@ -203,17 +203,21 @@ Refetches from npm and verifies the result byte-for-byte against what S3 serves.
 
 Point-in-time, checked 2026-08-26 — re-check rather than trust:
 
-- **quantseq throws from `configure()` on `main`** —
-  `TypeError: t.addRendererType is not a function`, an error page rather than a
-  degraded session. Measured 2026-09-04 against what S3 serves: fine on v4.0.0,
-  v4.2.0, v4.3.0 and `latest`, broken on `main` alone, and the only one of the
-  14 that is. Invariant 1's worst case, since no loader catches a throw from
-  `configure()` — but it is advisory until a release carries it, which is the
-  window to fix it in.
-- **`plugins.json` lists 14 plugins**, not the 17 several ADRs measured on
-  2026-08-06. Those numbers are dated records and are left as written; anything
-  here that reads as current says 14.
-- **No entry in `plugins.json` declares `versions`**, so all 14 get a single
+- **quantseq is retired from the store, pre-emptively.** It throws from
+  `configure()` on `main` — `TypeError: t.addRendererType is not a function`, an
+  error page rather than a degraded session. Measured 2026-09-04 against what S3
+  serves: fine on v4.0.0, v4.2.0, v4.3.0 and `latest`, broken on `main` alone,
+  and the only one of the 14 then listed that was. Removed on 2026-09-04, ahead
+  of the release that would carry the break, because a range cannot reach a beta
+  host (the prerelease trap above) and removal can. The artifacts stay on S3, so
+  an existing install keeps working; the store simply stops offering it.
+  [Issue to restore it](https://github.com/GMOD/jbrowse-plugin-list/issues/34),
+  once it loads on `main` again.
+- **`plugins.json` lists 13 plugins**, not the 17 several ADRs measured on
+  2026-08-06 or the 14 that stood until quantseq was retired. Those numbers are
+  dated records and are left as written; anything here that reads as current
+  says 13.
+- **No entry in `plugins.json` declares `versions`**, so all 13 get a single
   auto-generated version at `jbrowseRange: "*"` and the range apparatus has no
   live users _here_. A config naming a plugin by its store `name` is what gives
   it some
