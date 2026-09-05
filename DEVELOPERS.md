@@ -32,7 +32,7 @@ See the `dist/` note in [CLAUDE.md](CLAUDE.md) for why `copy` must never become
 `sync`.
 
 ```bash
-pnpm verify      # boot every newly promoted bundle on released JBrowse hosts
+pnpm verify      # boot every newly promoted bundle on released hosts and main
 pnpm upload      # copy dist/ artifacts (immutable) + the v2 manifest to S3
 pnpm invalidate  # CloudFront invalidation for /plugin-store/v2/*
 ```
@@ -90,11 +90,11 @@ committed artifacts.
 ## Verification
 
 `check-plugins.ts` boots each rehosted bundle on a matrix of hosted JBrowse
-releases (`jbrowse.org/code/jb2/<version>/`) and asserts it loads: no error
-page, UMD global defined, `configure()` survived. It serves each plugin a
-synthetic config naming only that plugin, so a failure names one bundle with no
-ambiguity, and intercepts the whole `latest/` prefix so code-split plugins get
-their sidecar chunks from the same build.
+releases plus unreleased `main` (`jbrowse.org/code/jb2/<version>/`) and asserts
+it loads: no error page, UMD global defined, `configure()` survived. It serves
+each plugin a synthetic config naming only that plugin, so a failure names one
+bundle with no ambiguity, and intercepts the whole `latest/` prefix so
+code-split plugins get their sidecar chunks from the same build.
 
 ```bash
 pnpm verify       # only the bundles this run promoted (the pre-upload gate)
@@ -108,6 +108,11 @@ urls from permanent locations. The moment of risk is _this repo promoting an npm
 version_, and nothing else runs between npm publish and global rollout. Only two
 of the plugins listed here test against any JBrowse version at all, both against
 `[v3.7.0, nightly]` — the two ends, while the breaks land in the middle.
+
+`main` is an **advisory** host: it is probed on every run, its failures print as
+`ADVISORY` rows and a closing warning, and they leave the exit code alone. Only
+a released host gates the upload, because a regression in someone else's
+in-progress branch must not block the plugin fix that answers it.
 
 Two workflows use it: `deploy.yml` runs `pnpm verify` before opening the nightly
 PR (recording the verdict in the PR body rather than blocking it, so one broken

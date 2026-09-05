@@ -3,7 +3,7 @@
 // check-plugins.ts
 //
 // Boots every plugin bundle this repo publishes on a matrix of released JBrowse
-// hosts and asserts each one still loads.
+// hosts, plus unreleased `main`, and asserts each one still loads.
 //
 // Why this lives here and not in the plugin repos: `pnpm upload` republishes
 // every plugin's `latest/` at once, no-cache, and the jb2hubs configs
@@ -89,10 +89,14 @@ function findChrome() {
 // Every release is hosted at jbrowse.org/code/jb2/<version>/, so the matrix
 // needs no local install per version. These are the hosts a `latest/` bundle
 // actually reaches: v4.0.0 is the floor jb2hubs settled on, `latest` is what
-// most links resolve to. `main` is
-// available but deliberately not a default — a break there is unreleased-core
-// news, not a shipped-config regression, and the plugin repos' `nightly` job
-// already watches it.
+// most links resolve to.
+//
+// `main` is unreleased core, and it runs on every default run for the warning it
+// gives: a break there is the next release's break, visible weeks before any
+// config reaches it. What it must not do is gate. Freezing this repo's
+// publishing on someone else's in-progress branch would block the plugin fix a
+// real regression needs, so an `advisory` host reports and never touches the
+// exit code — invariant 1 is a claim about released hosts.
 //
 // The real bundle floor sits just under the declared one and is measured, not
 // assumed: msaview, protein3d and hubs all load on v3.7.0; v3.0.0 is the
@@ -101,12 +105,18 @@ function findChrome() {
 // `semver` is what a plugin's jbrowseRange is tested against. The moving tags
 // get a sentinel above every real release, which is the honest reading: a plugin
 // declaring `<2.0.0` must not be treated as covering whatever `latest` is today.
-const HOST_VERSIONS = [
+interface Host {
+  label: string
+  semver: string
+  advisory?: boolean
+}
+
+const HOST_VERSIONS: Host[] = [
   { label: 'v4.0.0', semver: '4.0.0' },
   { label: 'v4.2.0', semver: '4.2.0' },
   { label: 'v4.3.0', semver: '4.3.0' },
   { label: 'latest', semver: '999.999.999' },
-  { label: 'main', semver: '999.999.999' },
+  { label: 'main', semver: '999.999.999', advisory: true },
 ]
 
 // Plugins core now bundles, and the range of hosts that bundle them. jbrowse-web
@@ -139,9 +149,11 @@ const { values } = parseArgs({
 const dir = import.meta.dirname
 const distDir = path.join(dir, 'dist')
 const timeout = Number(values.timeout)
-const hosts =
+// An explicit `--versions` still gets a named host's `advisory` flag, so
+// `--versions main` reports rather than gates, the same as it does by default.
+const hosts: Host[] =
   values.versions === undefined
-    ? HOST_VERSIONS.filter(h => h.label !== 'main')
+    ? HOST_VERSIONS
     : values.versions.split(',').map(label => {
         const known = HOST_VERSIONS.find(h => h.label === label)
         return known ?? { label, semver: label.replace(/^v/, '') }
@@ -204,7 +216,7 @@ function changedPackages() {
 
 // An explicit filter that selects nothing means "nothing to check" — notably
 // `--changed` on a run that promoted no new version. Falling back to "all" there
-// would turn the pre-upload gate into a 68-boot matrix on every no-op run.
+// would turn the pre-upload gate into a 70-boot matrix on every no-op run.
 const selected = values.changed
   ? changedPackages()
   : values.only.length > 0
@@ -266,6 +278,7 @@ interface Probe {
   packageName: string
   pluginVersion: string
   hostVersion: string
+  advisory?: boolean
   vendored?: boolean
   outOfRange?: boolean
   settled?: boolean
@@ -395,6 +408,7 @@ if (targets.length === 0) {
 }
 
 const results: Probe[] = []
+const advisory: Probe[] = []
 let failed = false
 for (const plugin of targets) {
   for (const build of buildsOf(plugin)) {
@@ -413,7 +427,7 @@ for (const plugin of targets) {
       // and a canary you have learned to ignore is worse than none.
       const outOfRange =
         jbrowseRange !== '*' && !satisfies(host.semver, jbrowseRange)
-      const r =
+      const r: Probe =
         vendored || outOfRange
           ? {
               packageName: plugin.packageName,
@@ -424,6 +438,9 @@ for (const plugin of targets) {
               pageErrors: [],
             }
           : await probe(browser, host.label, plugin, build)
+      if (host.advisory) {
+        r.advisory = true
+      }
       results.push(r)
       const problems = [
         r.fatal && `FATAL ${r.fatal}`,
@@ -442,11 +459,17 @@ for (const plugin of targets) {
         : r.outOfRange
           ? 'skipped, outside declared jbrowseRange'
           : 'ok'
-      console.log(
-        `  ${host.label.padEnd(9)} ${problems.length > 0 ? problems.join(' | ') : note}`,
-      )
+      const line =
+        problems.length > 0
+          ? `${r.advisory ? 'ADVISORY ' : ''}${problems.join(' | ')}`
+          : note
+      console.log(`  ${host.label.padEnd(9)} ${line}`)
       if (problems.length > 0) {
-        failed = true
+        if (r.advisory) {
+          advisory.push(r)
+        } else {
+          failed = true
+        }
       }
     }
   }
@@ -457,6 +480,20 @@ if (values.json) {
   fs.writeFileSync(values.json, JSON.stringify(results, null, 2))
 }
 
+if (advisory.length > 0) {
+  const hostList = [...new Set(advisory.map(r => r.hostVersion))].join(', ')
+  const bundles = [
+    ...new Set(advisory.map(r => `${r.packageName}@${r.pluginVersion}`)),
+  ].join(', ')
+  console.warn(
+    `\nBroke on the advisory host${hostList.includes(',') ? 's' : ''} ` +
+      `${hostList}: ${bundles}. Unreleased core, so it does not block this ` +
+      'upload — but it is what the next release breaks. Raise it with the ' +
+      'plugin or with jbrowse-components now, while there is still a release ' +
+      'between here and a broken config.',
+  )
+}
+
 if (failed) {
   console.error(
     '\nA bundle broke on a released host. Do not upload: `latest/` is no-cache ' +
@@ -464,4 +501,8 @@ if (failed) {
   )
   process.exit(1)
 }
-console.log('\nAll checked bundles loaded on every host.')
+console.log(
+  advisory.length > 0
+    ? '\nNo released host broke; the advisory failures above still stand.'
+    : '\nAll checked bundles loaded on every host.',
+)

@@ -80,6 +80,15 @@ pnpm canary       # every plugin, as S3 is serving it right now
 `pnpm dep` runs `verify` between `update-plugins` and `upload`, so the normal
 path is gated. Run it by hand when uploading any other way.
 
+The matrix boots `main` alongside the released hosts, and a break there is
+**advisory**: the run prefixes the row `ADVISORY`, repeats it in a warning, and
+still exits 0. Unreleased core must not freeze publishing here — that would
+block the very plugin fix a regression on `main` needs. Read an advisory row as
+the next release's break, arriving while there is still a release left to fix it
+in, and raise it with the plugin or with jbrowse-components rather than waiting
+for the host to ship. `--versions main` carries the same flag, so a hand-run
+against `main` alone also exits 0 whatever it finds.
+
 The gate proves a bundle **loads**. It does not prove a track **renders** — that
 needs test data and belongs in the plugin's own repo, and of the 14 plugins here
 only msaview and protein3d have any e2e tests at all.
@@ -109,6 +118,12 @@ suffix. The live `main` host reports `5.0.0-beta.N`, and compare-versions reads
 that as satisfying `<5.0.0` and not `>=5.0.0`; the consumer has been asked to
 treat a prerelease as its release before matching. Until that ships a bare-major
 upper bound is unsafe on beta hosts.
+
+`check-plugins.ts` scores its `main` row with a sentinel above every release, so
+it skips a build whose range excludes `>=5.0.0` — while the real `main` host,
+reporting `5.0.0-beta.N`, would offer that same build. The skip is the
+conservative side of the divergence, but do not read a skipped `main` row as
+evidence the range binds there.
 
 `--hybrid` adds the `storePlugin` key a jb2hubs config carries alongside its url
 ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
