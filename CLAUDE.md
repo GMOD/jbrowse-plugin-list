@@ -203,16 +203,22 @@ Refetches from npm and verifies the result byte-for-byte against what S3 serves.
 
 Point-in-time, checked 2026-08-26 — re-check rather than trust:
 
-- **quantseq is retired from the store, pre-emptively.** It throws from
-  `configure()` on `main` — `TypeError: t.addRendererType is not a function`, an
-  error page rather than a degraded session. Measured 2026-09-04 against what S3
-  serves: fine on v4.0.0, v4.2.0, v4.3.0 and `latest`, broken on `main` alone,
-  and the only one of the 14 then listed that was. Removed on 2026-09-04, ahead
-  of the release that would carry the break, because a range cannot reach a beta
-  host (the prerelease trap above) and removal can. The artifacts stay on S3, so
-  an existing install keeps working; the store simply stops offering it.
-  [Issue to restore it](https://github.com/GMOD/jbrowse-plugin-list/issues/34),
-  once it loads on `main` again.
+- **The v2 store has exactly one reader.** `latest` serves an `index.html`
+  byte-identical to `v4.3.0` (md5 `a05165436cda`, 2026-09-04), so the newest
+  released host is 4.3.0 and `main` at `5.0.0-beta.N` is the only host that
+  reads `v2/plugins.json` at all. Everything else takes its listing from the
+  frozen v1 manifest this repo no longer generates. Start here before reasoning
+  about who an edit to `v2_plugins.json` reaches — today, one host.
+- **quantseq is retired from the store.** It throws from `configure()` on `main`
+  — `TypeError: t.addRendererType is not a function`, an error page rather than
+  a degraded session. Measured 2026-09-04 against what S3 serves: fine on
+  v4.0.0, v4.2.0, v4.3.0 and `latest`, broken on `main` alone, and the only one
+  of the 14 then listed that was. Removing it costs nothing, by the bullet
+  above: every host it still works on reads the untouched v1 manifest, and an
+  existing install keeps loading 0.0.6 from its pinned url. A range could not
+  have done the job — `<5.0.0` still matches `5.0.0-beta.N` (the prerelease trap
+  above). [Issue 34](https://github.com/GMOD/jbrowse-plugin-list/issues/34)
+  tracks restoring it.
 - **`plugins.json` lists 13 plugins**, not the 17 several ADRs measured on
   2026-08-06 or the 14 that stood until quantseq was retired. Those numbers are
   dated records and are left as written; anything here that reads as current

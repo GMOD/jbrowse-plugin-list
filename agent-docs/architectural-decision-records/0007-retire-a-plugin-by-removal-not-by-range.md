@@ -135,33 +135,34 @@ Until it is, retiring a plugin that jb2hubs refs means doing both: narrow the
 range so v5 hosts refuse it, and accept that removal alone would hand those same
 hosts the `latest/` fallback.
 
-## Amendment 2026-09-04 — retiring ahead of the break, not after it
+## Amendment 2026-09-04 — "supported host" means a host that reads this manifest
 
-The rule above retires a plugin that "can no longer work on any supported host".
-ICGC met that literally: it had error-paged every host for years. quantseq 0.0.6
-does not, and was retired anyway (`jbrowse-plugin-list` issue 34).
+quantseq 0.0.6 was retired (`jbrowse-plugin-list` issue 34) after throwing from
+`configure()` on `main` — `TypeError: t.addRendererType is not a function` —
+while loading fine on v4.0.0, v4.2.0, v4.3.0 and `latest`.
 
-It loads on v4.0.0, v4.2.0, v4.3.0 and `latest`, and throws from `configure()`
-on `main` — `TypeError: t.addRendererType is not a function`. Waiting for the
-criterion to be met literally means waiting for a 5.x release to carry the
-break, and a throw from `configure()` is the case no loader catches, so the day
-it releases is the day it error-pages jbrowse-web, the RPC worker and every
-embedded product at once. The store is the only population still available to
-protect at that point, and protecting it costs an install nobody can perform
-successfully anyway.
+Read against the full host matrix that looks like a weaker criterion than the
+one above: retiring a plugin that still works nearly everywhere, on a prediction
+about a release that has not shipped. It is not. `v2_plugins.json` is read only
+by JBrowse 5, as the amendment above already establishes, and on 2026-09-04
+`latest` serves an `index.html` byte-identical to `v4.3.0` — so `main` is the
+only host in existence that reads this manifest at all. Every host quantseq
+still works on takes its listing from the frozen v1 manifest, which this repo no
+longer generates and which the removal did not touch.
 
-So the criterion reads: **a plugin is retired when it cannot work on a host it
-will imminently be offered on**, and the advisory `main` row in
-`check-plugins.ts` is what makes "imminently" a measurement rather than a guess.
+So quantseq meets ICGC's criterion exactly as written. It cannot work on any
+supported host, where **supported host** means a host that reads the manifest
+being edited — not every host in `check-plugins.ts`'s matrix. The two readings
+came apart the moment v1 froze and v2 became v5-only, and this is the first
+retirement where the difference showed.
 
-Two things make this cheap enough to do on a prediction:
-
-- **Removal costs discovery, not function.** The artifacts stay on S3 (ADR
-  0005), so every existing install keeps loading its pinned url. Nothing that
-  works today stops working.
-- **Restoring is re-adding the entry.** There is no tombstone to clear and no
-  url to reissue, which is why the entry is pasted verbatim into the tracking
-  issue rather than left to be reconstructed.
+The practical form: **before weighing a retirement as a tradeoff, ask which
+population the manifest reaches.** For `v2_plugins.json` today that is the v5
+line and nothing else, so a plugin broken across v5 costs nobody anything to
+remove — the v4 population cannot see the change in either direction, and an
+existing install keeps loading its pinned url regardless (ADR 0005). A tradeoff
+argued without that check is an argument about a population the edit never
+reaches.
 
 The range was the tempting alternative and could not do the job: the live `main`
 host reports `5.0.0-beta.N`, which compare-versions reads as satisfying
