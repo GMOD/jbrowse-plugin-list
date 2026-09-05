@@ -203,6 +203,13 @@ Refetches from npm and verifies the result byte-for-byte against what S3 serves.
 
 Point-in-time, checked 2026-08-26 — re-check rather than trust:
 
+- **quantseq throws from `configure()` on `main`** —
+  `TypeError: t.addRendererType is not a function`, an error page rather than a
+  degraded session. Measured 2026-09-04 against what S3 serves: fine on v4.0.0,
+  v4.2.0, v4.3.0 and `latest`, broken on `main` alone, and the only one of the
+  14 that is. Invariant 1's worst case, since no loader catches a throw from
+  `configure()` — but it is advisory until a release carries it, which is the
+  window to fix it in.
 - **`plugins.json` lists 14 plugins**, not the 17 several ADRs measured on
   2026-08-06. Those numbers are dated records and are left as written; anything
   here that reads as current says 14.
