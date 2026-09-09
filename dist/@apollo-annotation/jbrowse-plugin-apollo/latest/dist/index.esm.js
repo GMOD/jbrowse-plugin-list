@@ -66,7 +66,7 @@ import RedoIcon from '@mui/icons-material/Redo';
 import UndoIcon from '@mui/icons-material/Undo';
 import SaveIcon from '@mui/icons-material/Save';
 
-var version = "1.1.1";
+var version = "1.1.2";
 
 const ApolloConfigSchema = ConfigurationSchema('ApolloInternetAccount', {
     baseURL: {

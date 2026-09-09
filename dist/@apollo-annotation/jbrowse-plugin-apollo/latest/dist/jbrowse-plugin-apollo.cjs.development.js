@@ -70,7 +70,7 @@ var RedoIcon = require('@mui/icons-material/Redo');
 var UndoIcon = require('@mui/icons-material/Undo');
 var SaveIcon = require('@mui/icons-material/Save');
 
-var version = "1.1.1";
+var version = "1.1.2";
 
 const ApolloConfigSchema = configuration.ConfigurationSchema('ApolloInternetAccount', {
     baseURL: {

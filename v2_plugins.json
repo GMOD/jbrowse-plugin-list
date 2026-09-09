@@ -312,14 +312,14 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png",
-      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.1/dist/jbrowse-plugin-apollo.umd.production.min.js",
-      "integrity": "sha384-BjhtgDxydZMiel43Z7EAjjWf8tqeyZeXwGD+j9z3WirFp3OBGVIZdyISIwWhK2Xq",
+      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.2/dist/jbrowse-plugin-apollo.umd.production.min.js",
+      "integrity": "sha384-//0gnHx5ag/2nTCFLja3vst47rW0LbFdQxJnbviKbdDnIHcue8rpZrydjMa3F0vM",
       "versions": [
         {
-          "pluginVersion": "1.1.1",
+          "pluginVersion": "1.1.2",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.1/dist/jbrowse-plugin-apollo.umd.production.min.js",
-          "integrity": "sha384-BjhtgDxydZMiel43Z7EAjjWf8tqeyZeXwGD+j9z3WirFp3OBGVIZdyISIwWhK2Xq"
+          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.2/dist/jbrowse-plugin-apollo.umd.production.min.js",
+          "integrity": "sha384-//0gnHx5ag/2nTCFLja3vst47rW0LbFdQxJnbviKbdDnIHcue8rpZrydjMa3F0vM"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/latest/dist/jbrowse-plugin-apollo.umd.production.min.js"
