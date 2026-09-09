@@ -6788,11 +6788,16 @@
     var cdsFeatures = [];
     var exonFeatures = [];
     var utrFeatures = [];
+    var seenChildFeatures = new Set();
     var _iterator3 = _createForOfIteratorHelper(childFeatures),
       _step3;
     try {
       for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
         var childFeature = _step3.value;
+        if (seenChildFeatures.has(childFeature)) {
+          continue;
+        }
+        seenChildFeatures.add(childFeature);
         var _childFeature = _slicedToArray(childFeature, 1),
           firstChildFeatureLocation = _childFeature[0];
         if (firstChildFeatureLocation.type === 'exon') {
@@ -7115,7 +7120,7 @@
     d: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"
   }), 'Add');
 
-  var version = "1.1.1";
+  var version = "1.1.2";
 
   const ApolloConfigSchema = configuration.ConfigurationSchema('ApolloInternetAccount', {
       baseURL: {

@@ -1,78 +1,74 @@
-'use strict';
+import { isFeatureChange, checkRegistry, isAssemblySpecificChange, Change, changeRegistry } from '@apollo-annotation/common';
+import { AddFeatureChange, FeatureAttributeChange, DeleteFeatureChange, LocationStartChange, LocationEndChange, AddAssemblyFromExternalChange, AddAssemblyAndFeaturesFromFileChange, AddAssemblyFromFileChange, AddAssemblyAliasesChange, ValidationResultSet, isDeleteFeatureChange, stringifyAttributes, attributesToRecords, validationRegistry, makeUserSessionId, DeleteAssemblyChange, annotationFeatureToGFF3, gff3ToAnnotationFeature, AddFeaturesFromFileChange, UserChange, DeleteUserChange, MergeExonsChange, MergeTranscriptsChange, AddRefSeqAliasesChange, SplitExonChange, getDecodedToken, isGFFInternalAttribute, isGFFColumnInternal, internalToGFF, gffInternalToColumn, gffToInternal, gffColumnToInternal, TypeChange, StrandChange, splitStringIntoChunks, filterJBrowseConfig, ImportJBrowseConfigChange, changes, CDSCheck, TranscriptCheck, CoreValidation, ParentChildValidation } from '@apollo-annotation/shared';
+import Plugin from '@jbrowse/core/Plugin';
+import { ConfigurationSchema, readConfObject, getConf, ConfigurationReference } from '@jbrowse/core/configuration';
+import { BaseInternetAccountConfig, InternetAccount, TextSearchAdapterType, BaseDisplay, WidgetType, createBaseTrackConfig, TrackType, createBaseTrackModel, InternetAccountType, DisplayType } from '@jbrowse/core/pluggableElementTypes';
+import { isUriLocation, isLocalPathLocation, isSessionModelWithWidgets, revcom, getSession, getEnv, isElectron, isAbstractMenuManager, defaultCodonTable, getFrame, getContainingView, doesIntersect2, intersection2, measureText } from '@jbrowse/core/util';
+import AddIcon from '@mui/icons-material/Add';
+import { DialogTitle, IconButton, Autocomplete, TextField, DialogContent, DialogActions, Button, DialogContentText, Select, MenuItem, LinearProgress, Accordion, AccordionSummary, Typography, AccordionDetails, FormGroup, FormControlLabel, Box, Tooltip as Tooltip$1, Checkbox, Table, TableBody, TableRow, TableCell, InputAdornment, FormHelperText, FormControl, RadioGroup, Radio, InputLabel, SvgIcon, TableContainer, Paper, TableHead, Grid, Divider, Chip, List, ListItem, ListItemText, Menu, ListItemIcon, useTheme, alpha, createTheme, Alert, Badge, Avatar, CircularProgress, FormLabel } from '@mui/material';
+import { types, addDisposer, getSnapshot, flow, isAlive, getRoot, getParent, cast, resolveIdentifier, getParentOfType, applySnapshot } from '@jbrowse/mobx-state-tree';
+import { autorun, entries, observable, flow as flow$1, when } from 'mobx';
+import { io } from 'socket.io-client';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import DeleteIcon from '@mui/icons-material/Delete';
+import InputIcon from '@mui/icons-material/Input';
+import PersonIcon from '@mui/icons-material/Person';
+import RuleIcon from '@mui/icons-material/Rule';
+import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
+import { makeStyles } from '@jbrowse/core/util/tss-react';
+import InfoIcon from '@mui/icons-material/Info';
+import LinkIcon from '@mui/icons-material/Link';
+import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import ObjectID from 'bson-objectid';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
+import SkipPreviousRoundedIcon from '@mui/icons-material/SkipPreviousRounded';
+import { LocalPathLocation, UriLocation, BlobLocation, ElementId } from '@jbrowse/core/util/types/mst';
+import { openDB, deleteDB } from 'idb/with-async-ittr';
+import { checkAbortSignal, isAbortException } from '@jbrowse/core/util/aborting';
+import jsonpath from 'jsonpath';
+import { openLocation } from '@jbrowse/core/util/io';
+import equal from 'fast-deep-equal/es6';
+import { Dialog as Dialog$1, Menu as Menu$1, BaseTooltip } from '@jbrowse/core/ui';
+import CloseIcon from '@mui/icons-material/Close';
+import { observer } from 'mobx-react';
+import { DataGrid, GridActionsCellItem } from '@mui/x-data-grid';
+import { GFFFormattingTransformer, GFFTransformer } from '@gmod/gff';
+import { saveAs } from 'file-saver';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import BusinessIcon from '@mui/icons-material/Business';
+import AdapterType from '@jbrowse/core/pluggableElementTypes/AdapterType';
+import { BaseAdapter, BaseSequenceAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
+import { nanoid } from 'nanoid';
+import { ObservableCreate } from '@jbrowse/core/util/rxjs';
+import SimpleFeature from '@jbrowse/core/util/simpleFeature';
+import BaseResult from '@jbrowse/core/TextSearch/BaseResults';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import EditIcon from '@mui/icons-material/Edit';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import AddBoxIcon from '@mui/icons-material/AddBox';
+import { AnnotationFeatureModel, CheckResult, ApolloAssembly, ApolloRefSeq } from '@apollo-annotation/mst';
+import styled from '@emotion/styled';
+import RemoveIcon from '@mui/icons-material/Remove';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ContentCutIcon from '@mui/icons-material/ContentCut';
+import ClearIcon from '@mui/icons-material/Clear';
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
+import { getParentRenderProps } from '@jbrowse/core/util/tracks';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import LockIcon from '@mui/icons-material/Lock';
+import ErrorIcon from '@mui/icons-material/Error';
+import LogoutIcon from '@mui/icons-material/Logout';
+import RedoIcon from '@mui/icons-material/Redo';
+import UndoIcon from '@mui/icons-material/Undo';
+import SaveIcon from '@mui/icons-material/Save';
 
-Object.defineProperty(exports, '__esModule', { value: true });
+var version = "1.1.2";
 
-var common = require('@apollo-annotation/common');
-var shared = require('@apollo-annotation/shared');
-var Plugin = require('@jbrowse/core/Plugin');
-var configuration = require('@jbrowse/core/configuration');
-var pluggableElementTypes = require('@jbrowse/core/pluggableElementTypes');
-var util = require('@jbrowse/core/util');
-var AddIcon = require('@mui/icons-material/Add');
-var material = require('@mui/material');
-var mobxStateTree = require('@jbrowse/mobx-state-tree');
-var mobx = require('mobx');
-var socket_ioClient = require('socket.io-client');
-var AdminPanelSettingsIcon = require('@mui/icons-material/AdminPanelSettings');
-var DeleteIcon = require('@mui/icons-material/Delete');
-var InputIcon = require('@mui/icons-material/Input');
-var PersonIcon = require('@mui/icons-material/Person');
-var RuleIcon = require('@mui/icons-material/Rule');
-var jsxRuntime = require('react/jsx-runtime');
-var tssReact = require('@jbrowse/core/util/tss-react');
-var InfoIcon = require('@mui/icons-material/Info');
-var LinkIcon = require('@mui/icons-material/Link');
-var RadioButtonCheckedIcon = require('@mui/icons-material/RadioButtonChecked');
-var RadioButtonUncheckedIcon = require('@mui/icons-material/RadioButtonUnchecked');
-var ObjectID = require('bson-objectid');
-var React = require('react');
-var SkipNextRoundedIcon = require('@mui/icons-material/SkipNextRounded');
-var SkipPreviousRoundedIcon = require('@mui/icons-material/SkipPreviousRounded');
-var mst = require('@jbrowse/core/util/types/mst');
-var withAsyncIttr = require('idb/with-async-ittr');
-var aborting = require('@jbrowse/core/util/aborting');
-var jsonpath = require('jsonpath');
-var io = require('@jbrowse/core/util/io');
-var equal = require('fast-deep-equal/es6');
-var ui = require('@jbrowse/core/ui');
-var CloseIcon = require('@mui/icons-material/Close');
-var mobxReact = require('mobx-react');
-var xDataGrid = require('@mui/x-data-grid');
-var gff = require('@gmod/gff');
-var fileSaver = require('file-saver');
-var AccountCircleIcon = require('@mui/icons-material/AccountCircle');
-var BusinessIcon = require('@mui/icons-material/Business');
-var AdapterType = require('@jbrowse/core/pluggableElementTypes/AdapterType');
-var BaseAdapter = require('@jbrowse/core/data_adapters/BaseAdapter');
-var nanoid = require('nanoid');
-var rxjs = require('@jbrowse/core/util/rxjs');
-var SimpleFeature = require('@jbrowse/core/util/simpleFeature');
-var BaseResult = require('@jbrowse/core/TextSearch/BaseResults');
-var ExpandMoreIcon = require('@mui/icons-material/ExpandMore');
-var EditIcon = require('@mui/icons-material/Edit');
-var MoreHorizIcon = require('@mui/icons-material/MoreHoriz');
-var AddBoxIcon = require('@mui/icons-material/AddBox');
-var mst$1 = require('@apollo-annotation/mst');
-var styled = require('@emotion/styled');
-var RemoveIcon = require('@mui/icons-material/Remove');
-var ContentCopyIcon = require('@mui/icons-material/ContentCopy');
-var ContentCutIcon = require('@mui/icons-material/ContentCut');
-var ClearIcon = require('@mui/icons-material/Clear');
-var UnfoldLessIcon = require('@mui/icons-material/UnfoldLess');
-var tracks = require('@jbrowse/core/util/tracks');
-var FactCheckIcon = require('@mui/icons-material/FactCheck');
-var TrackChangesIcon = require('@mui/icons-material/TrackChanges');
-var ExpandLessIcon = require('@mui/icons-material/ExpandLess');
-var LockIcon = require('@mui/icons-material/Lock');
-var ErrorIcon = require('@mui/icons-material/Error');
-var LogoutIcon = require('@mui/icons-material/Logout');
-var RedoIcon = require('@mui/icons-material/Redo');
-var UndoIcon = require('@mui/icons-material/Undo');
-var SaveIcon = require('@mui/icons-material/Save');
-
-var version = "1.1.1";
-
-const ApolloConfigSchema = configuration.ConfigurationSchema('ApolloInternetAccount', {
+const ApolloConfigSchema = ConfigurationSchema('ApolloInternetAccount', {
     baseURL: {
         description: 'Location of Apollo server',
         type: 'string',
@@ -83,7 +79,7 @@ const ApolloConfigSchema = configuration.ConfigurationSchema('ApolloInternetAcco
         type: 'string',
         defaultValue: 'Bearer',
     },
-}, { baseConfiguration: pluggableElementTypes.BaseInternetAccountConfig, explicitlyTyped: true });
+}, { baseConfiguration: BaseInternetAccountConfig, explicitlyTyped: true });
 
 function getFeatureName$1(feature) {
     const { attributes } = feature;
@@ -449,7 +445,7 @@ function* getWords(node, jsonPaths, prefixes) {
 async function textSearch(text, tx, signal) {
     const db = await this.db;
     const myTx = tx ?? db.transaction(['nodes']);
-    aborting.checkAbortSignal(signal);
+    checkAbortSignal(signal);
     const queryWords = [...wordsInString(text)];
     const queries = [];
     /**
@@ -459,10 +455,10 @@ async function textSearch(text, tx, signal) {
     const initialMatches = new Map();
     // find startsWith and complete matches
     queries.push(...queryWords.map(async (queryWord, queryWordIndex) => {
-        aborting.checkAbortSignal(signal);
+        checkAbortSignal(signal);
         const idx = myTx.objectStore('nodes').index('full-text-words');
         for await (const cursor of idx.iterate(IDBKeyRange.bound(queryWord, `${queryWord}\uFFFF`, false, false))) {
-            aborting.checkAbortSignal(signal);
+            checkAbortSignal(signal);
             const term = cursor.value;
             const termMatches = initialMatches.get(term.id) ?? [
                 term,
@@ -473,11 +469,11 @@ async function textSearch(text, tx, signal) {
         }
     }));
     await Promise.all(queries);
-    aborting.checkAbortSignal(signal);
+    checkAbortSignal(signal);
     // now rank the term matches and add some detail
     const results = [];
     for (const [, [term, wordIndexes]] of initialMatches) {
-        aborting.checkAbortSignal(signal);
+        checkAbortSignal(signal);
         results.push(...elaborateMatch(this.textIndexFields, term, wordIndexes, queryWords, this.prefixes));
     }
     // sort the terms by score descending
@@ -598,7 +594,7 @@ const schemaVersion = 2;
 /** open the IndexedDB and create the DB schema if necessary */
 async function openDatabase(dbName) {
     // await deleteDB(dbName) // uncomment this to reload every time during development
-    return withAsyncIttr.openDB(dbName, schemaVersion, {
+    return openDB(dbName, schemaVersion, {
         upgrade(database, oldVersion, newVersion, transaction, _event) {
             if (oldVersion < schemaVersion) {
                 if (database.objectStoreNames.contains('meta')) {
@@ -652,7 +648,7 @@ async function loadOboGraphJson(db) {
     // and less memory intensive
     let oboGraph;
     try {
-        oboGraph = JSON.parse(await io.openLocation(this.sourceLocation).readFile('utf8'));
+        oboGraph = JSON.parse(await openLocation(this.sourceLocation).readFile('utf8'));
     }
     catch {
         throw new Error('Error in loading ontology');
@@ -808,12 +804,12 @@ class OntologyStore {
         return errors;
     }
     get sourceType() {
-        if (util.isUriLocation(this.sourceLocation)) {
+        if (isUriLocation(this.sourceLocation)) {
             if (this.sourceLocation.uri.endsWith('.json')) {
                 return 'obo-graph-json';
             }
         }
-        else if (util.isLocalPathLocation(this.sourceLocation) &&
+        else if (isLocalPathLocation(this.sourceLocation) &&
             this.sourceLocation.localPath.endsWith('.json')) {
             return 'obo-graph-json';
         }
@@ -848,7 +844,7 @@ class OntologyStore {
         }
         catch (error) {
             db.close();
-            await withAsyncIttr.deleteDB(this.dbName);
+            await deleteDB(this.dbName);
             throw error;
         }
     }
@@ -1053,13 +1049,13 @@ class OntologyStore {
     }
 }
 
-const OntologyRecordType = mobxStateTree.types
+const OntologyRecordType = types
     .model('OntologyRecord', {
-    name: mobxStateTree.types.string,
+    name: types.string,
     version: 'unversioned',
-    source: mobxStateTree.types.union(mst.LocalPathLocation, mst.UriLocation, mst.BlobLocation),
-    options: mobxStateTree.types.frozen(),
-    equivalentTypes: mobxStateTree.types.map(mobxStateTree.types.array(mobxStateTree.types.string)),
+    source: types.union(LocalPathLocation, UriLocation, BlobLocation),
+    options: types.frozen(),
+    equivalentTypes: types.map(types.array(types.string)),
 })
     .volatile((_self) => ({
     dataStore: undefined,
@@ -1071,10 +1067,10 @@ const OntologyRecordType = mobxStateTree.types
         return;
     },
     initDataStore() {
-        self.dataStore = new OntologyStore(self.name, self.version, mobxStateTree.getSnapshot(self.source), self.options);
+        self.dataStore = new OntologyStore(self.name, self.version, getSnapshot(self.source), self.options);
     },
     afterCreate() {
-        mobxStateTree.addDisposer(self, mobx.autorun(() => {
+        addDisposer(self, autorun(() => {
             this.initDataStore();
         }));
     },
@@ -1083,7 +1079,7 @@ const OntologyRecordType = mobxStateTree.types
     },
 }))
     .actions((self) => ({
-    loadEquivalentTypes: mobxStateTree.flow(function* loadEquivalentTypes(type) {
+    loadEquivalentTypes: flow(function* loadEquivalentTypes(type) {
         if (!self.dataStore) {
             return;
         }
@@ -1095,14 +1091,14 @@ const OntologyRecordType = mobxStateTree.types
         const equivalents = terms
             .map((term) => term.lbl)
             .filter((term) => term != undefined);
-        if (mobxStateTree.isAlive(self)) {
+        if (isAlive(self)) {
             self.setEquivalentTypes(type, equivalents);
         }
     }),
 }))
     .actions((self) => ({
     afterCreate() {
-        mobx.autorun((reaction) => {
+        autorun((reaction) => {
             if (!self.dataStore) {
                 return;
             }
@@ -1135,21 +1131,21 @@ const OntologyRecordType = mobxStateTree.types
         return equivalents.includes(queryType);
     },
 }));
-const OntologyManagerType = mobxStateTree.types
+const OntologyManagerType = types
     .model('OntologyManager', {
     // create, update, and delete ontologies
-    ontologies: mobxStateTree.types.array(OntologyRecordType),
-    prefixes: mobxStateTree.types.optional(mobxStateTree.types.map(mobxStateTree.types.string), {
+    ontologies: types.array(OntologyRecordType),
+    prefixes: types.optional(types.map(types.string), {
         'GO:': 'http://purl.obolibrary.org/obo/GO_',
         'SO:': 'http://purl.obolibrary.org/obo/SO_',
     }),
 })
     .views((self) => ({
     get featureTypeOntologyName() {
-        const jbConfig = mobxStateTree.getRoot(self).jbrowse
+        const jbConfig = getRoot(self).jbrowse
             .configuration;
         const pluginConfiguration = jbConfig.ApolloPlugin;
-        const featureTypeOntologyName = configuration.readConfObject(pluginConfiguration, 'featureTypeOntologyName');
+        const featureTypeOntologyName = readConfObject(pluginConfiguration, 'featureTypeOntologyName');
         return featureTypeOntologyName;
     },
 }))
@@ -1198,7 +1194,7 @@ const OntologyManagerType = mobxStateTree.types
         self.ontologies[newlen - 1].ping();
     },
 }));
-const OntologyRecordConfiguration = configuration.ConfigurationSchema('OntologyRecord', {
+const OntologyRecordConfiguration = ConfigurationSchema('OntologyRecord', {
     name: {
         type: 'string',
         description: 'the full name of the ontology, e.g. "Gene Ontology"',
@@ -1243,7 +1239,7 @@ async function fetchValidDescendantTerms(parentFeature, ontologyStore, _signal) 
     return subpartTerms;
 }
 
-const useStyles$g = tssReact.makeStyles()((theme) => ({
+const useStyles$g = makeStyles()((theme) => ({
     dialogTitle: {
         background: theme.palette.primary.main,
         color: theme.palette.primary.contrastText,
@@ -1256,27 +1252,27 @@ const useStyles$g = tssReact.makeStyles()((theme) => ({
         color: theme.palette.primary.contrastText,
     },
 }));
-const Dialog = mobxReact.observer(function JBrowseDialog(props) {
+const Dialog = observer(function JBrowseDialog(props) {
     const { classes } = useStyles$g();
     const { handleClose, title, ...other } = props;
-    return (jsxRuntime.jsx(ui.Dialog, { ...other, header: jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.DialogTitle, { className: classes.dialogTitle, children: title }), jsxRuntime.jsx(material.IconButton, { "aria-label": "close", onClick: handleClose, className: classes.closeButton, children: jsxRuntime.jsx(CloseIcon, {}) })] }) }));
+    return (jsx(Dialog$1, { ...other, header: jsxs(Fragment, { children: [jsx(DialogTitle, { className: classes.dialogTitle, children: title }), jsx(IconButton, { "aria-label": "close", onClick: handleClose, className: classes.closeButton, children: jsx(CloseIcon, {}) })] }) }));
 });
 
 function OntologyTermAutocomplete({ fetchValidTerms, filterTerms: filterTermsProp, includeDeprecated, onChange, ontologyName, ontologyVersion, renderInput, session, style, value: valueString, }) {
-    const [open, setOpen] = React.useState(false);
-    const [termChoices, setTermChoices] = React.useState();
-    const [currentOntologyTermInvalid, setCurrentOntologyTermInvalid] = React.useState('');
-    const [currentOntologyTerm, setCurrentOntologyTerm] = React.useState();
+    const [open, setOpen] = useState(false);
+    const [termChoices, setTermChoices] = useState();
+    const [currentOntologyTermInvalid, setCurrentOntologyTermInvalid] = useState('');
+    const [currentOntologyTerm, setCurrentOntologyTerm] = useState();
     const { ontologyManager } = session.apolloDataStore;
     const ontologyStore = ontologyManager.findOntology(ontologyName, ontologyVersion)?.dataStore;
     const needToLoadTermChoices = ontologyStore && open && !termChoices;
     const needToLoadCurrentTerm = ontologyStore && !currentOntologyTerm;
-    const filterTerms = React.useCallback((term) => 
+    const filterTerms = useCallback((term) => 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (includeDeprecated || !isDeprecated(term)) &&
         (!filterTermsProp || filterTermsProp(term)), [filterTermsProp, includeDeprecated]);
     // effect for matching the current value with an ontology term
-    React.useEffect(() => {
+    useEffect(() => {
         const controller = new AbortController();
         const { signal } = controller;
         if (needToLoadCurrentTerm) {
@@ -1286,7 +1282,7 @@ function OntologyTermAutocomplete({ fetchValidTerms, filterTerms: filterTermsPro
                     setCurrentOntologyTerm(term);
                 }
             }, (error) => {
-                if (!signal.aborted && !aborting.isAbortException(error)) {
+                if (!signal.aborted && !isAbortException(error)) {
                     setCurrentOntologyTermInvalid(String(error));
                 }
             });
@@ -1296,7 +1292,7 @@ function OntologyTermAutocomplete({ fetchValidTerms, filterTerms: filterTermsPro
         };
     }, [session, valueString, filterTerms, ontologyStore, needToLoadCurrentTerm]);
     // effect for loading term autocompletions
-    React.useEffect(() => {
+    useEffect(() => {
         const controller = new AbortController();
         const { signal } = controller;
         if (needToLoadTermChoices) {
@@ -1305,7 +1301,7 @@ function OntologyTermAutocomplete({ fetchValidTerms, filterTerms: filterTermsPro
                     setTermChoices(soTerms);
                 }
             }, (error) => {
-                if (!signal.aborted && !aborting.isAbortException(error)) {
+                if (!signal.aborted && !isAbortException(error)) {
                     session.notify(error instanceof Error ? error.message : String(error), 'error');
                 }
             });
@@ -1339,14 +1335,14 @@ function OntologyTermAutocomplete({ fetchValidTerms, filterTerms: filterTermsPro
         extraTextFieldParams.error = true;
         extraTextFieldParams.helperText = currentOntologyTermInvalid;
     }
-    return (jsxRuntime.jsx(material.Autocomplete, { style: style, autoComplete: true, filterSelectedOptions: true, disableClearable: true, selectOnFocus: true, clearOnBlur: true, handleHomeEndKeys: true, freeSolo: true, value: valueString, options: termChoices ?? [], onOpen: () => {
+    return (jsx(Autocomplete, { style: style, autoComplete: true, filterSelectedOptions: true, disableClearable: true, selectOnFocus: true, clearOnBlur: true, handleHomeEndKeys: true, freeSolo: true, value: valueString, options: termChoices ?? [], onOpen: () => {
             setOpen(true);
         }, onClose: () => {
             setOpen(false);
         }, 
         // noOptionsText={valueString ? 'No matches' : 'Start typing to search'}
         loading: needToLoadTermChoices, renderInput: renderInput ??
-            ((params) => jsxRuntime.jsx(material.TextField, { ...params, ...extraTextFieldParams })), getOptionLabel: (option) => {
+            ((params) => jsx(TextField, { ...params, ...extraTextFieldParams })), getOptionLabel: (option) => {
             if (typeof option === 'string') {
                 return option;
             }
@@ -1378,11 +1374,11 @@ async function getValidTerms(ontologyStore, fetchValidTerms, filterTerms, signal
 }
 
 function AddChildFeature({ changeManager, handleClose, session, sourceAssemblyId, sourceFeature, }) {
-    const [end, setEnd] = React.useState(String(sourceFeature.max));
-    const [start, setStart] = React.useState(String(sourceFeature.min + 1));
-    const [type, setType] = React.useState('');
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [typeWarningText, setTypeWarningText] = React.useState('');
+    const [end, setEnd] = useState(String(sourceFeature.max));
+    const [start, setStart] = useState(String(sourceFeature.min + 1));
+    const [type, setType] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [typeWarningText, setTypeWarningText] = useState('');
     async function fetchValidTerms(parentFeature, ontologyStore, _signal) {
         const terms = await fetchValidDescendantTerms(parentFeature, ontologyStore);
         if (!terms) {
@@ -1405,7 +1401,7 @@ function AddChildFeature({ changeManager, handleClose, session, sourceAssemblyId
         if (sourceFeature.strand) {
             addedFeature.strand = sourceFeature.strand;
         }
-        const change = new shared.AddFeatureChange({
+        const change = new AddFeatureChange({
             changedIds: [sourceFeature._id],
             typeName: 'AddFeatureChange',
             assembly: sourceAssemblyId,
@@ -1423,15 +1419,15 @@ function AddChildFeature({ changeManager, handleClose, session, sourceAssemblyId
         setType(newType);
     }
     const error = Number(end) <= Number(start);
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Add new child feature", handleClose: handleClose, maxWidth: false, "data-testid": "add-feature-dialog", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsx(material.TextField, { margin: "dense", id: "start", label: "Start", type: "number", fullWidth: true, variant: "outlined", value: start, onChange: (e) => {
+    return (jsxs(Dialog, { open: true, title: "Add new child feature", handleClose: handleClose, maxWidth: false, "data-testid": "add-feature-dialog", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsx(TextField, { margin: "dense", id: "start", label: "Start", type: "number", fullWidth: true, variant: "outlined", value: start, onChange: (e) => {
                                     setStart(e.target.value);
-                                } }), jsxRuntime.jsx(material.TextField, { margin: "dense", id: "end", label: "End", type: "number", fullWidth: true, variant: "outlined", value: end, onChange: (e) => {
+                                } }), jsx(TextField, { margin: "dense", id: "end", label: "End", type: "number", fullWidth: true, variant: "outlined", value: end, onChange: (e) => {
                                     setEnd(e.target.value);
-                                }, error: error, helperText: error ? '"End" must be greater than "Start"' : null }), jsxRuntime.jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: 170 }, value: type, filterTerms: isOntologyClass, fetchValidTerms: fetchValidTerms.bind(null, sourceFeature), renderInput: (params) => (jsxRuntime.jsx(material.TextField, { ...params, label: "Type", variant: "outlined", fullWidth: true, error: Boolean(typeWarningText), helperText: typeWarningText })), onChange: (oldValue, newValue) => {
+                                }, error: error, helperText: error ? '"End" must be greater than "Start"' : null }), jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: 170 }, value: type, filterTerms: isOntologyClass, fetchValidTerms: fetchValidTerms.bind(null, sourceFeature), renderInput: (params) => (jsx(TextField, { ...params, label: "Type", variant: "outlined", fullWidth: true, error: Boolean(typeWarningText), helperText: typeWarningText })), onChange: (oldValue, newValue) => {
                                     if (newValue) {
                                         handleChangeType(newValue);
                                     }
-                                } })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: error || !(start && end && type), children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                } })] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: error || !(start && end && type), children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 const PRESET_COLORS = [
@@ -1445,7 +1441,7 @@ const PRESET_COLORS = [
 ];
 function ColorFeature({ changeManager, handleClose, sourceAssemblyId, sourceFeature, }) {
     const existingColor = sourceFeature.attributes.get('apollo_color')?.[0];
-    const [color, setColor] = React.useState(existingColor ?? PRESET_COLORS[0]);
+    const [color, setColor] = useState(existingColor ?? PRESET_COLORS[0]);
     async function onSubmit(event) {
         event.preventDefault();
         const currentColor = sourceFeature.attributes.get('apollo_color')?.[0];
@@ -1453,9 +1449,9 @@ function ColorFeature({ changeManager, handleClose, sourceAssemblyId, sourceFeat
             handleClose();
             return;
         }
-        const oldAttributes = mobxStateTree.getSnapshot(sourceFeature.attributes);
+        const oldAttributes = getSnapshot(sourceFeature.attributes);
         const newAttributes = { ...oldAttributes, apollo_color: [color] };
-        const change = new shared.FeatureAttributeChange({
+        const change = new FeatureAttributeChange({
             changedIds: [sourceFeature._id],
             typeName: 'FeatureAttributeChange',
             assembly: sourceAssemblyId,
@@ -1467,9 +1463,9 @@ function ColorFeature({ changeManager, handleClose, sourceAssemblyId, sourceFeat
         handleClose();
     }
     async function onRemove() {
-        const oldAttributes = mobxStateTree.getSnapshot(sourceFeature.attributes);
+        const oldAttributes = getSnapshot(sourceFeature.attributes);
         const { apollo_color: _removed, ...newAttributes } = oldAttributes;
-        const change = new shared.FeatureAttributeChange({
+        const change = new FeatureAttributeChange({
             changedIds: [sourceFeature._id],
             typeName: 'FeatureAttributeChange',
             assembly: sourceAssemblyId,
@@ -1480,11 +1476,11 @@ function ColorFeature({ changeManager, handleClose, sourceAssemblyId, sourceFeat
         await changeManager.submit(change);
         handleClose();
     }
-    return (jsxRuntime.jsx(Dialog, { open: true, title: "Color feature", handleClose: handleClose, maxWidth: false, "data-testid": "color-feature", children: jsxRuntime.jsxs("form", { onSubmit: (event) => {
+    return (jsx(Dialog, { open: true, title: "Color feature", handleClose: handleClose, maxWidth: false, "data-testid": "color-feature", children: jsxs("form", { onSubmit: (event) => {
                 void onSubmit(event);
-            }, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsx(material.DialogContentText, { children: "Choose a color for this feature." }), jsxRuntime.jsx("div", { style: { display: 'flex', gap: 8, marginTop: 8 }, children: PRESET_COLORS.map((preset) => {
+            }, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsx(DialogContentText, { children: "Choose a color for this feature." }), jsx("div", { style: { display: 'flex', gap: 8, marginTop: 8 }, children: PRESET_COLORS.map((preset) => {
                                 const selected = color.toLowerCase() === preset;
-                                return (jsxRuntime.jsx("button", { type: "button", "aria-label": preset, "aria-pressed": selected, onClick: () => {
+                                return (jsx("button", { type: "button", "aria-label": preset, "aria-pressed": selected, onClick: () => {
                                         setColor(preset);
                                     }, style: {
                                         width: 32,
@@ -1497,16 +1493,16 @@ function ColorFeature({ changeManager, handleClose, sourceAssemblyId, sourceFeat
                                         backgroundColor: preset,
                                         cursor: 'pointer',
                                     } }, preset));
-                            }) }), jsxRuntime.jsxs("div", { style: {
+                            }) }), jsxs("div", { style: {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 8,
                                 marginTop: 16,
-                            }, children: [jsxRuntime.jsx("label", { htmlFor: "color-feature-custom", children: "Custom:" }), jsxRuntime.jsx("input", { id: "color-feature-custom", type: "color", value: color, onChange: (event) => {
+                            }, children: [jsx("label", { htmlFor: "color-feature-custom", children: "Custom:" }), jsx("input", { id: "color-feature-custom", type: "color", value: color, onChange: (event) => {
                                         setColor(event.target.value);
-                                    } })] })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", color: "error", type: "button", disabled: existingColor === undefined, onClick: () => {
+                                    } })] })] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", children: "Submit" }), jsx(Button, { variant: "outlined", color: "error", type: "button", disabled: existingColor === undefined, onClick: () => {
                                 void onRemove();
-                            }, children: "Remove color" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "button", onClick: handleClose, children: "Cancel" })] })] }) }));
+                            }, children: "Remove color" }), jsx(Button, { variant: "outlined", type: "button", onClick: handleClose, children: "Cancel" })] })] }) }));
 }
 
 /**
@@ -1539,15 +1535,15 @@ feature, featureIds) {
 function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, sourceFeature, }) {
     const { assemblyManager } = session;
     const assemblies = assemblyManager.assemblyList;
-    const [selectedAssemblyId, setSelectedAssemblyId] = React.useState(assemblies.find((a) => a.name !== sourceAssemblyId)?.name);
-    const [refNames, setRefNames] = React.useState([]);
-    const [selectedRefSeqId, setSelectedRefSeqId] = React.useState('');
-    const [start, setStart] = React.useState(sourceFeature.min);
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [selectedAssemblyId, setSelectedAssemblyId] = useState(assemblies.find((a) => a.name !== sourceAssemblyId)?.name);
+    const [refNames, setRefNames] = useState([]);
+    const [selectedRefSeqId, setSelectedRefSeqId] = useState('');
+    const [start, setStart] = useState(sourceFeature.min);
+    const [errorMessage, setErrorMessage] = useState('');
     function handleChangeAssembly(e) {
         setSelectedAssemblyId(e.target.value);
     }
-    React.useEffect(() => {
+    useEffect(() => {
         async function getRefNames() {
             setSelectedRefSeqId('');
             if (!selectedAssemblyId) {
@@ -1605,7 +1601,7 @@ function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, so
         }
         const featureIds = [];
         // Let's add featureId to each child recursively
-        const newFeatureLine = generateNewIds(mobxStateTree.getSnapshot(sourceFeature), featureIds);
+        const newFeatureLine = generateNewIds(getSnapshot(sourceFeature), featureIds);
         // Clear possible parentId -attribute.
         const attributeMap = {
             ...newFeatureLine.attributes,
@@ -1619,7 +1615,7 @@ function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, so
         newFeatureLine.max = start + featureLength;
         // Updates children start and end values
         const updatedChildren = updateRefSeqStartEnd(newFeatureLine, locationMove);
-        const change = new shared.AddFeatureChange({
+        const change = new AddFeatureChange({
             changedIds: [newFeatureLine._id],
             typeName: 'AddFeatureChange',
             assembly: selectedAssemblyId,
@@ -1672,24 +1668,24 @@ function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, so
             _id: id,
         };
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Copy features and annotations", handleClose: handleClose, maxWidth: false, "data-testid": "copy-feature", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsx(material.DialogContentText, { children: "Target assembly" }), jsxRuntime.jsx(material.Select, { labelId: "label", value: selectedAssemblyId, onChange: handleChangeAssembly, children: assemblies
+    return (jsxs(Dialog, { open: true, title: "Copy features and annotations", handleClose: handleClose, maxWidth: false, "data-testid": "copy-feature", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsx(DialogContentText, { children: "Target assembly" }), jsx(Select, { labelId: "label", value: selectedAssemblyId, onChange: handleChangeAssembly, children: assemblies
                                     .filter((option) => option.name !== sourceAssemblyId)
-                                    .map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.name, children: configuration.readConfObject(option, 'displayName') }, option.name))) }), jsxRuntime.jsx(material.DialogContentText, { children: "Target reference sequence" }), jsxRuntime.jsx(material.Select, { labelId: "label", value: selectedRefSeqId, onChange: handleChangeRefSeq, children: refNames.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option._id, children: option.name }, option._id))) }), jsxRuntime.jsx(material.DialogContentText, { children: "Start position in target reference sequence" }), jsxRuntime.jsx(material.TextField, { margin: "dense", type: "number", fullWidth: true, variant: "outlined", value: start, onChange: (e) => {
+                                    .map((option) => (jsx(MenuItem, { value: option.name, children: readConfObject(option, 'displayName') }, option.name))) }), jsx(DialogContentText, { children: "Target reference sequence" }), jsx(Select, { labelId: "label", value: selectedRefSeqId, onChange: handleChangeRefSeq, children: refNames.map((option) => (jsx(MenuItem, { value: option._id, children: option.name }, option._id))) }), jsx(DialogContentText, { children: "Start position in target reference sequence" }), jsx(TextField, { margin: "dense", type: "number", fullWidth: true, variant: "outlined", value: start, onChange: (e) => {
                                     setStart(Number(e.target.value));
-                                } })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { disabled: !selectedAssemblyId || !selectedRefSeqId || !start, variant: "contained", type: "submit", children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                } })] }), jsxs(DialogActions, { children: [jsx(Button, { disabled: !selectedAssemblyId || !selectedRefSeqId || !start, variant: "contained", type: "submit", children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function lumpLocationChanges(changes, assembly) {
     if (changes.length === 0) {
         return;
     }
-    const locationStartChange = new shared.LocationStartChange({
+    const locationStartChange = new LocationStartChange({
         typeName: 'LocationStartChange',
         changedIds: [],
         changes: [],
         assembly,
     });
-    const locationEndChange = new shared.LocationEndChange({
+    const locationEndChange = new LocationEndChange({
         typeName: 'LocationEndChange',
         changedIds: [],
         changes: [],
@@ -1726,7 +1722,7 @@ function lumpLocationChanges(changes, assembly) {
     throw new Error('Unexpected list of changes');
 }
 function DeleteFeature({ changeManager, handleClose, selectedFeature, session, setSelectedFeature, sourceAssemblyId, sourceFeature, }) {
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const { ontologyManager } = session.apolloDataStore;
     const { featureTypeOntology } = ontologyManager;
     function trimCDS(sourceFeature) {
@@ -1772,13 +1768,13 @@ function DeleteFeature({ changeManager, handleClose, selectedFeature, session, s
         }
         if (sourceFeature.min <= cdsStart && sourceFeature.max >= cdsEnd) {
             // CDS is fully contained in the exon, delete CDS
-            return new shared.DeleteFeatureChange({
+            return new DeleteFeatureChange({
                 changedIds: [cdsFeature._id],
                 typeName: 'DeleteFeatureChange',
                 assembly: sourceAssemblyId,
                 changes: [
                     {
-                        deletedFeature: mobxStateTree.getSnapshot(cdsFeature),
+                        deletedFeature: getSnapshot(cdsFeature),
                         parentFeatureId: cdsFeature.parent?._id,
                     },
                 ],
@@ -1902,13 +1898,13 @@ function DeleteFeature({ changeManager, handleClose, selectedFeature, session, s
         }
         const locationChanges = [];
         // const deleteChanges: DeleteFeatureChange = []
-        const deleteChanges = new shared.DeleteFeatureChange({
+        const deleteChanges = new DeleteFeatureChange({
             changedIds: [sourceFeature._id],
             typeName: 'DeleteFeatureChange',
             assembly: sourceAssemblyId,
             changes: [
                 {
-                    deletedFeature: mobxStateTree.getSnapshot(sourceFeature),
+                    deletedFeature: getSnapshot(sourceFeature),
                     parentFeatureId: sourceFeature.parent?._id,
                 },
             ],
@@ -1985,9 +1981,9 @@ function DeleteFeature({ changeManager, handleClose, selectedFeature, session, s
         handleClose();
         event.preventDefault();
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Delete feature", handleClose: handleClose, maxWidth: false, "data-testid": "delete-feature", children: [jsxRuntime.jsxs("form", { onSubmit: (event) => {
+    return (jsxs(Dialog, { open: true, title: "Delete feature", handleClose: handleClose, maxWidth: false, "data-testid": "delete-feature", children: [jsxs("form", { onSubmit: (event) => {
                     void onSubmit(event);
-                }, children: [jsxRuntime.jsx(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsxRuntime.jsx(material.DialogContentText, { children: "Are you sure you want to delete the selected feature?" }) }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", children: "Yes" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                }, children: [jsx(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsx(DialogContentText, { children: "Are you sure you want to delete the selected feature?" }) }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", children: "Yes" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function selectFeatureAndOpenWidget(stateModel, feature) {
@@ -2281,7 +2277,7 @@ function getContextMenuItemsForFeature(display, sourceFeature) {
             ]);
         },
     });
-    if (util.isSessionModelWithWidgets(session)) {
+    if (isSessionModelWithWidgets(session)) {
         menuItems.push({
             label: 'Open feature details',
             onClick: () => {
@@ -2397,7 +2393,7 @@ async function createFetchErrorMessage(response, additionalText) {
 }
 /** given a session, get our ApolloInternetAccount */
 function getApolloInternetAccount(session) {
-    const { internetAccounts } = mobxStateTree.getParent(session);
+    const { internetAccounts } = getParent(session);
     return internetAccounts.find((ia) => ia.type === 'ApolloInternetAccount');
 }
 
@@ -2410,7 +2406,7 @@ var FileType;
     FileType["GZI"] = "application/x-gzi";
     FileType["EXTERNAL"] = "text/x-external";
 })(FileType || (FileType = {}));
-const useStyles$f = tssReact.makeStyles()((theme) => ({
+const useStyles$f = makeStyles()((theme) => ({
     accordion: {
         border: `1px solid ${theme.palette.divider}`,
         '&:not(:last-child)': {
@@ -2453,32 +2449,32 @@ function checkSumbission(validAsm, sequenceIsEditable, fileType, fastaFile, fast
 }
 function AddAssembly({ changeManager, handleClose, session, }) {
     const { classes } = useStyles$f();
-    const { internetAccounts } = mobxStateTree.getRoot(session);
+    const { internetAccounts } = getRoot(session);
     const { notify } = session;
     const apolloInternetAccounts = internetAccounts.filter((ia) => ia.type === 'ApolloInternetAccount');
     if (apolloInternetAccounts.length === 0) {
         throw new Error('No Apollo internet account found');
     }
-    const [assemblyName, setAssemblyName] = React.useState('');
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [validAsm, setValidAsm] = React.useState(false);
-    const [fileType, setFileType] = React.useState(FileType.BGZIP_FASTA);
-    const [importFeatures, setImportFeatures] = React.useState(true);
-    const [sequenceIsEditable, setSequenceIsEditable] = React.useState(false);
-    const [submitted, setSubmitted] = React.useState(false);
-    const [strict, setStrict] = React.useState(true);
-    const [fastaFile, setFastaFile] = React.useState(null);
-    const [fastaIndexFile, setFastaIndexFile] = React.useState(null);
-    const [fastaGziIndexFile, setFastaGziIndexFile] = React.useState(null);
-    const [fastaUrl, setFastaUrl] = React.useState('');
-    const [fastaIndexUrl, setFastaIndexUrl] = React.useState('');
-    const [fastaGziIndexUrl, setFastaGziIndexUrl] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
-    const [fastaGzipChecked, setFastaGzipChecked] = React.useState(false);
-    const [gff3GzipChecked, setGff3GzipChecked] = React.useState(false);
+    const [assemblyName, setAssemblyName] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [validAsm, setValidAsm] = useState(false);
+    const [fileType, setFileType] = useState(FileType.BGZIP_FASTA);
+    const [importFeatures, setImportFeatures] = useState(true);
+    const [sequenceIsEditable, setSequenceIsEditable] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [strict, setStrict] = useState(true);
+    const [fastaFile, setFastaFile] = useState(null);
+    const [fastaIndexFile, setFastaIndexFile] = useState(null);
+    const [fastaGziIndexFile, setFastaGziIndexFile] = useState(null);
+    const [fastaUrl, setFastaUrl] = useState('');
+    const [fastaIndexUrl, setFastaIndexUrl] = useState('');
+    const [fastaGziIndexUrl, setFastaGziIndexUrl] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [fastaGzipChecked, setFastaGzipChecked] = useState(false);
+    const [gff3GzipChecked, setGff3GzipChecked] = useState(false);
     function checkAssemblyName(assembly) {
         const { assemblies } = session;
-        const checkAsm = assemblies.find((asm) => configuration.readConfObject(asm, 'displayName') === assembly);
+        const checkAsm = assemblies.find((asm) => readConfObject(asm, 'displayName') === assembly);
         if (checkAsm) {
             setValidAsm(false);
             setErrorMessage(`Assembly ${assembly} already exists.`);
@@ -2551,7 +2547,7 @@ function AddAssembly({ changeManager, handleClose, session, }) {
         event.preventDefault();
         let change;
         if (fileType === FileType.EXTERNAL) {
-            change = new shared.AddAssemblyFromExternalChange({
+            change = new AddAssemblyFromExternalChange({
                 typeName: 'AddAssemblyFromExternalChange',
                 assembly: new ObjectID().toHexString(),
                 assemblyName,
@@ -2568,7 +2564,7 @@ function AddAssembly({ changeManager, handleClose, session, }) {
             }
             if (fileType === FileType.GFF3 && importFeatures) {
                 const faId = await uploadFile(fastaFile, FileType.GFF3);
-                change = new shared.AddAssemblyAndFeaturesFromFileChange({
+                change = new AddAssemblyAndFeaturesFromFileChange({
                     typeName: 'AddAssemblyAndFeaturesFromFileChange',
                     assembly: new ObjectID().toHexString(),
                     assemblyName,
@@ -2578,7 +2574,7 @@ function AddAssembly({ changeManager, handleClose, session, }) {
             }
             else if (fileType === FileType.GFF3) {
                 const faId = await uploadFile(fastaFile, FileType.GFF3);
-                change = new shared.AddAssemblyFromFileChange({
+                change = new AddAssemblyFromFileChange({
                     typeName: 'AddAssemblyFromFileChange',
                     assembly: new ObjectID().toHexString(),
                     assemblyName,
@@ -2589,7 +2585,7 @@ function AddAssembly({ changeManager, handleClose, session, }) {
             }
             else if (sequenceIsEditable) {
                 const faId = await uploadFile(fastaFile, FileType.FASTA);
-                change = new shared.AddAssemblyFromFileChange({
+                change = new AddAssemblyFromFileChange({
                     typeName: 'AddAssemblyFromFileChange',
                     assembly: new ObjectID().toHexString(),
                     assemblyName,
@@ -2605,7 +2601,7 @@ function AddAssembly({ changeManager, handleClose, session, }) {
                 const faId = await uploadFile(fastaFile, FileType.BGZIP_FASTA);
                 const faiId = await uploadFile(fastaIndexFile, FileType.FAI);
                 const gziId = await uploadFile(fastaGziIndexFile, FileType.GZI);
-                change = new shared.AddAssemblyFromFileChange({
+                change = new AddAssemblyFromFileChange({
                     typeName: 'AddAssemblyFromFileChange',
                     assembly: new ObjectID().toHexString(),
                     assemblyName,
@@ -2661,20 +2657,20 @@ function AddAssembly({ changeManager, handleClose, session, }) {
             setExpanded(panel);
         }
     };
-    return (jsxRuntime.jsxs(Dialog, { open: true, handleClose: handleClose, "data-testid": "add-assembly-dialog", title: "Add new assembly", maxWidth: false, children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, "data-testid": "submit-form", children: [jsxRuntime.jsxs(material.DialogContent, { className: classes.dialog, children: [loading ? jsxRuntime.jsx(material.LinearProgress, {}) : null, jsxRuntime.jsx(material.TextField, { margin: "dense", id: "name", label: "Assembly name", type: "TextField", fullWidth: true, variant: "outlined", onChange: (e) => {
+    return (jsxs(Dialog, { open: true, handleClose: handleClose, "data-testid": "add-assembly-dialog", title: "Add new assembly", maxWidth: false, children: [jsxs("form", { onSubmit: onSubmit, "data-testid": "submit-form", children: [jsxs(DialogContent, { className: classes.dialog, children: [loading ? jsx(LinearProgress, {}) : null, jsx(TextField, { margin: "dense", id: "name", label: "Assembly name", type: "TextField", fullWidth: true, variant: "outlined", onChange: (e) => {
                                     setSubmitted(false);
                                     setAssemblyName(e.target.value);
                                     checkAssemblyName(e.target.value);
-                                }, disabled: submitted && !errorMessage }), jsxRuntime.jsxs(material.Accordion, { disableGutters: true, elevation: 0, square: true, className: classes.accordion, expanded: expanded === 'panelFastaInput', onChange: handleAccordionChange('panelFastaInput'), children: [jsxRuntime.jsx(material.AccordionSummary, { className: classes.accordionSummary, expandIcon: expanded === 'panelFastaInput' ? (jsxRuntime.jsx(RadioButtonCheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', ml: 5 } })) : (jsxRuntime.jsx(RadioButtonUncheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', mr: 5 } })), "aria-controls": "panelFastaInputd-content", id: "panelFastaInputd-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "FASTA input" }) }), jsxRuntime.jsx(material.AccordionDetails, { className: classes.accordionDetails, children: jsxRuntime.jsxs(material.FormGroup, { children: [jsxRuntime.jsx(material.FormControlLabel, { "data-testid": "files-on-url-checkbox", control: jsxRuntime.jsx(material.Checkbox, { onChange: () => {
+                                }, disabled: submitted && !errorMessage }), jsxs(Accordion, { disableGutters: true, elevation: 0, square: true, className: classes.accordion, expanded: expanded === 'panelFastaInput', onChange: handleAccordionChange('panelFastaInput'), children: [jsx(AccordionSummary, { className: classes.accordionSummary, expandIcon: expanded === 'panelFastaInput' ? (jsx(RadioButtonCheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', ml: 5 } })) : (jsx(RadioButtonUncheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', mr: 5 } })), "aria-controls": "panelFastaInputd-content", id: "panelFastaInputd-header", children: jsx(Typography, { component: "span", children: "FASTA input" }) }), jsx(AccordionDetails, { className: classes.accordionDetails, children: jsxs(FormGroup, { children: [jsx(FormControlLabel, { "data-testid": "files-on-url-checkbox", control: jsx(Checkbox, { onChange: () => {
                                                             setFileType(fileType === FileType.EXTERNAL
                                                                 ? FileType.BGZIP_FASTA
                                                                 : FileType.EXTERNAL);
                                                             if (fileType === FileType.EXTERNAL) {
                                                                 setSequenceIsEditable(false);
                                                             }
-                                                        }, checked: fileType === FileType.EXTERNAL, disabled: sequenceIsEditable && fileType !== FileType.GFF3 }), label: jsxRuntime.jsxs(material.Box, { display: "flex", alignItems: "center", children: ["Use external URLs", jsxRuntime.jsx(material.Tooltip, { title: "Use external URLs to provide FASTA and index files. Does not copy the files to the Apollo collaboration server, so ensure the URLs are stable.", placement: "top-start", children: jsxRuntime.jsx(material.IconButton, { size: "small", children: jsxRuntime.jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsxRuntime.jsx(material.FormControlLabel, { "data-testid": "sequence-is-editable-checkbox", control: jsxRuntime.jsx(material.Checkbox, { onChange: () => {
+                                                        }, checked: fileType === FileType.EXTERNAL, disabled: sequenceIsEditable && fileType !== FileType.GFF3 }), label: jsxs(Box, { display: "flex", alignItems: "center", children: ["Use external URLs", jsx(Tooltip$1, { title: "Use external URLs to provide FASTA and index files. Does not copy the files to the Apollo collaboration server, so ensure the URLs are stable.", placement: "top-start", children: jsx(IconButton, { size: "small", children: jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsx(FormControlLabel, { "data-testid": "sequence-is-editable-checkbox", control: jsx(Checkbox, { onChange: () => {
                                                             setSequenceIsEditable(!sequenceIsEditable);
-                                                        } }), checked: sequenceIsEditable, disabled: fileType === FileType.EXTERNAL, label: jsxRuntime.jsxs(material.Box, { display: "flex", alignItems: "center", children: ["Store sequence in database", jsxRuntime.jsx(material.Tooltip, { title: "Enables users to edit the genomic sequence, but comes with performance impacts. Use with care.", placement: "top-start", children: jsxRuntime.jsx(material.IconButton, { size: "small", children: jsxRuntime.jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsxRuntime.jsx(material.FormControlLabel, { "data-testid": "fasta-is-gzip-checkbox", control: jsxRuntime.jsx(material.Checkbox, { checked: !sequenceIsEditable || fastaGzipChecked, onChange: () => {
+                                                        } }), checked: sequenceIsEditable, disabled: fileType === FileType.EXTERNAL, label: jsxs(Box, { display: "flex", alignItems: "center", children: ["Store sequence in database", jsx(Tooltip$1, { title: "Enables users to edit the genomic sequence, but comes with performance impacts. Use with care.", placement: "top-start", children: jsx(IconButton, { size: "small", children: jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsx(FormControlLabel, { "data-testid": "fasta-is-gzip-checkbox", control: jsx(Checkbox, { checked: !sequenceIsEditable || fastaGzipChecked, onChange: () => {
                                                             if (sequenceIsEditable) {
                                                                 setFastaGzipChecked(!fastaGzipChecked);
                                                             }
@@ -2682,7 +2678,7 @@ function AddAssembly({ changeManager, handleClose, session, }) {
                                                                 setFastaGzipChecked(true);
                                                             }
                                                         }, disabled: !sequenceIsEditable }), label: "FASTA is gzip compressed" }), fileType === FileType.BGZIP_FASTA ||
-                                                    fileType === FileType.GFF3 ? (jsxRuntime.jsx(material.Table, { size: "small", sx: { mt: 2 }, children: jsxRuntime.jsxs(material.TableBody, { children: [jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsxs(material.Box, { display: "flex", alignItems: "center", children: [jsxRuntime.jsx("span", { children: "FASTA" }), jsxRuntime.jsx(material.Tooltip, { title: 'Unless "Store sequence in database" enabled, FASTA input must be compressed with bgzip and indexed with samtools faidx (or equivalent). Compression is optional for sequences stored in the database.', children: jsxRuntime.jsx(material.IconButton, { size: "small", children: jsxRuntime.jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsx("input", { "data-testid": "fasta-input-file", type: "file", onChange: (e) => {
+                                                    fileType === FileType.GFF3 ? (jsx(Table, { size: "small", sx: { mt: 2 }, children: jsxs(TableBody, { children: [jsxs(TableRow, { children: [jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsxs(Box, { display: "flex", alignItems: "center", children: [jsx("span", { children: "FASTA" }), jsx(Tooltip$1, { title: 'Unless "Store sequence in database" enabled, FASTA input must be compressed with bgzip and indexed with samtools faidx (or equivalent). Compression is optional for sequences stored in the database.', children: jsx(IconButton, { size: "small", children: jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsx("input", { "data-testid": "fasta-input-file", type: "file", onChange: (e) => {
                                                                                 const file = e.target.files?.item(0);
                                                                                 if (file) {
                                                                                     setFastaFile(file);
@@ -2690,32 +2686,32 @@ function AddAssembly({ changeManager, handleClose, session, }) {
                                                                                         setFastaGzipChecked(true);
                                                                                     }
                                                                                 }
-                                                                            }, disabled: submitted && !errorMessage }) })] }), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA index (.fai)" }), jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsx("input", { "data-testid": "fai-input-file", type: "file", onChange: (e) => {
+                                                                            }, disabled: submitted && !errorMessage }) })] }), jsxs(TableRow, { children: [jsx(TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA index (.fai)" }), jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsx("input", { "data-testid": "fai-input-file", type: "file", onChange: (e) => {
                                                                                 setFastaIndexFile(e.target.files?.item(0) ?? null);
-                                                                            }, disabled: (submitted && !errorMessage) || sequenceIsEditable }) })] }), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA binary index (.gzi)" }), jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsx("input", { "data-testid": "gzi-input-file", type: "file", onChange: (e) => {
+                                                                            }, disabled: (submitted && !errorMessage) || sequenceIsEditable }) })] }), jsxs(TableRow, { children: [jsx(TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA binary index (.gzi)" }), jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsx("input", { "data-testid": "gzi-input-file", type: "file", onChange: (e) => {
                                                                                 setFastaGziIndexFile(e.target.files?.item(0) ?? null);
-                                                                            }, disabled: (submitted && !errorMessage) || sequenceIsEditable }) })] })] }) })) : (jsxRuntime.jsx(material.Table, { size: "small", sx: { mt: 2 }, children: jsxRuntime.jsxs(material.TableBody, { children: [jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsxs(material.Box, { display: "flex", alignItems: "center", children: [jsxRuntime.jsx("span", { children: "FASTA" }), jsxRuntime.jsx(material.Tooltip, { title: "Remote FASTA input must be compressed with bgzip and indexed with samtools faidx (or equivalent)", children: jsxRuntime.jsx(material.IconButton, { size: "small", children: jsxRuntime.jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsx(material.TextField, { "data-testid": "fasta-input-url", variant: "outlined", value: fastaUrl, error: !validFastaUrl, onChange: (e) => {
+                                                                            }, disabled: (submitted && !errorMessage) || sequenceIsEditable }) })] })] }) })) : (jsx(Table, { size: "small", sx: { mt: 2 }, children: jsxs(TableBody, { children: [jsxs(TableRow, { children: [jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsxs(Box, { display: "flex", alignItems: "center", children: [jsx("span", { children: "FASTA" }), jsx(Tooltip$1, { title: "Remote FASTA input must be compressed with bgzip and indexed with samtools faidx (or equivalent)", children: jsx(IconButton, { size: "small", children: jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsx(TextField, { "data-testid": "fasta-input-url", variant: "outlined", value: fastaUrl, error: !validFastaUrl, onChange: (e) => {
                                                                                 const { value } = e.target;
                                                                                 setFastaUrl(value);
                                                                                 setFastaIndexUrl(value ? `${value}.fai` : '');
                                                                                 setFastaGziIndexUrl(value ? `${value}.gzi` : '');
                                                                             }, disabled: submitted && !errorMessage, slotProps: {
                                                                                 input: {
-                                                                                    startAdornment: (jsxRuntime.jsx(material.InputAdornment, { position: "start", children: jsxRuntime.jsx(LinkIcon, {}) })),
+                                                                                    startAdornment: (jsx(InputAdornment, { position: "start", children: jsx(LinkIcon, {}) })),
                                                                                 },
-                                                                            } }) })] }), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA index (.fai)" }), jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsx(material.TextField, { "data-testid": "fai-input-url", variant: "outlined", value: fastaIndexUrl, error: !validFastaIndexUrl, onChange: (e) => {
+                                                                            } }) })] }), jsxs(TableRow, { children: [jsx(TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA index (.fai)" }), jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsx(TextField, { "data-testid": "fai-input-url", variant: "outlined", value: fastaIndexUrl, error: !validFastaIndexUrl, onChange: (e) => {
                                                                                 setFastaIndexUrl(e.target.value);
                                                                             }, disabled: submitted && !errorMessage, slotProps: {
                                                                                 input: {
-                                                                                    startAdornment: (jsxRuntime.jsx(material.InputAdornment, { position: "start", children: jsxRuntime.jsx(LinkIcon, {}) })),
+                                                                                    startAdornment: (jsx(InputAdornment, { position: "start", children: jsx(LinkIcon, {}) })),
                                                                                 },
-                                                                            } }) })] }), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA binary index (.gzi)" }), jsxRuntime.jsx(material.TableCell, { style: { borderBottomWidth: 0 }, children: jsxRuntime.jsx(material.TextField, { "data-testid": "gzi-input-url", variant: "outlined", value: fastaGziIndexUrl, error: !validFastaGziIndexUrl, onChange: (e) => {
+                                                                            } }) })] }), jsxs(TableRow, { children: [jsx(TableCell, { style: { borderBottomWidth: 0 }, children: "FASTA binary index (.gzi)" }), jsx(TableCell, { style: { borderBottomWidth: 0 }, children: jsx(TextField, { "data-testid": "gzi-input-url", variant: "outlined", value: fastaGziIndexUrl, error: !validFastaGziIndexUrl, onChange: (e) => {
                                                                                 setFastaGziIndexUrl(e.target.value);
                                                                             }, disabled: submitted && !errorMessage, slotProps: {
                                                                                 input: {
-                                                                                    startAdornment: (jsxRuntime.jsx(material.InputAdornment, { position: "start", children: jsxRuntime.jsx(LinkIcon, {}) })),
+                                                                                    startAdornment: (jsx(InputAdornment, { position: "start", children: jsx(LinkIcon, {}) })),
                                                                                 },
-                                                                            } }) })] })] }) }))] }) })] }), jsxRuntime.jsxs(material.Accordion, { disableGutters: true, elevation: 0, square: true, className: classes.accordion, expanded: expanded === 'panelGffInput', onChange: handleAccordionChange('panelGffInput'), children: [jsxRuntime.jsx(material.AccordionSummary, { className: classes.accordionSummary, expandIcon: expanded === 'panelGffInput' ? (jsxRuntime.jsx(RadioButtonCheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', ml: 5 } })) : (jsxRuntime.jsx(RadioButtonUncheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', mr: 5 } })), "aria-controls": "panelGffInputd-content", children: jsxRuntime.jsxs(material.Typography, { component: "span", children: ["GFF3 input", jsxRuntime.jsx(material.Tooltip, { title: "GFF3 must includes FASTA sequences. File can be gzip compressed.", children: jsxRuntime.jsx(InfoIcon, { className: classes.radioIcon, sx: { fontSize: 18 } }) })] }) }), jsxRuntime.jsx(material.AccordionDetails, { className: classes.accordionDetails, children: jsxRuntime.jsxs(material.Box, { style: { marginTop: 20 }, children: [jsxRuntime.jsx("input", { "data-testid": "gff3-input-file", type: "file", disabled: submitted && !errorMessage, onChange: (e) => {
+                                                                            } }) })] })] }) }))] }) })] }), jsxs(Accordion, { disableGutters: true, elevation: 0, square: true, className: classes.accordion, expanded: expanded === 'panelGffInput', onChange: handleAccordionChange('panelGffInput'), children: [jsx(AccordionSummary, { className: classes.accordionSummary, expandIcon: expanded === 'panelGffInput' ? (jsx(RadioButtonCheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', ml: 5 } })) : (jsx(RadioButtonUncheckedIcon, { className: classes.radioIcon, sx: { fontSize: '1.2rem', mr: 5 } })), "aria-controls": "panelGffInputd-content", children: jsxs(Typography, { component: "span", children: ["GFF3 input", jsx(Tooltip$1, { title: "GFF3 must includes FASTA sequences. File can be gzip compressed.", children: jsx(InfoIcon, { className: classes.radioIcon, sx: { fontSize: 18 } }) })] }) }), jsx(AccordionDetails, { className: classes.accordionDetails, children: jsxs(Box, { style: { marginTop: 20 }, children: [jsx("input", { "data-testid": "gff3-input-file", type: "file", disabled: submitted && !errorMessage, onChange: (e) => {
                                                         const file = e.target.files?.item(0);
                                                         if (file) {
                                                             setFastaFile(file);
@@ -2724,13 +2720,13 @@ function AddAssembly({ changeManager, handleClose, session, }) {
                                                                 setGff3GzipChecked(true);
                                                             }
                                                         }
-                                                    } }), jsxRuntime.jsxs(material.FormGroup, { style: { display: 'grid' }, children: [jsxRuntime.jsx(material.FormControlLabel, { control: jsxRuntime.jsx(material.Checkbox, { checked: importFeatures, onChange: () => {
+                                                    } }), jsxs(FormGroup, { style: { display: 'grid' }, children: [jsx(FormControlLabel, { control: jsx(Checkbox, { checked: importFeatures, onChange: () => {
                                                                     setImportFeatures(!importFeatures);
-                                                                }, disabled: submitted && !errorMessage }), label: "Load features from GFF3 file" }), jsxRuntime.jsx(material.FormControlLabel, { label: "Strict parsing", disabled: !importFeatures || (submitted && !errorMessage), control: jsxRuntime.jsx(material.Checkbox, { checked: strict, onChange: (e) => {
+                                                                }, disabled: submitted && !errorMessage }), label: "Load features from GFF3 file" }), jsx(FormControlLabel, { label: "Strict parsing", disabled: !importFeatures || (submitted && !errorMessage), control: jsx(Checkbox, { checked: strict, onChange: (e) => {
                                                                     setStrict(e.target.checked);
-                                                                } }) }), jsxRuntime.jsx(material.FormHelperText, { children: "Don't import any features if any lines in the GFF3 are unable to be processed" }), jsxRuntime.jsx(material.FormControlLabel, { "data-testid": "gff3-is-gzip-checkbox", control: jsxRuntime.jsx(material.Checkbox, { checked: gff3GzipChecked, onChange: () => {
+                                                                } }) }), jsx(FormHelperText, { children: "Don't import any features if any lines in the GFF3 are unable to be processed" }), jsx(FormControlLabel, { "data-testid": "gff3-is-gzip-checkbox", control: jsx(Checkbox, { checked: gff3GzipChecked, onChange: () => {
                                                                     setGff3GzipChecked(!gff3GzipChecked);
-                                                                }, disabled: submitted && !errorMessage }), label: "GFF3 is gzip compressed" })] })] }) })] })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { disabled: !checkSumbission(validAsm, sequenceIsEditable, fileType, fastaFile, fastaIndexFile, fastaGziIndexFile, validFastaUrl, validFastaIndexUrl, validFastaGziIndexUrl) || submitted, variant: "contained", type: "submit", "data-testid": "submit-button", children: submitted ? 'Submitting...' : 'Submit' }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                                                }, disabled: submitted && !errorMessage }), label: "GFF3 is gzip compressed" })] })] }) })] })] }), jsxs(DialogActions, { children: [jsx(Button, { disabled: !checkSumbission(validAsm, sequenceIsEditable, fileType, fastaFile, fastaIndexFile, fastaGziIndexFile, validFastaUrl, validFastaIndexUrl, validFastaGziIndexUrl) || submitted, variant: "contained", type: "submit", "data-testid": "submit-button", children: submitted ? 'Submitting...' : 'Submit' }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 const columns$1 = [
@@ -2760,7 +2756,7 @@ function AddAssemblyAliases({ changeManager, handleClose, session, }) {
     });
     const [errorMessage, setErrorMessage] = React.useState('');
     const processRowUpdate = (newRow, _oldRow) => {
-        const change = new shared.AddAssemblyAliasesChange({
+        const change = new AddAssemblyAliasesChange({
             typeName: 'AddAssemblyAliasesChange',
             assembly: newRow.id,
             aliases: newRow.aliases.split(','),
@@ -2771,13 +2767,13 @@ function AddAssemblyAliases({ changeManager, handleClose, session, }) {
         handleClose();
         return newRow;
     };
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Add assembly aliases", handleClose: handleClose, maxWidth: 'sm', "data-testid": "add-assembly-alias", fullWidth: true, children: [jsxRuntime.jsx(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsxRuntime.jsx(material.Box, { sx: { height: 400, width: '100%' }, children: jsxRuntime.jsx(xDataGrid.DataGrid, { rows: rows, columns: columns$1, initialState: {
+    return (jsxs(Dialog, { open: true, title: "Add assembly aliases", handleClose: handleClose, maxWidth: 'sm', "data-testid": "add-assembly-alias", fullWidth: true, children: [jsx(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsx(Box, { sx: { height: 400, width: '100%' }, children: jsx(DataGrid, { rows: rows, columns: columns$1, initialState: {
                             pagination: {
                                 paginationModel: {
                                     pageSize: 5,
                                 },
                             },
-                        }, pageSizeOptions: [5], processRowUpdate: processRowUpdate, disableRowSelectionOnClick: true }) }) }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                        }, pageSizeOptions: [5], processRowUpdate: processRowUpdate, disableRowSelectionOnClick: true }) }) }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 const START_CODON = 'ATG';
@@ -2833,10 +2829,10 @@ function stitchedToGenomicBound(pos, exons, strand) {
     return strand === 1 ? last.max : last.min;
 }
 function AddCodingSequence({ changeManager, handleClose, refName, session, sourceAssemblyId, sourceFeature, }) {
-    const [method, setMethod] = React.useState('longest-orf');
-    const [minInput, setMinInput] = React.useState('');
-    const [maxInput, setMaxInput] = React.useState('');
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [method, setMethod] = useState('longest-orf');
+    const [minInput, setMinInput] = useState('');
+    const [maxInput, setMaxInput] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     async function onSubmit(event) {
         event.preventDefault();
         setErrorMessage('');
@@ -2862,7 +2858,7 @@ function AddCodingSequence({ changeManager, handleClose, refName, session, sourc
                         start: exon.min,
                         end: exon.max,
                     });
-                    stitchedSequence += sourceFeature.strand === -1 ? util.revcom(seq) : seq;
+                    stitchedSequence += sourceFeature.strand === -1 ? revcom(seq) : seq;
                 }
                 const orf = findLongestOrf(stitchedSequence);
                 if (!orf) {
@@ -2896,7 +2892,7 @@ function AddCodingSequence({ changeManager, handleClose, refName, session, sourc
             if (sourceFeature.strand) {
                 addedFeature.strand = sourceFeature.strand;
             }
-            const change = new shared.AddFeatureChange({
+            const change = new AddFeatureChange({
                 changedIds: [sourceFeature._id],
                 typeName: 'AddFeatureChange',
                 assembly: sourceAssemblyId,
@@ -2916,15 +2912,15 @@ function AddCodingSequence({ changeManager, handleClose, refName, session, sourc
         Boolean(maxInput) &&
         Number(maxInput) <= Number(minInput);
     const submitDisabled = method === 'manual' ? !(minInput && maxInput) || manualError : false;
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Add coding sequence", handleClose: handleClose, maxWidth: false, "data-testid": "add-coding-sequence", children: [jsxRuntime.jsxs("form", { onSubmit: (event) => {
+    return (jsxs(Dialog, { open: true, title: "Add coding sequence", handleClose: handleClose, maxWidth: false, "data-testid": "add-coding-sequence", children: [jsxs("form", { onSubmit: (event) => {
                     void onSubmit(event);
-                }, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsx(material.FormControl, { children: jsxRuntime.jsxs(material.RadioGroup, { value: method, onChange: (e) => {
+                }, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsx(FormControl, { children: jsxs(RadioGroup, { value: method, onChange: (e) => {
                                         setMethod(e.target.value);
-                                    }, children: [jsxRuntime.jsx(material.FormControlLabel, { value: "longest-orf", control: jsxRuntime.jsx(material.Radio, {}), label: "Calculate longest open reading frame" }), jsxRuntime.jsx(material.FormControlLabel, { value: "manual", control: jsxRuntime.jsx(material.Radio, {}), label: "Manual" })] }) }), method === 'manual' ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.TextField, { margin: "dense", id: "cds-min", label: "Min", type: "number", fullWidth: true, variant: "outlined", value: minInput, onChange: (e) => {
+                                    }, children: [jsx(FormControlLabel, { value: "longest-orf", control: jsx(Radio, {}), label: "Calculate longest open reading frame" }), jsx(FormControlLabel, { value: "manual", control: jsx(Radio, {}), label: "Manual" })] }) }), method === 'manual' ? (jsxs(Fragment, { children: [jsx(TextField, { margin: "dense", id: "cds-min", label: "Min", type: "number", fullWidth: true, variant: "outlined", value: minInput, onChange: (e) => {
                                             setMinInput(e.target.value);
-                                        } }), jsxRuntime.jsx(material.TextField, { margin: "dense", id: "cds-max", label: "Max", type: "number", fullWidth: true, variant: "outlined", value: maxInput, onChange: (e) => {
+                                        } }), jsx(TextField, { margin: "dense", id: "cds-max", label: "Max", type: "number", fullWidth: true, variant: "outlined", value: maxInput, onChange: (e) => {
                                             setMaxInput(e.target.value);
-                                        }, error: manualError, helperText: manualError ? '"Max" must be greater than "Min"' : null })] })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: submitDisabled, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "button", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                        }, error: manualError, helperText: manualError ? '"Max" must be greater than "Min"' : null })] })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: submitDisabled, children: "Submit" }), jsx(Button, { variant: "outlined", type: "button", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 class BackendDriver {
@@ -2936,7 +2932,7 @@ class BackendDriver {
 
 async function openDb(assemblyName, refNames) {
     const dbName = `Apollo-${assemblyName}`;
-    return withAsyncIttr.openDB(dbName, 1, {
+    return openDB(dbName, 1, {
         upgrade(db) {
             const changesStoreName = 'changes';
             if (!db.objectStoreNames.contains(changesStoreName)) {
@@ -2997,7 +2993,7 @@ class LocalDriver extends BackendDriver {
         return [features, checkResults];
     }
     async getSequence(region) {
-        const session = util.getSession(this.clientStore);
+        const session = getSession(this.clientStore);
         const { assemblyManager } = session;
         const assembly = (await assemblyManager.waitForAssembly(region.assemblyName));
         if (!assembly) {
@@ -3007,7 +3003,7 @@ class LocalDriver extends BackendDriver {
         const { configuration } = assembly;
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const { adapter: adapterConf } = configuration.sequence;
-        const { pluginManager } = util.getEnv(this.clientStore);
+        const { pluginManager } = getEnv(this.clientStore);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
         const type = pluginManager.getAdapterType(adapterConf.type);
         if (!type) {
@@ -3028,7 +3024,7 @@ class LocalDriver extends BackendDriver {
         return { seq, refSeq: region.refName };
     }
     async getRegions(assemblyName) {
-        const session = util.getSession(this.clientStore);
+        const session = getSession(this.clientStore);
         const { assemblyManager } = session;
         const assembly = (await assemblyManager.waitForAssembly(assemblyName));
         if (!assembly) {
@@ -3044,7 +3040,7 @@ class LocalDriver extends BackendDriver {
         return [];
     }
     async getRefNameAliases(assemblyName) {
-        const session = util.getSession(this.clientStore);
+        const session = getSession(this.clientStore);
         const { assemblyManager } = session;
         const assembly = (await assemblyManager.waitForAssembly(assemblyName));
         if (!assembly) {
@@ -3057,7 +3053,7 @@ class LocalDriver extends BackendDriver {
         if (!refNameAliases) {
             return [];
         }
-        const { pluginManager } = util.getEnv(this.clientStore);
+        const { pluginManager } = getEnv(this.clientStore);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
         const type = pluginManager.getAdapterType(refNameAliases.adapter.type);
         if (!type) {
@@ -3071,8 +3067,8 @@ class LocalDriver extends BackendDriver {
         return adapter.getRefNameAliases({});
     }
     async submitChange(change, opts) {
-        if (!common.isFeatureChange(change)) {
-            return new shared.ValidationResultSet();
+        if (!isFeatureChange(change)) {
+            return new ValidationResultSet();
         }
         const { assembly, changedIds } = change;
         const regions = await this.getRegions(assembly);
@@ -3081,7 +3077,7 @@ class LocalDriver extends BackendDriver {
         const topLevelFeatures = new Set();
         const deletedFeatureIds = [];
         const neededRefNames = new Set();
-        if (shared.isDeleteFeatureChange(change)) {
+        if (isDeleteFeatureChange(change)) {
             for (const c of change.changes) {
                 if (c.parentFeatureId) {
                     const feature = this.clientStore.getFeature(c.parentFeatureId);
@@ -3116,7 +3112,7 @@ class LocalDriver extends BackendDriver {
             void tx.objectStore(`features-${refSeq}`).delete(featureId);
         }
         for (const feature of topLevelFeatures) {
-            const snapshot = mobxStateTree.getSnapshot(feature);
+            const snapshot = getSnapshot(feature);
             void tx
                 .objectStore(`features-${feature.refSeq}`)
                 .put(snapshot, feature._id);
@@ -3148,10 +3144,10 @@ class LocalDriver extends BackendDriver {
         // Run checks on modified features. Collect all results first since checks
         // are async (need sequence data) and would cause the transaction to auto-commit.
         if (topLevelFeatures.size > 0) {
-            const checks = [...common.checkRegistry.getChecks().values()];
+            const checks = [...checkRegistry.getChecks().values()];
             const allResults = [];
             for (const feature of topLevelFeatures) {
-                const snapshot = mobxStateTree.getSnapshot(feature);
+                const snapshot = getSnapshot(feature);
                 const getSequence = async (start, end) => {
                     const result = await this.getSequence({
                         assemblyName: assembly,
@@ -3187,7 +3183,7 @@ class LocalDriver extends BackendDriver {
                 }
             }
         }
-        return new shared.ValidationResultSet();
+        return new ValidationResultSet();
     }
     async searchFeatures(term, assemblies) {
         return [];
@@ -3352,7 +3348,7 @@ const changeHandlers = {
             mergedExon.setMin(Math.min(firstExon.min, secondExon.min));
             mergedExon.setMax(Math.max(firstExon.max, secondExon.max));
             const mrg = mergedExon.attributes.get('merged_with')?.slice() ?? [];
-            const mergedWith = shared.stringifyAttributes(shared.attributesToRecords(secondExon.attributes));
+            const mergedWith = stringifyAttributes(attributesToRecords(secondExon.attributes));
             if (!mrg.includes(mergedWith)) {
                 mrg.push(mergedWith);
             }
@@ -3477,10 +3473,10 @@ class ChangeManager {
     async submit(change, opts = {}) {
         const { addToRecents = true, submitToBackend = true, updateJobsManager = false, } = opts;
         // pre-validate
-        const session = util.getSession(this.dataStore);
+        const session = getSession(this.dataStore);
         const controller = new AbortController();
         // eslint-disable-next-line @typescript-eslint/unbound-method
-        const { jobsManager, isLocked, changeInProgress, setChangeInProgress } = util.getSession(this.dataStore);
+        const { jobsManager, isLocked, changeInProgress, setChangeInProgress } = getSession(this.dataStore);
         if (isLocked) {
             session.notify('Cannot submit changes in locked mode');
             setChangeInProgress(false);
@@ -3502,7 +3498,7 @@ class ChangeManager {
         if (updateJobsManager) {
             jobsManager.runJob(job);
         }
-        const result = await shared.validationRegistry.frontendPreValidate(change);
+        const result = await validationRegistry.frontendPreValidate(change);
         if (!result.ok) {
             const msg = `Pre-validation failed: "${result.resultsMessages}"`;
             if (updateJobsManager) {
@@ -3533,7 +3529,7 @@ class ChangeManager {
             }
         }
         // post-validate
-        const results2 = await shared.validationRegistry.frontendPostValidate(change);
+        const results2 = await validationRegistry.frontendPostValidate(change);
         if (!results2.ok) {
             // notify of invalid change and revert
             await this.undo(change);
@@ -3545,7 +3541,7 @@ class ChangeManager {
             // submit to driver
             // eslint-disable-next-line @typescript-eslint/unbound-method
             const { collaborationServerDriver, getBackendDriver } = this.dataStore;
-            const backendDriver = common.isAssemblySpecificChange(change)
+            const backendDriver = isAssemblySpecificChange(change)
                 ? // for assembly-specific change, fall back in case it's an
                     // add-assembly change, since that won't exist in the driver yet
                     getBackendDriver(change.assembly) ?? collaborationServerDriver
@@ -3597,7 +3593,7 @@ class ChangeManager {
         return this.submit(change, opts);
     }
     async undoLastChange() {
-        const session = util.getSession(this.dataStore);
+        const session = getSession(this.dataStore);
         const lastChange = this.recentChanges.pop();
         if (!lastChange) {
             session.notify('No changes to undo!', 'info');
@@ -3607,7 +3603,7 @@ class ChangeManager {
         return this.undo(lastChange);
     }
     async redoLastChange() {
-        const session = util.getSession(this.dataStore);
+        const session = getSession(this.dataStore);
         const lastChange = this.undoneChanges.pop();
         if (!lastChange) {
             session.notify('No changes to redo!', 'info');
@@ -3658,7 +3654,7 @@ class CollaborationServerDriver extends BackendDriver {
      */
     async getFeatures(region) {
         const { assemblyName, end, refName, start } = region;
-        const { assemblyManager } = util.getSession(this.clientStore);
+        const { assemblyManager } = getSession(this.clientStore);
         const assembly = assemblyManager.get(assemblyName);
         if (!assembly) {
             throw new Error(`Could not find assembly with name "${assemblyName}"`);
@@ -3702,15 +3698,15 @@ class CollaborationServerDriver extends BackendDriver {
                 if (!token) {
                     return;
                 }
-                const localSessionId = shared.makeUserSessionId(token);
+                const localSessionId = makeUserSessionId(token);
                 const changeManager = new ChangeManager(this.clientStore);
                 // Save server last change sequence into session storage
                 internetAccount.setLastChangeSequenceNumber(message.changeSequence);
                 if (message.userSessionId === localSessionId) {
                     return; // we did this change, no need to apply it again
                 }
-                const change = common.Change.fromJSON(message.changeInfo);
-                if (common.isFeatureChange(change) && this.haveDataForChange(change)) {
+                const change = Change.fromJSON(message.changeInfo);
+                if (isFeatureChange(change) && this.haveDataForChange(change)) {
                     await changeManager.submit(change, { submitToBackend: false });
                 }
             });
@@ -3738,7 +3734,7 @@ class CollaborationServerDriver extends BackendDriver {
         const inFlightKey = `${region.refName}:${region.start}-${region.end}`;
         const inFlightPromise = this.inFlight.get(inFlightKey);
         const { assemblyName, end, refName, start } = region;
-        const { assemblyManager } = util.getSession(this.clientStore);
+        const { assemblyManager } = getSession(this.clientStore);
         const assembly = assemblyManager.get(assemblyName);
         if (!assembly) {
             throw new Error(`Could not find assembly with name "${assemblyName}"`);
@@ -3799,7 +3795,7 @@ class CollaborationServerDriver extends BackendDriver {
         if (cachedRefSeqMap) {
             return cachedRefSeqMap;
         }
-        const { assemblyManager } = util.getSession(this.clientStore);
+        const { assemblyManager } = getSession(this.clientStore);
         const assembly = assemblyManager.get(assemblyName);
         if (!assembly) {
             throw new Error(`Could not find assembly with name "${assemblyName}"`);
@@ -3846,7 +3842,7 @@ class CollaborationServerDriver extends BackendDriver {
         return refSeq?.id;
     }
     async getRegions(assemblyName) {
-        const { assemblyManager } = util.getSession(this.clientStore);
+        const { assemblyManager } = getSession(this.clientStore);
         const assembly = assemblyManager.get(assemblyName);
         if (!assembly) {
             throw new Error(`Could not find assembly with name "${assemblyName}"`);
@@ -3876,9 +3872,9 @@ class CollaborationServerDriver extends BackendDriver {
         }));
     }
     getAssemblies(internetAccountId) {
-        const { assemblyManager } = util.getSession(this.clientStore);
+        const { assemblyManager } = getSession(this.clientStore);
         return assemblyManager.assemblies.filter((assembly) => {
-            const sequenceMetadata = configuration.getConf(assembly, ['sequence', 'metadata']);
+            const sequenceMetadata = getConf(assembly, ['sequence', 'metadata']);
             if (sequenceMetadata &&
                 sequenceMetadata.apollo &&
                 sequenceMetadata.internetAccountConfigId) {
@@ -3953,7 +3949,7 @@ class CollaborationServerDriver extends BackendDriver {
             const errorMessage = await createFetchErrorMessage(response, 'submitChange failed');
             throw new Error(errorMessage);
         }
-        const results = new shared.ValidationResultSet();
+        const results = new ValidationResultSet();
         if (!response.ok) {
             results.ok = false;
         }
@@ -3999,12 +3995,12 @@ function makeCodingMrna(refSeqId, strand, min, max) {
     return mRNA;
 }
 function AddFeature({ changeManager, handleClose, region, session, }) {
-    const [end, setEnd] = React.useState(String(region.end));
-    const [start, setStart] = React.useState(String(region.start + 1));
-    const [type, setType] = React.useState(NewFeature.GENE_AND_SUBFEATURES);
-    const [customType, setCustomType] = React.useState('');
-    const [strand, setStrand] = React.useState();
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [end, setEnd] = useState(String(region.end));
+    const [start, setStart] = useState(String(region.start + 1));
+    const [type, setType] = useState(NewFeature.GENE_AND_SUBFEATURES);
+    const [customType, setCustomType] = useState('');
+    const [strand, setStrand] = useState();
+    const [errorMessage, setErrorMessage] = useState('');
     async function onSubmit(event) {
         event.preventDefault();
         setErrorMessage('');
@@ -4027,7 +4023,7 @@ function AddFeature({ changeManager, handleClose, region, session, }) {
             const children = {};
             children[mRNA._id] = mRNA;
             const id = new ObjectID().toHexString();
-            const change = new shared.AddFeatureChange({
+            const change = new AddFeatureChange({
                 changedIds: [id],
                 typeName: 'AddFeatureChange',
                 assembly: region.assemblyName,
@@ -4049,7 +4045,7 @@ function AddFeature({ changeManager, handleClose, region, session, }) {
         }
         if (type === NewFeature.TRANSCRIPT_AND_SUBFEATURES) {
             const mRNA = makeCodingMrna(refSeqId, strand, Number(start) - 1, Number(end));
-            const change = new shared.AddFeatureChange({
+            const change = new AddFeatureChange({
                 changedIds: [mRNA._id],
                 typeName: 'AddFeatureChange',
                 assembly: region.assemblyName,
@@ -4066,7 +4062,7 @@ function AddFeature({ changeManager, handleClose, region, session, }) {
             return;
         }
         const id = new ObjectID().toHexString();
-        const change = new shared.AddFeatureChange({
+        const change = new AddFeatureChange({
             changedIds: [id],
             typeName: 'AddFeatureChange',
             assembly: region.assemblyName,
@@ -4119,31 +4115,31 @@ function AddFeature({ changeManager, handleClose, region, session, }) {
         (!strand && type === NewFeature.TRANSCRIPT_AND_SUBFEATURES)) {
         submitDisabled = true;
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Add new feature", handleClose: handleClose, maxWidth: false, "data-testid": "add-feature-dialog", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, "data-testid": "submit-form", children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsx(material.TextField, { margin: "dense", id: "start", label: "Start", type: "number", fullWidth: true, variant: "outlined", value: Number(start), onChange: (e) => {
+    return (jsxs(Dialog, { open: true, title: "Add new feature", handleClose: handleClose, maxWidth: false, "data-testid": "add-feature-dialog", children: [jsxs("form", { onSubmit: onSubmit, "data-testid": "submit-form", children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsx(TextField, { margin: "dense", id: "start", label: "Start", type: "number", fullWidth: true, variant: "outlined", value: Number(start), onChange: (e) => {
                                     setStart(e.target.value);
-                                } }), jsxRuntime.jsx(material.TextField, { margin: "dense", id: "end", label: "End", type: "number", fullWidth: true, variant: "outlined", value: end, onChange: (e) => {
+                                } }), jsx(TextField, { margin: "dense", id: "end", label: "End", type: "number", fullWidth: true, variant: "outlined", value: end, onChange: (e) => {
                                     setEnd(e.target.value);
-                                }, error: error, helperText: error ? '"End" must be greater than "Start"' : null }), jsxRuntime.jsxs(material.FormControl, { children: [jsxRuntime.jsx(material.InputLabel, { id: "demo-simple-select-label", children: "Strand" }), jsxRuntime.jsxs(material.Select, { labelId: "demo-simple-select-label", id: "demo-simple-select", label: "Strand", value: strand?.toString(), onChange: handleChangeStrand, children: [jsxRuntime.jsx(material.MenuItem, { value: undefined }), jsxRuntime.jsx(material.MenuItem, { value: 1, children: "+" }), jsxRuntime.jsx(material.MenuItem, { value: -1, children: "-" })] })] }), jsxRuntime.jsx(material.FormControl, { style: { marginTop: 20 }, children: jsxRuntime.jsxs(material.RadioGroup, { "aria-labelledby": "demo-radio-buttons-group-label", defaultValue: NewFeature.GENE_AND_SUBFEATURES, name: "radio-buttons-group", value: type, onChange: handleTypeChange, children: [jsxRuntime.jsx(material.FormControlLabel, { value: NewFeature.GENE_AND_SUBFEATURES, control: jsxRuntime.jsx(material.Radio, {}), label: jsxRuntime.jsxs(material.Box, { display: "flex", alignItems: "center", children: ["Add gene and sub-features", jsxRuntime.jsx(material.Tooltip, { title: "This is a shortcut to create a gene with a single mRNA, exon, and CDS", children: jsxRuntime.jsx(material.IconButton, { size: "small", children: jsxRuntime.jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsxRuntime.jsx(material.FormControlLabel, { value: NewFeature.TRANSCRIPT_AND_SUBFEATURES, control: jsxRuntime.jsx(material.Radio, {}), label: jsxRuntime.jsxs(material.Box, { display: "flex", alignItems: "center", children: ["Add transcript and sub-features", jsxRuntime.jsx(material.Tooltip, { title: "This is a shortcut to create a single mRNA with exon and CDS, but without a parent gene", children: jsxRuntime.jsx(material.IconButton, { size: "small", children: jsxRuntime.jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsxRuntime.jsx(material.FormControlLabel, { value: NewFeature.CUSTOM, checked: type !== NewFeature.GENE_AND_SUBFEATURES &&
-                                                type !== NewFeature.TRANSCRIPT_AND_SUBFEATURES, control: jsxRuntime.jsx(material.Radio, {}), label: "Add feature with a sequence ontology type" })] }) }), type === NewFeature.CUSTOM ? (jsxRuntime.jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: 170 }, value: customType, filterTerms: isOntologyClass, renderInput: (params) => (jsxRuntime.jsx(material.TextField, { ...params, label: "Type", variant: "outlined", fullWidth: true })), onChange: (_oldValue, newValue) => {
+                                }, error: error, helperText: error ? '"End" must be greater than "Start"' : null }), jsxs(FormControl, { children: [jsx(InputLabel, { id: "demo-simple-select-label", children: "Strand" }), jsxs(Select, { labelId: "demo-simple-select-label", id: "demo-simple-select", label: "Strand", value: strand?.toString(), onChange: handleChangeStrand, children: [jsx(MenuItem, { value: undefined }), jsx(MenuItem, { value: 1, children: "+" }), jsx(MenuItem, { value: -1, children: "-" })] })] }), jsx(FormControl, { style: { marginTop: 20 }, children: jsxs(RadioGroup, { "aria-labelledby": "demo-radio-buttons-group-label", defaultValue: NewFeature.GENE_AND_SUBFEATURES, name: "radio-buttons-group", value: type, onChange: handleTypeChange, children: [jsx(FormControlLabel, { value: NewFeature.GENE_AND_SUBFEATURES, control: jsx(Radio, {}), label: jsxs(Box, { display: "flex", alignItems: "center", children: ["Add gene and sub-features", jsx(Tooltip$1, { title: "This is a shortcut to create a gene with a single mRNA, exon, and CDS", children: jsx(IconButton, { size: "small", children: jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsx(FormControlLabel, { value: NewFeature.TRANSCRIPT_AND_SUBFEATURES, control: jsx(Radio, {}), label: jsxs(Box, { display: "flex", alignItems: "center", children: ["Add transcript and sub-features", jsx(Tooltip$1, { title: "This is a shortcut to create a single mRNA with exon and CDS, but without a parent gene", children: jsx(IconButton, { size: "small", children: jsx(InfoIcon, { sx: { fontSize: 18 } }) }) })] }) }), jsx(FormControlLabel, { value: NewFeature.CUSTOM, checked: type !== NewFeature.GENE_AND_SUBFEATURES &&
+                                                type !== NewFeature.TRANSCRIPT_AND_SUBFEATURES, control: jsx(Radio, {}), label: "Add feature with a sequence ontology type" })] }) }), type === NewFeature.CUSTOM ? (jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: 170 }, value: customType, filterTerms: isOntologyClass, renderInput: (params) => (jsx(TextField, { ...params, label: "Type", variant: "outlined", fullWidth: true })), onChange: (_oldValue, newValue) => {
                                     if (newValue) {
                                         handleChangeOntologyType(newValue);
                                     }
-                                } })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: submitDisabled, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                } })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: submitDisabled, children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function DeleteAssembly({ changeManager, handleClose, session, }) {
-    const { internetAccounts } = mobxStateTree.getRoot(session);
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [confirmDelete, setConfirmDelete] = React.useState(false);
-    const [submitted, setSubmitted] = React.useState(false);
+    const { internetAccounts } = getRoot(session);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
     const apolloInternetAccounts = internetAccounts.filter((ia) => ia.type === 'ApolloInternetAccount');
     if (apolloInternetAccounts.length === 0) {
         throw new Error('No Apollo internet account found');
     }
-    const [selectedInternetAccount, setSelectedInternetAccount] = React.useState(apolloInternetAccounts[0]);
+    const [selectedInternetAccount, setSelectedInternetAccount] = useState(apolloInternetAccounts[0]);
     const { collaborationServerDriver } = session.apolloDataStore;
     const assemblies = collaborationServerDriver.getAssemblies();
-    const [selectedAssembly, setSelectedAssembly] = React.useState(assemblies.at(0));
+    const [selectedAssembly, setSelectedAssembly] = useState(assemblies.at(0));
     function handleChangeInternetAccount(e) {
         setSubmitted(false);
         const newlySelectedInternetAccount = apolloInternetAccounts.find((ia) => ia.internetAccountId === e.target.value);
@@ -4164,7 +4160,7 @@ function DeleteAssembly({ changeManager, handleClose, session, }) {
             setErrorMessage('Must select assembly!');
             return;
         }
-        const change = new shared.DeleteAssemblyChange({
+        const change = new DeleteAssemblyChange({
             typeName: 'DeleteAssemblyChange',
             assembly: selectedAssembly.name,
         });
@@ -4174,18 +4170,18 @@ function DeleteAssembly({ changeManager, handleClose, session, }) {
         handleClose();
         event.preventDefault();
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Delete Assembly", handleClose: handleClose, maxWidth: false, "data-testid": "delete-assembly", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [apolloInternetAccounts.length > 1 ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select account" }), jsxRuntime.jsx(material.Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, disabled: submitted && !errorMessage, children: internetAccounts.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsxRuntime.jsx(material.DialogContentText, { children: "Select assembly" }), jsxRuntime.jsx(material.Select, { labelId: "label", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, disabled: assemblies.length === 0, children: assemblies.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.name, children: option.displayName }, option.name))) }), jsxRuntime.jsx(material.DialogContentText, { children: jsxRuntime.jsx("strong", { style: { color: 'red' }, children: "NOTE: All assembly data will be deleted and this operation cannot be undone!" }) }), jsxRuntime.jsx(material.FormGroup, { children: jsxRuntime.jsx(material.FormControlLabel, { control: jsxRuntime.jsx(material.Checkbox, { checked: confirmDelete, onChange: () => {
+    return (jsxs(Dialog, { open: true, title: "Delete Assembly", handleClose: handleClose, maxWidth: false, "data-testid": "delete-assembly", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [apolloInternetAccounts.length > 1 ? (jsxs(Fragment, { children: [jsx(DialogContentText, { children: "Select account" }), jsx(Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, disabled: submitted && !errorMessage, children: internetAccounts.map((option) => (jsx(MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsx(DialogContentText, { children: "Select assembly" }), jsx(Select, { labelId: "label", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, disabled: assemblies.length === 0, children: assemblies.map((option) => (jsx(MenuItem, { value: option.name, children: option.displayName }, option.name))) }), jsx(DialogContentText, { children: jsx("strong", { style: { color: 'red' }, children: "NOTE: All assembly data will be deleted and this operation cannot be undone!" }) }), jsx(FormGroup, { children: jsx(FormControlLabel, { control: jsx(Checkbox, { checked: confirmDelete, onChange: () => {
                                             setConfirmDelete(!confirmDelete);
-                                        } }), label: "I understand that all assembly data will be deleted" }) })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { disabled: !selectedAssembly || !confirmDelete, variant: "contained", type: "submit", children: "Delete" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                        } }), label: "I understand that all assembly data will be deleted" }) })] }), jsxs(DialogActions, { children: [jsx(Button, { disabled: !selectedAssembly || !confirmDelete, variant: "contained", type: "submit", children: "Delete" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 // Icon source: https://pictogrammers.com/library/mdi/icon/export/
 function Export(props) {
-    return (jsxRuntime.jsx(material.SvgIcon, { viewBox: "0 0 24 24", ...props, children: jsxRuntime.jsx("path", { d: "M23,12L19,8V11H10V13H19V16M1,18V6C1,4.89 1.9,4 3,4H15A2,2 0 0,1 17,6V9H15V6H3V18H15V15H17V18A2,2 0 0,1 15,20H3A2,2 0 0,1 1,18Z" }) }));
+    return (jsx(SvgIcon, { viewBox: "0 0 24 24", ...props, children: jsx("path", { d: "M23,12L19,8V11H10V13H19V16M1,18V6C1,4.89 1.9,4 3,4H15A2,2 0 0,1 17,6V9H15V6H3V18H15V15H17V18A2,2 0 0,1 15,20H3A2,2 0 0,1 1,18Z" }) }));
 }
 function DownloadGFF3({ handleClose, session, assembly: assemblyName, }) {
-    const [includeFASTA, setIncludeFASTA] = React.useState(false);
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [includeFASTA, setIncludeFASTA] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const { getInternetAccount } = session.apolloDataStore;
     const { assemblyManager } = session;
     const assembly = assemblyManager.get(assemblyName);
@@ -4193,7 +4189,7 @@ function DownloadGFF3({ handleClose, session, assembly: assemblyName, }) {
         setErrorMessage(`Assembly "${assemblyName}" not found`);
         return;
     }
-    const { internetAccountConfigId } = configuration.getConf(assembly, [
+    const { internetAccountConfigId } = getConf(assembly, [
         'sequence',
         'metadata',
     ]);
@@ -4232,21 +4228,21 @@ function DownloadGFF3({ handleClose, session, assembly: assemblyName, }) {
         const exportUri = exportURL.toString();
         window.open(exportUri, '_blank');
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Export annotations", handleClose: handleClose, maxWidth: false, "data-testid": "download-gff3", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsxs(material.DialogContentText, { children: ["Exporting annotations for ", assemblyName] }), jsxRuntime.jsx(material.FormGroup, { children: jsxRuntime.jsx(material.FormControlLabel, { "data-testid": "include-fasta-checkbox", control: jsxRuntime.jsx(material.Checkbox, { checked: includeFASTA, onChange: () => {
+    return (jsxs(Dialog, { open: true, title: "Export annotations", handleClose: handleClose, maxWidth: false, "data-testid": "download-gff3", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxs(DialogContentText, { children: ["Exporting annotations for ", assemblyName] }), jsx(FormGroup, { children: jsx(FormControlLabel, { "data-testid": "include-fasta-checkbox", control: jsx(Checkbox, { checked: includeFASTA, onChange: () => {
                                             setIncludeFASTA(!includeFASTA);
-                                        }, disabled: !internetAccountConfigId }), label: "Include fasta sequence in GFF output" }) })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", children: "Download" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                        }, disabled: !internetAccountConfigId }), label: "Include fasta sequence in GFF output" }) })] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", children: "Download" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 function getAssemblyGFF3Stream(assemblyName) {
     const featureStream = new ReadableStream({
         async start(controller) {
             for await (const feature of getFeaturesForAssembly(assemblyName)) {
-                const gff3Feature = shared.annotationFeatureToGFF3(feature);
+                const gff3Feature = annotationFeatureToGFF3(feature);
                 controller.enqueue(gff3Feature);
             }
             controller.close();
         },
     });
-    return featureStream.pipeThrough(new TransformStream(new gff.GFFFormattingTransformer()));
+    return featureStream.pipeThrough(new TransformStream(new GFFFormattingTransformer()));
 }
 async function downloadAssemblyGFF3(assemblyName) {
     const stream = getAssemblyGFF3Stream(assemblyName);
@@ -4258,7 +4254,7 @@ async function downloadAssemblyGFF3(assemblyName) {
     }
     catch {
         const blob = await new Response(stream).blob();
-        fileSaver.saveAs(blob, fileName);
+        saveAs(blob, fileName);
     }
 }
 async function* getFeaturesForAssembly(assemblyName) {
@@ -4274,9 +4270,9 @@ async function* getFeaturesForAssembly(assemblyName) {
 
 function ImportAnnotations({ assemblyName, handleClose, session, }) {
     const { changeManager } = session.apolloDataStore;
-    const [file, setFile] = React.useState();
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
+    const [file, setFile] = useState();
+    const [errorMessage, setErrorMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     function handleChangeFile(e) {
         if (e.target.files) {
             setFile(e.target.files[0]);
@@ -4292,10 +4288,10 @@ function ImportAnnotations({ assemblyName, handleClose, session, }) {
         try {
             const stream = file
                 .stream()
-                .pipeThrough(new TransformStream(new gff.GFFTransformer({ parseSequences: false })));
+                .pipeThrough(new TransformStream(new GFFTransformer({ parseSequences: false })));
             for await (const value of stream) {
-                const annotationFeature = shared.gff3ToAnnotationFeature(value);
-                const change = new shared.AddFeatureChange({
+                const annotationFeature = gff3ToAnnotationFeature(value);
+                const change = new AddFeatureChange({
                     changedIds: [annotationFeature._id],
                     typeName: 'AddFeatureChange',
                     assembly: assemblyName,
@@ -4312,20 +4308,20 @@ function ImportAnnotations({ assemblyName, handleClose, session, }) {
             setLoading(false);
         }
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Import annotations", handleClose: handleClose, children: [loading ? jsxRuntime.jsx(material.LinearProgress, {}) : null, jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Import annotations from a GFF3 file into the current Apollo track. Features are parsed and stored locally in the browser, so importing very large GFF3 files is not recommended." }), jsxRuntime.jsx("input", { type: "file", accept: ".gff,.gff3", onChange: handleChangeFile, disabled: loading }), errorMessage ? (jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: !file || loading, children: "Import" }), jsxRuntime.jsx(material.Button, { variant: "outlined", onClick: handleClose, children: "Cancel" })] })] })] }));
+    return (jsxs(Dialog, { open: true, title: "Import annotations", handleClose: handleClose, children: [loading ? jsx(LinearProgress, {}) : null, jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { children: [jsx(DialogContentText, { children: "Import annotations from a GFF3 file into the current Apollo track. Features are parsed and stored locally in the browser, so importing very large GFF3 files is not recommended." }), jsx("input", { type: "file", accept: ".gff,.gff3", onChange: handleChangeFile, disabled: loading }), errorMessage ? (jsx(DialogContentText, { color: "error", children: errorMessage })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: !file || loading, children: "Import" }), jsx(Button, { variant: "outlined", onClick: handleClose, children: "Cancel" })] })] })] }));
 }
 
 function ImportFeatures({ changeManager, handleClose, session, }) {
     const { apolloDataStore } = session;
-    const [file, setFile] = React.useState();
-    const [selectedAssembly, setSelectedAssembly] = React.useState();
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [submitted, setSubmitted] = React.useState(false);
+    const [file, setFile] = useState();
+    const [selectedAssembly, setSelectedAssembly] = useState();
+    const [errorMessage, setErrorMessage] = useState('');
+    const [submitted, setSubmitted] = useState(false);
     // default is -1, submit button should be disabled until count is set
-    const [featuresCount, setFeaturesCount] = React.useState();
-    const [deleteFeatures, setDeleteFeatures] = React.useState(false);
-    const [strict, setStrict] = React.useState(true);
-    const [loading, setLoading] = React.useState(false);
+    const [featuresCount, setFeaturesCount] = useState();
+    const [deleteFeatures, setDeleteFeatures] = useState(false);
+    const [strict, setStrict] = useState(true);
+    const [loading, setLoading] = useState(false);
     const { collaborationServerDriver, getInternetAccount } = apolloDataStore;
     const assemblies = collaborationServerDriver.getAssemblies();
     function handleChangeAssembly(e) {
@@ -4340,13 +4336,13 @@ function ImportFeatures({ changeManager, handleClose, session, }) {
         setStrict(e.target.checked);
     }
     // fetch and set features count for selected assembly
-    React.useEffect(() => {
+    useEffect(() => {
         if (!selectedAssembly) {
             return;
         }
         const updateFeaturesCount = async () => {
             // TODO: this code will not work for running on desktop
-            const { internetAccountConfigId } = configuration.getConf(selectedAssembly, [
+            const { internetAccountConfigId } = getConf(selectedAssembly, [
                 'sequence',
                 'metadata',
             ]);
@@ -4402,7 +4398,7 @@ function ImportFeatures({ changeManager, handleClose, session, }) {
             setErrorMessage('Must select assembly to download');
             return;
         }
-        const { internetAccountConfigId } = configuration.getConf(selectedAssembly, [
+        const { internetAccountConfigId } = getConf(selectedAssembly, [
             'sequence',
             'metadata',
         ]);
@@ -4451,7 +4447,7 @@ function ImportFeatures({ changeManager, handleClose, session, }) {
             fileId = result._id;
         }
         // Add features
-        const change = new shared.AddFeaturesFromFileChange({
+        const change = new AddFeaturesFromFileChange({
             typeName: 'AddFeaturesFromFileChange',
             assembly: selectedAssembly.name,
             fileId,
@@ -4461,18 +4457,18 @@ function ImportFeatures({ changeManager, handleClose, session, }) {
         jobsManager.done(job);
         await changeManager.submit(change, { updateJobsManager: true });
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Import Features from GFF3 file", handleClose: handleClose, maxWidth: false, "data-testid": "import-features-dialog", children: [loading ? jsxRuntime.jsx(material.LinearProgress, {}) : null, jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select assembly" }), jsxRuntime.jsx(material.Select, { labelId: "label", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, disabled: submitted && !errorMessage, children: assemblies.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.name, children: option.displayName ?? option.name }, option.name))) }), jsxRuntime.jsx(material.DialogContentText, { children: "Upload GFF3 to load features" }), jsxRuntime.jsx("input", { type: "file", onChange: handleChangeFile, disabled: submitted && !errorMessage }), jsxRuntime.jsx(material.FormControlLabel, { label: "Strict parsing", disabled: submitted && !errorMessage, control: jsxRuntime.jsx(material.Checkbox, { checked: strict, onChange: handleSetStrict }) }), jsxRuntime.jsx(material.FormHelperText, { children: "Don't import any features if any lines in the GFF3 are unable to be processed" }), featuresCount && featuresCount > 0 ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.FormControlLabel, { label: "Delete existing features", disabled: submitted && !errorMessage, control: jsxRuntime.jsx(material.Checkbox, { checked: deleteFeatures, onChange: handleDeleteFeatures, slotProps: { input: { 'aria-label': 'controlled' } }, color: "warning" }) }), jsxRuntime.jsxs(material.FormHelperText, { children: ["This assembly has ", featuresCount, " features that will be deleted"] })] })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { disabled: !(selectedAssembly && file && featuresCount !== undefined) ||
-                                    submitted, variant: "contained", type: "submit", children: submitted ? 'Submitting...' : 'Submit' }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+    return (jsxs(Dialog, { open: true, title: "Import Features from GFF3 file", handleClose: handleClose, maxWidth: false, "data-testid": "import-features-dialog", children: [loading ? jsx(LinearProgress, {}) : null, jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsx(DialogContentText, { children: "Select assembly" }), jsx(Select, { labelId: "label", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, disabled: submitted && !errorMessage, children: assemblies.map((option) => (jsx(MenuItem, { value: option.name, children: option.displayName ?? option.name }, option.name))) }), jsx(DialogContentText, { children: "Upload GFF3 to load features" }), jsx("input", { type: "file", onChange: handleChangeFile, disabled: submitted && !errorMessage }), jsx(FormControlLabel, { label: "Strict parsing", disabled: submitted && !errorMessage, control: jsx(Checkbox, { checked: strict, onChange: handleSetStrict }) }), jsx(FormHelperText, { children: "Don't import any features if any lines in the GFF3 are unable to be processed" }), featuresCount && featuresCount > 0 ? (jsxs(Fragment, { children: [jsx(FormControlLabel, { label: "Delete existing features", disabled: submitted && !errorMessage, control: jsx(Checkbox, { checked: deleteFeatures, onChange: handleDeleteFeatures, slotProps: { input: { 'aria-label': 'controlled' } }, color: "warning" }) }), jsxs(FormHelperText, { children: ["This assembly has ", featuresCount, " features that will be deleted"] })] })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { disabled: !(selectedAssembly && file && featuresCount !== undefined) ||
+                                    submitted, variant: "contained", type: "submit", children: submitted ? 'Submitting...' : 'Submit' }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function LogOut({ handleClose, session }) {
-    const { internetAccounts } = mobxStateTree.getRoot(session);
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const { internetAccounts } = getRoot(session);
+    const [errorMessage, setErrorMessage] = useState('');
     const apolloInternetAccounts = internetAccounts.filter((ia) => ia.type === 'ApolloInternetAccount');
     if (apolloInternetAccounts.length === 0) {
         throw new Error('No Apollo internet account found');
     }
-    const [selectedInternetAccount, setSelectedInternetAccount] = React.useState(apolloInternetAccounts[0]);
+    const [selectedInternetAccount, setSelectedInternetAccount] = useState(apolloInternetAccounts[0]);
     function handleChangeInternetAccount(e) {
         const newlySelectedInternetAccount = apolloInternetAccounts.find((ia) => ia.internetAccountId === e.target.value);
         if (!newlySelectedInternetAccount) {
@@ -4486,24 +4482,24 @@ function LogOut({ handleClose, session }) {
         selectedInternetAccount.removeToken();
         globalThis.location.reload();
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Log out", handleClose: handleClose, maxWidth: false, "data-testid": "log-out", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [apolloInternetAccounts.length > 1 ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select account" }), jsxRuntime.jsx(material.Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, children: internetAccounts.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsxRuntime.jsx(material.DialogContentText, { children: "Are you sure you want to log out?" })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { disabled: !selectedInternetAccount, variant: "contained", type: "submit", children: "Log Out" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+    return (jsxs(Dialog, { open: true, title: "Log out", handleClose: handleClose, maxWidth: false, "data-testid": "log-out", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [apolloInternetAccounts.length > 1 ? (jsxs(Fragment, { children: [jsx(DialogContentText, { children: "Select account" }), jsx(Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, children: internetAccounts.map((option) => (jsx(MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsx(DialogContentText, { children: "Are you sure you want to log out?" })] }), jsxs(DialogActions, { children: [jsx(Button, { disabled: !selectedInternetAccount, variant: "contained", type: "submit", children: "Log Out" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function ManageChecks({ handleClose, session }) {
-    const { internetAccounts } = mobxStateTree.getRoot(session);
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [submitted, setSubmitted] = React.useState(false);
+    const { internetAccounts } = getRoot(session);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [submitted, setSubmitted] = useState(false);
     const apolloInternetAccounts = internetAccounts.filter((ia) => ia.type === 'ApolloInternetAccount');
     if (apolloInternetAccounts.length === 0) {
         throw new Error('No Apollo internet account found');
     }
-    const [selectedInternetAccount, setSelectedInternetAccount] = React.useState(apolloInternetAccounts[0]);
-    const [checks, setChecks] = React.useState([]);
-    const [selectedChecks, setSelectedChecks] = React.useState([]);
+    const [selectedInternetAccount, setSelectedInternetAccount] = useState(apolloInternetAccounts[0]);
+    const [checks, setChecks] = useState([]);
+    const [selectedChecks, setSelectedChecks] = useState([]);
     const { collaborationServerDriver } = session.apolloDataStore;
     const assemblies = collaborationServerDriver.getAssemblies();
-    const [selectedAssembly, setSelectedAssembly] = React.useState(assemblies.at(0));
-    React.useEffect(() => {
+    const [selectedAssembly, setSelectedAssembly] = useState(assemblies.at(0));
+    useEffect(() => {
         async function getChecks() {
             const { baseURL, getFetcher } = selectedInternetAccount;
             const uri = new URL('checks/types', baseURL).href;
@@ -4521,7 +4517,7 @@ function ManageChecks({ handleClose, session }) {
             setErrorMessage(String(error));
         });
     }, [selectedInternetAccount]);
-    React.useEffect(() => {
+    useEffect(() => {
         async function getChecks() {
             if (!selectedAssembly) {
                 return;
@@ -4603,7 +4599,7 @@ function ManageChecks({ handleClose, session }) {
         }
         setSelectedInternetAccount(newlySelectedInternetAccount);
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Manage Checks", handleClose: handleClose, "data-testid": "manage-checks", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { children: [apolloInternetAccounts.length > 1 ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select account" }), jsxRuntime.jsx(material.Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, disabled: submitted && !errorMessage, children: internetAccounts.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsxRuntime.jsx(material.DialogContentText, { children: "Select assembly" }), jsxRuntime.jsx(material.Select, { style: { width: 300 }, labelId: "label", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, disabled: assemblies.length === 0, children: assemblies.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.name, children: option.displayName }, option.name))) }), jsxRuntime.jsx("br", {}), jsxRuntime.jsx("br", {}), jsxRuntime.jsx(material.TableContainer, { component: material.Paper, children: jsxRuntime.jsxs(material.Table, { children: [jsxRuntime.jsx(material.TableHead, { children: jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { children: "Check name" }), jsxRuntime.jsx(material.TableCell, { children: "Use check" })] }) }), jsxRuntime.jsx(material.TableBody, { children: checks.map((check) => (jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(material.TableCell, { children: check.name }), jsxRuntime.jsx(material.TableCell, { children: jsxRuntime.jsx(material.Checkbox, { value: check._id, checked: selectedChecks.includes(check._id), onChange: handleCheckboxChange }) })] }, check._id))) })] }) })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+    return (jsxs(Dialog, { open: true, title: "Manage Checks", handleClose: handleClose, "data-testid": "manage-checks", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { children: [apolloInternetAccounts.length > 1 ? (jsxs(Fragment, { children: [jsx(DialogContentText, { children: "Select account" }), jsx(Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, disabled: submitted && !errorMessage, children: internetAccounts.map((option) => (jsx(MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsx(DialogContentText, { children: "Select assembly" }), jsx(Select, { style: { width: 300 }, labelId: "label", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, disabled: assemblies.length === 0, children: assemblies.map((option) => (jsx(MenuItem, { value: option.name, children: option.displayName }, option.name))) }), jsx("br", {}), jsx("br", {}), jsx(TableContainer, { component: Paper, children: jsxs(Table, { children: [jsx(TableHead, { children: jsxs(TableRow, { children: [jsx(TableCell, { children: "Check name" }), jsx(TableCell, { children: "Use check" })] }) }), jsx(TableBody, { children: checks.map((check) => (jsxs(TableRow, { children: [jsx(TableCell, { children: check.name }), jsx(TableCell, { children: jsx(Checkbox, { value: check._id, checked: selectedChecks.includes(check._id), onChange: handleCheckboxChange }) })] }, check._id))) })] }) })] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function isApolloInternetAccount(internetAccount) {
@@ -4611,17 +4607,17 @@ function isApolloInternetAccount(internetAccount) {
 }
 
 function ManageUsers({ changeManager, handleClose, session, }) {
-    const { internetAccounts } = mobxStateTree.getRoot(session);
+    const { internetAccounts } = getRoot(session);
     const apolloInternetAccounts = internetAccounts
         .filter((ia) => isApolloInternetAccount(ia))
         .filter((ia) => ia.role?.includes('admin'));
     if (apolloInternetAccounts.length === 0) {
         throw new Error('No Apollo internet account found');
     }
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [selectedInternetAccount, setSelectedInternetAccount] = React.useState(apolloInternetAccounts[0]);
-    const [users, setUsers] = React.useState([]);
-    React.useEffect(() => {
+    const [errorMessage, setErrorMessage] = useState('');
+    const [selectedInternetAccount, setSelectedInternetAccount] = useState(apolloInternetAccounts[0]);
+    const [users, setUsers] = useState([]);
+    useEffect(() => {
         async function getUsers() {
             const { baseURL } = selectedInternetAccount;
             const uri = new URL('users', baseURL).href;
@@ -4643,7 +4639,7 @@ function ManageUsers({ changeManager, handleClose, session, }) {
         });
     }, [selectedInternetAccount]);
     async function deleteUser(id) {
-        const change = new shared.DeleteUserChange({
+        const change = new DeleteUserChange({
             typeName: 'DeleteUserChange',
             userId: id,
         });
@@ -4692,7 +4688,7 @@ function ManageUsers({ changeManager, handleClose, session, }) {
             field: 'actions',
             type: 'actions',
             getActions: (params) => [
-                jsxRuntime.jsx(xDataGrid.GridActionsCellItem, { icon: jsxRuntime.jsx(DeleteIcon, {}), onClick: async () => {
+                jsx(GridActionsCellItem, { icon: jsx(DeleteIcon, {}), onClick: async () => {
                         if (globalThis.confirm('Delete this user?')) {
                             await deleteUser(params.id);
                         }
@@ -4708,7 +4704,7 @@ function ManageUsers({ changeManager, handleClose, session, }) {
         setSelectedInternetAccount(newlySelectedInternetAccount);
     }
     async function processRowUpdate(newRow) {
-        const change = new shared.UserChange({
+        const change = new UserChange({
             typeName: 'UserChange',
             role: newRow.role,
             userId: newRow._id,
@@ -4718,9 +4714,9 @@ function ManageUsers({ changeManager, handleClose, session, }) {
         });
         return newRow;
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, fullScreen: true, title: "Manage users", handleClose: handleClose, "data-testid": "manage-users", children: [jsxRuntime.jsxs(material.DialogContent, { children: [apolloInternetAccounts.length > 1 ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select account" }), jsxRuntime.jsx(material.Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, disabled: !errorMessage, children: internetAccounts.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsxRuntime.jsx("div", { style: { height: '100%', width: '100%' }, children: jsxRuntime.jsx(xDataGrid.DataGrid, { pagination: true, rows: users, columns: gridColumns, getRowId: (row) => row._id, showToolbar: true, getRowHeight: () => 'auto', isCellEditable: (params) => !isCurrentUser(params.id), processRowUpdate: processRowUpdate, onProcessRowUpdateError: (error) => {
+    return (jsxs(Dialog, { open: true, fullScreen: true, title: "Manage users", handleClose: handleClose, "data-testid": "manage-users", children: [jsxs(DialogContent, { children: [apolloInternetAccounts.length > 1 ? (jsxs(Fragment, { children: [jsx(DialogContentText, { children: "Select account" }), jsx(Select, { value: selectedInternetAccount.internetAccountId, onChange: handleChangeInternetAccount, disabled: !errorMessage, children: internetAccounts.map((option) => (jsx(MenuItem, { value: option.internetAccountId, children: option.name }, option.id))) })] })) : null, jsx("div", { style: { height: '100%', width: '100%' }, children: jsx(DataGrid, { pagination: true, rows: users, columns: gridColumns, getRowId: (row) => row._id, showToolbar: true, getRowHeight: () => 'auto', isCellEditable: (params) => !isCurrentUser(params.id), processRowUpdate: processRowUpdate, onProcessRowUpdateError: (error) => {
                                 setErrorMessage(String(error));
-                            } }) })] }), jsxRuntime.jsx(material.DialogActions, { children: jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" }) }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                            } }) })] }), jsx(DialogActions, { children: jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" }) }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function getNeighboringExons(referenceExon) {
@@ -4776,8 +4772,8 @@ function makeRadioButtonName$1(key, neighboringExons) {
     return name;
 }
 function MergeExons({ changeManager, handleClose, selectedFeature, setSelectedFeature, sourceAssemblyId, sourceFeature, }) {
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [selectedExon, setSelectedExon] = React.useState();
+    const [errorMessage, setErrorMessage] = useState('');
+    const [selectedExon, setSelectedExon] = useState();
     function onSubmit(event) {
         event.preventDefault();
         setErrorMessage('');
@@ -4788,12 +4784,12 @@ function MergeExons({ changeManager, handleClose, selectedFeature, setSelectedFe
         if (selectedFeature?._id === sourceFeature._id) {
             setSelectedFeature();
         }
-        const change = new shared.MergeExonsChange({
+        const change = new MergeExonsChange({
             changedIds: [sourceFeature._id],
             typeName: 'MergeExonsChange',
             assembly: sourceAssemblyId,
-            firstExon: mobxStateTree.getSnapshot(sourceFeature),
-            secondExon: mobxStateTree.getSnapshot(selectedExon),
+            firstExon: getSnapshot(sourceFeature),
+            secondExon: getSnapshot(selectedExon),
             parentFeatureId: parent._id,
         });
         void changeManager.submit(change);
@@ -4806,10 +4802,10 @@ function MergeExons({ changeManager, handleClose, selectedFeature, setSelectedFe
         setSelectedExon(neighboringExons[value]);
     };
     const neighboringExons = getNeighboringExons(sourceFeature);
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Merge exons", handleClose: handleClose, maxWidth: false, "data-testid": "merge-exons", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [Object.keys(neighboringExons).length === 0
+    return (jsxs(Dialog, { open: true, title: "Merge exons", handleClose: handleClose, maxWidth: false, "data-testid": "merge-exons", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [Object.keys(neighboringExons).length === 0
                                 ? 'There are no neighbouring exons to merge with'
-                                : 'Merge with exon on:', jsxRuntime.jsx(material.FormControl, { style: { marginTop: 5 }, children: jsxRuntime.jsx(material.RadioGroup, { "aria-labelledby": "demo-radio-buttons-group-label", name: "radio-buttons-group", value: selectedExon, onChange: handleTypeChange, children: Object.keys(neighboringExons).map((key) => (jsxRuntime.jsx(material.FormControlLabel, { value: key, control: jsxRuntime.jsx(material.Radio, {}), label: jsxRuntime.jsx(material.Box, { display: "flex", alignItems: "center", children: makeRadioButtonName$1(key, neighboringExons) }) }, key))) }) })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: Object.keys(neighboringExons).length === 0 ||
-                                    selectedExon === undefined, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                : 'Merge with exon on:', jsx(FormControl, { style: { marginTop: 5 }, children: jsx(RadioGroup, { "aria-labelledby": "demo-radio-buttons-group-label", name: "radio-buttons-group", value: selectedExon, onChange: handleTypeChange, children: Object.keys(neighboringExons).map((key) => (jsx(FormControlLabel, { value: key, control: jsx(Radio, {}), label: jsx(Box, { display: "flex", alignItems: "center", children: makeRadioButtonName$1(key, neighboringExons) }) }, key))) }) })] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: Object.keys(neighboringExons).length === 0 ||
+                                    selectedExon === undefined, children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function getTranscripts(referenceTranscript, session) {
@@ -4846,10 +4842,10 @@ function makeRadioButtonName(transcript) {
     return `${id} [${transcript.min + 1}-${transcript.max}]`;
 }
 function MergeTranscripts({ changeManager, handleClose, selectedFeature, session, setSelectedFeature, sourceAssemblyId, sourceFeature, }) {
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const transcripts = getTranscripts(sourceFeature, session);
     const firstTranscript = Object.keys(transcripts).at(0);
-    const [selectedTranscriptId, setSelectedTranscriptId] = React.useState(firstTranscript);
+    const [selectedTranscriptId, setSelectedTranscriptId] = useState(firstTranscript);
     function onSubmit(event) {
         event.preventDefault();
         setErrorMessage('');
@@ -4863,12 +4859,12 @@ function MergeTranscripts({ changeManager, handleClose, selectedFeature, session
         if (!sourceFeature.parent) {
             throw new Error('Cannot find parent');
         }
-        const change = new shared.MergeTranscriptsChange({
+        const change = new MergeTranscriptsChange({
             changedIds: [sourceFeature._id],
             typeName: 'MergeTranscriptsChange',
             assembly: sourceAssemblyId,
-            firstTranscript: mobxStateTree.getSnapshot(sourceFeature),
-            secondTranscript: mobxStateTree.getSnapshot(selectedTranscript),
+            firstTranscript: getSnapshot(sourceFeature),
+            secondTranscript: getSnapshot(selectedTranscript),
             parentFeatureId: sourceFeature.parent._id,
         });
         void changeManager.submit(change);
@@ -4879,13 +4875,13 @@ function MergeTranscripts({ changeManager, handleClose, selectedFeature, session
         const { value } = e.target;
         setSelectedTranscriptId(value);
     };
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Merge transcripts", handleClose: handleClose, maxWidth: false, "data-testid": "merge-transcripts", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [Object.keys(transcripts).length === 0
+    return (jsxs(Dialog, { open: true, title: "Merge transcripts", handleClose: handleClose, maxWidth: false, "data-testid": "merge-transcripts", children: [jsxs("form", { onSubmit: onSubmit, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [Object.keys(transcripts).length === 0
                                 ? 'There are no transcripts to merge with'
-                                : 'Merge with transcript:', jsxRuntime.jsx(material.FormControl, { style: { marginTop: 5 }, children: jsxRuntime.jsx(material.RadioGroup, { "aria-labelledby": "demo-radio-buttons-group-label", name: "radio-buttons-group", value: selectedTranscriptId, onChange: handleTypeChange, children: Object.keys(transcripts).map((key) => (jsxRuntime.jsx(material.FormControlLabel, { value: key, control: jsxRuntime.jsx(material.Radio, {}), label: jsxRuntime.jsx(material.Box, { display: "flex", alignItems: "center", children: makeRadioButtonName(transcripts[key]) }) }, key))) }) })] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: Object.keys(transcripts).length === 0 ||
-                                    selectedTranscriptId === undefined, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                : 'Merge with transcript:', jsx(FormControl, { style: { marginTop: 5 }, children: jsx(RadioGroup, { "aria-labelledby": "demo-radio-buttons-group-label", name: "radio-buttons-group", value: selectedTranscriptId, onChange: handleTypeChange, children: Object.keys(transcripts).map((key) => (jsx(FormControlLabel, { value: key, control: jsx(Radio, {}), label: jsx(Box, { display: "flex", alignItems: "center", children: makeRadioButtonName(transcripts[key]) }) }, key))) }) })] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: Object.keys(transcripts).length === 0 ||
+                                    selectedTranscriptId === undefined, children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
-const useStyles$e = tssReact.makeStyles()((theme) => ({
+const useStyles$e = makeStyles()((theme) => ({
     changeTextarea: {
         fontFamily: 'monospace',
         width: 600,
@@ -4926,18 +4922,18 @@ function buildFiltersFromModel(filterModel) {
 }
 function ViewChangeLog({ handleClose, session, assembly: assemblyId, }) {
     const { classes } = useStyles$e();
-    const [errorMessage, setErrorMessage] = React.useState();
-    const [displayGridData, setDisplayGridData] = React.useState([]);
-    const [rowCount, setRowCount] = React.useState(0);
-    const [loading, setLoading] = React.useState(false);
-    const [paginationModel, setPaginationModel] = React.useState({
+    const [errorMessage, setErrorMessage] = useState();
+    const [displayGridData, setDisplayGridData] = useState([]);
+    const [rowCount, setRowCount] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [paginationModel, setPaginationModel] = useState({
         page: 0,
         pageSize: 15,
     });
-    const [sortModel, setSortModel] = React.useState([
+    const [sortModel, setSortModel] = useState([
         { field: 'sequence', sort: 'desc' },
     ]);
-    const [filterModel, setFilterModel] = React.useState({
+    const [filterModel, setFilterModel] = useState({
         items: [],
     });
     const { apolloDataStore } = session;
@@ -4952,7 +4948,7 @@ function ViewChangeLog({ handleClose, session, assembly: assemblyId, }) {
             width: 200,
             type: 'singleSelect',
             // TODO: Get these from change manager once it's on the session
-            valueOptions: [...common.changeRegistry.changes.keys()],
+            valueOptions: [...changeRegistry.changes.keys()],
         },
         {
             field: 'changeData',
@@ -4960,7 +4956,7 @@ function ViewChangeLog({ handleClose, session, assembly: assemblyId, }) {
             width: 600,
             sortable: false,
             filterable: false,
-            renderCell: ({ value }) => (jsxRuntime.jsx("textarea", { className: classes.changeTextarea, value: JSON.stringify(value), readOnly: true })),
+            renderCell: ({ value }) => (jsx("textarea", { className: classes.changeTextarea, value: JSON.stringify(value), readOnly: true })),
         },
         { field: 'user', headerName: 'User', width: 140 },
         {
@@ -4971,7 +4967,7 @@ function ViewChangeLog({ handleClose, session, assembly: assemblyId, }) {
             valueGetter: (value) => value && new Date(value),
         },
     ];
-    React.useEffect(() => {
+    useEffect(() => {
         async function getGridData() {
             const backendDriver = apolloDataStore.getBackendDriver(assemblyId);
             if (!backendDriver) {
@@ -5009,9 +5005,9 @@ function ViewChangeLog({ handleClose, session, assembly: assemblyId, }) {
             setLoading(false);
         });
     }, [apolloDataStore, assemblyId, paginationModel, sortModel, filterModel]);
-    return (jsxRuntime.jsxs(Dialog, { open: true, fullScreen: true, title: "View change log", handleClose: handleClose, "data-testid": "view-changelog", children: [jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsxs(material.DialogContentText, { children: ["Changes for ", assemblyName] }), jsxRuntime.jsx(xDataGrid.DataGrid, { pagination: true, paginationMode: "server", sortingMode: "server", filterMode: "server", rowCount: rowCount, paginationModel: paginationModel, onPaginationModelChange: setPaginationModel, sortModel: sortModel, onSortModelChange: setSortModel, filterModel: filterModel, onFilterModelChange: setFilterModel, loading: loading, rows: displayGridData, columns: gridColumns, getRowId: (row) => row.sequence, showToolbar: true, pageSizeOptions: [5, 15, 25, 50, 100], initialState: {
+    return (jsxs(Dialog, { open: true, fullScreen: true, title: "View change log", handleClose: handleClose, "data-testid": "view-changelog", children: [jsxs(DialogContent, { children: [jsxs(DialogContentText, { children: ["Changes for ", assemblyName] }), jsx(DataGrid, { pagination: true, paginationMode: "server", sortingMode: "server", filterMode: "server", rowCount: rowCount, paginationModel: paginationModel, onPaginationModelChange: setPaginationModel, sortModel: sortModel, onSortModelChange: setSortModel, filterModel: filterModel, onFilterModelChange: setFilterModel, loading: loading, rows: displayGridData, columns: gridColumns, getRowId: (row) => row.sequence, showToolbar: true, pageSizeOptions: [5, 15, 25, 50, 100], initialState: {
                             columns: { columnVisibilityModel: { sequence: false } },
-                        } })] }), jsxRuntime.jsx(material.DialogActions, { children: jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" }) }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                        } })] }), jsx(DialogActions, { children: jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" }) }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 const columns = [
@@ -5022,17 +5018,17 @@ const isGeneratedObjectId = (key) => {
     const pattern = /^[\da-f]{24}$/i;
     return pattern.test(key);
 };
-const AddRefSeqAliases = mobxReact.observer(function AddRefSeqAliases({ changeManager, handleClose, session, }) {
-    const fileRef = React.useRef(null);
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [enableSubmit, setEnableSubmit] = React.useState(false);
-    const [selectedAssembly, setSelectedAssembly] = React.useState();
-    const [selectedRows, setSelectedRows] = React.useState([]);
-    const [refNameAliasMap, setRefNameAliasMap] = React.useState(() => new Map());
+const AddRefSeqAliases = observer(function AddRefSeqAliases({ changeManager, handleClose, session, }) {
+    const fileRef = useRef(null);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [enableSubmit, setEnableSubmit] = useState(false);
+    const [selectedAssembly, setSelectedAssembly] = useState();
+    const [selectedRows, setSelectedRows] = useState([]);
+    const [refNameAliasMap, setRefNameAliasMap] = useState(() => new Map());
     const { apolloDataStore } = session;
     const { collaborationServerDriver } = apolloDataStore;
     const assemblies = collaborationServerDriver.getAssemblies();
-    React.useEffect(() => {
+    useEffect(() => {
         if (assemblies.length > 0) {
             // eslint-disable-next-line @eslint-react/set-state-in-effect
             setSelectedAssembly(assemblies[0]);
@@ -5148,7 +5144,7 @@ const AddRefSeqAliases = mobxReact.observer(function AddRefSeqAliases({ changeMa
             setErrorMessage('No assembly selected');
             return;
         }
-        const change = new shared.AddRefSeqAliasesChange({
+        const change = new AddRefSeqAliasesChange({
             typeName: 'AddRefSeqAliasesChange',
             assembly: selectedAssembly.name,
             refSeqAliases,
@@ -5158,16 +5154,16 @@ const AddRefSeqAliases = mobxReact.observer(function AddRefSeqAliases({ changeMa
         });
         handleClose();
     };
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Add reference sequence aliases", handleClose: handleClose, maxWidth: 'sm', "data-testid": "add-refseq-alias", fullWidth: true, children: [jsxRuntime.jsxs(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxRuntime.jsxs(material.Grid, { container: true, spacing: 2, children: [jsxRuntime.jsx(material.Grid, { children: jsxRuntime.jsxs(material.FormControl, { disabled: enableSubmit && !errorMessage, fullWidth: true, children: [jsxRuntime.jsx(material.InputLabel, { id: "demo-simple-select-label", children: "Assembly" }), jsxRuntime.jsx(material.Select, { labelId: "demo-simple-select-label", id: "demo-simple-select", label: "Assembly", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, style: { minWidth: 150 }, children: assemblies.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option.name, children: option.displayName }, option.name))) })] }) }), jsxRuntime.jsxs(material.Grid, { children: [jsxRuntime.jsx(material.InputLabel, { children: "Load RefName alias" }), jsxRuntime.jsx("input", { type: "file", onChange: handleChangeFileHandler, ref: fileRef, disabled: (enableSubmit && !errorMessage) || !selectedAssembly })] })] }), selectedAssembly && refNameAliasMap.size > 0 ? (jsxRuntime.jsxs("div", { style: { height: 200, width: '100%', marginTop: 20 }, children: [jsxRuntime.jsx(material.InputLabel, { children: "Refname aliases found for selected assembly." }), jsxRuntime.jsx(xDataGrid.DataGrid, { rows: getTableRows(), columns: columns, initialState: {
+    return (jsxs(Dialog, { open: true, title: "Add reference sequence aliases", handleClose: handleClose, maxWidth: 'sm', "data-testid": "add-refseq-alias", fullWidth: true, children: [jsxs(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: [jsxs(Grid, { container: true, spacing: 2, children: [jsx(Grid, { children: jsxs(FormControl, { disabled: enableSubmit && !errorMessage, fullWidth: true, children: [jsx(InputLabel, { id: "demo-simple-select-label", children: "Assembly" }), jsx(Select, { labelId: "demo-simple-select-label", id: "demo-simple-select", label: "Assembly", value: selectedAssembly?.name ?? '', onChange: handleChangeAssembly, style: { minWidth: 150 }, children: assemblies.map((option) => (jsx(MenuItem, { value: option.name, children: option.displayName }, option.name))) })] }) }), jsxs(Grid, { children: [jsx(InputLabel, { children: "Load RefName alias" }), jsx("input", { type: "file", onChange: handleChangeFileHandler, ref: fileRef, disabled: (enableSubmit && !errorMessage) || !selectedAssembly })] })] }), selectedAssembly && refNameAliasMap.size > 0 ? (jsxs("div", { style: { height: 200, width: '100%', marginTop: 20 }, children: [jsx(InputLabel, { children: "Refname aliases found for selected assembly." }), jsx(DataGrid, { rows: getTableRows(), columns: columns, initialState: {
                                     pagination: {
                                         paginationModel: { page: 0, pageSize: 5 },
                                     },
-                                }, pageSizeOptions: [5, 10], onRowSelectionModelChange: rowSelectionChange, processRowUpdate: processRowUpdate, checkboxSelection: true, disableRowSelectionExcludeModel: true })] })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: !enableSubmit, onClick: handleSubmit, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                }, pageSizeOptions: [5, 10], onRowSelectionModelChange: rowSelectionChange, processRowUpdate: processRowUpdate, checkboxSelection: true, disableRowSelectionExcludeModel: true })] })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: !enableSubmit, onClick: handleSubmit, children: "Submit" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 });
 
 function ViewCheckResults({ handleClose, session, assembly: assemblyName, }) {
-    const [errorMessage, setErrorMessage] = React.useState();
-    const [displayGridData, setDisplayGridData] = React.useState([]);
+    const [errorMessage, setErrorMessage] = useState();
+    const [displayGridData, setDisplayGridData] = useState([]);
     const { apolloDataStore } = session;
     const gridColumns = [
         { field: '_id', headerName: 'id', width: 50 },
@@ -5180,7 +5176,7 @@ function ViewCheckResults({ handleClose, session, assembly: assemblyName, }) {
         { field: 'ids', headerName: 'Feature IDs', width: 200 },
         { field: 'message', headerName: 'Message', flex: 1 },
     ];
-    React.useEffect(() => {
+    useEffect(() => {
         async function getGridData() {
             const backendDriver = apolloDataStore.getBackendDriver(assemblyName);
             if (!backendDriver) {
@@ -5195,10 +5191,10 @@ function ViewCheckResults({ handleClose, session, assembly: assemblyName, }) {
             setErrorMessage(String(error));
         });
     }, [apolloDataStore, assemblyName]);
-    return (jsxRuntime.jsxs(Dialog, { open: true, fullScreen: true, title: "View check results", handleClose: handleClose, "data-testid": "view-check-results", children: [jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsxs(material.DialogContentText, { children: ["Check results for ", assemblyName] }), jsxRuntime.jsx(xDataGrid.DataGrid, { pagination: true, rows: displayGridData, columns: gridColumns, getRowId: (row) => row._id, showToolbar: true, initialState: {
+    return (jsxs(Dialog, { open: true, fullScreen: true, title: "View check results", handleClose: handleClose, "data-testid": "view-check-results", children: [jsxs(DialogContent, { children: [jsxs(DialogContentText, { children: ["Check results for ", assemblyName] }), jsx(DataGrid, { pagination: true, rows: displayGridData, columns: gridColumns, getRowId: (row) => row._id, showToolbar: true, initialState: {
                             sorting: { sortModel: [{ field: 'name', sort: 'asc' }] },
                             columns: { columnVisibilityModel: { name: true } },
-                        } })] }), jsxRuntime.jsx(material.DialogActions, { children: jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" }) }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                        } })] }), jsx(DialogActions, { children: jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Close" }) }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function exonIsSplittable(exonToBeSplit) {
@@ -5218,8 +5214,8 @@ function makeDialogText(splitExon) {
     return splittable.comment;
 }
 function SplitExon({ changeManager, handleClose, selectedFeature, setSelectedFeature, sourceAssemblyId, sourceFeature, }) {
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const exonToBeSplit = mobxStateTree.getSnapshot(sourceFeature);
+    const [errorMessage, setErrorMessage] = useState('');
+    const exonToBeSplit = getSnapshot(sourceFeature);
     function onSubmit(event) {
         event.preventDefault();
         setErrorMessage('');
@@ -5232,7 +5228,7 @@ function SplitExon({ changeManager, handleClose, selectedFeature, setSelectedFea
         if (!sourceFeature.parent?._id) {
             throw new Error('Splitting an exon without parent is not possible yet');
         }
-        const change = new shared.SplitExonChange({
+        const change = new SplitExonChange({
             changedIds: [sourceFeature._id],
             typeName: 'SplitExonChange',
             assembly: sourceAssemblyId,
@@ -5247,11 +5243,11 @@ function SplitExon({ changeManager, handleClose, selectedFeature, setSelectedFea
         handleClose();
         event.preventDefault();
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Split exon", handleClose: handleClose, maxWidth: false, "data-testid": "split-exon", children: [jsxRuntime.jsxs("form", { onSubmit: onSubmit, children: [jsxRuntime.jsx(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsxRuntime.jsx(material.DialogContentText, { children: makeDialogText(exonToBeSplit) }) }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: !exonIsSplittable(exonToBeSplit).isSplittable, children: "Yes" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+    return (jsxs(Dialog, { open: true, title: "Split exon", handleClose: handleClose, maxWidth: false, "data-testid": "split-exon", children: [jsxs("form", { onSubmit: onSubmit, children: [jsx(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsx(DialogContentText, { children: makeDialogText(exonToBeSplit) }) }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: !exonIsSplittable(exonToBeSplit).isSplittable, children: "Yes" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function DuplicateTranscript({ changeManager, handleClose, session, sourceAssemblyId, sourceFeature, setSelectedFeature, }) {
-    const [errorMessage, setErrorMessage] = React.useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const { notify } = session;
     async function onSubmit(event) {
         event.preventDefault();
@@ -5262,7 +5258,7 @@ function DuplicateTranscript({ changeManager, handleClose, session, sourceAssemb
                 setErrorMessage('No parent gene found for this transcript');
                 return;
             }
-            const transcriptSnapshot = mobxStateTree.getSnapshot(sourceFeature);
+            const transcriptSnapshot = getSnapshot(sourceFeature);
             const newTranscriptId = new ObjectID().toHexString();
             const duplicateTranscript = {
                 ...transcriptSnapshot,
@@ -5280,10 +5276,10 @@ function DuplicateTranscript({ changeManager, handleClose, session, sourceAssemb
                 duplicateTranscript.children = newChildren;
             }
             // skip attributes that are configured (SKIPPED_ATTRIBUTES_ON_COPY env var in backend)
-            const configuredSkippedAttributes = configuration.readConfObject(session.getPluginConfiguration(), 'skippedAttributesOnCopy');
+            const configuredSkippedAttributes = readConfObject(session.getPluginConfiguration(), 'skippedAttributesOnCopy');
             const skippedAttributesOnCopy = new Set(configuredSkippedAttributes ?? []);
             removeSkippedAttributes(duplicateTranscript, skippedAttributesOnCopy);
-            const change = new shared.AddFeatureChange({
+            const change = new AddFeatureChange({
                 parentFeatureId: parentGene._id,
                 changedIds: [parentGene._id],
                 typeName: 'AddFeatureChange',
@@ -5303,9 +5299,9 @@ function DuplicateTranscript({ changeManager, handleClose, session, sourceAssemb
                 : 'Failed to duplicate transcript');
         }
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Duplicate transcript", handleClose: handleClose, maxWidth: false, "data-testid": "duplicate-transcript", children: [jsxRuntime.jsxs("form", { onSubmit: (event) => {
+    return (jsxs(Dialog, { open: true, title: "Duplicate transcript", handleClose: handleClose, maxWidth: false, "data-testid": "duplicate-transcript", children: [jsxs("form", { onSubmit: (event) => {
                     void onSubmit(event);
-                }, children: [jsxRuntime.jsx(material.DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsxRuntime.jsx(material.DialogContentText, { children: "Are you sure you want to create a duplicate of this transcript?" }) }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", children: "Yes" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "button", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                }, children: [jsx(DialogContent, { style: { display: 'flex', flexDirection: 'column' }, children: jsx(DialogContentText, { children: "Are you sure you want to create a duplicate of this transcript?" }) }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", children: "Yes" }), jsx(Button, { variant: "outlined", type: "button", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 function addTopLevelAdminMenus(rootModel) {
@@ -5430,15 +5426,15 @@ function addTopLevelAdminMenus(rootModel) {
 // Icon source: https://developers.google.com/identity/branding-guidelines
 function Google(props) {
     const { color } = props;
-    return (jsxRuntime.jsx(material.SvgIcon, { viewBox: "0 0 18 18", style: { fontSize: 18, marginRight: 4 }, ...props, children: color === 'disabled' ? (jsxRuntime.jsx("path", { d: "M9.001,10.71 l0,-3.348 l8.424,0 c0.126,0.567,0.225,1.098,0.225,1.845 c0,5.139,-3.447,8.793,-8.64,8.793 c-4.968,0,-9,-4.032,-9,-9 c0,-4.968,4.032,-9,9,-9 c2.43,0,4.464,0.891,6.021,2.349 l-2.556,2.484 c-0.648,-0.612,-1.782,-1.332,-3.465,-1.332 c-2.979,0,-5.409,2.475,-5.409,5.508 c0,3.033,2.43,5.508,5.409,5.508 c3.447,0,4.716,-2.385,4.95,-3.798 l-4.959,0 l0,-0.009 z" })) : (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx("path", { d: "M17.64,9.20454545 c0,-0.638,-0.057,-1.252,-0.164,-1.841 l-8.476,0 l0,3.481 l4.844,0 c-0.209,1.125,-0.843,2.079,-1.796,2.717 l0,2.258 l2.908,0 c1.702,-1.567,2.684,-3.874,2.684,-6.615 l0,0 z", fill: "#4285F4" }), jsxRuntime.jsx("path", { d: "M9,18 c2.43,0,4.467,-0.806,5.956,-2.18 l-2.908,-2.259 c-0.806,0.54,-1.837,0.859,-3.048,0.859 c-2.344,0,-4.328,-1.583,-5.036,-3.71 l-3.007,0 l0,2.332 c1.481,2.941,4.525,4.958,8.043,4.958 l0,0 z", fill: "#34A853" }), jsxRuntime.jsx("path", { d: "M3.96409091,10.71 c-0.18,-0.54,-0.282,-1.117,-0.282,-1.71 c0,-0.593,0.102,-1.17,0.282,-1.71 l0,-2.332 l-3.007,0 c-0.609,1.215,-0.957,2.59,-0.957,4.042 c0,1.452,0.348,2.827,0.957,4.042 l3.007,-2.332 l0,0 z", fill: "#FBBC05" }), jsxRuntime.jsx("path", { d: "M9,3.57954545 c1.321,0,2.508,0.454,3.44,1.346 l2.582,-2.581 c-1.559,-1.453,-3.596,-2.345,-6.022,-2.345 c-3.518,0,-6.562,2.017,-8.043,4.959 l3.007,2.331 c0.708,-2.127,2.692,-3.71,5.036,-3.71 l0,0 z", fill: "#EA4335" })] })) }));
+    return (jsx(SvgIcon, { viewBox: "0 0 18 18", style: { fontSize: 18, marginRight: 4 }, ...props, children: color === 'disabled' ? (jsx("path", { d: "M9.001,10.71 l0,-3.348 l8.424,0 c0.126,0.567,0.225,1.098,0.225,1.845 c0,5.139,-3.447,8.793,-8.64,8.793 c-4.968,0,-9,-4.032,-9,-9 c0,-4.968,4.032,-9,9,-9 c2.43,0,4.464,0.891,6.021,2.349 l-2.556,2.484 c-0.648,-0.612,-1.782,-1.332,-3.465,-1.332 c-2.979,0,-5.409,2.475,-5.409,5.508 c0,3.033,2.43,5.508,5.409,5.508 c3.447,0,4.716,-2.385,4.95,-3.798 l-4.959,0 l0,-0.009 z" })) : (jsxs(Fragment, { children: [jsx("path", { d: "M17.64,9.20454545 c0,-0.638,-0.057,-1.252,-0.164,-1.841 l-8.476,0 l0,3.481 l4.844,0 c-0.209,1.125,-0.843,2.079,-1.796,2.717 l0,2.258 l2.908,0 c1.702,-1.567,2.684,-3.874,2.684,-6.615 l0,0 z", fill: "#4285F4" }), jsx("path", { d: "M9,18 c2.43,0,4.467,-0.806,5.956,-2.18 l-2.908,-2.259 c-0.806,0.54,-1.837,0.859,-3.048,0.859 c-2.344,0,-4.328,-1.583,-5.036,-3.71 l-3.007,0 l0,2.332 c1.481,2.941,4.525,4.958,8.043,4.958 l0,0 z", fill: "#34A853" }), jsx("path", { d: "M3.96409091,10.71 c-0.18,-0.54,-0.282,-1.117,-0.282,-1.71 c0,-0.593,0.102,-1.17,0.282,-1.71 l0,-2.332 l-3.007,0 c-0.609,1.215,-0.957,2.59,-0.957,4.042 c0,1.452,0.348,2.827,0.957,4.042 l3.007,-2.332 l0,0 z", fill: "#FBBC05" }), jsx("path", { d: "M9,3.57954545 c1.321,0,2.508,0.454,3.44,1.346 l2.582,-2.581 c-1.559,-1.453,-3.596,-2.345,-6.022,-2.345 c-3.518,0,-6.562,2.017,-8.043,4.959 l3.007,2.331 c0.708,-2.127,2.692,-3.71,5.036,-3.71 l0,0 z", fill: "#EA4335" })] })) }));
 }
 // Icon source: https://learn.microsoft.com/en-us/azure/active-directory/develop/howto-add-branding-in-azure-ad-apps
 function Microsoft(props) {
     const { color } = props;
-    return (jsxRuntime.jsxs(material.SvgIcon, { viewBox: "0 0 21 21", style: { fontSize: 21 }, ...props, children: [jsxRuntime.jsx("rect", { x: "1", y: "1", width: "9", height: "9", fill: color === 'disabled' ? '#7B7B7B' : '#F25022' }), jsxRuntime.jsx("rect", { x: "1", y: "11", width: "9", height: "9", fill: color === 'disabled' ? '#7B7B7B' : '#00A4EF' }), jsxRuntime.jsx("rect", { x: "11", y: "1", width: "9", height: "9", fill: color === 'disabled' ? '#939393' : '#7FBA00' }), jsxRuntime.jsx("rect", { x: "11", y: "11", width: "9", height: "9", fill: color === 'disabled' ? '#B9B9B9' : '#FFB900' })] }));
+    return (jsxs(SvgIcon, { viewBox: "0 0 21 21", style: { fontSize: 21 }, ...props, children: [jsx("rect", { x: "1", y: "1", width: "9", height: "9", fill: color === 'disabled' ? '#7B7B7B' : '#F25022' }), jsx("rect", { x: "1", y: "11", width: "9", height: "9", fill: color === 'disabled' ? '#7B7B7B' : '#00A4EF' }), jsx("rect", { x: "11", y: "1", width: "9", height: "9", fill: color === 'disabled' ? '#939393' : '#7FBA00' }), jsx("rect", { x: "11", y: "11", width: "9", height: "9", fill: color === 'disabled' ? '#B9B9B9' : '#FFB900' })] }));
 }
 
-const useStyles$d = tssReact.makeStyles()((theme) => ({
+const useStyles$d = makeStyles()((theme) => ({
     loginButton: {
         marginBottom: theme.spacing(1),
         width: '220px',
@@ -5452,25 +5448,25 @@ const useStyles$d = tssReact.makeStyles()((theme) => ({
 function GoogleButton(props) {
     const { classes } = useStyles$d();
     const { message } = props;
-    return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(Google, {}), ...props, children: message }));
+    return (jsx(Button, { className: classes.loginButton, variant: "outlined", startIcon: jsx(Google, {}), ...props, children: message }));
 }
 function MicrosoftButton(props) {
     const { classes } = useStyles$d();
     const { message } = props;
-    return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(Microsoft, {}), ...props, children: message }));
+    return (jsx(Button, { className: classes.loginButton, variant: "outlined", startIcon: jsx(Microsoft, {}), ...props, children: message }));
 }
 function GuestButton(props) {
     const { classes } = useStyles$d();
     const { message } = props;
-    return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(AccountCircleIcon, { fontSize: "small" }), ...props, children: message }));
+    return (jsx(Button, { className: classes.loginButton, variant: "outlined", startIcon: jsx(AccountCircleIcon, { fontSize: "small" }), ...props, children: message }));
 }
 function GenericButton(props) {
     const { classes } = useStyles$d();
     const { message } = props;
-    return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(BusinessIcon, { fontSize: "small" }), ...props, children: message }));
+    return (jsx(Button, { className: classes.loginButton, variant: "outlined", startIcon: jsx(BusinessIcon, { fontSize: "small" }), ...props, children: message }));
 }
 
-const useStyles$c = tssReact.makeStyles()((theme) => ({
+const useStyles$c = makeStyles()((theme) => ({
     divider: {
         marginTop: theme.spacing(4),
         marginBottom: theme.spacing(5),
@@ -5478,9 +5474,9 @@ const useStyles$c = tssReact.makeStyles()((theme) => ({
 }));
 const AuthTypeSelector = ({ baseURL, handleClose, name, }) => {
     const { classes } = useStyles$c();
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [loginTypes, setLoginTypes] = React.useState(null);
-    React.useEffect(() => {
+    const [errorMessage, setErrorMessage] = useState('');
+    const [loginTypes, setLoginTypes] = useState(null);
+    useEffect(() => {
         const controller = new AbortController();
         const { signal } = controller;
         async function getAuthTypes() {
@@ -5498,7 +5494,7 @@ const AuthTypeSelector = ({ baseURL, handleClose, name, }) => {
             }
         }
         getAuthTypes().catch((error) => {
-            if (!aborting.isAbortException(error)) {
+            if (!isAbortException(error)) {
                 setErrorMessage(String(error));
             }
         });
@@ -5516,28 +5512,28 @@ const AuthTypeSelector = ({ baseURL, handleClose, name, }) => {
     if (firstLoginType && loginTypes.length === 1 && !firstLoginType.needsPopup) {
         handleClick(firstLoginType);
     }
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: `Log in to ${name}`, handleClose: handleClose, maxWidth: false, "data-testid": "login-apollo", children: [jsxRuntime.jsx(material.DialogContent, { style: { display: 'flex', flexDirection: 'column', paddingTop: 8 }, children: loginTypes.map((loginType) => {
+    return (jsxs(Dialog, { open: true, title: `Log in to ${name}`, handleClose: handleClose, maxWidth: false, "data-testid": "login-apollo", children: [jsx(DialogContent, { style: { display: 'flex', flexDirection: 'column', paddingTop: 8 }, children: loginTypes.map((loginType) => {
                     if (loginType.name === 'google') {
-                        return (jsxRuntime.jsx(GoogleButton, { message: loginType.message, onClick: () => {
+                        return (jsx(GoogleButton, { message: loginType.message, onClick: () => {
                                 handleClick(loginType);
                             } }, loginType.name));
                     }
                     if (loginType.name === 'microsoft') {
-                        return (jsxRuntime.jsx(MicrosoftButton, { message: loginType.message, onClick: () => {
+                        return (jsx(MicrosoftButton, { message: loginType.message, onClick: () => {
                                 handleClick(loginType);
                             } }, loginType.name));
                     }
                     if (loginType.name === 'guest') {
-                        return (jsxRuntime.jsxs(React.Fragment, { children: [jsxRuntime.jsx(material.Divider, { className: classes.divider }), jsxRuntime.jsx(GuestButton, { message: loginType.message, onClick: () => {
+                        return (jsxs(React.Fragment, { children: [jsx(Divider, { className: classes.divider }), jsx(GuestButton, { message: loginType.message, onClick: () => {
                                         handleClick(loginType);
                                     } })] }, loginType.name));
                     }
-                    return (jsxRuntime.jsx(GenericButton, { message: loginType.message, onClick: () => {
+                    return (jsx(GenericButton, { message: loginType.message, onClick: () => {
                             handleClick(loginType);
                         } }, loginType.name));
-                }) }), jsxRuntime.jsx(material.DialogActions, { children: jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: () => {
+                }) }), jsx(DialogActions, { children: jsx(Button, { variant: "outlined", type: "submit", onClick: () => {
                         handleClose();
-                    }, children: "Cancel" }) }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                    }, children: "Cancel" }) }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 };
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -5549,21 +5545,21 @@ const AuthTypeSelector = ({ baseURL, handleClose, name, }) => {
 /* eslint-disable @typescript-eslint/no-misused-promises */
 const inWebWorker$1 = typeof sessionStorage === 'undefined';
 const stateModelFactory$3 = (configSchema) => {
-    return pluggableElementTypes.InternetAccount.named('ApolloInternetAccount')
+    return InternetAccount.named('ApolloInternetAccount')
         .props({
-        type: mobxStateTree.types.literal('ApolloInternetAccount'),
-        configuration: configuration.ConfigurationReference(configSchema),
+        type: types.literal('ApolloInternetAccount'),
+        configuration: ConfigurationReference(configSchema),
     })
         .views((self) => ({
         get baseURL() {
-            return configuration.getConf(self, 'baseURL');
+            return getConf(self, 'baseURL');
         },
         getUserId() {
             const token = self.retrieveToken();
             if (!token) {
                 return;
             }
-            const dec = shared.getDecodedToken(token);
+            const dec = getDecodedToken(token);
             return dec.id;
         },
     }))
@@ -5579,7 +5575,7 @@ const stateModelFactory$3 = (configSchema) => {
                 self.role = undefined;
                 return;
             }
-            const dec = shared.getDecodedToken(token);
+            const dec = getDecodedToken(token);
             const { role, exp } = dec;
             if (exp < Date.now() / 1000) {
                 self.role = undefined;
@@ -5676,7 +5672,7 @@ const stateModelFactory$3 = (configSchema) => {
                 resolve(token);
             },
             async openAuthWindow(type, resolve, reject) {
-                const redirectUri = util.isElectron
+                const redirectUri = isElectron
                     ? 'http://localhost/auth'
                     : globalThis.location.origin + globalThis.location.pathname;
                 const url = new URL('auth/login', self.baseURL);
@@ -5686,7 +5682,7 @@ const stateModelFactory$3 = (configSchema) => {
                 });
                 url.search = params.toString();
                 const eventName = `JBrowseAuthWindow-${self.internetAccountId}`;
-                if (util.isElectron) {
+                if (isElectron) {
                     const { ipcRenderer } = globalThis.require('electron');
                     const redirectUriFromElectron = await ipcRenderer.invoke('openAuthWindow', {
                         internetAccountId: self.internetAccountId,
@@ -5709,7 +5705,7 @@ const stateModelFactory$3 = (configSchema) => {
         async getTokenFromUser(resolve, reject) {
             const { baseURL } = self;
             const authType = await new Promise((resolve, reject) => {
-                const { session } = mobxStateTree.getRoot(self);
+                const { session } = getRoot(self);
                 const { baseURL, name } = self;
                 session.queueDialog((doneCallback) => [
                     AuthTypeSelector,
@@ -5759,7 +5755,7 @@ const stateModelFactory$3 = (configSchema) => {
         },
     }))
         .actions((self) => ({
-        updateLastChangeSequenceNumber: mobxStateTree.flow(function* updateLastChangeSequenceNumber() {
+        updateLastChangeSequenceNumber: flow(function* updateLastChangeSequenceNumber() {
             const { baseURL } = self;
             const url = new URL('changes', baseURL);
             const searchParams = new URLSearchParams({ limit: '1' });
@@ -5790,8 +5786,8 @@ const stateModelFactory$3 = (configSchema) => {
             const sequence = changes.length > 0 ? changes[0].sequence : 0;
             self.setLastChangeSequenceNumber(sequence);
         }),
-        getMissingChanges: mobxStateTree.flow(function* getMissingChanges() {
-            const { session } = mobxStateTree.getRoot(self);
+        getMissingChanges: flow(function* getMissingChanges() {
+            const { session } = getRoot(self);
             const { changeManager } = session.apolloDataStore;
             if (!self.lastChangeSequenceNumber) {
                 throw new Error('No LastChangeSequence stored in session. Please, refresh you browser to get last updates from server');
@@ -5827,25 +5823,25 @@ const stateModelFactory$3 = (configSchema) => {
             }
             const { changes: serializedChanges } = yield response.json();
             for (const serializedChange of serializedChanges) {
-                const change = common.Change.fromJSON(serializedChange);
+                const change = Change.fromJSON(serializedChange);
                 void changeManager.submit(change, { submitToBackend: false });
             }
         }),
     }))
         .volatile((self) => {
         const { origin, pathname: path } = new URL('socket.io/', self.baseURL);
-        return { socket: socket_ioClient.io(origin, { path }) };
+        return { socket: io(origin, { path }) };
     })
         .actions((self) => ({
         addSocketListeners() {
-            const { session } = mobxStateTree.getRoot(self);
+            const { session } = getRoot(self);
             const { notify } = session;
             const token = self.retrieveToken();
             if (!token) {
                 throw new Error('No Token found');
             }
-            const user = shared.getDecodedToken(token);
-            const localSessionId = shared.makeUserSessionId(user);
+            const user = getDecodedToken(token);
+            const localSessionId = makeUserSessionId(user);
             const { socket } = self;
             const { addCheckResult, changeManager, deleteCheckResult } = session.apolloDataStore;
             socket.on('connect', () => {
@@ -5870,7 +5866,7 @@ const stateModelFactory$3 = (configSchema) => {
                 if (message.userSessionId === localSessionId) {
                     return; // we did this change, no need to apply it again
                 }
-                const change = common.Change.fromJSON(message.changeInfo);
+                const change = Change.fromJSON(message.changeInfo);
                 void changeManager.submit(change, { submitToBackend: false });
             });
             socket.on('USER_LOCATION', (message) => {
@@ -5894,7 +5890,7 @@ const stateModelFactory$3 = (configSchema) => {
     }))
         .actions((self) => {
         async function postUserLocation(userLoc) {
-            if (!mobxStateTree.isAlive(self) || self.role === 'none') {
+            if (!isAlive(self) || self.role === 'none') {
                 return;
             }
             const { baseURL, controller } = self;
@@ -5942,23 +5938,23 @@ const stateModelFactory$3 = (configSchema) => {
             }
             // fires when app transitions from prerender, user returns to the app / tab.
             if (document.visibilityState === 'visible') {
-                const { session } = mobxStateTree.getRoot(self);
+                const { session } = getRoot(self);
                 session.broadcastLocations();
             }
         }
         return {
-            initialize: mobxStateTree.flow(function* initialize(role) {
+            initialize: flow(function* initialize(role) {
                 if (role === 'none') {
                     if (!self.roleNotificationSent) {
-                        const { session } = mobxStateTree.getRoot(self);
+                        const { session } = getRoot(self);
                         session.notify('You have registered as an Apollo user but have not been given access. Ask your administrator to enable access for your account.', 'warning');
                         self.roleNotificationSent = true;
                     }
                     return;
                 }
                 if (role === 'admin') {
-                    const rootModel = mobxStateTree.getRoot(self);
-                    if (util.isAbstractMenuManager(rootModel)) {
+                    const rootModel = getRoot(self);
+                    if (isAbstractMenuManager(rootModel)) {
                         addTopLevelAdminMenus(rootModel);
                     }
                 }
@@ -5991,11 +5987,11 @@ const stateModelFactory$3 = (configSchema) => {
         .actions((self) => ({
         afterAttach() {
             self.setRole();
-            mobx.autorun(async (reaction) => {
+            autorun(async (reaction) => {
                 if (inWebWorker$1) {
                     return;
                 }
-                const { session } = mobxStateTree.getRoot(self);
+                const { session } = getRoot(self);
                 // This can be undefined if there is no session loaded, e.g. on
                 // the start screen
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -6030,13 +6026,13 @@ function isApolloRefNameAliasMessage(data) {
         'refNameAliases' in data);
 }
 const isInWebWorker$1 = typeof sessionStorage === 'undefined';
-class RefNameAliasAdapter extends BaseAdapter.BaseAdapter {
+class RefNameAliasAdapter extends BaseAdapter {
     refNameAliasesP;
     async getRefNameAliases() {
         if (this.refNameAliasesP) {
             return this.refNameAliasesP;
         }
-        const assemblyId = configuration.readConfObject(this.config, 'assemblyId');
+        const assemblyId = readConfObject(this.config, 'assemblyId');
         if (!isInWebWorker$1) {
             const dataStore = this.pluginManager?.rootModel?.session?.apolloDataStore;
             if (!dataStore) {
@@ -6053,7 +6049,7 @@ class RefNameAliasAdapter extends BaseAdapter.BaseAdapter {
             const timeoutId = setTimeout(() => {
                 reject(new Error('timeout'));
             }, 20_000);
-            const messageId = nanoid.nanoid();
+            const messageId = nanoid();
             const messageListener = (event) => {
                 const data = event.data;
                 if (!isApolloRefNameAliasMessage(data)) {
@@ -6082,7 +6078,7 @@ class RefNameAliasAdapter extends BaseAdapter.BaseAdapter {
     }
 }
 
-var configSchema$5 = configuration.ConfigurationSchema('ApolloRefNameAliasAdapter', {
+var configSchema$5 = ConfigurationSchema('ApolloRefNameAliasAdapter', {
     assemblyId: {
         type: 'string',
         defaultValue: '',
@@ -6114,7 +6110,7 @@ function isApolloMessageData$1(data) {
         data.apollo === true);
 }
 const isInWebWorker = typeof sessionStorage === 'undefined';
-class ApolloSequenceAdapter extends BaseAdapter.BaseSequenceAdapter {
+class ApolloSequenceAdapter extends BaseSequenceAdapter {
     regions;
     async getRefNames() {
         const regions = await this.getRegions();
@@ -6124,7 +6120,7 @@ class ApolloSequenceAdapter extends BaseAdapter.BaseSequenceAdapter {
         if (this.regions) {
             return this.regions;
         }
-        const assemblyId = configuration.readConfObject(this.config, 'assemblyId');
+        const assemblyId = readConfObject(this.config, 'assemblyId');
         if (!isInWebWorker) {
             const dataStore = this.pluginManager?.rootModel?.session?.apolloDataStore;
             if (!dataStore) {
@@ -6142,7 +6138,7 @@ class ApolloSequenceAdapter extends BaseAdapter.BaseSequenceAdapter {
             const timeoutId = setTimeout(() => {
                 reject('timeout');
             }, 20_000);
-            const messageId = nanoid.nanoid();
+            const messageId = nanoid();
             const messageListener = (event) => {
                 const { data } = event;
                 if (!isApolloMessageData$1(data)) {
@@ -6174,9 +6170,9 @@ class ApolloSequenceAdapter extends BaseAdapter.BaseSequenceAdapter {
      */
     getFeatures(region) {
         const { end, refName, start } = region;
-        const assemblyId = configuration.readConfObject(this.config, 'assemblyId');
+        const assemblyId = readConfObject(this.config, 'assemblyId');
         const regionWithAssemblyName = { ...region, assemblyName: assemblyId };
-        return rxjs.ObservableCreate(async (observer) => {
+        return ObservableCreate(async (observer) => {
             if (!isInWebWorker) {
                 const dataStore = this.pluginManager?.rootModel?.session?.apolloDataStore;
                 if (!dataStore) {
@@ -6209,7 +6205,7 @@ class ApolloSequenceAdapter extends BaseAdapter.BaseSequenceAdapter {
                 const timeoutId = setTimeout(() => {
                     reject('timeout');
                 }, 20_000);
-                const messageId = nanoid.nanoid();
+                const messageId = nanoid();
                 const messageListener = (event) => {
                     const { data } = event;
                     if (!isApolloMessageData$1(data)) {
@@ -6247,7 +6243,7 @@ class ApolloSequenceAdapter extends BaseAdapter.BaseSequenceAdapter {
     freeResources( /* { region } */) { }
 }
 
-var configSchema$4 = configuration.ConfigurationSchema('ApolloSequenceAdapter', {
+var configSchema$4 = ConfigurationSchema('ApolloSequenceAdapter', {
     assemblyId: {
         type: 'string',
         defaultValue: '',
@@ -6284,15 +6280,15 @@ function getMatchedFeature(query, feature) {
         }
     }
 }
-class ApolloTextSearchAdapter extends BaseAdapter.BaseAdapter {
+class ApolloTextSearchAdapter extends BaseAdapter {
     get baseURL() {
-        return configuration.readConfObject(this.config, 'baseURL').uri;
+        return readConfObject(this.config, 'baseURL').uri;
     }
     get trackId() {
-        return configuration.readConfObject(this.config, 'trackId');
+        return readConfObject(this.config, 'trackId');
     }
     get assemblyNames() {
-        return configuration.readConfObject(this.config, 'assemblyNames');
+        return readConfObject(this.config, 'assemblyNames');
     }
     mapBaseResult(features, assembly, query) {
         return features.map((feature) => {
@@ -6332,7 +6328,7 @@ class ApolloTextSearchAdapter extends BaseAdapter.BaseAdapter {
     freeResources() { }
 }
 
-var configSchema$3 = configuration.ConfigurationSchema('ApolloTextSearchAdapter', {
+var configSchema$3 = ConfigurationSchema('ApolloTextSearchAdapter', {
     assemblyNames: {
         type: 'stringArray',
         defaultValue: [],
@@ -6352,7 +6348,7 @@ var configSchema$3 = configuration.ConfigurationSchema('ApolloTextSearchAdapter'
 }, { explicitlyTyped: true, explicitIdentifier: 'textSearchAdapterId' });
 
 function installApolloTextSearchAdapter(pluginManager) {
-    pluginManager.addTextSearchAdapterType(() => new pluggableElementTypes.TextSearchAdapterType({
+    pluginManager.addTextSearchAdapterType(() => new TextSearchAdapterType({
         name: 'ApolloTextSearchAdapter',
         displayName: 'Apollo text search adapter',
         configSchema: configSchema$3,
@@ -6361,7 +6357,7 @@ function installApolloTextSearchAdapter(pluginManager) {
     }));
 }
 
-const useStyles$b = tssReact.makeStyles()((theme) => ({
+const useStyles$b = makeStyles()((theme) => ({
     attributeKey: {
         fontWeight: 'bold',
         marginRight: theme.spacing(2),
@@ -6372,37 +6368,37 @@ function AttributeKey({ attributeKey: key }) {
     const startsWithCapital = /^[A-Z]/.test(key);
     let displayKey = key;
     let titleText;
-    if (shared.isGFFInternalAttribute(key)) {
-        displayKey = shared.internalToGFF[key];
+    if (isGFFInternalAttribute(key)) {
+        displayKey = internalToGFF[key];
         titleText = `On GFF3 export, this will be assigned to the GFF3's reserved "${displayKey}" attribute`;
     }
-    else if (shared.isGFFColumnInternal(key)) {
-        displayKey = shared.gffInternalToColumn[key];
+    else if (isGFFColumnInternal(key)) {
+        displayKey = gffInternalToColumn[key];
         titleText = `On GFF3 export, this will be placed in the GFF3's "${displayKey}" column`;
     }
     else if (startsWithCapital) {
         titleText =
             'On GFF3 export, this attribute will be changed to start with a lower-case letter because attributes starting with an upper-case letter are reserved in GFF3';
     }
-    return (jsxRuntime.jsxs("div", { style: { display: 'flex' }, children: [jsxRuntime.jsx(material.Typography, { className: classes.attributeKey, children: displayKey }), titleText ? (jsxRuntime.jsx(material.Tooltip, { title: titleText, children: jsxRuntime.jsx(material.Chip, { icon: jsxRuntime.jsx(InfoIcon, {}), label: "GFF3", size: "small", variant: "outlined" }) })) : null] }));
+    return (jsxs("div", { style: { display: 'flex' }, children: [jsx(Typography, { className: classes.attributeKey, children: displayKey }), titleText ? (jsx(Tooltip$1, { title: titleText, children: jsx(Chip, { icon: jsx(InfoIcon, {}), label: "GFF3", size: "small", variant: "outlined" }) })) : null] }));
 }
 
 const customKeyName = 'Custom';
 const gffKeys = {
     [customKeyName]: 'custom',
 };
-for (const [value, key] of Object.entries(shared.gffToInternal)) {
+for (const [value, key] of Object.entries(gffToInternal)) {
     gffKeys[`GFF ${key}`] = value;
 }
-for (const [value, key] of Object.entries(shared.gffColumnToInternal)) {
+for (const [value, key] of Object.entries(gffColumnToInternal)) {
     gffKeys[`GFF ${key}`] = value;
 }
-const AttributeKeySelector = mobxReact.observer(function AttributeKeySelector({ setKey, session, }) {
-    const { pluginManager } = util.getEnv(session);
+const AttributeKeySelector = observer(function AttributeKeySelector({ setKey, session, }) {
+    const { pluginManager } = getEnv(session);
     const reservedKeys = pluginManager.evaluateExtensionPoint('Apollo-ReservedAttributeKeys', gffKeys);
     const firstKey = Object.keys(reservedKeys).at(0) ?? customKeyName;
-    const [selectedKey, setSelectedKey] = React.useState(firstKey);
-    const [customKey, setCustomKey] = React.useState();
+    const [selectedKey, setSelectedKey] = useState(firstKey);
+    const [customKey, setCustomKey] = useState();
     const isCustom = selectedKey === customKeyName;
     function handleSubmit(event) {
         event.preventDefault();
@@ -6415,21 +6411,21 @@ const AttributeKeySelector = mobxReact.observer(function AttributeKeySelector({ 
     function handleCancel() {
         setKey();
     }
-    return (jsxRuntime.jsxs("form", { onSubmit: handleSubmit, children: [jsxRuntime.jsxs("div", { style: { display: 'flex', flexDirection: 'column', margin: 8 }, children: [jsxRuntime.jsxs(material.FormControl, { variant: "outlined", children: [jsxRuntime.jsx(material.InputLabel, { id: "attribute-key-select-label", children: "Key" }), jsxRuntime.jsx(material.Select, { labelId: "attribute-key-select-label", value: selectedKey, label: "Key", onChange: (event) => {
+    return (jsxs("form", { onSubmit: handleSubmit, children: [jsxs("div", { style: { display: 'flex', flexDirection: 'column', margin: 8 }, children: [jsxs(FormControl, { variant: "outlined", children: [jsx(InputLabel, { id: "attribute-key-select-label", children: "Key" }), jsx(Select, { labelId: "attribute-key-select-label", value: selectedKey, label: "Key", onChange: (event) => {
                                     setSelectedKey(event.target.value);
-                                }, children: Object.keys(reservedKeys).map((val) => (jsxRuntime.jsx(material.MenuItem, { value: val, children: val }, val))) })] }), isCustom ? (jsxRuntime.jsx(material.TextField, { label: "Attribute key", variant: "outlined", id: "attributeKey", onChange: (event) => {
+                                }, children: Object.keys(reservedKeys).map((val) => (jsx(MenuItem, { value: val, children: val }, val))) })] }), isCustom ? (jsx(TextField, { label: "Attribute key", variant: "outlined", id: "attributeKey", onChange: (event) => {
                             setCustomKey(event.target.value);
-                        } })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { color: "primary", variant: "contained", type: "submit", disabled: isCustom && !customKey, children: "Add" }), jsxRuntime.jsx(material.Button, { variant: "outlined", onClick: handleCancel, children: "Cancel" })] })] }));
+                        } })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { color: "primary", variant: "contained", type: "submit", disabled: isCustom && !customKey, children: "Add" }), jsx(Button, { variant: "outlined", onClick: handleCancel, children: "Cancel" })] })] }));
 });
 
-const StringTextField = mobxReact.observer(function StringTextField({ onChangeCommitted, value: initialValue, ...props }) {
-    const [value, setValue] = React.useState(String(initialValue));
-    const [blur, setBlur] = React.useState(false);
-    const [inputNode, setInputNode] = React.useState(null);
-    React.useEffect(() => {
+const StringTextField = observer(function StringTextField({ onChangeCommitted, value: initialValue, ...props }) {
+    const [value, setValue] = useState(String(initialValue));
+    const [blur, setBlur] = useState(false);
+    const [inputNode, setInputNode] = useState(null);
+    useEffect(() => {
         setValue(String(initialValue));
     }, [initialValue]);
-    React.useEffect(() => {
+    useEffect(() => {
         if (blur) {
             inputNode?.blur();
             setBlur(false);
@@ -6438,7 +6434,7 @@ const StringTextField = mobxReact.observer(function StringTextField({ onChangeCo
     function onChange(event) {
         setValue(event.target.value);
     }
-    return (jsxRuntime.jsx(material.TextField, { ...props, type: "text", onChange: onChange, value: value, onKeyDown: (event) => {
+    return (jsx(TextField, { ...props, type: "text", onChange: onChange, value: value, onKeyDown: (event) => {
             if (event.key === 'Enter') {
                 inputNode?.blur();
             }
@@ -6455,8 +6451,8 @@ const StringTextField = mobxReact.observer(function StringTextField({ onChangeCo
         } }));
 });
 
-const DefaultAttributeEditor = mobxReact.observer(function DefaultAttributeEditor({ attributeValues, setAttribute, isNew = false, }) {
-    const [newValues, setNewValues] = React.useState(attributeValues && attributeValues.length > 0 ? attributeValues : ['']);
+const DefaultAttributeEditor = observer(function DefaultAttributeEditor({ attributeValues, setAttribute, isNew = false, }) {
+    const [newValues, setNewValues] = useState(attributeValues && attributeValues.length > 0 ? attributeValues : ['']);
     function updateValue(idx, newValue) {
         setNewValues((oldValues) => {
             const newValues = [...oldValues];
@@ -6478,26 +6474,26 @@ const DefaultAttributeEditor = mobxReact.observer(function DefaultAttributeEdito
             return newValues;
         });
     }
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [newValues.map((value, idx) => (
+    return (jsxs(Fragment, { children: [newValues.map((value, idx) => (
             // eslint-disable-next-line @eslint-react/no-array-index-key
-            jsxRuntime.jsxs("div", { style: { display: 'flex' }, children: [jsxRuntime.jsx(StringTextField, { value: value, onChangeCommitted: (editedValue) => {
+            jsxs("div", { style: { display: 'flex' }, children: [jsx(StringTextField, { value: value, onChangeCommitted: (editedValue) => {
                             updateValue(idx, editedValue);
-                        }, variant: "outlined", fullWidth: true }), jsxRuntime.jsx(material.IconButton, { "aria-label": "delete", size: "medium", edge: "end", onClick: () => {
+                        }, variant: "outlined", fullWidth: true }), jsx(IconButton, { "aria-label": "delete", size: "medium", edge: "end", onClick: () => {
                             deleteValue(idx);
-                        }, children: jsxRuntime.jsx(DeleteIcon, { fontSize: "inherit" }) })] }, `${idx}-${value}`))), jsxRuntime.jsx(material.IconButton, { "aria-label": "add", size: "medium", color: "secondary", edge: "start", onClick: addValue, children: jsxRuntime.jsx(AddBoxIcon, { fontSize: "inherit" }) }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { color: "primary", variant: "contained", onClick: () => {
+                        }, children: jsx(DeleteIcon, { fontSize: "inherit" }) })] }, `${idx}-${value}`))), jsx(IconButton, { "aria-label": "add", size: "medium", color: "secondary", edge: "start", onClick: addValue, children: jsx(AddBoxIcon, { fontSize: "inherit" }) }), jsxs(DialogActions, { children: [jsx(Button, { color: "primary", variant: "contained", onClick: () => {
                             setAttribute(newValues.filter(Boolean));
-                        }, children: isNew ? 'Add' : 'Update' }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: () => {
+                        }, children: isNew ? 'Add' : 'Update' }), jsx(Button, { variant: "outlined", type: "submit", onClick: () => {
                             setAttribute();
                         }, children: "Cancel" })] })] }));
 });
 
 function DefaultAttributeViewer({ values }) {
-    return (jsxRuntime.jsx(jsxRuntime.Fragment, { children: values?.map((value, idx) => (jsxRuntime.jsx(material.Typography
+    return (jsx(Fragment, { children: values?.map((value, idx) => (jsx(Typography
         // eslint-disable-next-line @eslint-react/no-array-index-key
         , { variant: "body2", color: "textSecondary", children: value }, `${idx}.${value}`))) }));
 }
 
-const useStyles$a = tssReact.makeStyles()((theme) => ({
+const useStyles$a = makeStyles()((theme) => ({
     list: {
         'li:nth-of-type(odd)': {
             backgroundColor: theme.palette.action.focus,
@@ -6507,14 +6503,14 @@ const useStyles$a = tssReact.makeStyles()((theme) => ({
         },
     },
 }));
-const Attributes = mobxReact.observer(function Attributes({ assembly, editable, feature, session, }) {
-    const { pluginManager } = util.getEnv(session);
+const Attributes = observer(function Attributes({ assembly, editable, feature, session, }) {
+    const { pluginManager } = getEnv(session);
     const { classes } = useStyles$a();
-    const [anchorEl, setAnchorEl] = React.useState(null);
-    const [selectedKey, setSelectedKey] = React.useState(null);
-    const [editingKey, setEditingKey] = React.useState(null);
-    const [showAddNewForm, setShowAddNewForm] = React.useState(false);
-    const [newKey, setNewKey] = React.useState();
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [selectedKey, setSelectedKey] = useState(null);
+    const [editingKey, setEditingKey] = useState(null);
+    const [showAddNewForm, setShowAddNewForm] = useState(false);
+    const [newKey, setNewKey] = useState();
     const open = Boolean(anchorEl);
     const { changeManager } = session.apolloDataStore;
     const { notify } = session;
@@ -6540,9 +6536,9 @@ const Attributes = mobxReact.observer(function Attributes({ assembly, editable, 
     }
     const { _id, attributes } = feature;
     function deleteFeatureAttribute(key) {
-        const attributesSerialized = mobxStateTree.getSnapshot(attributes);
+        const attributesSerialized = getSnapshot(attributes);
         const { [key]: deletedAttribute, ...remainingAttributes } = attributesSerialized;
-        const change = new shared.FeatureAttributeChange({
+        const change = new FeatureAttributeChange({
             changedIds: [_id],
             typeName: 'FeatureAttributeChange',
             assembly,
@@ -6553,7 +6549,7 @@ const Attributes = mobxReact.observer(function Attributes({ assembly, editable, 
         void changeManager.submit(change);
     }
     function modifyFeatureAttribute(key, attribute) {
-        const serializedAttributes = { ...mobxStateTree.getSnapshot(attributes) };
+        const serializedAttributes = { ...getSnapshot(attributes) };
         const oldAttributes = structuredClone(serializedAttributes);
         if (!(key in serializedAttributes)) {
             notify(`"${key}" not found in feature attributes`, 'error');
@@ -6564,7 +6560,7 @@ const Attributes = mobxReact.observer(function Attributes({ assembly, editable, 
             return;
         }
         serializedAttributes[key] = attribute;
-        const change = new shared.FeatureAttributeChange({
+        const change = new FeatureAttributeChange({
             changedIds: [feature._id],
             typeName: 'FeatureAttributeChange',
             assembly,
@@ -6575,14 +6571,14 @@ const Attributes = mobxReact.observer(function Attributes({ assembly, editable, 
         void changeManager.submit(change);
     }
     function addFeatureAttribute(key, attribute) {
-        const serializedAttributes = { ...mobxStateTree.getSnapshot(attributes) };
+        const serializedAttributes = { ...getSnapshot(attributes) };
         const oldAttributes = structuredClone(serializedAttributes);
         if (key in serializedAttributes) {
             notify(`Feature already has attribute "${key}"`, 'error');
             return;
         }
         serializedAttributes[key] = attribute;
-        const change = new shared.FeatureAttributeChange({
+        const change = new FeatureAttributeChange({
             changedIds: [feature._id],
             typeName: 'FeatureAttributeChange',
             assembly,
@@ -6593,38 +6589,38 @@ const Attributes = mobxReact.observer(function Attributes({ assembly, editable, 
         void changeManager.submit(change);
     }
     const NewKeyAttributeEditor = pluginManager.evaluateExtensionPoint('Apollo-AttributeEditorComponent', DefaultAttributeEditor, { key: newKey });
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsxs(material.List, { className: classes.list, children: [mobx.entries(attributes).map(([key, values]) => {
+    return (jsxs(Fragment, { children: [jsxs(List, { className: classes.list, children: [entries(attributes).map(([key, values]) => {
                         const AttributeEditor = pluginManager.evaluateExtensionPoint('Apollo-AttributeEditorComponent', DefaultAttributeEditor, { key });
                         const AttributeViewer = pluginManager.evaluateExtensionPoint('Apollo-AttributeViewerComponent', DefaultAttributeViewer, { key });
-                        return (jsxRuntime.jsx(material.ListItem, { secondaryAction: editable && !editingKey ? (jsxRuntime.jsx(material.IconButton, { edge: "end", onClick: (event) => {
+                        return (jsx(ListItem, { secondaryAction: editable && !editingKey ? (jsx(IconButton, { edge: "end", onClick: (event) => {
                                     handleListMenuClick(event, key);
-                                }, children: jsxRuntime.jsx(MoreHorizIcon, {}) })) : null, children: jsxRuntime.jsx(material.ListItemText, { disableTypography: true, primary: jsxRuntime.jsx(AttributeKey, { attributeKey: key }), secondary: editingKey === key ? (jsxRuntime.jsx(AttributeEditor, { session: session, attributeValues: values, setAttribute: (newValues) => {
+                                }, children: jsx(MoreHorizIcon, {}) })) : null, children: jsx(ListItemText, { disableTypography: true, primary: jsx(AttributeKey, { attributeKey: key }), secondary: editingKey === key ? (jsx(AttributeEditor, { session: session, attributeValues: values, setAttribute: (newValues) => {
                                         setEditingKey(null);
                                         if (newValues) {
                                             modifyFeatureAttribute(key, newValues);
                                         }
-                                    } })) : (jsxRuntime.jsx(AttributeViewer, { values: values })) }) }, key));
-                    }), newKey ? (jsxRuntime.jsx(material.ListItem, { children: jsxRuntime.jsx(material.ListItemText, { disableTypography: true, primary: jsxRuntime.jsx(AttributeKey, { attributeKey: newKey }), secondary: jsxRuntime.jsx(NewKeyAttributeEditor, { session: session, attributeValues: [], setAttribute: (newValues) => {
+                                    } })) : (jsx(AttributeViewer, { values: values })) }) }, key));
+                    }), newKey ? (jsx(ListItem, { children: jsx(ListItemText, { disableTypography: true, primary: jsx(AttributeKey, { attributeKey: newKey }), secondary: jsx(NewKeyAttributeEditor, { session: session, attributeValues: [], setAttribute: (newValues) => {
                                     if (newValues) {
                                         addFeatureAttribute(newKey, newValues);
                                     }
                                     setNewKey(undefined);
-                                }, isNew: true }) }) })) : null] }), editable ? (jsxRuntime.jsx(material.Button, { color: "primary", variant: "contained", disabled: showAddNewForm || Boolean(newKey), onClick: () => {
+                                }, isNew: true }) }) })) : null] }), editable ? (jsx(Button, { color: "primary", variant: "contained", disabled: showAddNewForm || Boolean(newKey), onClick: () => {
                     setShowAddNewForm(true);
-                }, children: "Add new" })) : null, showAddNewForm ? (jsxRuntime.jsx(material.Paper, { variant: "outlined", style: { marginTop: 8 }, children: jsxRuntime.jsx(AttributeKeySelector, { session: session, setKey: (newKey) => {
+                }, children: "Add new" })) : null, showAddNewForm ? (jsx(Paper, { variant: "outlined", style: { marginTop: 8 }, children: jsx(AttributeKeySelector, { session: session, setKey: (newKey) => {
                         setNewKey(newKey);
                         setShowAddNewForm(false);
-                    } }) })) : null, jsxRuntime.jsxs(material.Menu, { anchorEl: anchorEl, open: open, onClose: handleClose, children: [jsxRuntime.jsxs(material.MenuItem, { onClick: handleDelete, children: [jsxRuntime.jsx(material.ListItemIcon, { children: jsxRuntime.jsx(DeleteIcon, { fontSize: "small" }) }), jsxRuntime.jsx(material.Typography, { variant: "inherit", children: "Delete" })] }), jsxRuntime.jsxs(material.MenuItem, { onClick: handleEdit, children: [jsxRuntime.jsx(material.ListItemIcon, { children: jsxRuntime.jsx(EditIcon, { fontSize: "small" }) }), jsxRuntime.jsx(material.Typography, { variant: "inherit", children: "Edit" })] })] })] }));
+                    } }) })) : null, jsxs(Menu, { anchorEl: anchorEl, open: open, onClose: handleClose, children: [jsxs(MenuItem, { onClick: handleDelete, children: [jsx(ListItemIcon, { children: jsx(DeleteIcon, { fontSize: "small" }) }), jsx(Typography, { variant: "inherit", children: "Delete" })] }), jsxs(MenuItem, { onClick: handleEdit, children: [jsx(ListItemIcon, { children: jsx(EditIcon, { fontSize: "small" }) }), jsx(Typography, { variant: "inherit", children: "Edit" })] })] })] }));
 });
 
-const NumberTextField = mobxReact.observer(function NumberTextField({ onChangeCommitted, value: initialValue, ...props }) {
-    const [value, setValue] = React.useState(String(initialValue));
-    const [blur, setBlur] = React.useState(false);
-    const [inputNode, setInputNode] = React.useState(null);
-    React.useEffect(() => {
+const NumberTextField = observer(function NumberTextField({ onChangeCommitted, value: initialValue, ...props }) {
+    const [value, setValue] = useState(String(initialValue));
+    const [blur, setBlur] = useState(false);
+    const [inputNode, setInputNode] = useState(null);
+    useEffect(() => {
         setValue(String(initialValue));
     }, [initialValue]);
-    React.useEffect(() => {
+    useEffect(() => {
         if (blur) {
             inputNode?.blur();
             setBlur(false);
@@ -6634,7 +6630,7 @@ const NumberTextField = mobxReact.observer(function NumberTextField({ onChangeCo
         setValue(event.target.value);
     }
     const error = Number.isNaN(Number(value));
-    return (jsxRuntime.jsx(material.TextField, { ...props, type: "text", onChange: onChange, value: value, onKeyDown: (event) => {
+    return (jsx(TextField, { ...props, type: "text", onChange: onChange, value: value, onKeyDown: (event) => {
             if (event.key === 'Enter') {
                 inputNode?.blur();
             }
@@ -6660,9 +6656,9 @@ const NumberTextField = mobxReact.observer(function NumberTextField({ onChangeCo
         }, error: error, helperText: error ? 'Not a valid number' : undefined }));
 });
 
-const BasicInformation = mobxReact.observer(function BasicInformation({ assembly, feature, session, }) {
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [typeWarningText, setTypeWarningText] = React.useState('');
+const BasicInformation = observer(function BasicInformation({ assembly, feature, session, }) {
+    const [errorMessage, setErrorMessage] = useState('');
+    const [typeWarningText, setTypeWarningText] = useState('');
     const { _id, assemblyId, max, min, strand, type } = feature;
     const notifyError = (e) => {
         session.notify(e.message, 'error');
@@ -6671,7 +6667,7 @@ const BasicInformation = mobxReact.observer(function BasicInformation({ assembly
     function handleTypeChange(newType) {
         setErrorMessage('');
         const featureId = _id;
-        const change = new shared.TypeChange({
+        const change = new TypeChange({
             typeName: 'TypeChange',
             changedIds: [featureId],
             featureId,
@@ -6684,7 +6680,7 @@ const BasicInformation = mobxReact.observer(function BasicInformation({ assembly
     function handleStrandChange(event) {
         const { value } = event.target;
         const newStrand = value ? Number(value) : undefined;
-        const change = new shared.StrandChange({
+        const change = new StrandChange({
             typeName: 'StrandChange',
             changedIds: [_id],
             featureId: _id,
@@ -6696,7 +6692,7 @@ const BasicInformation = mobxReact.observer(function BasicInformation({ assembly
     }
     function handleStartChange(newStart) {
         newStart--;
-        const change = new shared.LocationStartChange({
+        const change = new LocationStartChange({
             typeName: 'LocationStartChange',
             changedIds: [_id],
             featureId: _id,
@@ -6708,7 +6704,7 @@ const BasicInformation = mobxReact.observer(function BasicInformation({ assembly
         return true;
     }
     function handleEndChange(newEnd) {
-        const change = new shared.LocationEndChange({
+        const change = new LocationEndChange({
             typeName: 'LocationEndChange',
             changedIds: [_id],
             featureId: _id,
@@ -6727,14 +6723,14 @@ const BasicInformation = mobxReact.observer(function BasicInformation({ assembly
         }
         return terms;
     }
-    return (jsxRuntime.jsxs("div", { "data-testid": "basic_information", children: [jsxRuntime.jsx(NumberTextField, { margin: "dense", id: "start", label: "Start", fullWidth: true, variant: "outlined", value: min + 1, onChangeCommitted: handleStartChange }), jsxRuntime.jsx(NumberTextField, { margin: "dense", id: "end", label: "End", fullWidth: true, variant: "outlined", value: max, onChangeCommitted: handleEndChange }), jsxRuntime.jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", value: type, filterTerms: isOntologyClass, fetchValidTerms: fetchValidTerms.bind(null, feature), renderInput: (params) => (jsxRuntime.jsx(material.TextField, { ...params, label: "Type", variant: "outlined", fullWidth: true, error: Boolean(typeWarningText), helperText: typeWarningText })), onChange: (oldValue, newValue) => {
+    return (jsxs("div", { "data-testid": "basic_information", children: [jsx(NumberTextField, { margin: "dense", id: "start", label: "Start", fullWidth: true, variant: "outlined", value: min + 1, onChangeCommitted: handleStartChange }), jsx(NumberTextField, { margin: "dense", id: "end", label: "End", fullWidth: true, variant: "outlined", value: max, onChangeCommitted: handleEndChange }), jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", value: type, filterTerms: isOntologyClass, fetchValidTerms: fetchValidTerms.bind(null, feature), renderInput: (params) => (jsx(TextField, { ...params, label: "Type", variant: "outlined", fullWidth: true, error: Boolean(typeWarningText), helperText: typeWarningText })), onChange: (oldValue, newValue) => {
                     if (newValue) {
                         handleTypeChange(newValue).catch(notifyError);
                     }
-                } }), jsxRuntime.jsxs("label", { children: [jsxRuntime.jsx("input", { type: "radio", value: "1", checked: strand === 1, onChange: handleStrandChange }), "Positive Strand (+)"] }), jsxRuntime.jsxs("label", { children: [jsxRuntime.jsx("input", { type: "radio", value: "-1", checked: strand === -1, onChange: handleStrandChange }), "Negative Strand (-)"] }), jsxRuntime.jsxs("label", { children: [jsxRuntime.jsx("input", { type: "radio", value: "", checked: strand === undefined, onChange: handleStrandChange }), "No Strand Information"] }), errorMessage ? (jsxRuntime.jsx(material.Typography, { color: "error", children: errorMessage })) : null] }));
+                } }), jsxs("label", { children: [jsx("input", { type: "radio", value: "1", checked: strand === 1, onChange: handleStrandChange }), "Positive Strand (+)"] }), jsxs("label", { children: [jsx("input", { type: "radio", value: "-1", checked: strand === -1, onChange: handleStrandChange }), "Negative Strand (-)"] }), jsxs("label", { children: [jsx("input", { type: "radio", value: "", checked: strand === undefined, onChange: handleStrandChange }), "No Strand Information"] }), errorMessage ? (jsx(Typography, { color: "error", children: errorMessage })) : null] }));
 });
 
-const FeatureDetailsNavigation = mobxReact.observer(function FeatureDetailsNavigation(props) {
+const FeatureDetailsNavigation = observer(function FeatureDetailsNavigation(props) {
     const { feature, model } = props;
     const { children, parent } = feature;
     const childFeatures = [];
@@ -6746,9 +6742,9 @@ const FeatureDetailsNavigation = mobxReact.observer(function FeatureDetailsNavig
     if (!(parent ?? childFeatures.length > 0)) {
         return null;
     }
-    return (jsxRuntime.jsxs("div", { style: { marginTop: 10 }, children: [parent && (jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx(material.Typography, { variant: "h6", children: "Parent:" }), jsxRuntime.jsxs(material.Button, { variant: "contained", onClick: () => {
+    return (jsxs("div", { style: { marginTop: 10 }, children: [parent && (jsxs("div", { children: [jsx(Typography, { variant: "h6", children: "Parent:" }), jsxs(Button, { variant: "contained", onClick: () => {
                             model.setFeature(parent);
-                        }, children: [parent.type, getFeatureNameOrId$1(parent), " (", parent.min, "..", parent.max, ")"] })] })), childFeatures.length > 0 && (jsxRuntime.jsxs("div", { children: [jsxRuntime.jsxs(material.Typography, { variant: "h6", children: [childFeatures.length === 1 ? 'Child' : 'Children', ":"] }), childFeatures.map((child) => (jsxRuntime.jsx("div", { style: { marginBottom: 5 }, children: jsxRuntime.jsxs(material.Button, { variant: "contained", onClick: () => {
+                        }, children: [parent.type, getFeatureNameOrId$1(parent), " (", parent.min, "..", parent.max, ")"] })] })), childFeatures.length > 0 && (jsxs("div", { children: [jsxs(Typography, { variant: "h6", children: [childFeatures.length === 1 ? 'Child' : 'Children', ":"] }), childFeatures.map((child) => (jsx("div", { style: { marginBottom: 5 }, children: jsxs(Button, { variant: "contained", onClick: () => {
                                 model.setFeature(child);
                             }, children: [child.type, getFeatureNameOrId$1(child), " (", child.min, "..", child.max, ")"] }) }, child._id)))] }))] }));
 });
@@ -6758,13 +6754,13 @@ function formatSequence(seq, refName, start, end, wrap) {
     const body = seq ;
     return `${header}${body}`;
 }
-const useStyles$9 = tssReact.makeStyles()({
+const useStyles$9 = makeStyles()({
     sequence: {
         width: '100%',
         resize: 'vertical',
     },
 });
-const Sequence = mobxReact.observer(function Sequence({ assembly, feature, refName, session, }) {
+const Sequence = observer(function Sequence({ assembly, feature, refName, session, }) {
     const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
     const { classes } = useStyles$9();
     if (!(feature && currentAssembly)) {
@@ -6784,22 +6780,22 @@ const Sequence = mobxReact.observer(function Sequence({ assembly, feature, refNa
             { assemblyName: assembly, refName, start: min, end: max },
         ]);
     }
-    return (jsxRuntime.jsx("div", { children: jsxRuntime.jsx("textarea", { readOnly: true, rows: 20, className: classes.sequence, value: sequence }) }));
+    return (jsx("div", { children: jsx("textarea", { readOnly: true, rows: 20, className: classes.sequence, value: sequence }) }));
 });
 
-const useStyles$8 = tssReact.makeStyles()((theme) => ({
+const useStyles$8 = makeStyles()((theme) => ({
     root: {
         padding: theme.spacing(2),
     },
 }));
-const ApolloFeatureDetailsWidget = mobxReact.observer(function ApolloFeatureDetailsWidget(props) {
+const ApolloFeatureDetailsWidget = observer(function ApolloFeatureDetailsWidget(props) {
     const { model } = props;
     const { assembly, feature, refName } = model;
-    const session = util.getSession(model);
+    const session = getSession(model);
     const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
     const { classes } = useStyles$8();
-    const [panelState, setPanelState] = React.useState(['attributes']);
-    React.useEffect(() => {
+    const [panelState, setPanelState] = useState(['attributes']);
+    useEffect(() => {
         // eslint-disable-next-line @eslint-react/set-state-in-effect
         setPanelState(['attributes']);
     }, [feature]);
@@ -6825,29 +6821,29 @@ const ApolloFeatureDetailsWidget = mobxReact.observer(function ApolloFeatureDeta
             setPanelState(panelState.filter((p) => p !== panel));
         }
     }
-    return (jsxRuntime.jsxs("div", { className: classes.root, children: [jsxRuntime.jsx(BasicInformation, { feature: feature, session: session, assembly: currentAssembly._id }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('attributes'), onChange: (e, expanded) => {
+    return (jsxs("div", { className: classes.root, children: [jsx(BasicInformation, { feature: feature, session: session, assembly: currentAssembly._id }), jsxs(Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('attributes'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'attributes');
-                }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Attributes" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: jsxRuntime.jsx(Attributes, { feature: feature, session: session, assembly: currentAssembly._id, editable: true }) })] }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('sequence'), onChange: (e, expanded) => {
+                }, children: [jsx(AccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsx(Typography, { component: "span", children: "Attributes" }) }), jsx(AccordionDetails, { children: jsx(Attributes, { feature: feature, session: session, assembly: currentAssembly._id, editable: true }) })] }), jsxs(Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('sequence'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'sequence');
-                }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel2-content", id: "panel2-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Sequence" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: panelState.includes('sequence') && (jsxRuntime.jsx(Sequence, { feature: feature, session: session, assembly: currentAssembly._id, refName: refName })) })] }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('related_features'), onChange: (e, expanded) => {
+                }, children: [jsx(AccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel2-content", id: "panel2-header", children: jsx(Typography, { component: "span", children: "Sequence" }) }), jsx(AccordionDetails, { children: panelState.includes('sequence') && (jsx(Sequence, { feature: feature, session: session, assembly: currentAssembly._id, refName: refName })) })] }), jsxs(Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('related_features'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'related_features');
-                }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel3-content", id: "panel3-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Related features" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: jsxRuntime.jsx(FeatureDetailsNavigation, { model: model, feature: feature }) })] })] }));
+                }, children: [jsx(AccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel3-content", id: "panel3-header", children: jsx(Typography, { component: "span", children: "Related features" }) }), jsx(AccordionDetails, { children: jsx(FeatureDetailsNavigation, { model: model, feature: feature }) })] })] }));
 });
 
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-const ApolloFeatureDetailsWidgetModel = mobxStateTree.types
+const ApolloFeatureDetailsWidgetModel = types
     .model('ApolloFeatureDetailsWidget', {
-    id: mst.ElementId,
-    type: mobxStateTree.types.literal('ApolloFeatureDetailsWidget'),
-    feature: mobxStateTree.types.maybe(mobxStateTree.types.reference(mst$1.AnnotationFeatureModel, {
+    id: ElementId,
+    type: types.literal('ApolloFeatureDetailsWidget'),
+    feature: types.maybe(types.reference(AnnotationFeatureModel, {
         onInvalidated(ev) {
             ev.parent.setTryReload(ev.invalidId);
             ev.removeRef();
         },
     })),
-    assembly: mobxStateTree.types.string,
-    refName: mobxStateTree.types.string,
+    assembly: types.string,
+    refName: types.string,
 })
     .volatile(() => ({
     tryReload: undefined,
@@ -6863,11 +6859,11 @@ const ApolloFeatureDetailsWidgetModel = mobxStateTree.types
 }))
     .actions((self) => ({
     afterAttach() {
-        mobxStateTree.addDisposer(self, mobx.autorun((reaction) => {
+        addDisposer(self, autorun((reaction) => {
             if (!self.tryReload) {
                 return;
             }
-            const session = util.getSession(self);
+            const session = getSession(self);
             const { apolloDataStore } = session;
             if (!apolloDataStore) {
                 return;
@@ -6881,18 +6877,18 @@ const ApolloFeatureDetailsWidgetModel = mobxStateTree.types
         }));
     },
 }));
-const ApolloTranscriptDetailsModel = mobxStateTree.types
+const ApolloTranscriptDetailsModel = types
     .model('ApolloTranscriptDetails', {
-    id: mst.ElementId,
-    type: mobxStateTree.types.literal('ApolloTranscriptDetails'),
-    feature: mobxStateTree.types.maybe(mobxStateTree.types.reference(mst$1.AnnotationFeatureModel, {
+    id: ElementId,
+    type: types.literal('ApolloTranscriptDetails'),
+    feature: types.maybe(types.reference(AnnotationFeatureModel, {
         onInvalidated(ev) {
             ev.parent.setTryReload(ev.invalidId);
             ev.removeRef();
         },
     })),
-    assembly: mobxStateTree.types.string,
-    refName: mobxStateTree.types.string,
+    assembly: types.string,
+    refName: types.string,
 })
     .volatile(() => ({
     tryReload: undefined,
@@ -6908,11 +6904,11 @@ const ApolloTranscriptDetailsModel = mobxStateTree.types
 }))
     .actions((self) => ({
     afterAttach() {
-        mobxStateTree.addDisposer(self, mobx.autorun((reaction) => {
+        addDisposer(self, autorun((reaction) => {
             if (!self.tryReload) {
                 return;
             }
-            const session = util.getSession(self);
+            const session = getSession(self);
             const { apolloDataStore } = session;
             if (!apolloDataStore) {
                 return;
@@ -6970,7 +6966,7 @@ function getSequenceSegments(segmentType, feature, getSequence) {
                 }
                 let sequence = getSequence(loc.min, loc.max);
                 if (strand === -1) {
-                    sequence = util.revcom(sequence);
+                    sequence = revcom(sequence);
                 }
                 const type = loc.type === 'fivePrimeUTR' || loc.type === 'threePrimeUTR'
                     ? 'UTR'
@@ -7005,7 +7001,7 @@ function getSequenceSegments(segmentType, feature, getSequence) {
             for (const loc of firstLocation) {
                 let locSeq = getSequence(loc.min, loc.max);
                 if (strand === -1) {
-                    locSeq = util.revcom(locSeq);
+                    locSeq = revcom(locSeq);
                 }
                 wholeSequence += locSeq;
                 locs.push({ min: loc.min, max: loc.max });
@@ -7020,7 +7016,7 @@ function getSequenceSegments(segmentType, feature, getSequence) {
             for (const loc of firstLocation) {
                 let locSeq = getSequence(loc.min, loc.max);
                 if (strand === -1) {
-                    locSeq = util.revcom(locSeq);
+                    locSeq = revcom(locSeq);
                 }
                 wholeSequence += locSeq;
                 locs.push({ min: loc.min, max: loc.max });
@@ -7029,7 +7025,7 @@ function getSequenceSegments(segmentType, feature, getSequence) {
             for (let i = 0; i < wholeSequence.length; i += 3) {
                 const codonSeq = wholeSequence.slice(i, i + 3).toUpperCase();
                 protein +=
-                    util.defaultCodonTable[codonSeq] || '&';
+                    defaultCodonTable[codonSeq] || '&';
             }
             segments.push({ type: 'protein', sequence: protein, locs });
             return segments;
@@ -7075,25 +7071,25 @@ function getLocationIntervals(seqSegments) {
     locIntervals.push(previous);
     return locIntervals;
 }
-const TranscriptSequence = mobxReact.observer(function TranscriptSequence({ assembly, feature, refName, session, }) {
+const TranscriptSequence = observer(function TranscriptSequence({ assembly, feature, refName, session, }) {
     const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
     const refData = currentAssembly?.getByRefName(refName);
     const { featureTypeOntology } = session.apolloDataStore.ontologyManager;
     const defaultSelectedOption = 'genomic';
     const defaultSequenceOptions = ['genomic', 'cDNA'];
-    const [sequenceOptions, setSequenceOptions] = React.useState(defaultSequenceOptions);
-    const [selectedOption, setSelectedOption] = React.useState(defaultSelectedOption);
-    const [sequenceSegments, setSequenceSegments] = React.useState(() => {
+    const [sequenceOptions, setSequenceOptions] = useState(defaultSequenceOptions);
+    const [selectedOption, setSelectedOption] = useState(defaultSelectedOption);
+    const [sequenceSegments, setSequenceSegments] = useState(() => {
         return refData
             ? getSequenceSegments(defaultSelectedOption, feature, (min, max) => refData.getSequence(min, max))
             : [];
     });
-    const [locationIntervals, setLocationIntervals] = React.useState(() => {
+    const [locationIntervals, setLocationIntervals] = useState(() => {
         return getLocationIntervals(sequenceSegments);
     });
-    const theme = material.useTheme();
-    const seqRef = React.useRef(null);
-    React.useEffect(() => {
+    const theme = useTheme();
+    const seqRef = useRef(null);
+    useEffect(() => {
         const { cdsLocations } = feature;
         const [firstLocation] = cdsLocations;
         if (firstLocation.length > 0) {
@@ -7143,9 +7139,9 @@ const TranscriptSequence = mobxReact.observer(function TranscriptSequence({ asse
             processedChars += segment.sequence.length;
             const firstLine = segmentLineBreak +
                 segment.sequence.slice(0, sequenceWrapLength - lastLineLength);
-            const remainingLines = shared.splitStringIntoChunks(segment.sequence.slice(firstLine.length), sequenceWrapLength);
+            const remainingLines = splitStringIntoChunks(segment.sequence.slice(firstLine.length), sequenceWrapLength);
             const printLines = [firstLine, ...remainingLines];
-            const span = (jsxRuntime.jsx("span", { style: {
+            const span = (jsx("span", { style: {
                     background: getSegmentColor(segment.type),
                     color: theme.palette.getContrastText(getSegmentColor(segment.type)),
                     whiteSpace: 'pre-line',
@@ -7154,7 +7150,7 @@ const TranscriptSequence = mobxReact.observer(function TranscriptSequence({ asse
         }
         return seqElements;
     }
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.Select, { defaultValue: "genomic", value: selectedOption, onChange: handleChangeSeqOption, size: "small", "data-testid": "sequenceOptionSelector", children: sequenceOptions.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option, "data-testid": `sequenceOption-${option}`, children: option }, option))) }), jsxRuntime.jsx(material.Button, { variant: "contained", onClick: onCopyClick, style: { marginLeft: 10 }, size: "medium", children: "Copy sequence" }), jsxRuntime.jsxs(material.Paper, { style: {
+    return (jsxs(Fragment, { children: [jsx(Select, { defaultValue: "genomic", value: selectedOption, onChange: handleChangeSeqOption, size: "small", "data-testid": "sequenceOptionSelector", children: sequenceOptions.map((option) => (jsx(MenuItem, { value: option, "data-testid": `sequenceOption-${option}`, children: option }, option))) }), jsx(Button, { variant: "contained", onClick: onCopyClick, style: { marginLeft: 10 }, size: "medium", children: "Copy sequence" }), jsxs(Paper, { style: {
                     fontFamily: 'monospace',
                     padding: theme.spacing(),
                     overflowX: 'auto',
@@ -7162,7 +7158,7 @@ const TranscriptSequence = mobxReact.observer(function TranscriptSequence({ asse
                         .map((interval) => feature.strand === 1
                         ? `${interval.min + 1}-${interval.max}`
                         : `${interval.max}-${interval.min + 1}`)
-                        .join(';'), "(strand=", feature.strand === 1 ? '+' : '-', ";length=", getSequenceLength(sequenceSegments), ")", jsxRuntime.jsx("br", {}), wrapSequence(sequenceSegments, SEQUENCE_WRAP_LENGTH)] })] }));
+                        .join(';'), "(strand=", feature.strand === 1 ? '+' : '-', ";length=", getSequenceLength(sequenceSegments), ")", jsx("br", {}), wrapSequence(sequenceSegments, SEQUENCE_WRAP_LENGTH)] })] }));
 });
 
 const SequenceContainer = styled('div')({
@@ -7178,7 +7174,7 @@ const SequenceContainer = styled('div')({
         fontSize: 12,
     },
 });
-const StyledAccordionSummary$1 = styled(material.AccordionSummary)(() => ({
+const StyledAccordionSummary$1 = styled(AccordionSummary)(() => ({
     minHeight: 30,
     maxHeight: 30,
     '&.Mui-expanded': {
@@ -7189,13 +7185,13 @@ const StyledAccordionSummary$1 = styled(material.AccordionSummary)(() => ({
 function Translation({ changeInProgress, cdsLocations, refData, strand, 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 updateCDSLocation, cdsMin, cdsMax, feature, session, }) {
-    const seqRef = React.useRef(null);
+    const seqRef = useRef(null);
     const { notify } = session;
     const cdsSequences = [];
     const [firstLocation] = cdsLocations;
     for (const loc of firstLocation) {
         const seq = refData.getSequence(loc.min, loc.max);
-        cdsSequences.push(strand === -1 ? util.revcom(seq) : seq);
+        cdsSequences.push(strand === -1 ? revcom(seq) : seq);
     }
     const cdsSequence = cdsSequences.join('');
     const proteinSequence = [];
@@ -7203,7 +7199,7 @@ updateCDSLocation, cdsMin, cdsMax, feature, session, }) {
         const codonSeq = cdsSequence
             .slice(codonGenomicPos, codonGenomicPos + 3)
             .toUpperCase();
-        const protein = util.defaultCodonTable[codonSeq] || '&';
+        const protein = defaultCodonTable[codonSeq] || '&';
         proteinSequence.push(protein);
     }
     const onCopyClick = () => {
@@ -7321,10 +7317,10 @@ updateCDSLocation, cdsMin, cdsMax, feature, session, }) {
         }
         notify('Translation sequence trimmed to start and stop codons', 'success');
     };
-    return (jsxRuntime.jsx("div", { children: jsxRuntime.jsxs(material.Accordion, { children: [jsxRuntime.jsx(StyledAccordionSummary$1, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsxRuntime.jsx(material.Typography, { component: "span", fontWeight: 'bold', children: "Translation" }) }), jsxRuntime.jsxs(material.AccordionDetails, { children: [jsxRuntime.jsx(SequenceContainer, { children: jsxRuntime.jsx(material.Typography, { component: 'span', ref: seqRef, style: { maxHeight: 120, overflowY: 'scroll' }, children: proteinSequence.map((protein, idx) => {
+    return (jsx("div", { children: jsxs(Accordion, { children: [jsx(StyledAccordionSummary$1, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsx(Typography, { component: "span", fontWeight: 'bold', children: "Translation" }) }), jsxs(AccordionDetails, { children: [jsx(SequenceContainer, { children: jsx(Typography, { component: 'span', ref: seqRef, style: { maxHeight: 120, overflowY: 'scroll' }, children: proteinSequence.map((protein, idx) => {
                                     const codonGenomicPos = idx * 3;
                                     if (protein === 'M') {
-                                        return (jsxRuntime.jsx(material.Typography, { component: 'span', style: {
+                                        return (jsx(Typography, { component: 'span', style: {
                                                 backgroundColor: changeInProgress
                                                     ? 'lightgray'
                                                     : 'yellow',
@@ -7349,17 +7345,17 @@ updateCDSLocation, cdsMin, cdsMax, feature, session, }) {
                                             }, children: protein }, codonGenomicPos));
                                     }
                                     if (protein === '*') {
-                                        return (jsxRuntime.jsx(material.Typography, { style: { backgroundColor: 'red', color: 'white' }, component: 'span', children: protein }, codonGenomicPos));
+                                        return (jsx(Typography, { style: { backgroundColor: 'red', color: 'white' }, component: 'span', children: protein }, codonGenomicPos));
                                     }
                                     // Pass the codonGenomicPos as the key to maintain the genomic position of the codon
-                                    return (jsxRuntime.jsx(material.Typography, { component: 'span', children: protein }, codonGenomicPos));
-                                }) }) }), jsxRuntime.jsxs("div", { style: {
+                                    return (jsx(Typography, { component: 'span', children: protein }, codonGenomicPos));
+                                }) }) }), jsxs("div", { style: {
                                 marginTop: 10,
                                 display: 'flex',
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 gap: 10,
-                            }, children: [jsxRuntime.jsx(material.Tooltip, { title: "Copy", children: jsxRuntime.jsx("button", { onClick: onCopyClick, style: { border: 'none', background: 'none', padding: 0 }, disabled: changeInProgress, children: jsxRuntime.jsx(ContentCopyIcon, { style: { fontSize: 15 } }) }) }), jsxRuntime.jsx(material.Tooltip, { title: "Trim", children: jsxRuntime.jsx("button", { onClick: trimTranslationSequence, style: { border: 'none', background: 'none', padding: 0 }, disabled: changeInProgress, children: jsxRuntime.jsx(ContentCutIcon, { style: { fontSize: 15 } }) }) })] })] })] }) }));
+                            }, children: [jsx(Tooltip$1, { title: "Copy", children: jsx("button", { onClick: onCopyClick, style: { border: 'none', background: 'none', padding: 0 }, disabled: changeInProgress, children: jsx(ContentCopyIcon, { style: { fontSize: 15 } }) }) }), jsx(Tooltip$1, { title: "Trim", children: jsx("button", { onClick: trimTranslationSequence, style: { border: 'none', background: 'none', padding: 0 }, disabled: changeInProgress, children: jsx(ContentCutIcon, { style: { fontSize: 15 } }) }) })] })] })] }) }));
 }
 
 const StyledTextField = styled(NumberTextField)(() => ({
@@ -7377,7 +7373,7 @@ const StyledTextField = styled(NumberTextField)(() => ({
 }));
 const Strand = (props) => {
     const { strand } = props;
-    return (jsxRuntime.jsx("div", { children: strand === 1 ? (jsxRuntime.jsx(AddIcon, {})) : strand === -1 ? (jsxRuntime.jsx(RemoveIcon, {})) : (jsxRuntime.jsx(material.Typography, { component: 'span', children: "N/A" })) }));
+    return (jsx("div", { children: strand === 1 ? (jsx(AddIcon, {})) : strand === -1 ? (jsx(RemoveIcon, {})) : (jsx(Typography, { component: 'span', children: "N/A" })) }));
 };
 const minMaxExonTranscriptLocation = (transcript, featureTypeOntology) => {
     const { transcriptExonParts } = transcript;
@@ -7388,7 +7384,7 @@ const minMaxExonTranscriptLocation = (transcript, featureTypeOntology) => {
     const exonMax = exonParts[exonParts.length - 1]?.max;
     return [exonMin, exonMax];
 };
-const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidgetEditLocation({ assembly, feature, refName, session, }) {
+const TranscriptWidgetEditLocation = observer(function TranscriptWidgetEditLocation({ assembly, feature, refName, session, }) {
     const { notify } = session;
     const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
     const refData = currentAssembly?.getByRefName(refName);
@@ -7441,7 +7437,7 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
             return false;
         }
         const change = isMin
-            ? new shared.LocationStartChange({
+            ? new LocationStartChange({
                 typeName: 'LocationStartChange',
                 changedIds: [cdsFeature._id],
                 featureId: cdsFeature._id,
@@ -7449,7 +7445,7 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
                 newStart: newLocation,
                 assembly,
             })
-            : new shared.LocationEndChange({
+            : new LocationEndChange({
                 typeName: 'LocationEndChange',
                 changedIds: [cdsFeature._id],
                 featureId: cdsFeature._id,
@@ -7506,7 +7502,7 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
         const cdsFeature = getFirstCDSFeature(feature, featureTypeOntology);
         // START LOCATION CHANGE
         if (isMin && newLocation !== matchingExon.min) {
-            const startChange = new shared.LocationStartChange({
+            const startChange = new LocationStartChange({
                 typeName: 'LocationStartChange',
                 changedIds: [],
                 changes: [],
@@ -7558,7 +7554,7 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
         }
         // END LOCATION CHANGE
         if (!isMin && newLocation !== matchingExon.max) {
-            const endChange = new shared.LocationEndChange({
+            const endChange = new LocationEndChange({
                 typeName: 'LocationEndChange',
                 changedIds: [],
                 changes: [],
@@ -7784,7 +7780,7 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
             }
             else {
                 if (prevLoc.type === 'intron') {
-                    spliceSite = util.revcom(refData.getSequence(loc.max, loc.max + 2));
+                    spliceSite = revcom(refData.getSequence(loc.max, loc.max + 2));
                 }
             }
         }
@@ -7807,7 +7803,7 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
             }
             else {
                 if (nextLoc.type === 'intron') {
-                    spliceSite = util.revcom(refData.getSequence(loc.min - 2, loc.min));
+                    spliceSite = revcom(refData.getSequence(loc.min - 2, loc.min));
                 }
             }
         }
@@ -7819,51 +7815,51 @@ const TranscriptWidgetEditLocation = mobxReact.observer(function TranscriptWidge
             },
         ];
     };
-    return (jsxRuntime.jsxs("div", { children: [cdsPresent && (jsxRuntime.jsx("div", { children: jsxRuntime.jsxs(material.Grid, { container: true, justifyContent: "center", alignItems: "center", style: { textAlign: 'center' }, children: [jsxRuntime.jsx(material.Grid, { size: 1 }), strand === 1 ? (jsxRuntime.jsx(material.Grid, { size: 4, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMin + 1, onChangeCommitted: (newLocation) => {
+    return (jsxs("div", { children: [cdsPresent && (jsx("div", { children: jsxs(Grid, { container: true, justifyContent: "center", alignItems: "center", style: { textAlign: 'center' }, children: [jsx(Grid, { size: 1 }), strand === 1 ? (jsx(Grid, { size: 4, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMin + 1, onChangeCommitted: (newLocation) => {
                                     return updateCDSLocation(cdsMin, newLocation - 1, feature, true);
-                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })) : (jsxRuntime.jsx(material.Grid, { size: 4, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMax, onChangeCommitted: (newLocation) => {
+                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })) : (jsx(Grid, { size: 4, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMax, onChangeCommitted: (newLocation) => {
                                     return updateCDSLocation(cdsMax, newLocation, feature, false);
-                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })), jsxRuntime.jsx(material.Grid, { size: 2, children: jsxRuntime.jsx(material.Typography, { component: 'span', children: "CDS" }) }), strand === 1 ? (jsxRuntime.jsx(material.Grid, { size: 4, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMax, onChangeCommitted: (newLocation) => {
+                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })), jsx(Grid, { size: 2, children: jsx(Typography, { component: 'span', children: "CDS" }) }), strand === 1 ? (jsx(Grid, { size: 4, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMax, onChangeCommitted: (newLocation) => {
                                     return updateCDSLocation(cdsMax, newLocation, feature, false);
-                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })) : (jsxRuntime.jsx(material.Grid, { size: 4, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMin + 1, onChangeCommitted: (newLocation) => {
+                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })) : (jsx(Grid, { size: 4, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: cdsMin + 1, onChangeCommitted: (newLocation) => {
                                     return updateCDSLocation(cdsMin, newLocation - 1, feature, true);
-                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })), jsxRuntime.jsx(material.Grid, { size: 1 })] }) })), jsxRuntime.jsxs("div", { style: { marginTop: 5, marginBottom: 10 }, children: [jsxRuntime.jsx("div", { style: { textAlign: 'center' }, children: jsxRuntime.jsx(material.Typography, { children: "Exons" }) }), transcriptExonParts.map((loc, index) => {
+                                }, style: { border: '1px solid black', borderRadius: 5 }, disabled: changeInProgress }) })), jsx(Grid, { size: 1 })] }) })), jsxs("div", { style: { marginTop: 5, marginBottom: 10 }, children: [jsx("div", { style: { textAlign: 'center' }, children: jsx(Typography, { children: "Exons" }) }), transcriptExonParts.map((loc, index) => {
                         return (
                         // eslint-disable-next-line @eslint-react/no-array-index-key
-                        jsxRuntime.jsx("div", { children: loc.type === 'exon' && (jsxRuntime.jsxs(material.Grid, { container: true, justifyContent: "center", alignItems: "center", style: { textAlign: 'center' }, children: [jsxRuntime.jsx(material.Grid, { size: 1, children: index !== 0 &&
-                                            getFivePrimeSpliceSite(loc, index).map((site, idx) => (jsxRuntime.jsx(material.Typography
+                        jsx("div", { children: loc.type === 'exon' && (jsxs(Grid, { container: true, justifyContent: "center", alignItems: "center", style: { textAlign: 'center' }, children: [jsx(Grid, { size: 1, children: index !== 0 &&
+                                            getFivePrimeSpliceSite(loc, index).map((site, idx) => (jsx(Typography
                                             // eslint-disable-next-line @eslint-react/no-array-index-key
-                                            , { component: 'span', color: site.color, children: site.spliceSite }, idx))) }), strand === 1 ? (jsxRuntime.jsx(material.Grid, { size: 4, style: { padding: 0 }, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.min + 1, onChangeCommitted: (newLocation) => {
+                                            , { component: 'span', color: site.color, children: site.spliceSite }, idx))) }), strand === 1 ? (jsx(Grid, { size: 4, style: { padding: 0 }, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.min + 1, onChangeCommitted: (newLocation) => {
                                                 return handleExonLocationChange(loc.min, newLocation - 1, feature, true);
-                                            }, disabled: changeInProgress }) })) : (jsxRuntime.jsx(material.Grid, { size: 4, style: { padding: 0 }, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.max, onChangeCommitted: (newLocation) => {
+                                            }, disabled: changeInProgress }) })) : (jsx(Grid, { size: 4, style: { padding: 0 }, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.max, onChangeCommitted: (newLocation) => {
                                                 return handleExonLocationChange(loc.max, newLocation, feature, false);
-                                            }, disabled: changeInProgress }) })), jsxRuntime.jsx(material.Grid, { size: 2, children: jsxRuntime.jsx(Strand, { strand: feature.strand }) }), strand === 1 ? (jsxRuntime.jsx(material.Grid, { size: 4, style: { padding: 0 }, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.max, onChangeCommitted: (newLocation) => {
+                                            }, disabled: changeInProgress }) })), jsx(Grid, { size: 2, children: jsx(Strand, { strand: feature.strand }) }), strand === 1 ? (jsx(Grid, { size: 4, style: { padding: 0 }, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.max, onChangeCommitted: (newLocation) => {
                                                 return handleExonLocationChange(loc.max, newLocation, feature, false);
-                                            }, disabled: changeInProgress }) })) : (jsxRuntime.jsx(material.Grid, { size: 4, style: { padding: 0 }, children: jsxRuntime.jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.min + 1, onChangeCommitted: (newLocation) => {
+                                            }, disabled: changeInProgress }) })) : (jsx(Grid, { size: 4, style: { padding: 0 }, children: jsx(StyledTextField, { margin: "dense", variant: "outlined", value: loc.min + 1, onChangeCommitted: (newLocation) => {
                                                 return handleExonLocationChange(loc.min, newLocation - 1, feature, true);
-                                            }, disabled: changeInProgress }) })), jsxRuntime.jsx(material.Grid, { size: 1, children: index !== transcriptExonParts.length - 1 &&
-                                            getThreePrimeSpliceSite(loc, index).map((site, idx) => (jsxRuntime.jsx(material.Typography
+                                            }, disabled: changeInProgress }) })), jsx(Grid, { size: 1, children: index !== transcriptExonParts.length - 1 &&
+                                            getThreePrimeSpliceSite(loc, index).map((site, idx) => (jsx(Typography
                                             // eslint-disable-next-line @eslint-react/no-array-index-key
                                             , { component: 'span', color: site.color, children: site.spliceSite }, idx))) })] })) }, index));
-                    })] }), cdsPresent && (jsxRuntime.jsx(Translation, { changeInProgress: changeInProgress, cdsLocations: cdsLocations, refData: refData, strand: strand, updateCDSLocation: updateCDSLocation, cdsMin: cdsMin, cdsMax: cdsMax, feature: feature, session: session }))] }));
+                    })] }), cdsPresent && (jsx(Translation, { changeInProgress: changeInProgress, cdsLocations: cdsLocations, refData: refData, strand: strand, updateCDSLocation: updateCDSLocation, cdsMin: cdsMin, cdsMax: cdsMax, feature: feature, session: session }))] }));
 });
 
-const HeaderTableCell = styled(material.TableCell)(() => ({
+const HeaderTableCell = styled(TableCell)(() => ({
     fontWeight: 'bold',
 }));
-const TranscriptWidgetSummary = mobxReact.observer(function TranscriptWidgetSummary(props) {
+const TranscriptWidgetSummary = observer(function TranscriptWidgetSummary(props) {
     const { feature } = props;
     const name = getFeatureName$1(feature);
     const id = getFeatureId$1(feature);
-    return (jsxRuntime.jsx(material.Table, { size: "small", sx: { fontSize: '0.75rem', '& .MuiTableCell-root': { padding: '4px' } }, children: jsxRuntime.jsxs(material.TableBody, { children: [name !== '' && (jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(HeaderTableCell, { children: "Name" }), jsxRuntime.jsx(material.TableCell, { children: getFeatureName$1(feature) })] })), id !== '' && (jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(HeaderTableCell, { children: "ID" }), jsxRuntime.jsx(material.TableCell, { children: getFeatureId$1(feature) })] })), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(HeaderTableCell, { children: "Type" }), jsxRuntime.jsx(material.TableCell, { children: feature.type })] }), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(HeaderTableCell, { children: "Location" }), jsxRuntime.jsxs(material.TableCell, { children: [props.refName, ":", feature.min, "..", feature.max] })] }), jsxRuntime.jsxs(material.TableRow, { children: [jsxRuntime.jsx(HeaderTableCell, { children: "Strand" }), jsxRuntime.jsx(material.TableCell, { children: getStrand(feature.strand) })] })] }) }));
+    return (jsx(Table, { size: "small", sx: { fontSize: '0.75rem', '& .MuiTableCell-root': { padding: '4px' } }, children: jsxs(TableBody, { children: [name !== '' && (jsxs(TableRow, { children: [jsx(HeaderTableCell, { children: "Name" }), jsx(TableCell, { children: getFeatureName$1(feature) })] })), id !== '' && (jsxs(TableRow, { children: [jsx(HeaderTableCell, { children: "ID" }), jsx(TableCell, { children: getFeatureId$1(feature) })] })), jsxs(TableRow, { children: [jsx(HeaderTableCell, { children: "Type" }), jsx(TableCell, { children: feature.type })] }), jsxs(TableRow, { children: [jsx(HeaderTableCell, { children: "Location" }), jsxs(TableCell, { children: [props.refName, ":", feature.min, "..", feature.max] })] }), jsxs(TableRow, { children: [jsx(HeaderTableCell, { children: "Strand" }), jsx(TableCell, { children: getStrand(feature.strand) })] })] }) }));
 });
 
-const useStyles$7 = tssReact.makeStyles()((theme) => ({
+const useStyles$7 = makeStyles()((theme) => ({
     root: {
         padding: theme.spacing(2),
     },
 }));
-const StyledAccordionSummary = styled(material.AccordionSummary)(() => ({
+const StyledAccordionSummary = styled(AccordionSummary)(() => ({
     minHeight: 30,
     maxHeight: 30,
     '&.Mui-expanded': {
@@ -7874,21 +7870,21 @@ const StyledAccordionSummary = styled(material.AccordionSummary)(() => ({
 function NoOpCustomComponent(_props) {
     return null;
 }
-const ApolloTranscriptDetailsWidget = mobxReact.observer(function ApolloTranscriptDetails(props) {
+const ApolloTranscriptDetailsWidget = observer(function ApolloTranscriptDetails(props) {
     const { classes } = useStyles$7();
     const DEFAULT_PANELS = ['summary', 'location'];
-    const [panelState, setPanelState] = React.useState(DEFAULT_PANELS);
+    const [panelState, setPanelState] = useState(DEFAULT_PANELS);
     const { model } = props;
     const { assembly, feature, refName } = model;
-    React.useEffect(() => {
+    useEffect(() => {
         setPanelState(DEFAULT_PANELS);
         // eslint-disable-next-line @eslint-react/exhaustive-deps
     }, [feature]);
-    const session = util.getSession(model);
-    const { pluginManager } = util.getEnv(session);
-    const apolloSession = util.getSession(model);
+    const session = getSession(model);
+    const { pluginManager } = getEnv(session);
+    const apolloSession = getSession(model);
     const currentAssembly = apolloSession.apolloDataStore.assemblies.get(assembly);
-    const { internetAccounts } = mobxStateTree.getRoot(session);
+    const { internetAccounts } = getRoot(session);
     const apolloInternetAccount = internetAccounts.find((ia) => ia.type === 'ApolloInternetAccount');
     const role = apolloInternetAccount ? apolloInternetAccount.role : 'admin';
     const editable = ['admin', 'user'].includes(role ?? '');
@@ -7922,22 +7918,22 @@ const ApolloTranscriptDetailsWidget = mobxReact.observer(function ApolloTranscri
     const CustomComponentAfterAttributes = pluginManager.evaluateExtensionPoint('Apollo-TranscriptDetailsCustomComponent-AfterAttributes', NoOpCustomComponent, { feature, session });
     const CustomComponentInsideSequence = pluginManager.evaluateExtensionPoint('Apollo-TranscriptDetailsCustomComponent-InsideSequence', NoOpCustomComponent, { feature, session });
     const CustomComponentAfterSequence = pluginManager.evaluateExtensionPoint('Apollo-TranscriptDetailsCustomComponent-AfterSequence', NoOpCustomComponent, { feature, session });
-    return (jsxRuntime.jsxs("div", { className: classes.root, children: [jsxRuntime.jsxs(material.Accordion, { expanded: panelState.includes('summary'), onChange: (e, expanded) => {
+    return (jsxs("div", { className: classes.root, children: [jsxs(Accordion, { expanded: panelState.includes('summary'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'summary');
-                }, children: [jsxRuntime.jsx(StyledAccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsxRuntime.jsx(material.Typography, { component: "span", fontWeight: 'bold', children: "Summary" }) }), jsxRuntime.jsxs(material.AccordionDetails, { children: [jsxRuntime.jsx(TranscriptWidgetSummary, { feature: feature, refName: refName }), jsxRuntime.jsx(CustomComponentInsideSummary, { session: session, feature: feature })] })] }), jsxRuntime.jsx(CustomComponentAfterSummary, { session: session, feature: feature }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 5 }, expanded: panelState.includes('location'), onChange: (e, expanded) => {
+                }, children: [jsx(StyledAccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsx(Typography, { component: "span", fontWeight: 'bold', children: "Summary" }) }), jsxs(AccordionDetails, { children: [jsx(TranscriptWidgetSummary, { feature: feature, refName: refName }), jsx(CustomComponentInsideSummary, { session: session, feature: feature })] })] }), jsx(CustomComponentAfterSummary, { session: session, feature: feature }), jsxs(Accordion, { style: { marginTop: 5 }, expanded: panelState.includes('location'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'location');
-                }, children: [jsxRuntime.jsx(StyledAccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel2-content", id: "panel2-header", children: jsxRuntime.jsx(material.Typography, { component: "span", fontWeight: 'bold', children: "Location" }) }), jsxRuntime.jsxs(material.AccordionDetails, { children: [jsxRuntime.jsx(TranscriptWidgetEditLocation, { feature: feature, refName: refName, session: apolloSession, assembly: currentAssembly._id || '' }), jsxRuntime.jsx(CustomComponentInsideLocation, { session: session, feature: feature })] })] }), jsxRuntime.jsx(CustomComponentAfterLocation, { session: session, feature: feature }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 5 }, expanded: panelState.includes('attrs'), onChange: (e, expanded) => {
+                }, children: [jsx(StyledAccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel2-content", id: "panel2-header", children: jsx(Typography, { component: "span", fontWeight: 'bold', children: "Location" }) }), jsxs(AccordionDetails, { children: [jsx(TranscriptWidgetEditLocation, { feature: feature, refName: refName, session: apolloSession, assembly: currentAssembly._id || '' }), jsx(CustomComponentInsideLocation, { session: session, feature: feature })] })] }), jsx(CustomComponentAfterLocation, { session: session, feature: feature }), jsxs(Accordion, { style: { marginTop: 5 }, expanded: panelState.includes('attrs'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'attrs');
-                }, children: [jsxRuntime.jsx(StyledAccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel3-content", id: "panel3-header", children: jsxRuntime.jsxs("div", { style: { display: 'flex', alignItems: 'center' }, children: [jsxRuntime.jsxs(material.Typography, { component: "span", fontWeight: 'bold', children: ["Attributes", ' '] }), jsxRuntime.jsx(material.Tooltip, { title: "Separate multiple values for the attribute with commas", children: jsxRuntime.jsx(InfoIcon, { style: { color: 'white', fontSize: 15, marginLeft: 10 } }) })] }) }), jsxRuntime.jsxs(material.AccordionDetails, { children: [jsxRuntime.jsx(Attributes, { feature: feature, session: apolloSession, assembly: currentAssembly._id || '', editable: editable }), jsxRuntime.jsx(CustomComponentInsideAttributes, { session: session, feature: feature })] })] }), jsxRuntime.jsx(CustomComponentAfterAttributes, { session: session, feature: feature }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 5 }, expanded: panelState.includes('sequence'), onChange: (e, expanded) => {
+                }, children: [jsx(StyledAccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel3-content", id: "panel3-header", children: jsxs("div", { style: { display: 'flex', alignItems: 'center' }, children: [jsxs(Typography, { component: "span", fontWeight: 'bold', children: ["Attributes", ' '] }), jsx(Tooltip$1, { title: "Separate multiple values for the attribute with commas", children: jsx(InfoIcon, { style: { color: 'white', fontSize: 15, marginLeft: 10 } }) })] }) }), jsxs(AccordionDetails, { children: [jsx(Attributes, { feature: feature, session: apolloSession, assembly: currentAssembly._id || '', editable: editable }), jsx(CustomComponentInsideAttributes, { session: session, feature: feature })] })] }), jsx(CustomComponentAfterAttributes, { session: session, feature: feature }), jsxs(Accordion, { style: { marginTop: 5 }, expanded: panelState.includes('sequence'), onChange: (e, expanded) => {
                     handlePanelChange(expanded, 'sequence');
-                }, children: [jsxRuntime.jsx(StyledAccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel4-content", id: "panel4-header", children: jsxRuntime.jsx(material.Typography, { component: "span", fontWeight: 'bold', children: "Sequence" }) }), jsxRuntime.jsxs(material.AccordionDetails, { children: [panelState.includes('sequence') && (jsxRuntime.jsx(TranscriptSequence, { feature: feature, session: apolloSession, assembly: currentAssembly._id || '', refName: refName })), jsxRuntime.jsx(CustomComponentInsideSequence, { session: session, feature: feature })] })] }), jsxRuntime.jsx(CustomComponentAfterSequence, { feature: feature, session: session })] }));
+                }, children: [jsx(StyledAccordionSummary, { expandIcon: jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel4-content", id: "panel4-header", children: jsx(Typography, { component: "span", fontWeight: 'bold', children: "Sequence" }) }), jsxs(AccordionDetails, { children: [panelState.includes('sequence') && (jsx(TranscriptSequence, { feature: feature, session: apolloSession, assembly: currentAssembly._id || '', refName: refName })), jsx(CustomComponentInsideSequence, { session: session, feature: feature })] })] }), jsx(CustomComponentAfterSequence, { feature: feature, session: session })] }));
 });
 
-const configSchema$2 = configuration.ConfigurationSchema('LinearApolloDisplay', {}, { explicitIdentifier: 'displayId', explicitlyTyped: true });
+const configSchema$2 = ConfigurationSchema('LinearApolloDisplay', {}, { explicitIdentifier: 'displayId', explicitlyTyped: true });
 
 function handleFeatureTypeChange(changeManager, feature, oldType, newType) {
     const featureId = feature._id;
-    const change = new shared.TypeChange({
+    const change = new TypeChange({
         typeName: 'TypeChange',
         changedIds: [featureId],
         featureId,
@@ -7949,7 +7945,7 @@ function handleFeatureTypeChange(changeManager, feature, oldType, newType) {
 }
 function handleFeatureStartChange(changeManager, feature, oldStart, newStart) {
     const featureId = feature._id;
-    const change = new shared.LocationStartChange({
+    const change = new LocationStartChange({
         typeName: 'LocationStartChange',
         changedIds: [featureId],
         featureId,
@@ -7961,7 +7957,7 @@ function handleFeatureStartChange(changeManager, feature, oldStart, newStart) {
 }
 function handleFeatureEndChange(changeManager, feature, oldEnd, newEnd) {
     const featureId = feature._id;
-    const change = new shared.LocationEndChange({
+    const change = new LocationEndChange({
         typeName: 'LocationEndChange',
         changedIds: [featureId],
         featureId,
@@ -7972,7 +7968,7 @@ function handleFeatureEndChange(changeManager, feature, oldEnd, newEnd) {
     return changeManager.submit(change);
 }
 
-const useStyles$6 = tssReact.makeStyles()({
+const useStyles$6 = makeStyles()({
     highlighted: {
         background: 'orange',
     },
@@ -7980,39 +7976,39 @@ const useStyles$6 = tssReact.makeStyles()({
 const Highlight = ({ highlight, text, }) => {
     const { classes } = useStyles$6();
     if (!highlight) {
-        return jsxRuntime.jsx(jsxRuntime.Fragment, { children: text });
+        return jsx(Fragment, { children: text });
     }
     const split = text.split(highlight);
     if (split.length === 1) {
-        return jsxRuntime.jsx(jsxRuntime.Fragment, { children: text });
+        return jsx(Fragment, { children: text });
     }
     const highlighted = [];
     for (let i = 0; i < split.length - 1; i++) {
-        highlighted.push(split[i], jsxRuntime.jsx("span", { className: classes.highlighted, children: highlight }));
+        highlighted.push(split[i], jsx("span", { className: classes.highlighted, children: highlight }));
     }
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [highlighted, split.at(-1)] }));
+    return (jsxs(Fragment, { children: [highlighted, split.at(-1)] }));
 };
 
-const FeatureAttributes = mobxReact.observer(function FeatureAttributes({ feature, filterText, }) {
+const FeatureAttributes = observer(function FeatureAttributes({ feature, filterText, }) {
     const attrString = [...feature.attributes.entries()]
         .map(([key, value]) => {
         if (key.startsWith('gff_')) {
             const newKey = key.slice(4);
             const capitalizedKey = newKey.charAt(0).toUpperCase() + newKey.slice(1);
-            return [capitalizedKey, mobxStateTree.getSnapshot(value)];
+            return [capitalizedKey, getSnapshot(value)];
         }
         if (key === '_id') {
-            return ['ID', mobxStateTree.getSnapshot(value)];
+            return ['ID', getSnapshot(value)];
         }
-        return [key, mobxStateTree.getSnapshot(value)];
+        return [key, getSnapshot(value)];
     })
         .filter(([key]) => key) // Leave empty keys off
         .map(([key, values]) => `${key}=${Array.isArray(values) ? values.join(', ') : values}`)
         .join(', ');
-    return jsxRuntime.jsx(Highlight, { text: attrString, highlight: filterText });
+    return jsx(Highlight, { text: attrString, highlight: filterText });
 });
 
-const useStyles$5 = tssReact.makeStyles()((theme) => ({
+const useStyles$5 = makeStyles()((theme) => ({
     inputWrapper: {
         position: 'relative',
     },
@@ -8029,18 +8025,18 @@ const useStyles$5 = tssReact.makeStyles()((theme) => ({
         left: 0,
     },
 }));
-const NumberCell = mobxReact.observer(function NumberCell({ initialValue, notifyError, onChangeCommitted, }) {
-    const [value, setValue] = React.useState(initialValue);
-    const [blur, setBlur] = React.useState(false);
-    const [inputNode, setInputNode] = React.useState(null);
+const NumberCell = observer(function NumberCell({ initialValue, notifyError, onChangeCommitted, }) {
+    const [value, setValue] = useState(initialValue);
+    const [blur, setBlur] = useState(false);
+    const [inputNode, setInputNode] = useState(null);
     const { classes } = useStyles$5();
-    React.useEffect(() => {
+    useEffect(() => {
         if (initialValue !== value) {
             setValue(initialValue);
         }
         // eslint-disable-next-line @eslint-react/exhaustive-deps
     }, [initialValue]);
-    React.useEffect(() => {
+    useEffect(() => {
         if (blur) {
             inputNode?.blur();
             setBlur(false);
@@ -8052,7 +8048,7 @@ const NumberCell = mobxReact.observer(function NumberCell({ initialValue, notify
             setValue(newValue);
         }
     }
-    return (jsxRuntime.jsxs("span", { className: classes.inputWrapper, children: [jsxRuntime.jsx("span", { className: classes.hiddenWidthSpan, "aria-hidden": true, children: value }), jsxRuntime.jsx("input", { type: "text", value: value, className: classes.numberTextInput, onChange: onChange, onKeyDown: (event) => {
+    return (jsxs("span", { className: classes.inputWrapper, children: [jsx("span", { className: classes.hiddenWidthSpan, "aria-hidden": true, children: value }), jsx("input", { type: "text", value: value, className: classes.numberTextInput, onChange: onChange, onKeyDown: (event) => {
                     if (event.key === 'Enter') {
                         inputNode?.blur();
                     }
@@ -8206,7 +8202,7 @@ function featureContextMenuItems(feature, region, getAssemblyId, selectedFeature
         }
         if ((featureTypeOntology.isTypeOf(feature.type, 'transcript') ||
             featureTypeOntology.isTypeOf(feature.type, 'pseudogenic_transcript')) &&
-            util.isSessionModelWithWidgets(session)) {
+            isSessionModelWithWidgets(session)) {
             menuItems.push({
                 label: 'Edit transcript details',
                 onClick: () => {
@@ -8254,7 +8250,7 @@ function featureContextMenuItems(feature, region, getAssemblyId, selectedFeature
     return menuItems;
 }
 
-const useStyles$4 = tssReact.makeStyles()((theme) => ({
+const useStyles$4 = makeStyles()((theme) => ({
     typeContent: {
         display: 'inline-block',
         width: '174px',
@@ -8295,7 +8291,7 @@ function makeContextMenuItems(display, feature) {
 function navigateHere(displayState, feature) {
     displayState.lgv.navTo(navToFeatureCenter(feature, 0.1, displayState.lgv.totalBp));
 }
-const Feature = mobxReact.observer(function Feature({ depth, feature, isHovered, isSelected, model: displayState, selectedFeatureClass, setContextMenu, }) {
+const Feature = observer(function Feature({ depth, feature, isHovered, isSelected, model: displayState, selectedFeatureClass, setContextMenu, }) {
     const { classes } = useStyles$4();
     const { changeManager, hoveredFeature, selectedFeature, session, tabularEditor: tabularEditorState, } = displayState;
     const { featureCollapsed, filterText } = tabularEditorState;
@@ -8309,7 +8305,7 @@ const Feature = mobxReact.observer(function Feature({ depth, feature, isHovered,
     const notifyError = (e) => {
         session.notify(e.message, 'error');
     };
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsxs("tr", { onMouseEnter: (_e) => {
+    return (jsxs(Fragment, { children: [jsxs("tr", { onMouseEnter: (_e) => {
                     displayState.setHoveredFeature({ feature, bp: min });
                 }, className: classes.feature +
                     (isSelected
@@ -8329,19 +8325,19 @@ const Feature = mobxReact.observer(function Feature({ depth, feature, isHovered,
                         items: makeContextMenuItems(displayState, feature),
                     });
                     return false;
-                }, children: [jsxRuntime.jsxs("td", { style: {
+                }, children: [jsxs("td", { style: {
                             whiteSpace: 'nowrap',
                             borderLeft: `${depth * 2}em solid transparent`,
                         }, children: [children?.size ? (
                             // TODO: a11y
                             // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                            jsxRuntime.jsx("div", { onClick: toggleExpanded, className: classes.arrow + (expanded ? ` ${classes.arrowExpanded}` : ''), children: "\u276F" })) : null, jsxRuntime.jsx("div", { className: classes.typeContent, children: jsxRuntime.jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: 170 }, value: type, filterTerms: isOntologyClass, fetchValidTerms: fetchValidTypeTerms.bind(null, feature), renderInput: (params) => {
-                                        return (jsxRuntime.jsxs("div", { ref: params.InputProps.ref, children: [jsxRuntime.jsx("input", { type: "text", ...params.inputProps, className: classes.typeInputElement, style: { width: 170 } }), params.error ? (jsxRuntime.jsx("div", { className: classes.typeErrorMessage, children: params.errorMessage ?? 'unknown error' })) : null] }));
+                            jsx("div", { onClick: toggleExpanded, className: classes.arrow + (expanded ? ` ${classes.arrowExpanded}` : ''), children: "\u276F" })) : null, jsx("div", { className: classes.typeContent, children: jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: 170 }, value: type, filterTerms: isOntologyClass, fetchValidTerms: fetchValidTypeTerms.bind(null, feature), renderInput: (params) => {
+                                        return (jsxs("div", { ref: params.InputProps.ref, children: [jsx("input", { type: "text", ...params.inputProps, className: classes.typeInputElement, style: { width: 170 } }), params.error ? (jsx("div", { className: classes.typeErrorMessage, children: params.errorMessage ?? 'unknown error' })) : null] }));
                                     }, onChange: (oldValue, newValue) => {
                                         if (newValue) {
                                             handleFeatureTypeChange(changeManager, feature, oldValue, newValue).catch(notifyError);
                                         }
-                                    } }) })] }), jsxRuntime.jsx("td", { children: jsxRuntime.jsx(NumberCell, { initialValue: min + 1, notifyError: notifyError, onChangeCommitted: (newStart) => handleFeatureStartChange(changeManager, feature, min, newStart - 1) }) }), jsxRuntime.jsx("td", { children: jsxRuntime.jsx(NumberCell, { initialValue: max, notifyError: notifyError, onChangeCommitted: (newEnd) => handleFeatureEndChange(changeManager, feature, max, newEnd) }) }), jsxRuntime.jsx("td", { children: strand === 1 ? '+' : strand === -1 ? '-' : undefined }), jsxRuntime.jsx("td", { children: jsxRuntime.jsx(FeatureAttributes, { filterText: filterText, feature: feature }) })] }), expanded && children
+                                    } }) })] }), jsx("td", { children: jsx(NumberCell, { initialValue: min + 1, notifyError: notifyError, onChangeCommitted: (newStart) => handleFeatureStartChange(changeManager, feature, min, newStart - 1) }) }), jsx("td", { children: jsx(NumberCell, { initialValue: max, notifyError: notifyError, onChangeCommitted: (newEnd) => handleFeatureEndChange(changeManager, feature, max, newEnd) }) }), jsx("td", { children: strand === 1 ? '+' : strand === -1 ? '-' : undefined }), jsx("td", { children: jsx(FeatureAttributes, { filterText: filterText, feature: feature }) })] }), expanded && children
                 ? [...children.entries()]
                     .filter((entry) => {
                     if (!filterText) {
@@ -8355,7 +8351,7 @@ const Feature = mobxReact.observer(function Feature({ depth, feature, isHovered,
                     .map(([featureId, childFeature]) => {
                     const childHovered = hoveredFeature?.feature._id === childFeature._id;
                     const childSelected = selectedFeature?._id === childFeature._id;
-                    return (jsxRuntime.jsx(Feature, { isHovered: childHovered, isSelected: childSelected, selectedFeatureClass: selectedFeatureClass, depth: (depth || 0) + 1, feature: childFeature, model: displayState, setContextMenu: setContextMenu }, featureId));
+                    return (jsx(Feature, { isHovered: childHovered, isSelected: childSelected, selectedFeatureClass: selectedFeatureClass, depth: (depth || 0) + 1, feature: childFeature, model: displayState, setContextMenu: setContextMenu }, featureId));
                 })
                 : null] }));
 });
@@ -8375,7 +8371,7 @@ async function fetchValidTypeTerms(feature, ontologyStore, _signal) {
     return;
 }
 
-const useStyles$3 = tssReact.makeStyles()((theme) => ({
+const useStyles$3 = makeStyles()((theme) => ({
     scrollableTable: {
         width: '100%',
         height: '100%',
@@ -8393,15 +8389,15 @@ const useStyles$3 = tssReact.makeStyles()((theme) => ({
         backgroundColor: theme.palette.action.selected,
     },
 }));
-const HybridGrid = mobxReact.observer(function HybridGrid({ model, }) {
+const HybridGrid = observer(function HybridGrid({ model, }) {
     const { hoveredFeature, seenFeatures, selectedFeature, tabularEditor } = model;
-    const theme = material.useTheme();
+    const theme = useTheme();
     const { classes } = useStyles$3();
-    const scrollContainerRef = React.useRef(null);
-    const [contextMenu, setContextMenu] = React.useState(null);
+    const scrollContainerRef = useRef(null);
+    const [contextMenu, setContextMenu] = useState(null);
     const { filterText } = tabularEditor;
     // scrolls to selected feature if one is selected and it's not already visible
-    React.useEffect(() => {
+    useEffect(() => {
         const scrollContainer = scrollContainerRef.current;
         if (scrollContainer && selectedFeature) {
             const selectedRow = scrollContainer.querySelector(`.${classes.selectedFeature}`);
@@ -8416,7 +8412,7 @@ const HybridGrid = mobxReact.observer(function HybridGrid({ model, }) {
             }
         }
     }, [selectedFeature, seenFeatures, classes.selectedFeature]);
-    return (jsxRuntime.jsxs("div", { ref: scrollContainerRef, style: { width: '100%', overflowY: 'auto', height: '100%' }, children: [jsxRuntime.jsxs("table", { className: classes.scrollableTable, children: [jsxRuntime.jsx("thead", { children: jsxRuntime.jsxs("tr", { children: [jsxRuntime.jsx("th", { children: "Type" }), jsxRuntime.jsx("th", { children: "Start" }), jsxRuntime.jsx("th", { children: "End" }), jsxRuntime.jsx("th", { children: "Strand" }), jsxRuntime.jsx("th", { children: "Attributes" })] }) }), jsxRuntime.jsx("tbody", { children: [...seenFeatures.entries()]
+    return (jsxs("div", { ref: scrollContainerRef, style: { width: '100%', overflowY: 'auto', height: '100%' }, children: [jsxs("table", { className: classes.scrollableTable, children: [jsx("thead", { children: jsxs("tr", { children: [jsx("th", { children: "Type" }), jsx("th", { children: "Start" }), jsx("th", { children: "End" }), jsx("th", { children: "Strand" }), jsx("th", { children: "Attributes" })] }) }), jsx("tbody", { children: [...seenFeatures.entries()]
                             .filter((entry) => {
                             if (!filterText) {
                                 return true;
@@ -8432,8 +8428,8 @@ const HybridGrid = mobxReact.observer(function HybridGrid({ model, }) {
                             .map(([featureId, feature]) => {
                             const isSelected = selectedFeature?._id === featureId;
                             const isHovered = hoveredFeature?.feature._id === featureId;
-                            return (jsxRuntime.jsx(Feature, { isSelected: isSelected, isHovered: isHovered, selectedFeatureClass: classes.selectedFeature, feature: feature, model: model, depth: 0, setContextMenu: setContextMenu }, featureId));
-                        }) })] }), jsxRuntime.jsx(ui.Menu, { open: Boolean(contextMenu), onMenuItemClick: (_, callback) => {
+                            return (jsx(Feature, { isSelected: isSelected, isHovered: isHovered, selectedFeatureClass: classes.selectedFeature, feature: feature, model: model, depth: 0, setContextMenu: setContextMenu }, featureId));
+                        }) })] }), jsx(Menu$1, { open: Boolean(contextMenu), onMenuItemClick: (_, callback) => {
                     callback();
                     setContextMenu(null);
                 }, onClose: () => {
@@ -8447,7 +8443,7 @@ const HybridGrid = mobxReact.observer(function HybridGrid({ model, }) {
                 }, style: { zIndex: theme.zIndex.tooltip }, menuItems: contextMenu?.items ?? [], anchorReference: "anchorPosition", anchorPosition: contextMenu?.position })] }));
 });
 
-const useStyles$2 = tssReact.makeStyles()({
+const useStyles$2 = makeStyles()({
     toolbar: {
         width: '100%',
         display: 'flex',
@@ -8459,16 +8455,16 @@ const useStyles$2 = tssReact.makeStyles()({
     },
     filterText: {},
 });
-const ToolBar = mobxReact.observer(function ToolBar({ model: displayState, }) {
+const ToolBar = observer(function ToolBar({ model: displayState, }) {
     const model = displayState.tabularEditor;
     const { classes } = useStyles$2();
-    return (jsxRuntime.jsxs("div", { className: classes.toolbar, children: [jsxRuntime.jsx(material.Tooltip, { title: "Collapse all", children: jsxRuntime.jsx(material.IconButton, { "aria-label": "collapse", sx: { marginTop: 0 }, onClick: model.collapseAllFeatures, children: jsxRuntime.jsx(UnfoldLessIcon, {}) }) }), jsxRuntime.jsx(material.TextField, { className: classes.filterText, label: "Filter features", value: model.filterText, sx: { marginTop: 0 }, variant: "outlined", onChange: (event) => {
+    return (jsxs("div", { className: classes.toolbar, children: [jsx(Tooltip$1, { title: "Collapse all", children: jsx(IconButton, { "aria-label": "collapse", sx: { marginTop: 0 }, onClick: model.collapseAllFeatures, children: jsx(UnfoldLessIcon, {}) }) }), jsx(TextField, { className: classes.filterText, label: "Filter features", value: model.filterText, sx: { marginTop: 0 }, variant: "outlined", onChange: (event) => {
                     model.setFilterText(event.target.value);
                 }, slotProps: {
                     input: {
-                        endAdornment: (jsxRuntime.jsx(material.InputAdornment, { position: "end", children: jsxRuntime.jsx(material.IconButton, { onClick: () => {
+                        endAdornment: (jsx(InputAdornment, { position: "end", children: jsx(IconButton, { onClick: () => {
                                     model.clearFilterText();
-                                }, children: jsxRuntime.jsx(ClearIcon, {}) }) })),
+                                }, children: jsx(ClearIcon, {}) }) })),
                     },
                 } })] }));
 });
@@ -8476,7 +8472,7 @@ const ToolBar = mobxReact.observer(function ToolBar({ model: displayState, }) {
 function stopPropagation(e) {
     e.stopPropagation();
 }
-const TabularEditorPane = mobxReact.observer(function TabularEditorPane({ model: displayState, }) {
+const TabularEditorPane = observer(function TabularEditorPane({ model: displayState, }) {
     const model = displayState.tabularEditor;
     if (!model.isShown) {
         return null;
@@ -8484,13 +8480,13 @@ const TabularEditorPane = mobxReact.observer(function TabularEditorPane({ model:
     return (
     // TODO: a11y
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    jsxRuntime.jsxs("div", { onMouseDown: stopPropagation, onClick: stopPropagation, style: { width: '100%', height: '100%', position: 'relative' }, children: [jsxRuntime.jsx(ToolBar, { model: displayState }), jsxRuntime.jsx(HybridGrid, { model: displayState })] }));
+    jsxs("div", { onMouseDown: stopPropagation, onClick: stopPropagation, style: { width: '100%', height: '100%', position: 'relative' }, children: [jsx(ToolBar, { model: displayState }), jsx(HybridGrid, { model: displayState })] }));
 });
 
-const TabularEditorStateModelType = mobxStateTree.types
+const TabularEditorStateModelType = types
     .model('TabularEditor', {
     isShown: true,
-    featureCollapsed: mobxStateTree.types.map(mobxStateTree.types.boolean),
+    featureCollapsed: types.map(types.boolean),
     filterText: '',
 })
     .actions((self) => ({
@@ -8505,7 +8501,7 @@ const TabularEditorStateModelType = mobxStateTree.types
     },
     collapseAllFeatures() {
         // iterate over all seen features and set them to collapsed
-        const display = mobxStateTree.getParent(self);
+        const display = getParent(self);
         for (const [featureId] of display.seenFeatures.entries()) {
             self.featureCollapsed.set(featureId, true);
         }
@@ -8564,7 +8560,7 @@ function drawOverlayBox(display, ctx, left, top, width, height, feature, overlay
     if (!color) {
         return;
     }
-    ctx.fillStyle = material.alpha(color, 0.3);
+    ctx.fillStyle = alpha(color, 0.3);
     ctx.fillRect(left, top, width, height);
 }
 /**
@@ -8624,7 +8620,7 @@ function drawDragPreview$6(display, overlayCtx, feature, row, block) {
     const min = Math.min(current.bp, start.bp);
     const max = Math.max(current.bp, start.bp);
     const [top, left, width, height] = getFeatureBox(display, { min, max }, row, block);
-    overlayCtx.fillStyle = material.alpha(theme.palette.info.main, 0.2);
+    overlayCtx.fillStyle = alpha(theme.palette.info.main, 0.2);
     overlayCtx.fillRect(left, top, width, height);
     overlayCtx.setLineDash([6]);
     strokeRectInner(overlayCtx, left, top, width, height, theme.palette.info.main);
@@ -8658,7 +8654,7 @@ function drawCDSLocation(display, ctx, cdsLocation, strand, row, block) {
     const [top, left, width] = getFeatureBox(display, cdsLocation, row, block);
     const halfHeight = Math.round(apolloRowHeight / 2);
     if (width > 2) {
-        const frame = util.getFrame(cdsLocation.min, cdsLocation.max, strand ?? 1, cdsLocation.phase);
+        const frame = getFrame(cdsLocation.min, cdsLocation.max, strand ?? 1, cdsLocation.phase);
         const frameColor = theme.palette.framesCDS.at(frame)?.main;
         ctx.fillStyle = frameColor ?? 'black';
         ctx.fillRect(left, top, width, apolloRowHeight);
@@ -8787,7 +8783,7 @@ function getContextMenuItems$4(display, feature) {
     const admin = role === 'admin';
     const menuItems = [];
     const adjacentExons = getAdjacentExons(feature, display);
-    const lgv = util.getContainingView(display);
+    const lgv = getContainingView(display);
     if (adjacentExons.upstream) {
         const exon = adjacentExons.upstream;
         menuItems.push({
@@ -8879,9 +8875,9 @@ function draw$3(display, ctx, gene, row, rowInFeature, block) {
     const [top, left, width] = getFeatureBox(display, gene, row, block);
     const height = getRowCount$2(display, gene) * apolloRowHeight;
     if (width > 2) {
-        const selectedColor = configuration.readConfObject(session.getPluginConfiguration(), 'geneBackgroundColor', {
+        const selectedColor = readConfObject(session.getPluginConfiguration(), 'geneBackgroundColor', {
             featureType: gene.type,
-        }) ?? material.alpha(theme.palette.background.paper, 0.6);
+        }) ?? alpha(theme.palette.background.paper, 0.6);
         ctx.fillStyle = selectedColor;
         ctx.fillRect(left, top, width, height);
     }
@@ -8957,7 +8953,7 @@ function draw$2(display, ctx, feature, row, rowInFeature, block) {
     const [top, left, width] = getFeatureBox(display, feature, row, block);
     const height = getRowCount$1(display, feature) * apolloRowHeight;
     if (width > 2) {
-        ctx.fillStyle = material.alpha(theme.palette.background.paper, 0.6);
+        ctx.fillStyle = alpha(theme.palette.background.paper, 0.6);
         ctx.fillRect(left, top, width, height);
     }
     strokeRectInner(ctx, left, top, width, height, theme.palette.text.primary);
@@ -9159,7 +9155,7 @@ function getContextMenuItems$1(display, transcript) {
     const [region] = regions;
     const currentAssemblyId = display.getAssemblyId(region.assemblyName);
     const menuItems = [];
-    if (util.isSessionModelWithWidgets(session)) {
+    if (isSessionModelWithWidgets(session)) {
         menuItems.splice(1, 0, {
             label: 'Open transcript editor',
             onClick: () => {
@@ -9254,9 +9250,9 @@ const transcriptGlyph = {
     isDraggable: false,
 };
 
-const FilterFeatures = mobxReact.observer(function FilterFeatures({ featureTypes, handleClose, onUpdate, session, }) {
-    const [type, setType] = React.useState('');
-    const [selectedFeatureTypes, setSelectedFeatureTypes] = React.useState(featureTypes);
+const FilterFeatures = observer(function FilterFeatures({ featureTypes, handleClose, onUpdate, session, }) {
+    const [type, setType] = useState('');
+    const [selectedFeatureTypes, setSelectedFeatureTypes] = useState(featureTypes);
     const handleChange = (value) => {
         setType(value);
     };
@@ -9274,30 +9270,30 @@ const FilterFeatures = mobxReact.observer(function FilterFeatures({ featureTypes
         onUpdate(newTypes);
         setSelectedFeatureTypes(newTypes);
     };
-    return (jsxRuntime.jsx(Dialog, { open: true, maxWidth: false, "data-testid": "filter-features-dialog", title: "Filter features by type", handleClose: handleClose, children: jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select the feature types you want to display in the apollo track" }), jsxRuntime.jsxs(material.Grid, { container: true, spacing: 2, children: [jsxRuntime.jsx(material.Grid, { size: 8, children: jsxRuntime.jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: '100%' }, value: type, filterTerms: isOntologyClass, renderInput: (params) => (jsxRuntime.jsx(material.TextField, { ...params, label: "Feature type", variant: "outlined", fullWidth: true })), onChange: (oldValue, newValue) => {
+    return (jsx(Dialog, { open: true, maxWidth: false, "data-testid": "filter-features-dialog", title: "Filter features by type", handleClose: handleClose, children: jsxs(DialogContent, { children: [jsx(DialogContentText, { children: "Select the feature types you want to display in the apollo track" }), jsxs(Grid, { container: true, spacing: 2, children: [jsx(Grid, { size: 8, children: jsx(OntologyTermAutocomplete, { session: session, ontologyName: "Sequence Ontology", style: { width: '100%' }, value: type, filterTerms: isOntologyClass, renderInput: (params) => (jsx(TextField, { ...params, label: "Feature type", variant: "outlined", fullWidth: true })), onChange: (oldValue, newValue) => {
                                     if (newValue) {
                                         handleChange(newValue);
                                     }
-                                } }) }), jsxRuntime.jsx(material.Grid, { size: 4, children: jsxRuntime.jsx(material.Button, { variant: "contained", onClick: handleAddFeatureType, disabled: !type, style: { marginTop: 9 }, size: "medium", children: "Add" }) })] }), selectedFeatureTypes.length > 0 && (jsxRuntime.jsxs("div", { children: [jsxRuntime.jsx("hr", {}), jsxRuntime.jsxs("div", { style: { width: 300 }, children: [jsxRuntime.jsx(material.DialogContentText, { children: "Selected feature types:" }), jsxRuntime.jsx(material.Box, { sx: { display: 'flex', flexWrap: 'wrap', gap: 0.5 }, children: selectedFeatureTypes.map((value) => (jsxRuntime.jsx(material.Chip, { label: value, onDelete: () => {
+                                } }) }), jsx(Grid, { size: 4, children: jsx(Button, { variant: "contained", onClick: handleAddFeatureType, disabled: !type, style: { marginTop: 9 }, size: "medium", children: "Add" }) })] }), selectedFeatureTypes.length > 0 && (jsxs("div", { children: [jsx("hr", {}), jsxs("div", { style: { width: 300 }, children: [jsx(DialogContentText, { children: "Selected feature types:" }), jsx(Box, { sx: { display: 'flex', flexWrap: 'wrap', gap: 0.5 }, children: selectedFeatureTypes.map((value) => (jsx(Chip, { label: value, onDelete: () => {
                                             handleFeatureTypeDelete(value);
                                         } }, value))) })] })] }))] }) }));
 });
 
-const EditZoomThresholdDialog = mobxReact.observer(function ({ model, handleClose, }) {
-    const [zoomThreshold, setZoomThreshold] = React.useState(`${model.zoomThresholdSetting}`);
-    return (jsxRuntime.jsx(ui.Dialog, { open: true, onClose: handleClose, title: "Edit zoom threshold setting", children: jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsx(material.Typography, { children: "The zoom level in base pairs (bp) per pixel at which features are rendered in this Annotations track. Increasing the value will allow features to render when zooming out, but might impact performance." }), jsxRuntime.jsx(material.TextField, { label: "Threshold value (bpPerPx)", value: zoomThreshold, onChange: (event) => {
+const EditZoomThresholdDialog = observer(function ({ model, handleClose, }) {
+    const [zoomThreshold, setZoomThreshold] = useState(`${model.zoomThresholdSetting}`);
+    return (jsx(Dialog$1, { open: true, onClose: handleClose, title: "Edit zoom threshold setting", children: jsxs(DialogContent, { children: [jsx(Typography, { children: "The zoom level in base pairs (bp) per pixel at which features are rendered in this Annotations track. Increasing the value will allow features to render when zooming out, but might impact performance." }), jsx(TextField, { label: "Threshold value (bpPerPx)", value: zoomThreshold, onChange: (event) => {
                         setZoomThreshold(event.target.value);
-                    } }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", onClick: () => {
+                    } }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", onClick: () => {
                                 model.setZoomThresholdSetting({
                                     zoomThreshold: +zoomThreshold,
                                 });
                                 handleClose();
-                            }, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "contained", color: "secondary", onClick: () => {
+                            }, children: "Submit" }), jsx(Button, { variant: "contained", color: "secondary", onClick: () => {
                                 handleClose();
                             }, children: "Cancel" })] })] }) }));
 });
 
-const useStyles$1 = tssReact.makeStyles()((theme) => ({
+const useStyles$1 = makeStyles()((theme) => ({
     canvasContainer: {
         position: 'relative',
         left: 0,
@@ -9423,16 +9419,16 @@ function colorCode(letter, theme) {
 
 const minDisplayHeight$2 = 20;
 function baseModelFactory$2(_pluginManager, configSchema) {
-    return pluggableElementTypes.BaseDisplay.named('BaseLinearApolloDisplay')
+    return BaseDisplay.named('BaseLinearApolloDisplay')
         .props({
-        type: mobxStateTree.types.literal('LinearApolloDisplay'),
-        configuration: configuration.ConfigurationReference(configSchema),
+        type: types.literal('LinearApolloDisplay'),
+        configuration: ConfigurationReference(configSchema),
         graphical: true,
         table: false,
         showCheckResults: true,
         zoomThreshold: 200,
-        heightPreConfig: mobxStateTree.types.maybe(mobxStateTree.types.refinement('displayHeight', mobxStateTree.types.number, (n) => n >= minDisplayHeight$2)),
-        filteredFeatureTypes: mobxStateTree.types.array(mobxStateTree.types.string),
+        heightPreConfig: types.maybe(types.refinement('displayHeight', types.number, (n) => n >= minDisplayHeight$2)),
+        filteredFeatureTypes: types.array(types.string),
         loadingState: false,
     })
         .views((self) => {
@@ -9441,7 +9437,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
             renderProps() {
                 return {
                     ...superRenderProps(),
-                    ...tracks.getParentRenderProps(self),
+                    ...getParentRenderProps(self),
                     config: configuration.renderer,
                 };
             },
@@ -9452,7 +9448,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
     }))
         .views((self) => ({
         get lgv() {
-            return util.getContainingView(self);
+            return getContainingView(self);
         },
         get height() {
             if (self.heightPreConfig) {
@@ -9470,7 +9466,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
             return self.loadingState;
         },
         get zoomThresholdSetting() {
-            return self.zoomThreshold ?? configuration.getConf(self, 'zoomThreshold');
+            return self.zoomThreshold ?? getConf(self, 'zoomThreshold');
         },
     }))
         .views((self) => ({
@@ -9478,7 +9474,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
             return self.configuration.renderer.type;
         },
         get session() {
-            return util.getSession(self);
+            return getSession(self);
         },
         get regions() {
             const regions = self.lgv.dynamicBlocks.contentBlocks.map(({ assemblyName, end, refName, start }) => ({
@@ -9499,18 +9495,18 @@ function baseModelFactory$2(_pluginManager, configSchema) {
         .views((self) => ({
         get apolloInternetAccount() {
             const [region] = self.regions;
-            const { internetAccounts } = mobxStateTree.getRoot(self);
+            const { internetAccounts } = getRoot(self);
             const { assemblyName } = region;
             const { assemblyManager } = self.session;
             const assembly = assemblyManager.get(assemblyName);
             if (!assembly) {
                 throw new Error(`No assembly found with name ${assemblyName}`);
             }
-            const { internetAccountConfigId } = configuration.getConf(assembly, [
+            const { internetAccountConfigId } = getConf(assembly, [
                 'sequence',
                 'metadata',
             ]);
-            return internetAccounts.find((ia) => configuration.getConf(ia, 'internetAccountId') === internetAccountConfigId);
+            return internetAccounts.find((ia) => getConf(ia, 'internetAccountId') === internetAccountConfigId);
         },
         get changeManager() {
             return self.session.apolloDataStore.changeManager;
@@ -9559,7 +9555,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
             self.showCheckResults = !self.showCheckResults;
         },
         updateFilteredFeatureTypes(types) {
-            self.filteredFeatureTypes = mobxStateTree.cast(types);
+            self.filteredFeatureTypes = cast(types);
         },
         setLoading(loading) {
             self.loadingState = loading;
@@ -9617,7 +9613,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
                             {
                                 label: 'Change zoom threshold',
                                 onClick: () => {
-                                    util.getSession(self).queueDialog((handleClose) => [
+                                    getSession(self).queueDialog((handleClose) => [
                                         EditZoomThresholdDialog,
                                         { model: self, handleClose },
                                     ]);
@@ -9636,7 +9632,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
                                     handleClose: () => {
                                         doneCallback();
                                     },
-                                    featureTypes: mobxStateTree.getSnapshot(filteredFeatureTypes),
+                                    featureTypes: getSnapshot(filteredFeatureTypes),
                                     onUpdate: (types) => {
                                         self.updateFilteredFeatureTypes(types);
                                     },
@@ -9763,7 +9759,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
             session.showWidget(apolloFeatureWidget);
         },
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -9788,7 +9784,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
         cleanupBoundary: 200_000,
     })
         .volatile(() => ({
-        seenFeatures: mobx.observable.map(),
+        seenFeatures: observable.map(),
     }))
         .views((self) => ({
         getAnnotationFeatureById(id) {
@@ -9848,7 +9844,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
                 if ((!hasDisplayedFeatureTypes ||
                     self.filteredFeatureTypes.includes(feature.type)) &&
                     canonicalRefName === refName &&
-                    util.doesIntersect2(start, end, feature.min, feature.max)) {
+                    doesIntersect2(start, end, feature.min, feature.max)) {
                     return true;
                 }
                 return false;
@@ -9863,7 +9859,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
             const layoutByAssemblyAndRefName = new Map();
             // Go through all the features we know about and add them to th
             for (const [id, feature] of self.seenFeatures.entries()) {
-                if (!mobxStateTree.isAlive(feature)) {
+                if (!isAlive(feature)) {
                     self.deleteSeenFeature(id);
                     continue;
                 }
@@ -9917,7 +9913,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
                     let currentRow = startingRowIndex;
                     while (layoutRow && startingRowIndex <= highestRow) {
                         for (const layoutFeature of layoutRow.values()) {
-                            if (util.doesIntersect2(featureLayout.min, featureLayout.max, layoutFeature.feature.min, layoutFeature.feature.max)) {
+                            if (doesIntersect2(featureLayout.min, featureLayout.max, layoutFeature.feature.min, layoutFeature.feature.max)) {
                                 startingRowIndex += 1;
                                 continue placeFeature;
                             }
@@ -9985,7 +9981,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
     }))
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -9996,7 +9992,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
                     for (const region of self.regions) {
                         const extendedStart = region.start - self.cleanupBoundary;
                         const extendedEnd = region.end + self.cleanupBoundary;
-                        if (util.doesIntersect2(extendedStart, extendedEnd, feature.min, feature.max)) {
+                        if (doesIntersect2(extendedStart, extendedEnd, feature.min, feature.max)) {
                             shouldKeep = true;
                             break;
                         }
@@ -10014,7 +10010,7 @@ function layoutsModelFactory$1(pluginManager, configSchema) {
                         continue;
                     }
                     for (const [, feature] of features) {
-                        if (util.doesIntersect2(region.start, region.end, feature.min, feature.max) &&
+                        if (doesIntersect2(region.start, region.end, feature.min, feature.max) &&
                             !self.seenFeatures.has(feature._id)) {
                             self.addSeenFeature(feature);
                         }
@@ -10033,13 +10029,13 @@ function renderingModelFactory$2(pluginManager, configSchema) {
         detailsMinHeight: 200,
         detailsHeight: 200,
         isShown: true,
-        filteredTranscripts: mobxStateTree.types.array(mobxStateTree.types.string),
+        filteredTranscripts: types.array(types.string),
     })
         .volatile(() => ({
         canvas: null,
         overlayCanvas: null,
         collaboratorCanvas: null,
-        theme: material.createTheme(),
+        theme: createTheme(),
     }))
         .views((self) => ({
         featuresHeight(assemblyName) {
@@ -10107,7 +10103,7 @@ function renderingModelFactory$2(pluginManager, configSchema) {
     }))
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -10147,7 +10143,7 @@ function renderingModelFactory$2(pluginManager, configSchema) {
                     }
                 }
             }, { name: 'LinearApolloDisplayRenderCollaborators' }));
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 const { canvas, layouts, lgv } = self;
                 if (!lgv.initialized ||
                     self.regionCannotBeRendered() ||
@@ -10178,7 +10174,7 @@ function renderingModelFactory$2(pluginManager, configSchema) {
                     for (const [row, layoutRow] of byRow.entries()) {
                         for (const layoutFeature of layoutRow) {
                             const { feature, rowInFeature } = layoutFeature;
-                            if (!util.doesIntersect2(block.start, block.end, feature.min, feature.max)) {
+                            if (!doesIntersect2(block.start, block.end, feature.min, feature.max)) {
                                 continue;
                             }
                             self
@@ -10190,7 +10186,7 @@ function renderingModelFactory$2(pluginManager, configSchema) {
                     for (const [row, layoutRow] of byRow.entries()) {
                         for (const layoutFeature of layoutRow) {
                             const { feature, rowInFeature } = layoutFeature;
-                            if (!util.doesIntersect2(block.start, block.end, feature.min, feature.max)) {
+                            if (!doesIntersect2(block.start, block.end, feature.min, feature.max)) {
                                 continue;
                             }
                             self.getGlyph(feature).drawOverlay(
@@ -10325,7 +10321,7 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
                 const assembly = self.getAssemblyId(region.assemblyName);
                 const changes = getPropagatedLocationChanges(feature, current.bp, edge, shrinkParent);
                 const change = edge === 'max'
-                    ? new shared.LocationEndChange({
+                    ? new LocationEndChange({
                         typeName: 'LocationEndChange',
                         changedIds: changes.map((c) => c.featureId),
                         changes: changes.map((c) => ({
@@ -10335,7 +10331,7 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
                         })),
                         assembly,
                     })
-                    : new shared.LocationStartChange({
+                    : new LocationStartChange({
                         typeName: 'LocationStartChange',
                         changedIds: changes.map((c) => c.featureId),
                         changes: changes.map((c) => ({
@@ -10431,7 +10427,7 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
     }))
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 const { lgv, overlayCanvas } = self;
                 if (!lgv.initialized ||
                     // This type is wrong in @jbrowse/core
@@ -10463,7 +10459,7 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
                     ctx.rect(blockLeftPx, 0, block.widthPx, overlayCanvas.height);
                     ctx.clip();
                     if (block.assemblyName === feature.assemblyId &&
-                        util.doesIntersect2(block.start, block.end, feature.min, feature.max)) {
+                        doesIntersect2(block.start, block.end, feature.min, feature.max)) {
                         // draw mouseover hovers
                         glyph.drawOverlay(
                         // @ts-expect-error ts doesn't understand mst extension
@@ -10473,7 +10469,7 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
                         const { current, start, feature: dragFeature, } = apolloDragging;
                         const dragMin = Math.min(current.bp, start.bp);
                         const dragMax = Math.max(current.bp, start.bp);
-                        if (util.doesIntersect2(block.start, block.end, dragMin, dragMax)) {
+                        if (doesIntersect2(block.start, block.end, dragMin, dragMax)) {
                             const dragGlyph = self.getGlyph(dragFeature);
                             const row = self.getRowForFeature(dragFeature);
                             if (row !== undefined) {
@@ -10495,11 +10491,11 @@ function stateModelFactory$2(pluginManager, configSchema) {
     // TODO: this needs to be refactored so that the final composition of the
     // state model mixins happens here in one central place
     return mouseEventsModelFactory$1(pluginManager, configSchema)
-        .props({ tabularEditor: mobxStateTree.types.optional(TabularEditorStateModelType, {}) })
+        .props({ tabularEditor: types.optional(TabularEditorStateModelType, {}) })
         .named('LinearApolloDisplay');
 }
 
-const configSchema$1 = configuration.ConfigurationSchema('LinearApolloReferenceSequenceDisplay', {}, { explicitIdentifier: 'displayId', explicitlyTyped: true });
+const configSchema$1 = ConfigurationSchema('LinearApolloReferenceSequenceDisplay', {}, { explicitIdentifier: 'displayId', explicitlyTyped: true });
 
 function getSeqRow(strand, bpPerPx, reversed) {
     if (bpPerPx > 1 || strand === undefined) {
@@ -10565,7 +10561,7 @@ function drawCDSHighlight(ctx, feature, bpPerPx, offsetPx, rowHeight, block, the
         return;
     }
     for (const loc of cdsLocs) {
-        const frame = util.getFrame(loc.min, loc.max, feature.strand ?? 1, loc.phase);
+        const frame = getFrame(loc.min, loc.max, feature.strand ?? 1, loc.phase);
         const row = getTranslationRow(frame, bpPerPx, block.reversed);
         const left = getLeftPx(loc, bpPerPx, offsetPx, block);
         const top = row * rowHeight;
@@ -10637,7 +10633,7 @@ function drawBase(ctx, base, index, leftPx, bpPerPx, rowHeight, theme) {
     const strands = [-1, 1];
     for (const strand of strands) {
         const top = (strand === 1 ? 3 : 4) * rowHeight;
-        const baseCode = strand === 1 ? base : util.revcom(base);
+        const baseCode = strand === 1 ? base : revcom(base);
         ctx.fillStyle = colorCode(baseCode, theme);
         ctx.fillRect(left, top, width, rowHeight);
         if (1 / bpPerPx >= 12) {
@@ -10651,7 +10647,7 @@ function drawCodon$1(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp
     const frameOffsets = (bpPerPx <= 1 ? [0, 2, 1, 0, 7, 6, 5] : [0, 2, 1, 0, 5, 4, 3]).map((b) => b * rowHeight);
     const strands = [-1, 1];
     for (const strand of strands) {
-        const frame = util.getFrame(bp, bp + 3, strand, 0);
+        const frame = getFrame(bp, bp + 3, strand, 0);
         const top = frameOffsets.at(frame);
         if (top === undefined) {
             continue;
@@ -10659,8 +10655,8 @@ function drawCodon$1(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp
         const left = Math.round(leftPx + index / bpPerPx);
         const nextLeft = Math.round(leftPx + (index + 3) / bpPerPx);
         const width = nextLeft - left;
-        const codonCode = strand === 1 ? codon : util.revcom(codon);
-        const aminoAcidCode = util.defaultCodonTable[codonCode];
+        const codonCode = strand === 1 ? codon : revcom(codon);
+        const aminoAcidCode = defaultCodonTable[codonCode];
         const fillColor = codonColorCode(aminoAcidCode, theme, highContrast);
         if (fillColor &&
             ((showStopCodons && aminoAcidCode == '*') ||
@@ -10695,7 +10691,7 @@ function drawSequenceTrack(canvas, theme, bpPerPx, offsetPx, dynamicBlocks, high
         }
         seq = seq.toUpperCase();
         if (block.reversed) {
-            seq = util.revcom(seq);
+            seq = revcom(seq);
         }
         const baseOffsetPx = (block.reversed ? roundedEnd - block.end : block.start - roundedStart) /
             bpPerPx;
@@ -10714,14 +10710,14 @@ function drawSequenceTrack(canvas, theme, bpPerPx, offsetPx, dynamicBlocks, high
 
 const minDisplayHeight$1 = 20;
 function baseModelFactory$1(_pluginManager, configSchema) {
-    return pluggableElementTypes.BaseDisplay.named('BaseLinearApolloReferenceSequenceDisplay')
+    return BaseDisplay.named('BaseLinearApolloReferenceSequenceDisplay')
         .props({
-        type: mobxStateTree.types.literal('LinearApolloReferenceSequenceDisplay'),
-        configuration: configuration.ConfigurationReference(configSchema),
+        type: types.literal('LinearApolloReferenceSequenceDisplay'),
+        configuration: ConfigurationReference(configSchema),
         showStartCodons: false,
         showStopCodons: true,
         highContrast: false,
-        heightPreConfig: mobxStateTree.types.maybe(mobxStateTree.types.refinement('displayHeight', mobxStateTree.types.number, (n) => n >= minDisplayHeight$1)),
+        heightPreConfig: types.maybe(types.refinement('displayHeight', types.number, (n) => n >= minDisplayHeight$1)),
         sequenceRowHeight: 15,
     })
         .views((self) => {
@@ -10730,7 +10726,7 @@ function baseModelFactory$1(_pluginManager, configSchema) {
             renderProps() {
                 return {
                     ...superRenderProps(),
-                    ...tracks.getParentRenderProps(self),
+                    ...getParentRenderProps(self),
                     config: configuration.renderer,
                 };
             },
@@ -10738,7 +10734,7 @@ function baseModelFactory$1(_pluginManager, configSchema) {
     })
         .views((self) => ({
         get lgv() {
-            return util.getContainingView(self);
+            return getContainingView(self);
         },
     }))
         .views((self) => ({
@@ -10746,7 +10742,7 @@ function baseModelFactory$1(_pluginManager, configSchema) {
             return self.configuration.renderer.type;
         },
         get session() {
-            return util.getSession(self);
+            return getSession(self);
         },
         get regions() {
             const regions = self.lgv.dynamicBlocks.contentBlocks.map(({ assemblyName, end, refName, start }) => ({
@@ -10782,18 +10778,18 @@ function baseModelFactory$1(_pluginManager, configSchema) {
         },
         get apolloInternetAccount() {
             const [region] = self.regions;
-            const { internetAccounts } = mobxStateTree.getRoot(self);
+            const { internetAccounts } = getRoot(self);
             const { assemblyName } = region;
             const { assemblyManager } = self.session;
             const assembly = assemblyManager.get(assemblyName);
             if (!assembly) {
                 throw new Error(`No assembly found with name ${assemblyName}`);
             }
-            const { internetAccountConfigId } = configuration.getConf(assembly, [
+            const { internetAccountConfigId } = getConf(assembly, [
                 'sequence',
                 'metadata',
             ]);
-            return internetAccounts.find((ia) => configuration.getConf(ia, 'internetAccountId') === internetAccountConfigId);
+            return internetAccounts.find((ia) => getConf(ia, 'internetAccountId') === internetAccountConfigId);
         },
         get changeManager() {
             return self.session.apolloDataStore.changeManager;
@@ -10888,7 +10884,7 @@ function baseModelFactory$1(_pluginManager, configSchema) {
     })
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -10909,7 +10905,7 @@ function renderingModelFactory$1(pluginManager, configSchema) {
         .volatile(() => ({
         seqTrackCanvas: null,
         seqTrackOverlayCanvas: null,
-        theme: material.createTheme(),
+        theme: createTheme(),
     }))
         .actions((self) => ({
         setSeqTrackCanvas(canvas) {
@@ -10922,7 +10918,7 @@ function renderingModelFactory$1(pluginManager, configSchema) {
             self.theme = theme;
         },
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 const { lgv, seqTrackCanvas, theme, highContrast, showStartCodons, showStopCodons, sequenceRowHeight, session, } = self;
                 if (!lgv.initialized ||
                     self.regionCannotBeRendered() ||
@@ -10939,7 +10935,7 @@ function renderingModelFactory$1(pluginManager, configSchema) {
                 // tracks the variables correctly
                 drawSequenceTrack(seqTrackCanvas, theme, bpPerPx, offsetPx, dynamicBlocks, highContrast, showStartCodons, showStopCodons, sequenceRowHeight, session);
             }, { name: 'LinearApolloReferenceSequenceDisplayRenderSequence' }));
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 const { seqTrackOverlayCanvas } = self;
                 if (!self.lgv.initialized ||
                     self.regionCannotBeRendered() ||
@@ -10973,36 +10969,36 @@ function stateModelFactory$1(pluginManager, configSchema) {
     return renderingModelFactory$1(pluginManager, configSchema).named('LinearApolloReferenceSequenceDisplay');
 }
 
-const LinearApolloReferenceSequenceDisplay = mobxReact.observer(function LinearApolloReferenceSequenceDisplay(props) {
-    const theme = material.useTheme();
+const LinearApolloReferenceSequenceDisplay = observer(function LinearApolloReferenceSequenceDisplay(props) {
+    const theme = useTheme();
     const { model } = props;
     const { height, regionCannotBeRendered, setSeqTrackCanvas, setSeqTrackOverlayCanvas, setTheme, } = model;
     const { classes } = useStyles$1();
-    React.useEffect(() => {
+    useEffect(() => {
         setTheme(theme);
     }, [theme, setTheme]);
-    const lgv = util.getContainingView(model);
+    const lgv = getContainingView(model);
     const message = regionCannotBeRendered();
     // This type is wrong in @jbrowse/core
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (message) {
-        return (jsxRuntime.jsx(material.Alert, { severity: "warning", classes: { message: classes.ellipses }, slotProps: { root: { className: classes.center } }, children: jsxRuntime.jsx(material.Tooltip, { title: message, children: jsxRuntime.jsx("div", { children: message }) }) }));
+        return (jsx(Alert, { severity: "warning", classes: { message: classes.ellipses }, slotProps: { root: { className: classes.center } }, children: jsx(Tooltip$1, { title: message, children: jsx("div", { children: message }) }) }));
     }
-    return (jsxRuntime.jsx(jsxRuntime.Fragment, { children: 3 / lgv.bpPerPx >= 1 ? (jsxRuntime.jsxs("div", { className: classes.canvasContainer, style: {
+    return (jsx(Fragment, { children: 3 / lgv.bpPerPx >= 1 ? (jsxs("div", { className: classes.canvasContainer, style: {
                 width: lgv.dynamicBlocks.totalWidthPx,
                 height,
-            }, children: [jsxRuntime.jsx("canvas", { ref: async (node) => {
+            }, children: [jsx("canvas", { ref: async (node) => {
                         await Promise.resolve();
                         setSeqTrackCanvas(node);
-                    }, width: lgv.dynamicBlocks.totalWidthPx, height: height, className: classes.canvas, "data-testid": "seqTrackCanvas" }), jsxRuntime.jsx("canvas", { ref: async (node) => {
+                    }, width: lgv.dynamicBlocks.totalWidthPx, height: height, className: classes.canvas, "data-testid": "seqTrackCanvas" }), jsx("canvas", { ref: async (node) => {
                         await Promise.resolve();
                         setSeqTrackOverlayCanvas(node);
                     }, width: lgv.dynamicBlocks.totalWidthPx, height: height, className: classes.canvas, "data-testid": "seqTrackOverlayCanvas" })] })) : null }));
 });
 
-const configSchema = configuration.ConfigurationSchema('LinearApolloSixFrameDisplay', {}, { explicitIdentifier: 'displayId', explicitlyTyped: true });
+const configSchema = ConfigurationSchema('LinearApolloSixFrameDisplay', {}, { explicitIdentifier: 'displayId', explicitlyTyped: true });
 
-const FilterTranscripts = mobxReact.observer(function FilterTranscripts({ sourceFeature, filteredTranscripts, handleClose, onUpdate, }) {
+const FilterTranscripts = observer(function FilterTranscripts({ sourceFeature, filteredTranscripts, handleClose, onUpdate, }) {
     const allTranscripts = [];
     if (sourceFeature.children) {
         for (const [, child] of sourceFeature.children) {
@@ -11014,7 +11010,7 @@ const FilterTranscripts = mobxReact.observer(function FilterTranscripts({ source
             }
         }
     }
-    const [excludedTranscripts, setExcludedTranscripts] = React.useState(filteredTranscripts);
+    const [excludedTranscripts, setExcludedTranscripts] = useState(filteredTranscripts);
     const handleChange = (value) => {
         const newForms = excludedTranscripts.includes(value)
             ? excludedTranscripts.filter((form) => form !== value)
@@ -11022,7 +11018,7 @@ const FilterTranscripts = mobxReact.observer(function FilterTranscripts({ source
         onUpdate(newForms);
         setExcludedTranscripts(newForms);
     };
-    return (jsxRuntime.jsx(Dialog, { open: true, maxWidth: false, "data-testid": "filter-transcripts-dialog", title: "Filter transcripts by ID", handleClose: handleClose, children: jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsx(material.DialogContentText, { children: "Select the alternate transcripts you want to display in the apollo track" }), jsxRuntime.jsx(material.Grid, { container: true, spacing: 2, children: jsxRuntime.jsx(material.Grid, { size: 8, children: jsxRuntime.jsx(material.FormGroup, { children: allTranscripts.map((item) => (jsxRuntime.jsx(material.FormControlLabel, { control: jsxRuntime.jsx(material.Checkbox, { checked: !excludedTranscripts.includes(item), onChange: () => {
+    return (jsx(Dialog, { open: true, maxWidth: false, "data-testid": "filter-transcripts-dialog", title: "Filter transcripts by ID", handleClose: handleClose, children: jsxs(DialogContent, { children: [jsx(DialogContentText, { children: "Select the alternate transcripts you want to display in the apollo track" }), jsx(Grid, { container: true, spacing: 2, children: jsx(Grid, { size: 8, children: jsx(FormGroup, { children: allTranscripts.map((item) => (jsx(FormControlLabel, { control: jsx(Checkbox, { checked: !excludedTranscripts.includes(item), onChange: () => {
                                         handleChange(item);
                                     }, slotProps: { input: { 'aria-label': 'controlled' } } }), label: item }, item))) }) }) })] }) }));
 });
@@ -11091,7 +11087,7 @@ function drawTextLabels(ctx, labelArray, font = '10px sans-serif') {
         ctx.fillStyle = label.color;
         const labelRowX = label.x + 1;
         const labelRowY = label.y + label.h;
-        const textWidth = util.measureText(label.text, 10);
+        const textWidth = measureText(label.text, 10);
         if (label.isSelected) {
             ctx.font = 'bold '.concat(font);
         }
@@ -11138,8 +11134,8 @@ function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
     ctx.fillStyle = theme.palette.text.primary;
     ctx.fillRect(topLevelFeatureStartPx, topLevelFeatureTop, topLevelFeatureWidthPx, topLevelFeatureHeight);
     ctx.fillStyle = isSelectedFeature(topLevelFeature, selectedFeature)
-        ? material.alpha('rgb(0,0,0)', 0.7)
-        : material.alpha(theme.palette.background.paper, 0.7);
+        ? alpha('rgb(0,0,0)', 0.7)
+        : alpha(theme.palette.background.paper, 0.7);
     ctx.fillRect(topLevelFeatureStartPx + 1, topLevelFeatureTop + 1, topLevelFeatureWidthPx - 2, topLevelFeatureHeight - 2);
     const isSelected = isSelectedFeature(topLevelFeature, selectedFeature);
     const label = {
@@ -11206,7 +11202,7 @@ function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
             ctx.fillRect(startPx, exonTop, widthPx, exonHeight);
             if (widthPx > 2) {
                 ctx.clearRect(startPx + 1, exonTop + 1, widthPx - 2, exonHeight - 2);
-                ctx.fillStyle = isSelected ? 'rgb(0,0,0)' : material.alpha('#f5f500', 0.6);
+                ctx.fillStyle = isSelected ? 'rgb(0,0,0)' : alpha('#f5f500', 0.6);
                 ctx.fillRect(startPx + 1, exonTop + 1, widthPx - 2, exonHeight - 2);
                 if (topFill && bottomFill) {
                     ctx.fillStyle = topFill;
@@ -11250,7 +11246,7 @@ function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
                     })?.offsetPx ?? 0) - offsetPx;
                     cdsStartPx = reversed ? minX - cdsWidthPx : minX;
                     ctx.fillStyle = theme.palette.text.primary;
-                    const frame = util.getFrame(cds.min, cds.max, child.strand ?? 1, cds.phase);
+                    const frame = getFrame(cds.min, cds.max, child.strand ?? 1, cds.phase);
                     const frameOffsets = showFeatureLabels
                         ? [0, 4, 2, 0, 14, 12, 10]
                         : [0, 2, 1, 0, 7, 6, 5];
@@ -11343,7 +11339,7 @@ function drawDragPreview(stateModel, overlayCtx) {
     overlayCtx.strokeStyle = theme.palette.info.main;
     overlayCtx.setLineDash([6]);
     overlayCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
-    overlayCtx.fillStyle = material.alpha(theme.palette.info.main, 0.2);
+    overlayCtx.fillStyle = alpha(theme.palette.info.main, 0.2);
     overlayCtx.fillRect(rectX, rectY, rectWidth, rectHeight);
 }
 function drawOverlay(stateModel, ctx) {
@@ -11390,7 +11386,7 @@ function drawOverlay(stateModel, ctx) {
                 regionNumber: layoutIndex,
             })?.offsetPx ?? 0) - offsetPx;
             const cdsStartPx = reversed ? minX - cdsWidthPx : minX;
-            const frame = util.getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
+            const frame = getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
             const frameOffsets = showFeatureLabels
                 ? [0, 4, 2, 0, 14, 12, 10]
                 : [0, 2, 1, 0, 7, 6, 5];
@@ -11516,7 +11512,7 @@ function getDraggableFeatureInfo(mousePosition, feature, stateModel) {
             }
         }
         const overlappingExon = exonChildren.find((child) => {
-            const [start, end] = util.intersection2(bp, bp + 1, child.min, child.max);
+            const [start, end] = intersection2(bp, bp + 1, child.min, child.max);
             return start !== undefined && end !== undefined;
         });
         if (overlappingExon) {
@@ -11535,7 +11531,7 @@ function getDraggableFeatureInfo(mousePosition, feature, stateModel) {
                 const minMax = getMinAndMaxPx(cds, refName, regionNumber, lgv);
                 if (minMax) {
                     const overlappingCDS = cdsChildren.find((child) => {
-                        const [start, end] = util.intersection2(bp, bp + 1, child.min, child.max);
+                        const [start, end] = intersection2(bp, bp + 1, child.min, child.max);
                         return start !== undefined && end !== undefined;
                     });
                     if (overlappingCDS) {
@@ -11598,7 +11594,7 @@ function drawTooltip(display, context) {
         coord: reversed ? max : min,
         regionNumber: layoutIndex,
     })?.offsetPx ?? 0) - offsetPx;
-    const frame = util.getFrame(min, max, strand ?? 1, phase);
+    const frame = getFrame(min, max, strand ?? 1, phase);
     const frameOffsets = showFeatureLabels
         ? [0, 4, 2, 0, 14, 12, 10]
         : [0, 2, 1, 0, 7, 6, 5];
@@ -11619,7 +11615,7 @@ function drawTooltip(display, context) {
     }
     const maxWidth = Math.max(...textWidth);
     startPx = startPx + cdsWidthPx + 5;
-    context.fillStyle = material.alpha(theme.palette.text.primary, 0.7);
+    context.fillStyle = alpha(theme.palette.text.primary, 0.7);
     context.fillRect(startPx, cdsTop, maxWidth + 4, textWidth.length === 4 ? 55 : 35);
     context.beginPath();
     context.moveTo(startPx, cdsTop);
@@ -11668,7 +11664,7 @@ function getContextMenuItems(display, mousePosition) {
             const contextMenuItemsForFeature = getContextMenuItemsForFeature(display, feature);
             if (isExonFeature(feature, session)) {
                 const adjacentExons = getAdjacentExons(feature, display);
-                const lgv = util.getContainingView(display);
+                const lgv = getContainingView(display);
                 if (adjacentExons.upstream) {
                     const exon = adjacentExons.upstream;
                     contextMenuItemsForFeature.push({
@@ -11746,7 +11742,7 @@ function getContextMenuItems(display, mousePosition) {
                                     doneCallback();
                                 },
                                 sourceFeature: feature,
-                                filteredTranscripts: mobxStateTree.getSnapshot(filteredTranscripts),
+                                filteredTranscripts: getSnapshot(filteredTranscripts),
                                 onUpdate: (forms) => {
                                     display.updateFilteredTranscripts(forms);
                                 },
@@ -11781,10 +11777,10 @@ const geneGlyph = {
 
 const minDisplayHeight = 20;
 function baseModelFactory(_pluginManager, configSchema) {
-    return pluggableElementTypes.BaseDisplay.named('BaseLinearApolloSixFrameDisplay')
+    return BaseDisplay.named('BaseLinearApolloSixFrameDisplay')
         .props({
-        type: mobxStateTree.types.literal('LinearApolloSixFrameDisplay'),
-        configuration: configuration.ConfigurationReference(configSchema),
+        type: types.literal('LinearApolloSixFrameDisplay'),
+        configuration: ConfigurationReference(configSchema),
         graphical: true,
         table: false,
         showFeatureLabels: true,
@@ -11792,8 +11788,8 @@ function baseModelFactory(_pluginManager, configSchema) {
         showStopCodons: true,
         showCheckResults: true,
         zoomThreshold: 200,
-        heightPreConfig: mobxStateTree.types.maybe(mobxStateTree.types.refinement('displayHeight', mobxStateTree.types.number, (n) => n >= minDisplayHeight)),
-        filteredFeatureTypes: mobxStateTree.types.array(mobxStateTree.types.string),
+        heightPreConfig: types.maybe(types.refinement('displayHeight', types.number, (n) => n >= minDisplayHeight)),
+        filteredFeatureTypes: types.array(types.string),
     })
         .views((self) => {
         const { configuration, renderProps: superRenderProps } = self;
@@ -11801,7 +11797,7 @@ function baseModelFactory(_pluginManager, configSchema) {
             renderProps() {
                 return {
                     ...superRenderProps(),
-                    ...tracks.getParentRenderProps(self),
+                    ...getParentRenderProps(self),
                     config: configuration.renderer,
                 };
             },
@@ -11812,7 +11808,7 @@ function baseModelFactory(_pluginManager, configSchema) {
     }))
         .views((self) => ({
         get lgv() {
-            return util.getContainingView(self);
+            return getContainingView(self);
         },
         get height() {
             if (self.heightPreConfig) {
@@ -11827,7 +11823,7 @@ function baseModelFactory(_pluginManager, configSchema) {
             return 300;
         },
         get zoomThresholdSetting() {
-            return self.zoomThreshold ?? configuration.getConf(self, 'zoomThreshold');
+            return self.zoomThreshold ?? getConf(self, 'zoomThreshold');
         },
     }))
         .views((self) => ({
@@ -11835,7 +11831,7 @@ function baseModelFactory(_pluginManager, configSchema) {
             return self.configuration.renderer.type;
         },
         get session() {
-            return util.getSession(self);
+            return getSession(self);
         },
         get regions() {
             const regions = self.lgv.dynamicBlocks.contentBlocks.map(({ assemblyName, end, refName, start }) => ({
@@ -11856,18 +11852,18 @@ function baseModelFactory(_pluginManager, configSchema) {
         .views((self) => ({
         get apolloInternetAccount() {
             const [region] = self.regions;
-            const { internetAccounts } = mobxStateTree.getRoot(self);
+            const { internetAccounts } = getRoot(self);
             const { assemblyName } = region;
             const { assemblyManager } = self.session;
             const assembly = assemblyManager.get(assemblyName);
             if (!assembly) {
                 throw new Error(`No assembly found with name ${assemblyName}`);
             }
-            const { internetAccountConfigId } = configuration.getConf(assembly, [
+            const { internetAccountConfigId } = getConf(assembly, [
                 'sequence',
                 'metadata',
             ]);
-            return internetAccounts.find((ia) => configuration.getConf(ia, 'internetAccountId') === internetAccountConfigId);
+            return internetAccounts.find((ia) => getConf(ia, 'internetAccountId') === internetAccountConfigId);
         },
         get changeManager() {
             return self.session.apolloDataStore.changeManager;
@@ -11925,7 +11921,7 @@ function baseModelFactory(_pluginManager, configSchema) {
             self.showCheckResults = !self.showCheckResults;
         },
         updateFilteredFeatureTypes(types) {
-            self.filteredFeatureTypes = mobxStateTree.cast(types);
+            self.filteredFeatureTypes = cast(types);
         },
         setZoomThresholdSetting({ zoomThreshold }) {
             self.zoomThreshold = zoomThreshold;
@@ -12001,7 +11997,7 @@ function baseModelFactory(_pluginManager, configSchema) {
                             {
                                 label: 'Change zoom threshold',
                                 onClick: () => {
-                                    util.getSession(self).queueDialog((handleClose) => [
+                                    getSession(self).queueDialog((handleClose) => [
                                         EditZoomThresholdDialog,
                                         { model: self, handleClose },
                                     ]);
@@ -12020,7 +12016,7 @@ function baseModelFactory(_pluginManager, configSchema) {
                                     handleClose: () => {
                                         doneCallback();
                                     },
-                                    featureTypes: mobxStateTree.getSnapshot(filteredFeatureTypes),
+                                    featureTypes: getSnapshot(filteredFeatureTypes),
                                     onUpdate: (types) => {
                                         self.updateFilteredFeatureTypes(types);
                                     },
@@ -12061,7 +12057,7 @@ function baseModelFactory(_pluginManager, configSchema) {
             session.showWidget(apolloFeatureWidget);
         },
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -12082,7 +12078,7 @@ function layoutsModelFactory(pluginManager, configSchema) {
         featuresMinMaxLimit: 500_000,
     })
         .volatile(() => ({
-        seenFeatures: mobx.observable.map(),
+        seenFeatures: observable.map(),
     }))
         .views((self) => ({
         get featuresMinMax() {
@@ -12094,7 +12090,7 @@ function layoutsModelFactory(pluginManager, configSchema) {
                 const { end, refName, start } = region;
                 for (const [, feature] of self.seenFeatures) {
                     if (refName !== assembly?.getCanonicalRefName(feature.refSeq) ||
-                        !util.doesIntersect2(start, end, feature.min, feature.max) ||
+                        !doesIntersect2(start, end, feature.min, feature.max) ||
                         feature.length > self.featuresMinMaxLimit) {
                         continue;
                     }
@@ -12149,12 +12145,12 @@ function layoutsModelFactory(pluginManager, configSchema) {
                 }
                 const { end, refName, start } = region;
                 for (const [id, feature] of self.seenFeatures.entries()) {
-                    if (!mobxStateTree.isAlive(feature)) {
+                    if (!isAlive(feature)) {
                         self.deleteSeenFeature(id);
                         continue;
                     }
                     if (refName !== assembly?.getCanonicalRefName(feature.refSeq) ||
-                        !util.doesIntersect2(start, end, feature.min, feature.max)) {
+                        !doesIntersect2(start, end, feature.min, feature.max)) {
                         continue;
                     }
                     const { featureTypeOntology } = self.session.apolloDataStore.ontologyManager;
@@ -12191,7 +12187,7 @@ function layoutsModelFactory(pluginManager, configSchema) {
                                 }
                                 for (const cdsRow of cdsLocations) {
                                     for (const cds of cdsRow) {
-                                        const frame = util.getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
+                                        const frame = getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
                                         const frameOffsets = self.showFeatureLabels
                                             ? [0, 5, 3, 1, 15, 13, 11]
                                             : [0, 2, 1, 0, 8, 7, 6];
@@ -12241,7 +12237,7 @@ function layoutsModelFactory(pluginManager, configSchema) {
     }))
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -12253,7 +12249,7 @@ function layoutsModelFactory(pluginManager, configSchema) {
                         continue;
                     }
                     for (const [, feature] of features) {
-                        if (util.doesIntersect2(region.start, region.end, feature.min, feature.max) &&
+                        if (doesIntersect2(region.start, region.end, feature.min, feature.max) &&
                             !self.seenFeatures.has(feature._id)) {
                             self.addSeenFeature(feature);
                         }
@@ -12268,15 +12264,15 @@ function drawCodon(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp, 
     const frameOffsets = (showFeatureLabels ? [0, 4, 2, 0, 14, 12, 10] : [0, 2, 1, 0, 7, 6, 5]).map((b) => b * rowHeight);
     const strands = [-1, 1];
     for (const strand of strands) {
-        const frame = util.getFrame(bp, bp + 3, strand, 0);
+        const frame = getFrame(bp, bp + 3, strand, 0);
         const top = frameOffsets.at(frame);
         if (top === undefined) {
             continue;
         }
         const left = Math.round(leftPx + index / bpPerPx);
         const width = Math.round(3 / bpPerPx) === 0 ? 1 : Math.round(3 / bpPerPx);
-        const codonCode = strand === 1 ? codon : util.revcom(codon);
-        const aminoAcidCode = util.defaultCodonTable[codonCode];
+        const codonCode = strand === 1 ? codon : revcom(codon);
+        const aminoAcidCode = defaultCodonTable[codonCode];
         const fillColor = codonColorCode(aminoAcidCode, theme, highContrast);
         if (fillColor &&
             ((showStopCodons && aminoAcidCode == '*') ||
@@ -12295,13 +12291,13 @@ function renderingModelFactory(pluginManager, configSchema) {
         detailsHeight: 200,
         lastRowTooltipBufferHeight: 120,
         isShown: true,
-        filteredTranscripts: mobxStateTree.types.array(mobxStateTree.types.string),
+        filteredTranscripts: types.array(types.string),
     })
         .volatile(() => ({
         canvas: null,
         overlayCanvas: null,
         collaboratorCanvas: null,
-        theme: material.createTheme(),
+        theme: createTheme(),
     }))
         .views((self) => ({
         get featuresHeight() {
@@ -12334,7 +12330,7 @@ function renderingModelFactory(pluginManager, configSchema) {
     }))
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
                     return;
                 }
@@ -12374,7 +12370,7 @@ function renderingModelFactory(pluginManager, configSchema) {
                     }
                 }
             }, { name: 'LinearApolloSixFrameDisplayRenderCollaborators' }));
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 const { apolloRowHeight, canvas, featureLayouts, featuresHeight, lgv, session, theme, showFeatureLabels, showStartCodons, showStopCodons, } = self;
                 if (!lgv.initialized || self.regionCannotBeRendered()) {
                     return;
@@ -12392,7 +12388,7 @@ function renderingModelFactory(pluginManager, configSchema) {
                             if (!looksLikeGene(feature, self.session)) {
                                 continue;
                             }
-                            if (!util.doesIntersect2(displayedRegion.start, displayedRegion.end, feature.min, feature.max)) {
+                            if (!doesIntersect2(displayedRegion.start, displayedRegion.end, feature.min, feature.max)) {
                                 continue;
                             }
                             const { topLevelFeature } = feature;
@@ -12464,7 +12460,7 @@ function mouseEventsModelIntermediateFactory(pluginManager, configSchema) {
                     }
                     for (const loc of feature.cdsLocations) {
                         for (const cds of loc) {
-                            const frame = util.getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase);
+                            const frame = getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase);
                             const frameOffsets = self.showFeatureLabels
                                 ? [0, 5, 3, 1, 15, 13, 11]
                                 : [0, 2, 1, 0, 8, 7, 6];
@@ -12506,7 +12502,7 @@ function mouseEventsModelIntermediateFactory(pluginManager, configSchema) {
             }
         },
         updateFilteredTranscripts(forms) {
-            self.filteredTranscripts = mobxStateTree.cast(forms);
+            self.filteredTranscripts = cast(forms);
         },
     }))
         .actions(() => ({
@@ -12561,7 +12557,7 @@ function mouseEventsModelFactory(pluginManager, configSchema) {
             const assembly = self.getAssemblyId(region.assemblyName);
             const changes = getPropagatedLocationChanges(feature, current.bp, edge, shrinkParent);
             const change = edge === 'max'
-                ? new shared.LocationEndChange({
+                ? new LocationEndChange({
                     typeName: 'LocationEndChange',
                     changedIds: changes.map((c) => c.featureId),
                     changes: changes.map((c) => ({
@@ -12571,7 +12567,7 @@ function mouseEventsModelFactory(pluginManager, configSchema) {
                     })),
                     assembly,
                 })
-                : new shared.LocationStartChange({
+                : new LocationStartChange({
                     typeName: 'LocationStartChange',
                     changedIds: changes.map((c) => c.featureId),
                     changes: changes.map((c) => ({
@@ -12635,7 +12631,7 @@ function mouseEventsModelFactory(pluginManager, configSchema) {
     }))
         .actions((self) => ({
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 // This type is wrong in @jbrowse/core
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (!self.lgv.initialized || self.regionCannotBeRendered()) {
@@ -12671,12 +12667,12 @@ function stateModelFactory(pluginManager, configSchema) {
     // TODO: this needs to be refactored so that the final composition of the
     // state model mixins happens here in one central place
     return mouseEventsModelFactory(pluginManager, configSchema)
-        .props({ tabularEditor: mobxStateTree.types.optional(TabularEditorStateModelType, {}) })
+        .props({ tabularEditor: types.optional(TabularEditorStateModelType, {}) })
         .named('LinearApolloSixFrameDisplay');
 }
 
-const ApolloPluginConfigurationSchema = configuration.ConfigurationSchema('ApolloPlugin', {
-    ontologies: mobxStateTree.types.array(OntologyRecordConfiguration),
+const ApolloPluginConfigurationSchema = ConfigurationSchema('ApolloPlugin', {
+    ontologies: types.array(OntologyRecordConfiguration),
     featureTypeOntologyName: {
         description: 'Name of the feature type ontology',
         type: 'string',
@@ -12787,20 +12783,20 @@ const getFeatureNameOrId = (feature) => {
 };
 function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refSeqId, session, region, }) {
     const apolloSessionModel = session;
-    const configuredSkippedAttributes = configuration.readConfObject(apolloSessionModel.getPluginConfiguration(), 'skippedAttributesOnCopy');
+    const configuredSkippedAttributes = readConfObject(apolloSessionModel.getPluginConfiguration(), 'skippedAttributesOnCopy');
     const skippedAttributesOnCopy = new Set(configuredSkippedAttributes ?? []);
     const { featureTypeOntology } = apolloSessionModel.apolloDataStore.ontologyManager;
-    const childIds = React.useMemo(() => Object.keys(annotationFeature.children ?? {}), [annotationFeature]);
-    const [parentFeatureChecked, setParentFeatureChecked] = React.useState(true);
-    const [checkedChildrens, setCheckedChildrens] = React.useState(childIds);
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [destinationFeatures, setDestinationFeatures] = React.useState([]);
-    const [createNewGene, setCreateNewGene] = React.useState(false);
-    const [selectedDestinationFeature, setSelectedDestinationFeature] = React.useState();
+    const childIds = useMemo(() => Object.keys(annotationFeature.children ?? {}), [annotationFeature]);
+    const [parentFeatureChecked, setParentFeatureChecked] = useState(true);
+    const [checkedChildrens, setCheckedChildrens] = useState(childIds);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [destinationFeatures, setDestinationFeatures] = useState([]);
+    const [createNewGene, setCreateNewGene] = useState(false);
+    const [selectedDestinationFeature, setSelectedDestinationFeature] = useState();
     const apolloAssembly = apolloSessionModel.apolloDataStore.assemblies.get(assembly.name);
     const refSeq = apolloAssembly?.refSeqs.get(refSeqId);
-    const features = React.useMemo(() => refSeq?.getFeatures(region.start, region.end), [refSeq, region.start, region.end]);
-    React.useEffect(() => {
+    const features = useMemo(() => refSeq?.getFeatures(region.start, region.end), [refSeq, region.start, region.end]);
+    useEffect(() => {
         const getDestinationFeatures = () => {
             const filteredFeatures = [];
             for (const f of features ?? []) {
@@ -12809,7 +12805,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
                 }
                 // Destination feature should be of type gene
                 if (featureTypeOntology?.isTypeOf(f.type, 'gene')) {
-                    const featureSnapshot = mobxStateTree.getSnapshot(f);
+                    const featureSnapshot = getSnapshot(f);
                     filteredFeatures.push(featureSnapshot);
                 }
             }
@@ -12929,7 +12925,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
             for (const childId of checkedChildrens) {
                 childrens[childId] = copiedAnnotationFeature.children[childId];
             }
-            change = new shared.AddFeatureChange({
+            change = new AddFeatureChange({
                 changedIds: [annotationFeature._id],
                 typeName: 'AddFeatureChange',
                 assembly: assembly.name,
@@ -12941,7 +12937,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
         }
         else {
             // IF PARENT AND ALL CHILDREN ARE CHECKED
-            change = new shared.AddFeatureChange({
+            change = new AddFeatureChange({
                 changedIds: [annotationFeature._id],
                 typeName: 'AddFeatureChange',
                 assembly: assembly.name,
@@ -12967,7 +12963,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
                         selectedDestinationFeature.strand;
                 }
             }
-            const change = new shared.AddFeatureChange({
+            const change = new AddFeatureChange({
                 parentFeatureId: selectedDestinationFeature._id,
                 changedIds: [selectedDestinationFeature._id],
                 typeName: 'AddFeatureChange',
@@ -12988,7 +12984,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
         const newGeneId = new ObjectID().toHexString();
         const min = Math.min(...Object.values(copiedChildrens).map((child) => child.min));
         const max = Math.max(...Object.values(copiedChildrens).map((child) => child.max));
-        const change = new shared.AddFeatureChange({
+        const change = new AddFeatureChange({
             changedIds: [newGeneId],
             typeName: 'AddFeatureChange',
             assembly: assembly.name,
@@ -13014,7 +13010,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
         }
         const changes = [];
         if (newMin !== selectedDestinationFeature.min) {
-            changes.push(new shared.LocationStartChange({
+            changes.push(new LocationStartChange({
                 typeName: 'LocationStartChange',
                 changedIds: [selectedDestinationFeature._id],
                 featureId: selectedDestinationFeature._id,
@@ -13024,7 +13020,7 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
             }));
         }
         if (newMax !== selectedDestinationFeature.max) {
-            changes.push(new shared.LocationEndChange({
+            changes.push(new LocationEndChange({
                 typeName: 'LocationEndChange',
                 changedIds: [selectedDestinationFeature._id],
                 featureId: selectedDestinationFeature._id,
@@ -13048,27 +13044,27 @@ function CreateApolloAnnotation({ annotationFeature, assembly, handleClose, refS
     const handleCreateNewGeneChange = (e) => {
         setCreateNewGene(e.target.checked);
     };
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Create Apollo Annotation", handleClose: handleClose, fullWidth: true, maxWidth: "sm", children: [jsxRuntime.jsx(material.DialogTitle, { fontSize: 15, children: "Select the feature to be copied to apollo track" }), jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsxs(material.Box, { sx: { ml: 3 }, children: [isGeneOrTranscript(annotationFeature, apolloSessionModel) && (jsxRuntime.jsx(material.FormControlLabel, { control: jsxRuntime.jsx(material.Checkbox, { size: "small", checked: parentFeatureChecked, onChange: handleParentFeatureCheck }), label: `${getFeatureNameOrId(annotationFeature)} (${annotationFeature.min + 1}..${annotationFeature.max})` })), annotationFeature.children && (jsxRuntime.jsx(material.Box, { sx: { display: 'flex', flexDirection: 'column', ml: 3 }, children: Object.values(annotationFeature.children)
+    return (jsxs(Dialog, { open: true, title: "Create Apollo Annotation", handleClose: handleClose, fullWidth: true, maxWidth: "sm", children: [jsx(DialogTitle, { fontSize: 15, children: "Select the feature to be copied to apollo track" }), jsxs(DialogContent, { children: [jsxs(Box, { sx: { ml: 3 }, children: [isGeneOrTranscript(annotationFeature, apolloSessionModel) && (jsx(FormControlLabel, { control: jsx(Checkbox, { size: "small", checked: parentFeatureChecked, onChange: handleParentFeatureCheck }), label: `${getFeatureNameOrId(annotationFeature)} (${annotationFeature.min + 1}..${annotationFeature.max})` })), annotationFeature.children && (jsx(Box, { sx: { display: 'flex', flexDirection: 'column', ml: 3 }, children: Object.values(annotationFeature.children)
                                     .filter((child) => isTranscript(child, apolloSessionModel))
-                                    .map((child) => (jsxRuntime.jsx(material.FormControlLabel, { control: jsxRuntime.jsx(material.Checkbox, { size: "small", checked: checkedChildrens.includes(child._id), onChange: (e) => {
+                                    .map((child) => (jsx(FormControlLabel, { control: jsx(Checkbox, { size: "small", checked: checkedChildrens.includes(child._id), onChange: (e) => {
                                             handleChildFeatureCheck(e, child);
                                         } }), label: `${getFeatureNameOrId(child)} (${child.min + 1}..${child.max})` }, child._id))) }))] }), destinationFeatures.length > 0 &&
                         ((!parentFeatureChecked && checkedChildrens.length > 0) ||
                             (parentFeatureChecked &&
-                                isTranscript(annotationFeature, apolloSessionModel))) && (jsxRuntime.jsxs("div", { style: {
+                                isTranscript(annotationFeature, apolloSessionModel))) && (jsxs("div", { style: {
                             border: '1px solid #ccc',
                             marginTop: 20,
                             padding: 10,
                             borderRadius: 5,
-                        }, children: [jsxRuntime.jsxs(material.Box, { sx: { ml: 3 }, children: [jsxRuntime.jsx(material.Typography, { variant: "caption", fontSize: 12, children: "Select the destination feature to copy the selected features" }), jsxRuntime.jsx(material.Box, { sx: { mt: 1 }, children: jsxRuntime.jsx(material.Select, { labelId: "label", style: { width: '100%' }, value: selectedDestinationFeature?._id ?? '', onChange: handleDestinationFeatureChange, disabled: createNewGene, children: destinationFeatures.map((f) => (jsxRuntime.jsx(material.MenuItem, { value: f._id, children: `${getFeatureNameOrId(f)} (${f.min + 1}..${f.max})` }, f._id))) }) })] }), jsxRuntime.jsx(material.Box, { sx: { ml: 3 }, children: jsxRuntime.jsx(material.FormGroup, { children: jsxRuntime.jsx(material.FormControlLabel, { control: jsxRuntime.jsx(material.Checkbox, { checked: createNewGene, onChange: handleCreateNewGeneChange }), label: "Create new gene" }) }) })] }))] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", type: "submit", disabled: checkedChildrens.length === 0 ||
+                        }, children: [jsxs(Box, { sx: { ml: 3 }, children: [jsx(Typography, { variant: "caption", fontSize: 12, children: "Select the destination feature to copy the selected features" }), jsx(Box, { sx: { mt: 1 }, children: jsx(Select, { labelId: "label", style: { width: '100%' }, value: selectedDestinationFeature?._id ?? '', onChange: handleDestinationFeatureChange, disabled: createNewGene, children: destinationFeatures.map((f) => (jsx(MenuItem, { value: f._id, children: `${getFeatureNameOrId(f)} (${f.min + 1}..${f.max})` }, f._id))) }) })] }), jsx(Box, { sx: { ml: 3 }, children: jsx(FormGroup, { children: jsx(FormControlLabel, { control: jsx(Checkbox, { checked: createNewGene, onChange: handleCreateNewGeneChange }), label: "Create new gene" }) }) })] }))] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", type: "submit", disabled: checkedChildrens.length === 0 ||
                             (!parentFeatureChecked &&
                                 checkedChildrens.length > 0 &&
-                                !selectedDestinationFeature), onClick: handleCreateApolloAnnotation, children: "Create" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
+                                !selectedDestinationFeature), onClick: handleCreateApolloAnnotation, children: "Create" }), jsx(Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] }), errorMessage ? (jsx(DialogContent, { children: jsx(DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
 }
 
 // Icon source: https://developers.google.com/identity/branding-guidelines
 function Apollo(props) {
-    return (jsxRuntime.jsx(material.SvgIcon, { viewBox: "0 0 856 855", style: { fontSize: 18, marginRight: 4 }, ...props, children: jsxRuntime.jsxs("g", { children: [jsxRuntime.jsx("path", { style: { opacity: 0.68, fill: '#AEAEAE' }, d: "M276.7,656.9l85-148h102.9c23.1,0,16.1-16,11.1-25l-134-238.5l85-148l185,315.6c0,0-15-26.3,0,0\n\t\t\tc53,92.9-24,243.9-132,243.9c-6,0-4,0-6.4,0H276.7z" }), jsxRuntime.jsx("polygon", { style: { opacity: 0.85, fill: '#717171' }, points: "49.7,756.9 219.1,756.9 513.7,246.9 425.7,99.9 \t\t" }), jsxRuntime.jsx("polygon", { style: { opacity: 0.85, fill: '#717171' }, points: "630,756.9 806.4,756.9 513.7,246.9 425.1,400.2 \t\t" }), jsxRuntime.jsx("polygon", { style: { fill: '#C6C6C6' }, points: "175.7,657.3 195.6,657.3 277.9,508.9 254.1,508.9 170.6,657.3 \t\t" }), jsxRuntime.jsx("polygon", { style: { fill: '#C6C6C6' }, points: "369.7,657.3 389.6,657.3 471.9,508.9 448.1,508.9 364.6,657.3 \t\t" }), jsxRuntime.jsx("polygon", { style: { fill: '#C6C6C6' }, points: "321.7,657.3 341.6,657.3 423.9,508.9 400.1,508.9 316.6,657.3 \t\t" }), jsxRuntime.jsx("polygon", { style: { fill: '#C6C6C6' }, points: "224.7,657.3 244.6,657.3 326.9,508.9 303.1,508.9 219.6,657.3 \t\t" }), jsxRuntime.jsx("polygon", { style: { fill: '#C6C6C6' }, points: "273.7,657.3 293.6,657.3 375.9,508.9 352.1,508.9 268.6,657.3 \t\t" })] }) }));
+    return (jsx(SvgIcon, { viewBox: "0 0 856 855", style: { fontSize: 18, marginRight: 4 }, ...props, children: jsxs("g", { children: [jsx("path", { style: { opacity: 0.68, fill: '#AEAEAE' }, d: "M276.7,656.9l85-148h102.9c23.1,0,16.1-16,11.1-25l-134-238.5l85-148l185,315.6c0,0-15-26.3,0,0\n\t\t\tc53,92.9-24,243.9-132,243.9c-6,0-4,0-6.4,0H276.7z" }), jsx("polygon", { style: { opacity: 0.85, fill: '#717171' }, points: "49.7,756.9 219.1,756.9 513.7,246.9 425.7,99.9 \t\t" }), jsx("polygon", { style: { opacity: 0.85, fill: '#717171' }, points: "630,756.9 806.4,756.9 513.7,246.9 425.1,400.2 \t\t" }), jsx("polygon", { style: { fill: '#C6C6C6' }, points: "175.7,657.3 195.6,657.3 277.9,508.9 254.1,508.9 170.6,657.3 \t\t" }), jsx("polygon", { style: { fill: '#C6C6C6' }, points: "369.7,657.3 389.6,657.3 471.9,508.9 448.1,508.9 364.6,657.3 \t\t" }), jsx("polygon", { style: { fill: '#C6C6C6' }, points: "321.7,657.3 341.6,657.3 423.9,508.9 400.1,508.9 316.6,657.3 \t\t" }), jsx("polygon", { style: { fill: '#C6C6C6' }, points: "224.7,657.3 244.6,657.3 326.9,508.9 303.1,508.9 219.6,657.3 \t\t" }), jsx("polygon", { style: { fill: '#C6C6C6' }, points: "273.7,657.3 293.6,657.3 375.9,508.9 352.1,508.9 268.6,657.3 \t\t" })] }) }));
 }
 
 function parseCigar(cigar) {
@@ -13088,12 +13084,12 @@ function annotationFromPileup(pluggableElement) {
     const newStateModel = stateModel
         .views((self) => ({
         getFirstRegion() {
-            const lgv = util.getContainingView(self);
+            const lgv = getContainingView(self);
             return lgv.dynamicBlocks.contentBlocks[0];
         },
         getAssembly() {
             const firstRegion = this.getFirstRegion();
-            const session = util.getSession(self);
+            const session = getSession(self);
             const { assemblyManager } = session;
             const { assemblyName } = firstRegion;
             const assembly = assemblyManager.get(assemblyName);
@@ -13208,7 +13204,7 @@ function annotationFromPileup(pluggableElement) {
         const superContextMenuItems = self.contextMenuItems;
         return {
             contextMenuItems() {
-                const session = util.getSession(self);
+                const session = getSession(self);
                 const assembly = self.getAssembly();
                 const region = self.getFirstRegion();
                 const jbrowseFeature = self.contextMenuFeature;
@@ -13282,7 +13278,7 @@ function simpleFeatureToGFF3Feature(feature, refSeqId) {
     return gff3Feature;
 }
 function jbrowseFeatureToAnnotationFeature(feature, refSeqId) {
-    return shared.gff3ToAnnotationFeature(simpleFeatureToGFF3Feature(feature, refSeqId));
+    return gff3ToAnnotationFeature(simpleFeatureToGFF3Feature(feature, refSeqId));
 }
 const fieldsToSkip = new Set([
     'start',
@@ -13348,12 +13344,12 @@ function annotationFromJBrowseFeature(pluggableElement) {
     const newStateModel = stateModel
         .views((self) => ({
         getFirstRegion() {
-            const lgv = util.getContainingView(self);
+            const lgv = getContainingView(self);
             return lgv.dynamicBlocks.contentBlocks[0];
         },
         getAssembly() {
             const firstRegion = self.getFirstRegion();
-            const session = util.getSession(self);
+            const session = getSession(self);
             const { assemblyManager } = session;
             const { assemblyName } = firstRegion;
             const assembly = assemblyManager.get(assemblyName);
@@ -13367,7 +13363,7 @@ function annotationFromJBrowseFeature(pluggableElement) {
         const superContextMenuItems = self.contextMenuItems;
         return {
             contextMenuItems() {
-                const session = util.getSession(self);
+                const session = getSession(self);
                 const assembly = self.getAssembly();
                 const region = self.getFirstRegion();
                 const feature = self.contextMenuFeature;
@@ -13414,7 +13410,7 @@ function annotationFromJBrowseFeature(pluggableElement) {
     return pluggableElement;
 }
 
-const CheckResultWarnings = mobxReact.observer(function CheckResultWarnings({ display, }) {
+const CheckResultWarnings = observer(function CheckResultWarnings({ display, }) {
     const { classes } = useStyles$1();
     const { apolloDragging, apolloRowHeight, lgv, session, showCheckResults } = display;
     const { assemblyManager } = session;
@@ -13431,7 +13427,7 @@ const CheckResultWarnings = mobxReact.observer(function CheckResultWarnings({ di
             ...session.apolloDataStore.checkResults.values(),
         ].filter((checkResult) => assembly.isValidRefName(checkResult.refSeq) &&
             assembly.getCanonicalRefName(checkResult.refSeq) === block.refName &&
-            util.doesIntersect2(block.start, block.end, checkResult.start, checkResult.end));
+            doesIntersect2(block.start, block.end, checkResult.start, checkResult.end));
         const checkResults = clusterResultByMessage(filteredCheckResults, widthBp);
         return checkResults.map((checkResult) => {
             const left = Math.round(getLeftPx$1(display, checkResult.range, block));
@@ -13442,18 +13438,18 @@ const CheckResultWarnings = mobxReact.observer(function CheckResultWarnings({ di
             const row = display.getRowForFeature(feature) ?? 0;
             const top = row * apolloRowHeight;
             const height = apolloRowHeight;
-            return (jsxRuntime.jsx(material.Tooltip, { title: checkResult.message, children: jsxRuntime.jsx(material.Box, { className: classes.box, style: {
+            return (jsx(Tooltip$1, { title: checkResult.message, children: jsx(Box, { className: classes.box, style: {
                         top,
                         left,
                         height,
                         width: height,
                         pointerEvents: apolloDragging ? 'none' : 'auto',
-                    }, children: jsxRuntime.jsx(material.Badge, { className: classes.badge, badgeContent: checkResult.count, color: "primary", overlap: "circular", anchorOrigin: { vertical: 'bottom', horizontal: 'right' }, invisible: checkResult.count <= 1, children: jsxRuntime.jsx(material.Avatar, { className: classes.avatar, children: jsxRuntime.jsx(ErrorIcon, { "data-testid": `ErrorIcon-${checkResult.start}` }) }) }) }) }, checkResult._id));
+                    }, children: jsx(Badge, { className: classes.badge, badgeContent: checkResult.count, color: "primary", overlap: "circular", anchorOrigin: { vertical: 'bottom', horizontal: 'right' }, invisible: checkResult.count <= 1, children: jsx(Avatar, { className: classes.avatar, children: jsx(ErrorIcon, { "data-testid": `ErrorIcon-${checkResult.start}` }) }) }) }) }, checkResult._id));
         });
     });
 });
 
-const Tooltip = mobxReact.observer(function Tooltip(props) {
+const Tooltip = observer(function Tooltip(props) {
     const { mouseCooordinate, session, dragging } = props;
     const { apolloHoveredFeature } = session;
     if (!(mouseCooordinate && apolloHoveredFeature) || dragging) {
@@ -13465,22 +13461,22 @@ const Tooltip = mobxReact.observer(function Tooltip(props) {
     const location = `Loc: ${min + 1}..${max}`;
     const featureType = `Type: ${feature.type}`;
     const featureName = attributes.get('gff_name')?.find((name) => name !== '');
-    return (jsxRuntime.jsxs(ui.BaseTooltip, { clientPoint: { x, y }, placement: "top-start", children: [featureType, jsxRuntime.jsx("br", {}), featureName ? (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [featureName, jsxRuntime.jsx("br", {})] })) : null, location] }));
+    return (jsxs(BaseTooltip, { clientPoint: { x, y }, placement: "top-start", children: [featureType, jsx("br", {}), featureName ? (jsxs(Fragment, { children: [featureName, jsx("br", {})] })) : null, location] }));
 });
 
-const OverlayCanvas = mobxReact.observer(function OverlayCanvas(props) {
+const OverlayCanvas = observer(function OverlayCanvas(props) {
     const { model } = props;
     const { apolloDragging, cursor, featuresHeight: getFeaturesHeight, isShown, onMouseDown, onMouseLeave, onMouseMove, onMouseUp, session, setOverlayCanvas, } = model;
     const { classes } = useStyles$1();
-    const lgv = util.getContainingView(model);
-    const [mouseCoord, setMouseCoord] = React.useState();
+    const lgv = getContainingView(model);
+    const [mouseCoord, setMouseCoord] = useState();
     if (!isShown) {
         return null;
     }
     const featuresHeight = getFeaturesHeight(lgv.assemblyNames[0]);
     // Promise.resolve() in this callback is to avoid infinite rendering loop
     // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
-    return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx("canvas", { ref: async (node) => {
+    return (jsxs(Fragment, { children: [jsx("canvas", { ref: async (node) => {
                     await Promise.resolve();
                     setOverlayCanvas(node);
                 }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, onMouseMove: (...args) => {
@@ -13490,27 +13486,27 @@ const OverlayCanvas = mobxReact.observer(function OverlayCanvas(props) {
                 }, onMouseLeave: (...args) => {
                     setMouseCoord(undefined);
                     onMouseLeave(...args);
-                }, onMouseDown: onMouseDown, onMouseUp: onMouseUp, className: classes.canvas, style: { cursor: cursor ?? 'default' }, "data-testid": "overlayCanvas" }), jsxRuntime.jsx(Tooltip, { mouseCooordinate: mouseCoord, session: session, dragging: Boolean(apolloDragging) })] }));
+                }, onMouseDown: onMouseDown, onMouseUp: onMouseUp, className: classes.canvas, style: { cursor: cursor ?? 'default' }, "data-testid": "overlayCanvas" }), jsx(Tooltip, { mouseCooordinate: mouseCoord, session: session, dragging: Boolean(apolloDragging) })] }));
 });
 
 // Lock icon when isLocked === true
-const LinearApolloDisplay = mobxReact.observer(function LinearApolloDisplay(props) {
-    const theme = material.useTheme();
+const LinearApolloDisplay = observer(function LinearApolloDisplay(props) {
+    const theme = useTheme();
     const { model } = props;
     const { loading, contextMenuItems: getContextMenuItems, featuresHeight: getFeaturesHeight, isShown, regionCannotBeRendered, session, setCanvas, setCollaboratorCanvas, setTheme, } = model;
     const { classes } = useStyles$1();
-    const lgv = util.getContainingView(model);
-    React.useEffect(() => {
+    const lgv = getContainingView(model);
+    useEffect(() => {
         setTheme(theme);
     }, [theme, setTheme]);
-    const [contextCoord, setContextCoord] = React.useState();
-    const [contextMenuItems, setContextMenuItems] = React.useState([]);
+    const [contextCoord, setContextCoord] = useState();
+    const [contextMenuItems, setContextMenuItems] = useState([]);
     const message = regionCannotBeRendered();
     if (!isShown) {
         return null;
     }
     const featuresHeight = getFeaturesHeight(lgv.assemblyNames[0]);
-    return (jsxRuntime.jsxs("div", { className: classes.canvasContainer, style: {
+    return (jsxs("div", { className: classes.canvasContainer, style: {
             width: lgv.dynamicBlocks.totalWidthPx,
             height: featuresHeight,
         }, onContextMenu: (event) => {
@@ -13524,16 +13520,16 @@ const LinearApolloDisplay = mobxReact.observer(function LinearApolloDisplay(prop
                 setContextCoord(coord);
                 setContextMenuItems(getContextMenuItems(event));
             }
-        }, children: [session.isLocked ? (jsxRuntime.jsx("div", { className: classes.locked, "data-testid": "lock-icon", children: jsxRuntime.jsx(LockIcon, {}) })) : null, loading ? (jsxRuntime.jsx("div", { className: classes.loading, children: jsxRuntime.jsx(material.CircularProgress, { size: "18px" }) })) : null, message ? (jsxRuntime.jsx(material.Alert, { severity: "warning", classes: { message: classes.ellipses }, slotProps: { root: { className: classes.center } }, children: jsxRuntime.jsx(material.Tooltip, { title: message, children: jsxRuntime.jsx("div", { children: message }) }) })) : (
+        }, children: [session.isLocked ? (jsx("div", { className: classes.locked, "data-testid": "lock-icon", children: jsx(LockIcon, {}) })) : null, loading ? (jsx("div", { className: classes.loading, children: jsx(CircularProgress, { size: "18px" }) })) : null, message ? (jsx(Alert, { severity: "warning", classes: { message: classes.ellipses }, slotProps: { root: { className: classes.center } }, children: jsx(Tooltip$1, { title: message, children: jsx("div", { children: message }) }) })) : (
             // Promise.resolve() in these 2 callbacks is to avoid infinite rendering loop
             // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
-            jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx("canvas", { ref: async (node) => {
+            jsxs(Fragment, { children: [jsx("canvas", { ref: async (node) => {
                             await Promise.resolve();
                             setCollaboratorCanvas(node);
-                        }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "collaboratorCanvas" }), jsxRuntime.jsx("canvas", { ref: async (node) => {
+                        }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "collaboratorCanvas" }), jsx("canvas", { ref: async (node) => {
                             await Promise.resolve();
                             setCanvas(node);
-                        }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "canvas" }), jsxRuntime.jsx(OverlayCanvas, { model: model }), jsxRuntime.jsx(CheckResultWarnings, { display: model }), jsxRuntime.jsx(ui.Menu, { open: contextMenuItems.length > 0, onMenuItemClick: (_, callback) => {
+                        }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "canvas" }), jsx(OverlayCanvas, { model: model }), jsx(CheckResultWarnings, { display: model }), jsx(Menu$1, { open: contextMenuItems.length > 0, onMenuItemClick: (_, callback) => {
                             callback();
                             setContextMenuItems([]);
                         }, onClose: () => {
@@ -13549,35 +13545,35 @@ const LinearApolloDisplay = mobxReact.observer(function LinearApolloDisplay(prop
                             : undefined, menuItems: contextMenuItems })] }))] }));
 });
 
-const TrackLines = mobxReact.observer(function TrackLines({ model, hrStyle = { margin: 0, top: 0, color: 'black' }, idx, }) {
+const TrackLines = observer(function TrackLines({ model, hrStyle = { margin: 0, top: 0, color: 'black' }, idx, }) {
     const { apolloRowHeight, highestRow, showFeatureLabels } = model;
     const featureLabelSpacer = showFeatureLabels ? 2 : 1;
-    return (jsxRuntime.jsx("div", { style: {
+    return (jsx("div", { style: {
             position: 'absolute',
             left: 0,
             top: (apolloRowHeight * featureLabelSpacer * (highestRow + 1)) / 2 +
                 idx * featureLabelSpacer * apolloRowHeight,
             width: '100%',
-        }, children: jsxRuntime.jsx("hr", { style: hrStyle }) }));
+        }, children: jsx("hr", { style: hrStyle }) }));
 });
 
-const LinearApolloSixFrameDisplay = mobxReact.observer(function LinearApolloSixFrameDisplay(props, apolloDragging) {
-    const theme = material.useTheme();
+const LinearApolloSixFrameDisplay = observer(function LinearApolloSixFrameDisplay(props, apolloDragging) {
+    const theme = useTheme();
     const { model } = props;
     const { apolloRowHeight, contextMenuItems: getContextMenuItems, cursor, featuresHeight, geneTrackRowNums, isShown, onMouseDown, onMouseLeave, onMouseMove, onMouseUp, regionCannotBeRendered, session, setCanvas, setCollaboratorCanvas, setOverlayCanvas, setTheme, showCheckResults, showFeatureLabels, } = model;
     const { classes } = useStyles$1();
-    const lgv = util.getContainingView(model);
-    React.useEffect(() => {
+    const lgv = getContainingView(model);
+    useEffect(() => {
         setTheme(theme);
     }, [theme, setTheme]);
-    const [contextCoord, setContextCoord] = React.useState();
-    const [contextMenuItems, setContextMenuItems] = React.useState([]);
+    const [contextCoord, setContextCoord] = useState();
+    const [contextMenuItems, setContextMenuItems] = useState([]);
     const message = regionCannotBeRendered();
     if (!isShown) {
         return null;
     }
     const { assemblyManager } = session;
-    return (jsxRuntime.jsx(jsxRuntime.Fragment, { children: jsxRuntime.jsxs("div", { className: classes.canvasContainer, style: {
+    return (jsx(Fragment, { children: jsxs("div", { className: classes.canvasContainer, style: {
                 width: lgv.dynamicBlocks.totalWidthPx,
                 height: featuresHeight,
             }, onContextMenu: (event) => {
@@ -13591,16 +13587,16 @@ const LinearApolloSixFrameDisplay = mobxReact.observer(function LinearApolloSixF
                     setContextCoord(coord);
                     setContextMenuItems(getContextMenuItems(event));
                 }
-            }, children: [session.isLocked ? (jsxRuntime.jsx("div", { className: classes.locked, "data-testid": "lock-icon", children: jsxRuntime.jsx(LockIcon, {}) })) : null, message ? (jsxRuntime.jsx(material.Alert, { severity: "warning", classes: { message: classes.ellipses }, slotProps: { root: { className: classes.center } }, children: jsxRuntime.jsx(material.Tooltip, { title: message, children: jsxRuntime.jsx("div", { children: message }) }) })) : (
+            }, children: [session.isLocked ? (jsx("div", { className: classes.locked, "data-testid": "lock-icon", children: jsx(LockIcon, {}) })) : null, message ? (jsx(Alert, { severity: "warning", classes: { message: classes.ellipses }, slotProps: { root: { className: classes.center } }, children: jsx(Tooltip$1, { title: message, children: jsx("div", { children: message }) }) })) : (
                 // Promise.resolve() in these 3 callbacks is to avoid infinite rendering loop
                 // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
-                jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(TrackLines, { model: model, idx: 0 }), jsxRuntime.jsx(TrackLines, { model: model, hrStyle: { margin: 0, top: 0, color: 'grey', opacity: 0.4 }, idx: 1 }), jsxRuntime.jsx(TrackLines, { model: model, idx: 2 }), jsxRuntime.jsx("canvas", { ref: async (node) => {
+                jsxs(Fragment, { children: [jsx(TrackLines, { model: model, idx: 0 }), jsx(TrackLines, { model: model, hrStyle: { margin: 0, top: 0, color: 'grey', opacity: 0.4 }, idx: 1 }), jsx(TrackLines, { model: model, idx: 2 }), jsx("canvas", { ref: async (node) => {
                                 await Promise.resolve();
                                 setCollaboratorCanvas(node);
-                            }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "collaboratorCanvas" }), jsxRuntime.jsx("canvas", { ref: async (node) => {
+                            }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "collaboratorCanvas" }), jsx("canvas", { ref: async (node) => {
                                 await Promise.resolve();
                                 setCanvas(node);
-                            }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "canvas" }), jsxRuntime.jsx("canvas", { ref: async (node) => {
+                            }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, className: classes.canvas, "data-testid": "canvas" }), jsx("canvas", { ref: async (node) => {
                                 await Promise.resolve();
                                 setOverlayCanvas(node);
                             }, width: lgv.dynamicBlocks.totalWidthPx, height: featuresHeight, onMouseMove: onMouseMove, onMouseLeave: onMouseLeave, onMouseDown: onMouseDown, onMouseUp: onMouseUp, className: classes.canvas, style: { cursor: cursor ?? 'default' }, "data-testid": "overlayCanvas" }), lgv.displayedRegions.flatMap((region, idx) => {
@@ -13612,7 +13608,7 @@ const LinearApolloSixFrameDisplay = mobxReact.observer(function LinearApolloSixF
                                 ].filter((checkResult) => assembly?.isValidRefName(checkResult.refSeq) &&
                                     assembly.getCanonicalRefName(checkResult.refSeq) ===
                                         region.refName &&
-                                    util.doesIntersect2(region.start, region.end, checkResult.start, checkResult.end));
+                                    doesIntersect2(region.start, region.end, checkResult.start, checkResult.end));
                                 const checkResults = clusterResultByMessage(filteredCheckResults, widthBp);
                                 return checkResults.map((checkResult) => {
                                     const left = (lgv.bpToPx({
@@ -13628,7 +13624,7 @@ const LinearApolloSixFrameDisplay = mobxReact.observer(function LinearApolloSixF
                                     let row;
                                     for (const loc of feature.cdsLocations) {
                                         for (const cds of loc) {
-                                            const frame = util.getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase);
+                                            const frame = getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase);
                                             const frameOffsets = showFeatureLabels
                                                 ? [0, 5, 3, 1, 15, 13, 11]
                                                 : [0, 2, 1, 0, 8, 7, 6];
@@ -13651,20 +13647,20 @@ const LinearApolloSixFrameDisplay = mobxReact.observer(function LinearApolloSixF
                                     }
                                     const top = row * apolloRowHeight;
                                     const height = apolloRowHeight;
-                                    return (jsxRuntime.jsx(material.Tooltip, { title: checkResult.message, children: jsxRuntime.jsx(material.Box, { className: classes.box, style: {
+                                    return (jsx(Tooltip$1, { title: checkResult.message, children: jsx(Box, { className: classes.box, style: {
                                                 top,
                                                 left,
                                                 height,
                                                 width: height,
                                                 pointerEvents: apolloDragging ? 'none' : 'auto',
-                                            }, children: jsxRuntime.jsx(material.Badge, { className: classes.badge, badgeContent: checkResult.count, color: "primary", overlap: "circular", anchorOrigin: {
+                                            }, children: jsx(Badge, { className: classes.badge, badgeContent: checkResult.count, color: "primary", overlap: "circular", anchorOrigin: {
                                                     vertical: 'bottom',
                                                     horizontal: 'right',
-                                                }, invisible: checkResult.count <= 1, children: jsxRuntime.jsx(material.Avatar, { className: classes.avatar, children: jsxRuntime.jsx(ErrorIcon, { "data-testid": `ErrorIcon-${checkResult.start}` }) }) }) }) }, checkResult._id));
+                                                }, invisible: checkResult.count <= 1, children: jsx(Avatar, { className: classes.avatar, children: jsx(ErrorIcon, { "data-testid": `ErrorIcon-${checkResult.start}` }) }) }) }) }, checkResult._id));
                                 });
                             }
                             return null;
-                        }), jsxRuntime.jsx(ui.Menu, { open: contextMenuItems.length > 0, onMenuItemClick: (_, callback) => {
+                        }), jsx(Menu$1, { open: contextMenuItems.length > 0, onMenuItemClick: (_, callback) => {
                                 callback();
                                 setContextMenuItems([]);
                             }, onClose: () => {
@@ -13681,9 +13677,9 @@ const LinearApolloSixFrameDisplay = mobxReact.observer(function LinearApolloSixF
 });
 
 const accordionControlHeight = 12;
-const useStyles = tssReact.makeStyles()((theme) => ({
+const useStyles = makeStyles()((theme) => ({
     shading: {
-        background: material.alpha(theme.palette.primary.main, 0.2),
+        background: alpha(theme.palette.primary.main, 0.2),
         overflowX: 'hidden',
     },
     details: {
@@ -13743,7 +13739,7 @@ function scrollSelectedFeatureIntoView(model, scrollContainerRef) {
 }
 const ResizeHandle = ({ onResize, }) => {
     const { classes } = useStyles();
-    const mouseMove = React.useCallback((event) => {
+    const mouseMove = useCallback((event) => {
         event.stopPropagation();
         event.preventDefault();
         onResize(event.movementY);
@@ -13751,7 +13747,7 @@ const ResizeHandle = ({ onResize, }) => {
     return (
     // TODO: a11y
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    jsxRuntime.jsx("div", { onMouseDown: (event) => {
+    jsx("div", { onMouseDown: (event) => {
             event.stopPropagation();
             const controller = new AbortController();
             const { signal } = controller;
@@ -13766,67 +13762,67 @@ const ResizeHandle = ({ onResize, }) => {
             e.preventDefault();
         }, className: classes.resizeHandle }));
 };
-const AccordionControl = mobxReact.observer(function AccordionControl({ onClick, onResize, open, title, }) {
+const AccordionControl = observer(function AccordionControl({ onClick, onResize, open, title, }) {
     const { classes } = useStyles();
-    return (jsxRuntime.jsxs("div", { className: classes.accordionRoot, children: [open && onResize ? jsxRuntime.jsx(ResizeHandle, { onResize: onResize }) : null, jsxRuntime.jsxs("div", { className: classes.accordionControl, onClick: onClick, children: [open ? (jsxRuntime.jsx(ExpandLessIcon, { className: classes.expandIcon })) : (jsxRuntime.jsx(ExpandMoreIcon, { className: classes.expandIcon })), title ? (jsxRuntime.jsx(material.Typography, { className: classes.title, variant: "caption", component: "span", children: title })) : null] })] }));
+    return (jsxs("div", { className: classes.accordionRoot, children: [open && onResize ? jsx(ResizeHandle, { onResize: onResize }) : null, jsxs("div", { className: classes.accordionControl, onClick: onClick, children: [open ? (jsx(ExpandLessIcon, { className: classes.expandIcon })) : (jsx(ExpandMoreIcon, { className: classes.expandIcon })), title ? (jsx(Typography, { className: classes.title, variant: "caption", component: "span", children: title })) : null] })] }));
 });
-const LinearApolloDisplayComponent = mobxReact.observer(function DisplayComponent({ model, ...other }) {
-    const session = util.getSession(model);
+const LinearApolloDisplayComponent = observer(function DisplayComponent({ model, ...other }) {
+    const session = getSession(model);
     const { ontologyManager } = session.apolloDataStore;
     const { featureTypeOntology } = ontologyManager;
     const ontologyStore = featureTypeOntology?.dataStore;
     const { classes } = useStyles();
     const { graphical, height: overallHeight, isShown, selectedFeature, table, tabularEditor, toggleShown, } = model;
-    const canvasScrollContainerRef = React.useRef(null);
-    React.useEffect(() => {
+    const canvasScrollContainerRef = useRef(null);
+    useEffect(() => {
         scrollSelectedFeatureIntoView(model, canvasScrollContainerRef);
     }, [model, selectedFeature]);
     const onDetailsResize = (delta) => {
         model.setDetailsHeight(model.detailsHeight - delta);
     };
     if (!ontologyStore) {
-        return (jsxRuntime.jsx("div", { className: classes.alertContainer, children: jsxRuntime.jsx(material.Alert, { severity: "error", children: "Could not load feature type ontology." }) }));
+        return (jsx("div", { className: classes.alertContainer, children: jsx(Alert, { severity: "error", children: "Could not load feature type ontology." }) }));
     }
     if (graphical && table) {
         const tabularHeight = tabularEditor.isShown ? model.detailsHeight : 0;
         const featureAreaHeight = isShown
             ? overallHeight - model.detailsHeight - accordionControlHeight * 2
             : 0;
-        return (jsxRuntime.jsxs("div", { style: { height: overallHeight }, children: [jsxRuntime.jsx(AccordionControl, { open: isShown, title: "Graphical", onClick: toggleShown }), jsxRuntime.jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: featureAreaHeight }, children: jsxRuntime.jsx(LinearApolloDisplay, { model: model, ...other }) }), jsxRuntime.jsx(AccordionControl, { title: "Table", open: tabularEditor.isShown, onClick: tabularEditor.togglePane, onResize: onDetailsResize }), jsxRuntime.jsx("div", { className: classes.details, style: { height: tabularHeight }, children: jsxRuntime.jsx(TabularEditorPane, { model: model }) })] }));
+        return (jsxs("div", { style: { height: overallHeight }, children: [jsx(AccordionControl, { open: isShown, title: "Graphical", onClick: toggleShown }), jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: featureAreaHeight }, children: jsx(LinearApolloDisplay, { model: model, ...other }) }), jsx(AccordionControl, { title: "Table", open: tabularEditor.isShown, onClick: tabularEditor.togglePane, onResize: onDetailsResize }), jsx("div", { className: classes.details, style: { height: tabularHeight }, children: jsx(TabularEditorPane, { model: model }) })] }));
     }
     if (graphical) {
-        return (jsxRuntime.jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: overallHeight }, children: jsxRuntime.jsx(LinearApolloDisplay, { model: model, ...other }) }));
+        return (jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: overallHeight }, children: jsx(LinearApolloDisplay, { model: model, ...other }) }));
     }
-    return (jsxRuntime.jsx("div", { className: classes.details, style: { height: overallHeight }, children: jsxRuntime.jsx(TabularEditorPane, { model: model }) }));
+    return (jsx("div", { className: classes.details, style: { height: overallHeight }, children: jsx(TabularEditorPane, { model: model }) }));
 });
-const LinearApolloSixFrameDisplayComponent = mobxReact.observer(function DisplayComponent({ model, ...other }) {
-    const session = util.getSession(model);
+const LinearApolloSixFrameDisplayComponent = observer(function DisplayComponent({ model, ...other }) {
+    const session = getSession(model);
     const { ontologyManager } = session.apolloDataStore;
     const { featureTypeOntology } = ontologyManager;
     const ontologyStore = featureTypeOntology?.dataStore;
     const { classes } = useStyles();
     const { detailsHeight, graphical, height: overallHeight, isShown, selectedFeature, table, tabularEditor, toggleShown, } = model;
-    const canvasScrollContainerRef = React.useRef(null);
-    React.useEffect(() => {
+    const canvasScrollContainerRef = useRef(null);
+    useEffect(() => {
         scrollSelectedFeatureIntoView(model, canvasScrollContainerRef);
     }, [model, selectedFeature]);
     const onDetailsResize = (delta) => {
         model.setDetailsHeight(detailsHeight - delta);
     };
     if (!ontologyStore) {
-        return (jsxRuntime.jsx("div", { className: classes.alertContainer, children: jsxRuntime.jsx(material.Alert, { severity: "error", children: "Could not load feature type ontology." }) }));
+        return (jsx("div", { className: classes.alertContainer, children: jsx(Alert, { severity: "error", children: "Could not load feature type ontology." }) }));
     }
     if (graphical && table) {
         const tabularHeight = tabularEditor.isShown ? detailsHeight : 0;
         const featureAreaHeight = isShown
             ? overallHeight - detailsHeight - accordionControlHeight * 2
             : 0;
-        return (jsxRuntime.jsxs("div", { style: { height: overallHeight }, children: [jsxRuntime.jsx(AccordionControl, { open: isShown, title: "Graphical", onClick: toggleShown }), jsxRuntime.jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: featureAreaHeight }, children: jsxRuntime.jsx(LinearApolloSixFrameDisplay, { model: model, ...other }) }), jsxRuntime.jsx(AccordionControl, { title: "Table", open: tabularEditor.isShown, onClick: tabularEditor.togglePane, onResize: onDetailsResize }), jsxRuntime.jsx("div", { className: classes.details, style: { height: tabularHeight }, children: jsxRuntime.jsx(TabularEditorPane, { model: model }) })] }));
+        return (jsxs("div", { style: { height: overallHeight }, children: [jsx(AccordionControl, { open: isShown, title: "Graphical", onClick: toggleShown }), jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: featureAreaHeight }, children: jsx(LinearApolloSixFrameDisplay, { model: model, ...other }) }), jsx(AccordionControl, { title: "Table", open: tabularEditor.isShown, onClick: tabularEditor.togglePane, onResize: onDetailsResize }), jsx("div", { className: classes.details, style: { height: tabularHeight }, children: jsx(TabularEditorPane, { model: model }) })] }));
     }
     if (graphical) {
-        return (jsxRuntime.jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: overallHeight }, children: jsxRuntime.jsx(LinearApolloSixFrameDisplay, { model: model, ...other }) }));
+        return (jsx("div", { className: classes.shading, ref: canvasScrollContainerRef, style: { height: overallHeight }, children: jsx(LinearApolloSixFrameDisplay, { model: model, ...other }) }));
     }
-    return (jsxRuntime.jsx("div", { className: classes.details, style: { height: overallHeight }, children: jsxRuntime.jsx(TabularEditorPane, { model: model }) }));
+    return (jsx("div", { className: classes.details, style: { height: overallHeight }, children: jsx(TabularEditorPane, { model: model }) }));
 });
 
 function addTopLevelMenus(rootModel) {
@@ -13874,14 +13870,14 @@ function addTopLevelMenus(rootModel) {
 }
 
 /* eslint-disable @typescript-eslint/no-confusing-void-expression */
-const ApolloJobModel = mobxStateTree.types
+const ApolloJobModel = types
     .model('JobsManager', {})
     .views((self) => ({
     get jobStatusWidget() {
-        const { widgets } = util.getSession(self);
+        const { widgets } = getSession(self);
         const jobStatusWidget = widgets.get('JobsList') ??
             // @ts-expect-error: addWidget function not detected on the session
-            util.getSession(self).addWidget('JobsListWidget', 'JobsList');
+            getSession(self).addWidget('JobsListWidget', 'JobsList');
         return jobStatusWidget;
     },
 }))
@@ -13904,8 +13900,8 @@ const ApolloJobModel = mobxStateTree.types
      * @param msg - a message to communicate to the user about the abort operation
      */
     abortJob(jobName, msg) {
-        const session = util.getSession(self);
-        if (util.isSessionModelWithWidgets(session)) {
+        const session = getSession(self);
+        if (isSessionModelWithWidgets(session)) {
             session.showWidget(self.jobStatusWidget);
             self.jobStatusWidget.updateJobStatusMessage(jobName, msg ?? 'Aborted unexpectedly');
             // this is done to avoid issues with reusing nodes from other state trees
@@ -13923,8 +13919,8 @@ const ApolloJobModel = mobxStateTree.types
      * @param job - the job to be run within the JobsManager
      */
     runJob(job) {
-        const session = util.getSession(self);
-        if (util.isSessionModelWithWidgets(session)) {
+        const session = getSession(self);
+        if (isSessionModelWithWidgets(session)) {
             session.showWidget(self.jobStatusWidget);
             self.jobStatusWidget.addJob(job);
         }
@@ -13937,8 +13933,8 @@ const ApolloJobModel = mobxStateTree.types
      * @param job - the job to be completed
      */
     done(job) {
-        const session = util.getSession(self);
-        if (util.isSessionModelWithWidgets(session)) {
+        const session = getSession(self);
+        if (isSessionModelWithWidgets(session)) {
             session.showWidget(self.jobStatusWidget);
             // this.setProgressPct(100)
             self.jobStatusWidget.removeJob(job.name);
@@ -13957,23 +13953,23 @@ const ApolloJobModel = mobxStateTree.types
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 function clientDataStoreFactory(AnnotationFeatureExtended) {
-    return mobxStateTree.types
+    return types
         .model('ClientDataStore', {
-        typeName: mobxStateTree.types.optional(mobxStateTree.types.literal('Client'), 'Client'),
-        assemblies: mobxStateTree.types.map(mst$1.ApolloAssembly),
-        checkResults: mobxStateTree.types.map(mst$1.CheckResult),
-        ontologyManager: mobxStateTree.types.optional(OntologyManagerType, {}),
+        typeName: types.optional(types.literal('Client'), 'Client'),
+        assemblies: types.map(ApolloAssembly),
+        checkResults: types.map(CheckResult),
+        ontologyManager: types.optional(OntologyManagerType, {}),
     })
         .views((self) => ({
         get internetAccounts() {
-            return mobxStateTree.getRoot(self).internetAccounts;
+            return getRoot(self).internetAccounts;
         },
         get pluginConfiguration() {
-            return mobxStateTree.getRoot(self).jbrowse.configuration
+            return getRoot(self).jbrowse.configuration
                 .ApolloPlugin;
         },
         getFeature(featureId) {
-            return mobxStateTree.resolveIdentifier(AnnotationFeatureExtended, self.assemblies, featureId);
+            return resolveIdentifier(AnnotationFeatureExtended, self.assemblies, featureId);
         },
     }))
         .actions((self) => ({
@@ -13990,7 +13986,7 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
     }))
         .actions((self) => ({
         addFeature(assemblyId, feature) {
-            const session = util.getSession(self);
+            const session = getSession(self);
             const { assemblyManager } = session;
             let apolloAssembly = self.assemblies.get(assemblyId);
             if (!apolloAssembly) {
@@ -14026,7 +14022,7 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
                 parent.deleteChild(featureId);
             }
             else {
-                const refSeq = mobxStateTree.getParentOfType(feature, mst$1.ApolloRefSeq);
+                const refSeq = getParentOfType(feature, ApolloRefSeq);
                 refSeq.deleteFeature(_id);
             }
         },
@@ -14057,7 +14053,7 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
     }))
         .actions((self) => ({
         afterCreate() {
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            addDisposer(self, autorun(() => {
                 // Merge in the ontologies from our plugin configuration.
                 // Ontologies of a given name that are already in the session
                 // take precedence over the ontologies in the configuration.
@@ -14065,13 +14061,13 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
                 const configuredOntologies = pluginConfiguration.ontologies;
                 for (const ont of configuredOntologies || []) {
                     const [name, version, source, indexFields] = [
-                        configuration.readConfObject(ont, 'name'),
-                        configuration.readConfObject(ont, 'version'),
-                        configuration.readConfObject(ont, 'source'),
-                        configuration.readConfObject(ont, 'textIndexFields'),
+                        readConfObject(ont, 'name'),
+                        readConfObject(ont, 'version'),
+                        readConfObject(ont, 'source'),
+                        readConfObject(ont, 'textIndexFields'),
                     ];
                     if (!ontologyManager.findOntology(name)) {
-                        const session = util.getSession(self);
+                        const session = getSession(self);
                         const { jobsManager } = session;
                         const controller = new AbortController();
                         const jobName = `Loading ontology "${name}"`;
@@ -14109,13 +14105,13 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
     }))
         .views((self) => ({
         getBackendDriver(assemblyId) {
-            const session = util.getSession(self);
+            const session = getSession(self);
             const { assemblyManager } = session;
             const assembly = assemblyManager.get(assemblyId);
             if (!assembly) {
                 return;
             }
-            const { internetAccountConfigId } = configuration.getConf(assembly, [
+            const { internetAccountConfigId } = getConf(assembly, [
                 'sequence',
                 'metadata',
             ]);
@@ -14130,12 +14126,12 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
             }
             let configId = internetAccountId;
             if (assemblyName && !configId) {
-                const { assemblyManager } = util.getSession(self);
+                const { assemblyManager } = getSession(self);
                 const assembly = assemblyManager.get(assemblyName);
                 if (!assembly) {
                     throw new Error(`No assembly found with name ${assemblyName}`);
                 }
-                ({ internetAccountConfigId: configId } = configuration.getConf(assembly, [
+                ({ internetAccountConfigId: configId } = getConf(assembly, [
                     'sequence',
                     'metadata',
                 ]));
@@ -14149,7 +14145,7 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
         },
     }))
         .actions((self) => ({
-        loadFeatures: mobxStateTree.flow(function* loadFeatures(regions) {
+        loadFeatures: flow(function* loadFeatures(regions) {
             for (const region of regions) {
                 const backendDriver = self.getBackendDriver(region.assemblyName);
                 if (!backendDriver) {
@@ -14177,7 +14173,7 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
                 self.addCheckResults(checkResults);
             }
         }),
-        loadRefSeq: mobxStateTree.flow(function* loadRefSeq(regions) {
+        loadRefSeq: flow(function* loadRefSeq(regions) {
             for (const region of regions) {
                 const backendDriver = self.getBackendDriver(region.assemblyName);
                 if (!backendDriver) {
@@ -14210,22 +14206,22 @@ function reassignIds(feature) {
     };
 }
 function DuplicateFeatureDialog({ assemblyName, changeManager, existingFeature, featureSnapshot, handleClose, }) {
-    const [choice, setChoice] = React.useState('keepExisting');
-    const [errorMessage, setErrorMessage] = React.useState('');
-    const [submitted, setSubmitted] = React.useState(false);
+    const [choice, setChoice] = useState('keepExisting');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [submitted, setSubmitted] = useState(false);
     const handleSubmit = async () => {
         setErrorMessage('');
         setSubmitted(true);
         try {
             if (choice === 'useNew') {
-                const deleteChange = new shared.DeleteFeatureChange({
+                const deleteChange = new DeleteFeatureChange({
                     typeName: 'DeleteFeatureChange',
                     assembly: assemblyName,
                     changedIds: [existingFeature._id],
                     deletedFeature: existingFeature,
                 });
                 await changeManager.submit(deleteChange);
-                const addChange = new shared.AddFeatureChange({
+                const addChange = new AddFeatureChange({
                     typeName: 'AddFeatureChange',
                     assembly: assemblyName,
                     changedIds: [featureSnapshot._id],
@@ -14235,7 +14231,7 @@ function DuplicateFeatureDialog({ assemblyName, changeManager, existingFeature, 
             }
             else if (choice === 'keepBoth') {
                 const newSnapshot = reassignIds(featureSnapshot);
-                const addChange = new shared.AddFeatureChange({
+                const addChange = new AddFeatureChange({
                     typeName: 'AddFeatureChange',
                     assembly: assemblyName,
                     changedIds: [newSnapshot._id],
@@ -14250,9 +14246,9 @@ function DuplicateFeatureDialog({ assemblyName, changeManager, existingFeature, 
             setSubmitted(false);
         }
     };
-    return (jsxRuntime.jsxs(Dialog, { open: true, title: "Duplicate Feature Detected", handleClose: handleClose, maxWidth: "sm", fullWidth: true, children: [jsxRuntime.jsxs(material.DialogContent, { children: [jsxRuntime.jsxs(material.DialogContentText, { children: ["A feature with ID \u201C", featureSnapshot._id, "\u201D already exists. How would you like to resolve this conflict?"] }), jsxRuntime.jsxs(material.FormControl, { component: "fieldset", sx: { mt: 2 }, children: [jsxRuntime.jsx(material.FormLabel, { component: "legend", children: "Resolution" }), jsxRuntime.jsxs(material.RadioGroup, { value: choice, onChange: (e) => {
+    return (jsxs(Dialog, { open: true, title: "Duplicate Feature Detected", handleClose: handleClose, maxWidth: "sm", fullWidth: true, children: [jsxs(DialogContent, { children: [jsxs(DialogContentText, { children: ["A feature with ID \u201C", featureSnapshot._id, "\u201D already exists. How would you like to resolve this conflict?"] }), jsxs(FormControl, { component: "fieldset", sx: { mt: 2 }, children: [jsx(FormLabel, { component: "legend", children: "Resolution" }), jsxs(RadioGroup, { value: choice, onChange: (e) => {
                                     setChoice(e.target.value);
-                                }, children: [jsxRuntime.jsx(material.FormControlLabel, { value: "keepExisting", control: jsxRuntime.jsx(material.Radio, {}), label: "Keep the existing feature" }), jsxRuntime.jsx(material.FormControlLabel, { value: "useNew", control: jsxRuntime.jsx(material.Radio, {}), label: "Replace with the new feature" }), jsxRuntime.jsx(material.FormControlLabel, { value: "keepBoth", control: jsxRuntime.jsx(material.Radio, {}), label: "Keep both (assign new IDs to the incoming feature)" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContentText, { color: "error", sx: { mt: 1 }, children: errorMessage })) : null] }), jsxRuntime.jsxs(material.DialogActions, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", onClick: handleSubmit, disabled: submitted, children: "Confirm" }), jsxRuntime.jsx(material.Button, { onClick: handleClose, disabled: submitted, children: "Cancel" })] })] }));
+                                }, children: [jsx(FormControlLabel, { value: "keepExisting", control: jsx(Radio, {}), label: "Keep the existing feature" }), jsx(FormControlLabel, { value: "useNew", control: jsx(Radio, {}), label: "Replace with the new feature" }), jsx(FormControlLabel, { value: "keepBoth", control: jsx(Radio, {}), label: "Keep both (assign new IDs to the incoming feature)" })] })] }), errorMessage ? (jsx(DialogContentText, { color: "error", sx: { mt: 1 }, children: errorMessage })) : null] }), jsxs(DialogActions, { children: [jsx(Button, { variant: "contained", onClick: handleSubmit, disabled: submitted, children: "Confirm" }), jsx(Button, { onClick: handleClose, disabled: submitted, children: "Cancel" })] })] }));
 }
 
 function fromUrlSafeBase64(urlSafeBase64) {
@@ -14298,7 +14294,7 @@ async function handleApolloFeaturesUrlParam(encodedFeatures, apolloDataStore, as
             const storeName = `features-${featureSnapshot.refSeq}`;
             const existing = (await db.get(storeName, featureSnapshot._id));
             if (existing === undefined) {
-                const change = new shared.AddFeatureChange({
+                const change = new AddFeatureChange({
                     typeName: 'AddFeatureChange',
                     assembly: assemblyName,
                     changedIds: [featureSnapshot._id],
@@ -14335,22 +14331,22 @@ async function handleApolloFeaturesUrlParam(encodedFeatures, apolloDataStore, as
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 function extendSession(pluginManager, sessionModel) {
-    const AnnotationFeatureExtended = pluginManager.evaluateExtensionPoint('Apollo-extendAnnotationFeature', mst$1.AnnotationFeatureModel);
+    const AnnotationFeatureExtended = pluginManager.evaluateExtensionPoint('Apollo-extendAnnotationFeature', AnnotationFeatureModel);
     const ClientDataStore = clientDataStoreFactory(AnnotationFeatureExtended);
     const sm = sessionModel
         .props({
-        apolloDataStore: mobxStateTree.types.optional(ClientDataStore, { typeName: 'Client' }),
-        apolloSelectedFeature: mobxStateTree.types.safeReference(AnnotationFeatureExtended),
-        jobsManager: mobxStateTree.types.optional(ApolloJobModel, {}),
-        isLocked: mobxStateTree.types.optional(mobxStateTree.types.boolean, false),
-        changeInProgress: mobxStateTree.types.optional(mobxStateTree.types.boolean, false),
+        apolloDataStore: types.optional(ClientDataStore, { typeName: 'Client' }),
+        apolloSelectedFeature: types.safeReference(AnnotationFeatureExtended),
+        jobsManager: types.optional(ApolloJobModel, {}),
+        isLocked: types.optional(types.boolean, false),
+        changeInProgress: types.optional(types.boolean, false),
     })
         .volatile(() => ({
         apolloHoveredFeature: undefined,
         abortController: new AbortController(),
     }))
         .extend(() => {
-        const collabs = mobx.observable.array([]);
+        const collabs = observable.array([]);
         return {
             views: {
                 get collaborators() {
@@ -14382,7 +14378,7 @@ function extendSession(pluginManager, sessionModel) {
             const trackId = `apollo_track_${assembly.name}`;
             const hasTrack = self.tracks.some((track) => track.trackId === trackId);
             if (!hasTrack) {
-                mobxStateTree.getRoot(self).jbrowse.addTrackConf({
+                getRoot(self).jbrowse.addTrackConf({
                     type: 'ApolloTrack',
                     trackId,
                     name: `Annotations (${assembly.displayName})`,
@@ -14398,14 +14394,14 @@ function extendSession(pluginManager, sessionModel) {
             self.changeInProgress = changeInProgress;
         },
         getPluginConfiguration() {
-            const { jbrowse } = mobxStateTree.getRoot(self);
+            const { jbrowse } = getRoot(self);
             const pluginConfiguration = 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             jbrowse.configuration.ApolloPlugin;
             return pluginConfiguration;
         },
         broadcastLocations() {
-            const { internetAccounts } = mobxStateTree.getRoot(self);
+            const { internetAccounts } = getRoot(self);
             const locations = [];
             for (const view of self.views) {
                 if (view.type !== 'LinearGenomeView') {
@@ -14449,20 +14445,20 @@ function extendSession(pluginManager, sessionModel) {
         },
     }))
         .actions((self) => ({
-        apolloSetEventualSelectedFeature: mobx.flow(function* apolloSetEventualSelectedFeature(featureId) {
-            yield mobx.when(() => Boolean(self.apolloDataStore.getFeature(featureId)));
+        apolloSetEventualSelectedFeature: flow$1(function* apolloSetEventualSelectedFeature(featureId) {
+            yield when(() => Boolean(self.apolloDataStore.getFeature(featureId)));
             self.apolloSetSelectedFeature(featureId);
         }),
     }))
         .volatile((self) => ({
-        previousSnapshot: mobxStateTree.getSnapshot(self),
+        previousSnapshot: getSnapshot(self),
     }))
         .actions((self) => ({
         afterCreate() {
-            mobxStateTree.applySnapshot(self, { name: self.name, id: self.id });
+            applySnapshot(self, { name: self.name, id: self.id });
             // @ts-expect-error type is missing on ApolloRootModel
-            const { internetAccounts, jbrowse, reloadPluginManagerCallback } = mobxStateTree.getRoot(self);
-            mobxStateTree.addDisposer(self, mobx.autorun(() => {
+            const { internetAccounts, jbrowse, reloadPluginManagerCallback } = getRoot(self);
+            addDisposer(self, autorun(() => {
                 // broadcastLocations() // **** This is not working and therefore we need to duplicate broadcastLocations() -method code here because autorun() does not observe changes otherwise
                 const locations = [];
                 for (const view of self
@@ -14507,7 +14503,7 @@ function extendSession(pluginManager, sessionModel) {
                     }
                 }
             }, { name: 'ApolloSessionBroadcastLocations' }));
-            mobxStateTree.addDisposer(self, mobx.autorun(async (reaction) => {
+            addDisposer(self, autorun(async (reaction) => {
                 // When the initial config.json loads, it doesn't include the Apollo
                 // tracks, which would result in a potentially invalid session snapshot
                 // if any tracks are open. Here we copy the session snapshot, apply an
@@ -14516,10 +14512,10 @@ function extendSession(pluginManager, sessionModel) {
                 const pluginConfiguration = 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 jbrowse.configuration.ApolloPlugin;
-                const hasRole = configuration.readConfObject(pluginConfiguration, 'hasRole');
-                const featureTypeOntologyName = configuration.readConfObject(pluginConfiguration, 'featureTypeOntologyName');
+                const hasRole = readConfObject(pluginConfiguration, 'hasRole');
+                const featureTypeOntologyName = readConfObject(pluginConfiguration, 'featureTypeOntologyName');
                 const hasApolloInternetAccount = internetAccounts.some((ia) => isApolloInternetAccount(ia));
-                const nonApolloAssemblies = self.assemblyManager.assemblies.filter((a) => !configuration.getConf(a, ['sequence', 'metadata']).apollo);
+                const nonApolloAssemblies = self.assemblyManager.assemblies.filter((a) => !getConf(a, ['sequence', 'metadata']).apollo);
                 if (!hasApolloInternetAccount || hasRole) {
                     // Wait for assemblyManager to load before we do this part
                     const { assemblies } = self
@@ -14529,7 +14525,7 @@ function extendSession(pluginManager, sessionModel) {
                     }
                     const { pluginConfiguration } = self.apolloDataStore;
                     const configuredOntologies = pluginConfiguration.ontologies;
-                    const featureTypeOntology = configuredOntologies.find((ont) => configuration.readConfObject(ont, 'name') === featureTypeOntologyName);
+                    const featureTypeOntology = configuredOntologies.find((ont) => readConfObject(ont, 'name') === featureTypeOntologyName);
                     if (!featureTypeOntology) {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                         pluginConfiguration.addOntology({
@@ -14545,7 +14541,7 @@ function extendSession(pluginManager, sessionModel) {
                         self.addApolloLocalTrackConfig(a);
                     }
                     // @ts-expect-error not sure why snapshot type is wrong for snapshot
-                    mobxStateTree.applySnapshot(self, self.previousSnapshot);
+                    applySnapshot(self, self.previousSnapshot);
                     reaction.dispose();
                     return;
                 }
@@ -14600,7 +14596,7 @@ function extendSession(pluginManager, sessionModel) {
     }))
         .actions((self) => ({
         async afterCreate() {
-            if (util.isElectron) {
+            if (isElectron) {
                 return;
             }
             const url = new URL(globalThis.location.href);
@@ -14616,7 +14612,7 @@ function extendSession(pluginManager, sessionModel) {
             globalThis.history.replaceState(null, '', updatedURL.toString());
         },
         afterAttach() {
-            mobxStateTree.addDisposer(self, mobx.autorun((reaction) => {
+            addDisposer(self, autorun((reaction) => {
                 const { focusedViewId, activeWidgets } = self;
                 if (!(focusedViewId && activeWidgets)) {
                     return;
@@ -14638,7 +14634,7 @@ function extendSession(pluginManager, sessionModel) {
                     conf.type === 'ReferenceSequenceTrack') {
                     return superTrackActions?.(conf);
                 }
-                const trackId = configuration.readConfObject(conf, 'trackId');
+                const trackId = readConfObject(conf, 'trackId');
                 const sessionTrackIdentifier = '-sessionTrack';
                 const isSessionTrack = trackId.endsWith(sessionTrackIdentifier);
                 return isSessionTrack
@@ -14647,14 +14643,14 @@ function extendSession(pluginManager, sessionModel) {
                         {
                             label: 'Save track to Apollo',
                             onClick: async () => {
-                                const { internetAccounts, jbrowse } = mobxStateTree.getRoot(self);
-                                const currentConfig = mobxStateTree.getSnapshot(jbrowse);
+                                const { internetAccounts, jbrowse } = getRoot(self);
+                                const currentConfig = getSnapshot(jbrowse);
                                 let filteredConfig;
-                                filteredConfig = shared.filterJBrowseConfig(currentConfig);
+                                filteredConfig = filterJBrowseConfig(currentConfig);
                                 if (Object.keys(filteredConfig).length === 0) {
                                     filteredConfig = undefined;
                                 }
-                                const trackConfigSnapshot = mobxStateTree.getSnapshot(conf);
+                                const trackConfigSnapshot = getSnapshot(conf);
                                 const newTrackId = trackId.slice(0, trackId.length - sessionTrackIdentifier.length);
                                 const newTrackConfigSnapshot = {
                                     ...trackConfigSnapshot,
@@ -14664,7 +14660,7 @@ function extendSession(pluginManager, sessionModel) {
                                     if (internetAccount.type !== 'ApolloInternetAccount') {
                                         continue;
                                     }
-                                    const change = new shared.ImportJBrowseConfigChange({
+                                    const change = new ImportJBrowseConfigChange({
                                         typeName: 'ImportJBrowseConfigChange',
                                         oldJBrowseConfig: filteredConfig,
                                         newJBrowseConfig: {
@@ -14696,10 +14692,10 @@ function extendSession(pluginManager, sessionModel) {
                         {
                             label: 'Remove track from Apollo',
                             onClick: async () => {
-                                const { internetAccounts, jbrowse } = mobxStateTree.getRoot(self);
-                                const currentConfig = mobxStateTree.getSnapshot(jbrowse);
+                                const { internetAccounts, jbrowse } = getRoot(self);
+                                const currentConfig = getSnapshot(jbrowse);
                                 let filteredConfig;
-                                filteredConfig = shared.filterJBrowseConfig(currentConfig);
+                                filteredConfig = filterJBrowseConfig(currentConfig);
                                 if (Object.keys(filteredConfig).length === 0) {
                                     filteredConfig = undefined;
                                 }
@@ -14708,7 +14704,7 @@ function extendSession(pluginManager, sessionModel) {
                                     if (internetAccount.type !== 'ApolloInternetAccount') {
                                         continue;
                                     }
-                                    const change = new shared.ImportJBrowseConfigChange({
+                                    const change = new ImportJBrowseConfigChange({
                                         typeName: 'ImportJBrowseConfigChange',
                                         oldJBrowseConfig: filteredConfig,
                                         newJBrowseConfig: {
@@ -14734,7 +14730,7 @@ function extendSession(pluginManager, sessionModel) {
             },
         };
     });
-    return mobxStateTree.types.snapshotProcessor(sm, {
+    return types.snapshotProcessor(sm, {
         postProcessor(snap, node) {
             snap.apolloSelectedFeature = undefined;
             // @ts-expect-error ontologyManager isn't actually required
@@ -14768,15 +14764,15 @@ function isApolloMessageData(data) {
         data.apollo === true);
 }
 const inWebWorker = 'WorkerGlobalScope' in globalThis;
-for (const [changeName, change] of Object.entries(shared.changes)) {
-    common.changeRegistry.registerChange(changeName, change);
+for (const [changeName, change] of Object.entries(changes)) {
+    changeRegistry.registerChange(changeName, change);
 }
-const cdsCheck = new shared.CDSCheck();
-common.checkRegistry.registerCheck(cdsCheck.name, cdsCheck);
-const transcriptCheck = new shared.TranscriptCheck();
-common.checkRegistry.registerCheck(transcriptCheck.name, transcriptCheck);
-shared.validationRegistry.registerValidation(new shared.CoreValidation());
-shared.validationRegistry.registerValidation(new shared.ParentChildValidation());
+const cdsCheck = new CDSCheck();
+checkRegistry.registerCheck(cdsCheck.name, cdsCheck);
+const transcriptCheck = new TranscriptCheck();
+checkRegistry.registerCheck(transcriptCheck.name, transcriptCheck);
+validationRegistry.registerValidation(new CoreValidation());
+validationRegistry.registerValidation(new ParentChildValidation());
 class ApolloPlugin extends Plugin {
     name = 'ApolloPlugin';
     version = version;
@@ -14786,8 +14782,8 @@ class ApolloPlugin extends Plugin {
         installApolloRefNameAliasAdapter(pluginManager);
         installApolloTextSearchAdapter(pluginManager);
         pluginManager.addWidgetType(() => {
-            const configSchema = configuration.ConfigurationSchema('ApolloFeatureDetailsWidget', {});
-            const widgetType = new pluggableElementTypes.WidgetType({
+            const configSchema = ConfigurationSchema('ApolloFeatureDetailsWidget', {});
+            const widgetType = new WidgetType({
                 name: 'ApolloFeatureDetailsWidget',
                 heading: 'Apollo feature details',
                 configSchema,
@@ -14797,8 +14793,8 @@ class ApolloPlugin extends Plugin {
             return widgetType;
         });
         pluginManager.addWidgetType(() => {
-            const configSchema = configuration.ConfigurationSchema('ApolloTranscriptDetails', {});
-            const widgetType = new pluggableElementTypes.WidgetType({
+            const configSchema = ConfigurationSchema('ApolloTranscriptDetails', {});
+            const widgetType = new WidgetType({
                 name: 'ApolloTranscriptDetails',
                 heading: 'Apollo transcript details',
                 configSchema,
@@ -14808,18 +14804,18 @@ class ApolloPlugin extends Plugin {
             return widgetType;
         });
         pluginManager.addTrackType(() => {
-            const configSchema = configuration.ConfigurationSchema('ApolloTrack', { adapter: '' }, {
-                baseConfiguration: pluggableElementTypes.createBaseTrackConfig(pluginManager),
+            const configSchema = ConfigurationSchema('ApolloTrack', { adapter: '' }, {
+                baseConfiguration: createBaseTrackConfig(pluginManager),
                 explicitIdentifier: 'trackId',
             });
-            return new pluggableElementTypes.TrackType({
+            return new TrackType({
                 name: 'ApolloTrack',
                 configSchema,
-                stateModel: pluggableElementTypes.createBaseTrackModel(pluginManager, 'ApolloTrack', configSchema),
+                stateModel: createBaseTrackModel(pluginManager, 'ApolloTrack', configSchema),
             });
         });
         pluginManager.addInternetAccountType(() => {
-            return new pluggableElementTypes.InternetAccountType({
+            return new InternetAccountType({
                 name: 'ApolloInternetAccount',
                 configSchema: ApolloConfigSchema,
                 stateModel: stateModelFactory$3(ApolloConfigSchema),
@@ -14827,7 +14823,7 @@ class ApolloPlugin extends Plugin {
         });
         pluginManager.addDisplayType(() => {
             const configSchema = configSchema$2;
-            return new pluggableElementTypes.DisplayType({
+            return new DisplayType({
                 name: 'LinearApolloDisplay',
                 configSchema,
                 stateModel: stateModelFactory$2(pluginManager, configSchema),
@@ -14838,7 +14834,7 @@ class ApolloPlugin extends Plugin {
         });
         pluginManager.addDisplayType(() => {
             const configSchema$1 = configSchema;
-            return new pluggableElementTypes.DisplayType({
+            return new DisplayType({
                 name: 'LinearApolloSixFrameDisplay',
                 configSchema: configSchema$1,
                 stateModel: stateModelFactory(pluginManager, configSchema$1),
@@ -14849,7 +14845,7 @@ class ApolloPlugin extends Plugin {
         });
         pluginManager.addDisplayType(() => {
             const configSchema = configSchema$1;
-            return new pluggableElementTypes.DisplayType({
+            return new DisplayType({
                 name: 'LinearApolloReferenceSequenceDisplay',
                 configSchema,
                 stateModel: stateModelFactory$1(pluginManager, configSchema),
@@ -14876,7 +14872,7 @@ class ApolloPlugin extends Plugin {
                                     label: 'Add new feature',
                                     icon: AddIcon,
                                     onClick: () => {
-                                        const session = util.getSession(self);
+                                        const session = getSession(self);
                                         const { leftOffset, rightOffset } = self;
                                         const selectedRegions = self.getSelectedRegions(leftOffset, rightOffset);
                                         session.queueDialog((doneCallback) => [
@@ -15017,13 +15013,13 @@ class ApolloPlugin extends Plugin {
         }
     }
     configure(pluginManager) {
-        if (util.isAbstractMenuManager(pluginManager.rootModel)) {
+        if (isAbstractMenuManager(pluginManager.rootModel)) {
             pluginManager.jexl.addFunction('geneBackgroundColor', (featureType) => {
                 if (featureType === 'pseudogene') {
-                    return material.alpha('rgb(148, 203, 236)', 0.6);
+                    return alpha('rgb(148, 203, 236)', 0.6);
                 }
                 if (featureType === 'ncRNA_gene') {
-                    return material.alpha('rgb(194, 106, 119)', 0.6);
+                    return alpha('rgb(194, 106, 119)', 0.6);
                 }
                 return;
             });
@@ -15032,5 +15028,5 @@ class ApolloPlugin extends Plugin {
     }
 }
 
-exports.default = ApolloPlugin;
-//# sourceMappingURL=jbrowse-plugin-apollo.cjs.development.js.map
+export { ApolloPlugin as default };
+//# sourceMappingURL=index.esm.js.map
