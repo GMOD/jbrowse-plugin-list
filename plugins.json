@@ -57,7 +57,7 @@
     },
     {
       "name": "Reactome",
-      "packageName": "jbrowse-plugin-reactome",
+      "packageName": "jbrowse-plugin-reactome2",
       "authors": ["Caroline Bridge"],
       "description": "JBrowse 2 plugin to integrate resources from Reactome",
       "location": "https://github.com/GMOD/jbrowse-plugin-reactome",

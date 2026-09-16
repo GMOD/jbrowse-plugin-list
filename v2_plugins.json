@@ -136,7 +136,7 @@
     },
     {
       "name": "Reactome",
-      "packageName": "jbrowse-plugin-reactome",
+      "packageName": "jbrowse-plugin-reactome2",
       "authors": [
         "Caroline Bridge"
       ],
@@ -149,17 +149,17 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/reactome-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-reactome/1.0.1/dist/jbrowse-plugin-reactome.umd.production.min.js",
-      "integrity": "sha384-2vjjWJFcTPXaCTUnIHL3hCC6O0k1CNyxBTyh2CMQjMJ/4qx3SVK2cedAOLwywLiu",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-reactome2/2.0.1/dist/jbrowse-plugin-reactome.umd.production.min.js",
+      "integrity": "sha384-op9FFmJ0EIIxhztAshu5kXCuILiWPQGgZV/mSjYZkX7Eb9anN6YrtCeY64eBFfxO",
       "versions": [
         {
-          "pluginVersion": "1.0.1",
+          "pluginVersion": "2.0.1",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-reactome/1.0.1/dist/jbrowse-plugin-reactome.umd.production.min.js",
-          "integrity": "sha384-2vjjWJFcTPXaCTUnIHL3hCC6O0k1CNyxBTyh2CMQjMJ/4qx3SVK2cedAOLwywLiu"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-reactome2/2.0.1/dist/jbrowse-plugin-reactome.umd.production.min.js",
+          "integrity": "sha384-op9FFmJ0EIIxhztAshu5kXCuILiWPQGgZV/mSjYZkX7Eb9anN6YrtCeY64eBFfxO"
         }
       ],
-      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-reactome/latest/dist/jbrowse-plugin-reactome.umd.production.min.js"
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-reactome2/latest/dist/jbrowse-plugin-reactome.umd.production.min.js"
     },
     {
       "name": "TrackHubRegistry",
