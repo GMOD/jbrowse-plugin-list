@@ -4,6 +4,10 @@ import { maybeLaunchSideBySide } from '../LaunchProteinView/utils/sideBySide';
 import { coerceColorScheme } from '../ProteinView/applyColorTheme';
 import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec';
 export default function LaunchProteinViewExtensionPointF(pluginManager) {
+    // v4 hosts declare `init`; v5 reads the settings off the view object and
+    // warns about the nesting
+    const lgvTakesInit = () => 'init' in
+        pluginManager.getViewType('LinearGenomeView').stateModel.properties;
     pluginManager.addToExtensionPoint('LaunchView-ProteinView', 
     // A LaunchView point is a transformer — the chain hands what each callback
     // returns to the next — and JBrowse now warns when one returns undefined
@@ -67,12 +71,9 @@ export default function LaunchProteinViewExtensionPointF(pluginManager) {
         const ownsConnectedView = !connectedViewId && !!connectedView;
         const resolvedConnectedViewId = connectedViewId ??
             (connectedView
-                ? session.addView('LinearGenomeView', {
-                    type: 'LinearGenomeView',
-                    // a spec's connectedView is unvalidated json, so a missing
-                    // assembly reaches the view and is reported there, as before
-                    init: connectedView,
-                }).id
+                ? session.addView('LinearGenomeView', lgvTakesInit()
+                    ? { type: 'LinearGenomeView', init: connectedView }
+                    : { ...connectedView, type: 'LinearGenomeView' }).id
                 : undefined);
         const structures = requested.map((s, i) => ({
             url: urls[i],
