@@ -1,7 +1,30 @@
+import { expandSpec } from 'react-msaview';
 import { launchMsaView } from '../utils/launchMsaView';
+/**
+ * `msa` and `tree` onto the plugin's own sources, so a url still goes through
+ * `init.msaUrl` and its format sniffing, and `query` onto `querySeqName`
+ */
+function withLongSources({ msa, tree, ...args }) {
+    const inlineMsa = msa?.includes('\n') ? msa : undefined;
+    const inlineTree = tree?.trimStart().startsWith('(') ? tree : undefined;
+    const data = inlineMsa || inlineTree
+        ? {
+            ...args.data,
+            ...(inlineMsa ? { msa: inlineMsa } : {}),
+            ...(inlineTree ? { tree: inlineTree } : {}),
+        }
+        : args.data;
+    return {
+        ...args,
+        data: data,
+        ...(msa && !inlineMsa ? { msaFileLocation: { uri: msa } } : {}),
+        ...(tree && !inlineTree ? { treeFileLocation: { uri: tree } } : {}),
+        querySeqName: args.querySeqName ?? args.query,
+    };
+}
 export default function LaunchMsaViewExtensionPointF(pluginManager) {
     pluginManager.addToExtensionPoint('LaunchView-MsaView', (args) => {
-        const { session, data, msaFileLocation, msaIndexedLocation, msaName, treeFileLocation, querySeqName, searchParams, ...rest } = args;
+        const { session, query, data, msaFileLocation, msaIndexedLocation, msaName, treeFileLocation, querySeqName, searchParams, ...rest } = withLongSources(args);
         // `orthologParams` and `searchParams` name no alignment at all — the
         // view builds one at launch, which is the dialog's Orthologs and BLAST
         // tabs reached declaratively.
@@ -27,7 +50,7 @@ export default function LaunchMsaViewExtensionPointF(pluginManager) {
             querySeqName,
         };
         launchMsaView(session, {
-            ...rest,
+            ...expandSpec({ ...rest, query }),
             ...(searchParams ? { blastParams: searchParams } : {}),
             data,
             ...(treeFileLocation

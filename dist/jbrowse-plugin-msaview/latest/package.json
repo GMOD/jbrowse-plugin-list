@@ -1,5 +1,5 @@
 {
-  "version": "3.7.0",
+  "version": "3.7.1",
   "license": "MIT",
   "name": "jbrowse-plugin-msaview",
   "repository": {
@@ -46,7 +46,7 @@
     "jsdom": "^30.1.0",
     "mobx": "^7.0.3",
     "mobx-react": "^10.0.2",
-    "msa-parsers": "^8.1.0",
+    "msa-parsers": "^8.2.0",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",
     "oxlint-tsgolint": "^7.0.2001",
@@ -56,7 +56,7 @@
     "puppeteer": "^25.11.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-msaview": "^8.1.0",
+    "react-msaview": "^8.2.0",
     "rimraf": "^6.1.3",
     "rxjs": "^7.8.2",
     "serve": "^14.2.6",
@@ -87,10 +87,11 @@
     "test:setup:version": "node scripts/test-versions.mjs setup",
     "test:versions": "node scripts/test-versions.mjs run",
     "test:version": "node scripts/test-versions.mjs run",
+    "readme-figure": "node scripts/readme-figure.mjs",
     "host-compat": "node scripts/host-compat-probe.mjs --bundle dist/jbrowse-plugin-msaview.umd.production.min.js",
     "check-ci": "node scripts/require-green-ci.mjs",
     "preversion": "pnpm check-ci && pnpm check-host-dep-pins && pnpm lint && pnpm build && pnpm check-host-externals && pnpm host-compat",
-    "version": "node -e \"console.log('export const version = \\'' + require('./package.json').version + '\\'')\" > src/version.ts && git-cliff --tag v$npm_package_version --unreleased --prepend CHANGELOG.md && git add src/version.ts CHANGELOG.md",
+    "version": "node -e \"console.log('export const version = \\'' + require('./package.json').version + '\\'')\" > src/version.ts && git-cliff --tag v$npm_package_version --unreleased --prepend CHANGELOG.md && (pnpm readme-figure || echo 'WARNING: README figure not refreshed, see above') && git add src/version.ts CHANGELOG.md img/1.png",
     "postversion": "git push --follow-tags"
   }
 }

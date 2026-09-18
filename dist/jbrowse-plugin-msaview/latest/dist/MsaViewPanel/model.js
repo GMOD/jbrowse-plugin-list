@@ -5,7 +5,6 @@ import { genomeToTranscriptSeqMapping } from 'g2p_mapper';
 import { autorun } from 'mobx';
 import { MSAModelF } from 'react-msaview';
 import { autoLoadProteinDomains, launchBlastIfNeeded, launchOrthologsIfNeeded, loadStoredData, observeProteinHighlights, processInit, runCleanup, storeDataToIndexedDB, syncGenomeHoverToMsaColumn, } from './afterCreateAutoruns';
-import { applyRegion } from './applyRegion';
 import { msaCoordToGenomeCoord, msaCoordToGenomeRegions, } from './msaCoordToGenomeCoord';
 import { deleteMsaData } from './msaDataStore';
 import { resolveConnectedTranscriptIfNeeded } from './resolveConnectedTranscript';
@@ -108,13 +107,6 @@ export default function stateModelFactory() {
          * #property
          */
         mafRegion: types.frozen(),
-        /**
-         * #property
-         * where the view opens: 1-based residues of `row`, or alignment
-         * columns without one. Zoomed onto once and then cleared, so a
-         * reloaded session keeps the reader's own scroll.
-         */
-        region: types.frozen(),
     }))
         .volatile(() => ({
         /**
@@ -310,12 +302,6 @@ export default function stateModelFactory() {
         /**
          * #action
          */
-        setRegion(arg) {
-            self.region = arg;
-        },
-        /**
-         * #action
-         */
         setLoadingStoredData(arg) {
             self.loadingStoredData = arg;
         },
@@ -507,9 +493,6 @@ export default function stateModelFactory() {
             // so they're factories returning the autorun body rather than plain fns
             addDisposer(self, autorun(syncGenomeHoverToMsaColumn(self)));
             addDisposer(self, autorun(observeProteinHighlights(self)));
-            addDisposer(self, autorun(() => {
-                applyRegion(self);
-            }));
         },
     }));
 }

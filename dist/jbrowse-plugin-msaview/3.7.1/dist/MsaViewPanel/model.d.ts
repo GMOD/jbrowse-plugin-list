@@ -7,7 +7,6 @@ import type { TranscriptRef } from './util';
 import type { MenuItem } from '@jbrowse/core/ui';
 import type { Instance } from '@jbrowse/mobx-state-tree';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
-import type { Region } from 'react-msaview';
 type LGV = LinearGenomeViewModel;
 type MaybeLGV = LGV | undefined;
 export interface IRegion {
@@ -112,7 +111,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     minimized: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-}, "id" | "type" | "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeWidth" | "bgColor" | "colorSchemeName" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "relativeTo" | "residueMappings" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "turnedOffFeatures" | "turnedOffTracks"> & Omit<Omit<Omit<{}, "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeWidth"> & {
+}, "id" | "type" | "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeWidth" | "bgColor" | "colorSchemeName" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "turnedOffFeatures" | "turnedOffTracks"> & Omit<Omit<Omit<{}, "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeWidth"> & {
     drawLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     labelsAlignRight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     treeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
@@ -129,7 +128,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     colorSchemeName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     showColumnStats: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("msa-parsers").MSAFormat>>;
-}, "id" | "type" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "relativeTo" | "residueMappings" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "turnedOffFeatures" | "turnedOffTracks"> & {
+}, "id" | "type" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "turnedOffFeatures" | "turnedOffTracks"> & {
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     showDomains: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     showDomainLegend: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
@@ -545,10 +544,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     relativeTo: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     highlightColumns: import("@jbrowse/mobx-state-tree").IType<number[] | undefined, number[] | undefined, number[] | undefined>;
     highlights: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("react-msaview").Highlight, import("react-msaview").Highlight, import("react-msaview").Highlight>>, [undefined]>;
+    region: import("@jbrowse/mobx-state-tree").IType<import("react-msaview").Region | undefined, import("react-msaview").Region | undefined, import("react-msaview").Region | undefined>;
     clades: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("react-msaview").Clade, import("react-msaview").Clade, import("react-msaview").Clade>>, [undefined]>;
     encodings: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("react-msaview").Encoding, import("react-msaview").Encoding, import("react-msaview").Encoding>>, [undefined]>;
     rowPanels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").IArrayType<import("@jbrowse/mobx-state-tree").IType<import("react-msaview").RowPanelSpec, import("react-msaview").RowPanelSpec, import("react-msaview").RowPanelSpec>>, [undefined]>;
-}, "init" | "querySeqName" | "querySeqOffset" | "zoomToBaseLevel" | "launchCompleted" | "connectedViewId" | "connectedFeature" | "connectedTranscript" | "blastParams" | "orthologParams" | "uniprotId" | "dataStoreId" | "mafRegion" | "region"> & {
+}, "init" | "querySeqName" | "querySeqOffset" | "zoomToBaseLevel" | "launchCompleted" | "connectedViewId" | "connectedFeature" | "connectedTranscript" | "blastParams" | "orthologParams" | "uniprotId" | "dataStoreId" | "mafRegion"> & {
     connectedViewId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     connectedFeature: import("@jbrowse/mobx-state-tree").IType<any, any, any>;
     connectedTranscript: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
@@ -562,7 +562,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     dataStoreId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     launchCompleted: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     mafRegion: import("@jbrowse/mobx-state-tree").IType<MafRegion | undefined, MafRegion | undefined, MafRegion | undefined>;
-    region: import("@jbrowse/mobx-state-tree").IType<Region | undefined, Region | undefined, Region | undefined>;
 }, {
     width: number;
     bodyMounted: boolean;
@@ -646,6 +645,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     setHostCarriesData(arg: boolean): void;
     setMousePos(col?: number, row?: number): void;
     setHighlightedColumns(columns?: number[]): void;
+    setRegion(region?: import("react-msaview").Region): void;
     setHighlights(highlights: import("react-msaview").Highlight[]): void;
     setClades(clades: import("react-msaview").Clade[]): void;
     applyHighlight(owner: string, highlights: import("react-msaview").Highlight[]): void;
@@ -798,7 +798,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     visibleColToGlobalCol(visibleCol: number): number;
     seqPosToGlobalCol(rowName: string, seqPos: number): number | undefined;
     seqPosToVisibleCol(rowName: string, seqPos: number): number | undefined;
-    visibleSpan({ row, start: rawStart, end: rawEnd }: Region): {
+    visibleSpan({ row, start: rawStart, end: rawEnd }: import("react-msaview").Region): {
         startCol: number;
         endCol: number;
     } | undefined;
@@ -897,6 +897,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         start: number;
         end: number;
     }[];
+    fillHighlightLabel(label: string, row?: string, start?: number): string;
     readonly resolvedHighlights: import("react-msaview").ResolvedHighlight[];
     columnStatsAt(col: number): import("react-msaview").ColumnStats | undefined;
     getRowData(name: string): {
@@ -923,7 +924,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     setFilter(accession: string, shown: boolean): void;
     fit(): void;
     fitVertically(): void;
-    zoomToRegion(region: Region): void;
+    zoomToRegion(region: import("react-msaview").Region): void;
     fitHorizontally(): void;
     afterCreate(): void;
 } & {
@@ -1035,10 +1036,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * #action
      */
     setMafRegion(arg?: MafRegion): void;
-    /**
-     * #action
-     */
-    setRegion(arg?: Region): void;
     /**
      * #action
      */
@@ -1233,6 +1230,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     relativeTo: string | undefined;
     highlightColumns: number[] | undefined;
     highlights: import("react-msaview").Highlight[];
+    region: import("react-msaview").Region | undefined;
     clades: import("react-msaview").Clade[];
     encodings: import("react-msaview").Encoding[];
     rowPanels: import("react-msaview").RowPanelSpec[];
@@ -1364,6 +1362,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     relativeTo: string | undefined;
     highlightColumns: number[] | undefined;
     highlights: import("react-msaview").Highlight[];
+    region: import("react-msaview").Region | undefined;
     clades: import("react-msaview").Clade[];
     encodings: import("react-msaview").Encoding[];
     rowPanels: import("react-msaview").RowPanelSpec[];
