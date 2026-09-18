@@ -49,6 +49,7 @@ export default function useProteinView({
           Color,
           GeometryExport,
           MAQualityAssessment,
+          MappedChainColorThemeProvider,
           PluginConfig,
           PluginSpec,
           DefaultPluginUISpec,
@@ -84,13 +85,14 @@ export default function useProteinView({
           },
         })
         await created.initialized
-        // Make the persistent selection marking clearly visible (a domain
-        // click, or a declarative initialSelection): molstar's default select
-        // color is a subtle teal that blends into a green/pLDDT cartoon, so a
-        // highlighted domain reads as no highlight at all. Magenta contrasts
-        // against every built-in color scheme.
+        created.representation.structure.themes.colorThemeRegistry.add(
+          MappedChainColorThemeProvider,
+        )
+        // molstar's default selection is a faint green tint that a green or
+        // pLDDT cartoon swallows; solid magenta reads over every scheme
         created.canvas3d?.setProps({
-          renderer: { selectColor: Color(0xff00ff) },
+          renderer: { selectColor: Color(0xff00ff), selectStrength: 1 },
+          marking: { selectEdgeColor: Color(0xff00ff) },
         })
         if (state.cancelled) {
           created.dispose()

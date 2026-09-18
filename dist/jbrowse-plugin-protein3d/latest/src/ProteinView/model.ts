@@ -307,20 +307,29 @@ function stateModelFactory() {
     }))
     .actions(self => ({
       afterAttach() {
-        // Apply the chosen color theme whenever it changes or once a structure
+        // Apply the chosen color theme whenever it changes, a structure
         // finishes loading (structureSequences is set after its molstar
-        // representation is built, so the theme has something to recolor).
+        // representation is built, so the theme has something to recolor), or
+        // the mapped chain changes.
         addDisposer(
           self,
           autorun(() => {
             const { molstarPluginContext, colorScheme } = self
-            const readyCount = self.structures.filter(
-              s => s.structureSequences !== undefined,
-            ).length
-            if (molstarPluginContext && readyCount > 0) {
+            const structures = self.structures.flatMap(s =>
+              s.molstarStructure && s.structureSequences
+                ? [
+                    {
+                      molstarStructure: s.molstarStructure,
+                      entityId: s.mappedEntity?.entityId,
+                    },
+                  ]
+                : [],
+            )
+            if (molstarPluginContext && structures.length > 0) {
               applyColorTheme({
                 plugin: molstarPluginContext,
                 colorScheme,
+                structures,
               }).catch((e: unknown) => {
                 console.error(e)
                 self.setError(e)

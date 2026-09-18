@@ -14,13 +14,22 @@ vi.mock('./loadMolstar', async () => {
 
 function recordingPlugin() {
   const focused: Loci[][] = []
+  const sticks: Loci[] = []
   return {
     focused,
+    sticks,
     plugin: {
       managers: {
         camera: {
           focusLoci: (loci: Loci[]) => {
             focused.push(loci)
+          },
+        },
+        structure: {
+          focus: {
+            setFromLoci: (loci: Loci) => {
+              sticks.push(loci)
+            },
           },
         },
       },
@@ -143,5 +152,43 @@ test('a remount frames again in the new plugin', async () => {
     expect(second.focused).toHaveLength(1)
   })
   expect(first.focused).toHaveLength(1)
+  dispose()
+})
+
+test('a one-residue seed is focused like a click on it', async () => {
+  const { plugin, focused, sticks } = recordingPlugin()
+  const only = await structure(true, [2])
+  const host = observable({
+    molstarPluginContext: plugin,
+    structures: [only],
+    superposedCount: 0,
+  })
+  const dispose = autorun(makeSelectionFramer(host))
+  runInAction(() => {
+    only.loading = false
+  })
+  await vi.waitFor(() => {
+    expect(focused).toHaveLength(1)
+  })
+  expect(sticks).toEqual(focused[0])
+  dispose()
+})
+
+test('a seeded range is framed but not focused', async () => {
+  const { plugin, focused, sticks } = recordingPlugin()
+  const only = await structure(true, [1, 2, 3])
+  const host = observable({
+    molstarPluginContext: plugin,
+    structures: [only],
+    superposedCount: 0,
+  })
+  const dispose = autorun(makeSelectionFramer(host))
+  runInAction(() => {
+    only.loading = false
+  })
+  await vi.waitFor(() => {
+    expect(focused).toHaveLength(1)
+  })
+  expect(sticks).toHaveLength(0)
   dispose()
 })

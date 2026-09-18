@@ -7,6 +7,9 @@ import loadMolstar from './loadMolstar';
  * until they are superposed, because the reset that ends a superposition would
  * undo it; then it frames the seeded residues once per plugin. Only a spec's
  * seed moves the camera: a click is the user's, and the view they chose stays.
+ * A one-residue seed is also focused, which draws it, its neighbours and their
+ * contacts as sticks, as clicking it in 3D does. Mol* focuses one structure at
+ * a time, so that is the first seeded one.
  */
 export function makeSelectionFramer(host) {
     let framedPlugin;
@@ -36,7 +39,11 @@ export function makeSelectionFramer(host) {
         loadMolstar()
             .then(molstar => {
             if (host.molstarPluginContext === plugin) {
-                plugin.managers.camera.focusLoci(targets.map(t => residueLoci(molstar, t)));
+                const loci = targets.map(t => residueLoci(molstar, t));
+                plugin.managers.camera.focusLoci(loci);
+                if (loci[0] && targets[0]?.labelSeqIds.length === 1) {
+                    plugin.managers.structure.focus.setFromLoci(loci[0]);
+                }
             }
         })
             .catch((e) => {

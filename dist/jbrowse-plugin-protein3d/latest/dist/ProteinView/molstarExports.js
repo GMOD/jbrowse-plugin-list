@@ -17,6 +17,7 @@ export { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms';
 export { StateObjectRef } from 'molstar/lib/mol-state';
 export { Script } from 'molstar/lib/mol-script/script';
 export { Color } from 'molstar/lib/mol-util/color';
+export { MappedChainColorThemeProvider } from './mappedChainColorTheme';
 // Molstar's stylesheet rides in this chunk rather than the main bundle, which
 // every host evaluates on boot whether or not a protein view is ever opened.
 export { default as css } from './css/molstar';
