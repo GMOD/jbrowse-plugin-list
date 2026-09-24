@@ -7120,7 +7120,7 @@
     d: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"
   }), 'Add');
 
-  var version = "1.1.2";
+  var version = "1.1.3";
 
   const ApolloConfigSchema = configuration.ConfigurationSchema('ApolloInternetAccount', {
       baseURL: {
@@ -21683,7 +21683,7 @@
     d: "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
   }), 'Close');
 
-  const useStyles$g = makeStyles()((theme) => ({
+  const useStyles$f = makeStyles()((theme) => ({
       dialogTitle: {
           background: theme.palette.primary.main,
           color: theme.palette.primary.contrastText,
@@ -21697,7 +21697,7 @@
       },
   }));
   const Dialog = mobxReact.observer(function JBrowseDialog(props) {
-      const { classes } = useStyles$g();
+      const { classes } = useStyles$f();
       const { handleClose, title, ...other } = props;
       return (jsxRuntime.jsx(ui.Dialog, { ...other, header: jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.DialogTitle, { className: classes.dialogTitle, children: title }), jsxRuntime.jsx(material.IconButton, { "aria-label": "close", onClick: handleClose, className: classes.closeButton, children: jsxRuntime.jsx(CloseIcon, {}) })] }) }));
   });
@@ -22850,7 +22850,7 @@
       FileType["GZI"] = "application/x-gzi";
       FileType["EXTERNAL"] = "text/x-external";
   })(FileType || (FileType = {}));
-  const useStyles$f = makeStyles()((theme) => ({
+  const useStyles$e = makeStyles()((theme) => ({
       accordion: {
           border: `1px solid ${theme.palette.divider}`,
           '&:not(:last-child)': {
@@ -22892,7 +22892,7 @@
       return false;
   }
   function AddAssembly({ changeManager, handleClose, session, }) {
-      const { classes } = useStyles$f();
+      const { classes } = useStyles$e();
       const { internetAccounts } = mobxStateTree.getRoot(session);
       const { notify } = session;
       const apolloInternetAccounts = internetAccounts.filter((ia) => ia.type === 'ApolloInternetAccount');
@@ -26397,7 +26397,7 @@
                                       selectedTranscriptId === undefined, children: "Submit" }), jsxRuntime.jsx(material.Button, { variant: "outlined", type: "submit", onClick: handleClose, children: "Cancel" })] })] }), errorMessage ? (jsxRuntime.jsx(material.DialogContent, { children: jsxRuntime.jsx(material.DialogContentText, { color: "error", children: errorMessage }) })) : null] }));
   }
 
-  const useStyles$e = makeStyles()((theme) => ({
+  const useStyles$d = makeStyles()((theme) => ({
       changeTextarea: {
           fontFamily: 'monospace',
           width: 600,
@@ -26437,7 +26437,7 @@
       return filters;
   }
   function ViewChangeLog({ handleClose, session, assembly: assemblyId, }) {
-      const { classes } = useStyles$e();
+      const { classes } = useStyles$d();
       const [errorMessage, setErrorMessage] = React.useState();
       const [displayGridData, setDisplayGridData] = React.useState([]);
       const [rowCount, setRowCount] = React.useState(0);
@@ -26958,7 +26958,7 @@
       return (jsxRuntime.jsxs(material.SvgIcon, { viewBox: "0 0 21 21", style: { fontSize: 21 }, ...props, children: [jsxRuntime.jsx("rect", { x: "1", y: "1", width: "9", height: "9", fill: color === 'disabled' ? '#7B7B7B' : '#F25022' }), jsxRuntime.jsx("rect", { x: "1", y: "11", width: "9", height: "9", fill: color === 'disabled' ? '#7B7B7B' : '#00A4EF' }), jsxRuntime.jsx("rect", { x: "11", y: "1", width: "9", height: "9", fill: color === 'disabled' ? '#939393' : '#7FBA00' }), jsxRuntime.jsx("rect", { x: "11", y: "11", width: "9", height: "9", fill: color === 'disabled' ? '#B9B9B9' : '#FFB900' })] }));
   }
 
-  const useStyles$d = makeStyles()((theme) => ({
+  const useStyles$c = makeStyles()((theme) => ({
       loginButton: {
           marginBottom: theme.spacing(1),
           width: '220px',
@@ -26970,34 +26970,34 @@
       },
   }));
   function GoogleButton(props) {
-      const { classes } = useStyles$d();
+      const { classes } = useStyles$c();
       const { message } = props;
       return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(Google, {}), ...props, children: message }));
   }
   function MicrosoftButton(props) {
-      const { classes } = useStyles$d();
+      const { classes } = useStyles$c();
       const { message } = props;
       return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(Microsoft, {}), ...props, children: message }));
   }
   function GuestButton(props) {
-      const { classes } = useStyles$d();
+      const { classes } = useStyles$c();
       const { message } = props;
       return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(AccountCircleIcon, { fontSize: "small" }), ...props, children: message }));
   }
   function GenericButton(props) {
-      const { classes } = useStyles$d();
+      const { classes } = useStyles$c();
       const { message } = props;
       return (jsxRuntime.jsx(material.Button, { className: classes.loginButton, variant: "outlined", startIcon: jsxRuntime.jsx(BusinessIcon, { fontSize: "small" }), ...props, children: message }));
   }
 
-  const useStyles$c = makeStyles()((theme) => ({
+  const useStyles$b = makeStyles()((theme) => ({
       divider: {
           marginTop: theme.spacing(4),
           marginBottom: theme.spacing(5),
       },
   }));
   const AuthTypeSelector = ({ baseURL, handleClose, name, }) => {
-      const { classes } = useStyles$c();
+      const { classes } = useStyles$b();
       const [errorMessage, setErrorMessage] = React.useState('');
       const [loginTypes, setLoginTypes] = React.useState(null);
       React.useEffect(() => {
@@ -28084,14 +28084,14 @@
     d: "M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2"
   }), 'MoreHoriz');
 
-  const useStyles$b = makeStyles()((theme) => ({
+  const useStyles$a = makeStyles()((theme) => ({
       attributeKey: {
           fontWeight: 'bold',
           marginRight: theme.spacing(2),
       },
   }));
   function AttributeKey({ attributeKey: key }) {
-      const { classes } = useStyles$b();
+      const { classes } = useStyles$a();
       const startsWithCapital = /^[A-Z]/.test(key);
       let displayKey = key;
       let titleText;
@@ -28224,7 +28224,7 @@
           , { variant: "body2", color: "textSecondary", children: value }, `${idx}.${value}`))) }));
   }
 
-  const useStyles$a = makeStyles()((theme) => ({
+  const useStyles$9 = makeStyles()((theme) => ({
       list: {
           'li:nth-of-type(odd)': {
               backgroundColor: theme.palette.action.focus,
@@ -28236,7 +28236,7 @@
   }));
   const Attributes = mobxReact.observer(function Attributes({ assembly, editable, feature, session, }) {
       const { pluginManager } = util$1.getEnv(session);
-      const { classes } = useStyles$a();
+      const { classes } = useStyles$9();
       const [anchorEl, setAnchorEl] = React.useState(null);
       const [selectedKey, setSelectedKey] = React.useState(null);
       const [editingKey, setEditingKey] = React.useState(null);
@@ -28480,39 +28480,195 @@
                               }, children: [child.type, getFeatureNameOrId$1(child), " (", child.min, "..", child.max, ")"] }) }, child._id)))] }))] }));
   });
 
-  function formatSequence(seq, refName, start, end, wrap) {
-      const header = `>${refName}:${start + 1}–${end}\n`;
-      const body = seq ;
-      return `${header}${body}`;
+  async function copyToClipboard(element) {
+      if (isSecureContext) {
+          const textBlob = new Blob([element.outerText], { type: 'text/plain' });
+          const htmlBlob = new Blob([element.outerHTML], { type: 'text/html' });
+          const clipboardItem = new ClipboardItem({
+              [textBlob.type]: textBlob,
+              [htmlBlob.type]: htmlBlob,
+          });
+          return navigator.clipboard.write([clipboardItem]);
+      }
+      const copyCallback = (event) => {
+          event.clipboardData?.setData('text/plain', element.outerText);
+          event.clipboardData?.setData('text/html', element.outerHTML);
+          event.preventDefault();
+      };
+      document.addEventListener('copy', copyCallback);
+      // fall back to deprecated only in non-secure contexts
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      document.execCommand('copy');
+      document.removeEventListener('copy', copyCallback);
   }
-  const useStyles$9 = makeStyles()({
-      sequence: {
-          width: '100%',
-          resize: 'vertical',
-      },
-  });
-  const Sequence$1 = mobxReact.observer(function Sequence({ assembly, feature, refName, session, }) {
-      const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
-      const { classes } = useStyles$9();
-      if (!(feature && currentAssembly)) {
-          return null;
+
+  function getSequenceLength(segments) {
+      let length = 0;
+      for (const segment of segments) {
+          length += segment.sequence.length;
       }
-      const refSeq = currentAssembly.getByRefName(refName);
-      if (!refSeq) {
-          return null;
+      return length;
+  }
+  function getCdsSequenceAndLocs(feature, getSequence) {
+      const { cdsLocations, strand } = feature;
+      let wholeSequence = '';
+      const [firstLocation] = cdsLocations;
+      const locs = [];
+      for (const loc of firstLocation) {
+          let locSeq = getSequence(loc.min, loc.max);
+          if (strand === -1) {
+              locSeq = util$1.revcom(locSeq);
+          }
+          wholeSequence += locSeq;
+          locs.push({ min: loc.min, max: loc.max });
       }
-      const { max, min } = feature;
-      let sequence = refSeq.getSequence(min, max);
-      if (sequence) {
-          sequence = formatSequence(sequence, refName, min, max);
+      return { wholeSequence, locs };
+  }
+  function getSequenceSegments(segmentType, feature, getSequence) {
+      const segments = [];
+      const { strand, transcriptParts } = feature;
+      switch (segmentType) {
+          case 'genomic':
+          case 'cDNA': {
+              const [firstLocation] = transcriptParts;
+              for (const loc of firstLocation) {
+                  if (segmentType === 'cDNA' && loc.type === 'intron') {
+                      continue;
+                  }
+                  let sequence = getSequence(loc.min, loc.max);
+                  if (strand === -1) {
+                      sequence = util$1.revcom(sequence);
+                  }
+                  const type = loc.type === 'fivePrimeUTR' || loc.type === 'threePrimeUTR'
+                      ? 'UTR'
+                      : loc.type;
+                  const previousSegment = segments.at(-1);
+                  if (!previousSegment) {
+                      segments.push({
+                          type,
+                          sequence,
+                          locs: [{ min: loc.min, max: loc.max }],
+                      });
+                      continue;
+                  }
+                  if (previousSegment.type === type) {
+                      previousSegment.sequence += sequence;
+                      previousSegment.locs.push({ min: loc.min, max: loc.max });
+                  }
+                  else {
+                      segments.push({
+                          type,
+                          sequence,
+                          locs: [{ min: loc.min, max: loc.max }],
+                      });
+                  }
+              }
+              return segments;
+          }
+          case 'CDS': {
+              const { locs, wholeSequence } = getCdsSequenceAndLocs(feature, getSequence);
+              segments.push({ type: 'CDS', sequence: wholeSequence, locs });
+              return segments;
+          }
+          case 'protein': {
+              const { locs, wholeSequence } = getCdsSequenceAndLocs(feature, getSequence);
+              let protein = '';
+              for (let i = 0; i < wholeSequence.length; i += 3) {
+                  const codonSeq = wholeSequence.slice(i, i + 3).toUpperCase();
+                  protein +=
+                      util$1.defaultCodonTable[codonSeq] || '&';
+              }
+              segments.push({ type: 'protein', sequence: protein, locs });
+              return segments;
+          }
       }
-      else {
-          void session.apolloDataStore.loadRefSeq([
-              { assemblyName: assembly, refName, start: min, end: max },
-          ]);
+  }
+  function getSegmentColor(type) {
+      switch (type) {
+          case 'upOrDownstream': {
+              return 'rgb(255,255,255)';
+          }
+          case 'exon':
+          case 'UTR': {
+              return 'rgb(194,106,119)';
+          }
+          case 'CDS': {
+              return 'rgb(93,168,153)';
+          }
+          case 'intron': {
+              return 'rgb(187,187,187)';
+          }
+          case 'protein': {
+              return 'rgb(148,203,236)';
+          }
+          case 'plain': {
+              return undefined;
+          }
       }
-      return (jsxRuntime.jsx("div", { children: jsxRuntime.jsx("textarea", { readOnly: true, rows: 20, className: classes.sequence, value: sequence }) }));
-  });
+  }
+  function getLocationIntervals(seqSegments) {
+      const locIntervals = [];
+      const allLocs = seqSegments.flatMap((segment) => segment.locs);
+      let [previous] = allLocs;
+      for (let i = 1; i < allLocs.length; i++) {
+          if (previous.min === allLocs[i].max || previous.max === allLocs[i].min) {
+              previous = {
+                  min: Math.min(previous.min, allLocs[i].min),
+                  max: Math.max(previous.max, allLocs[i].max),
+              };
+          }
+          else {
+              locIntervals.push(previous);
+              previous = allLocs[i];
+          }
+      }
+      locIntervals.push(previous);
+      return locIntervals;
+  }
+
+  function wrapSequence(segments, sequenceWrapLength, getContrastText) {
+      const seqElements = [];
+      let processedChars = 0;
+      for (const [index, segment] of segments.entries()) {
+          const lastLineLength = processedChars % sequenceWrapLength;
+          const segmentLineBreak = processedChars > 0 && lastLineLength === 0 ? '\n' : '';
+          processedChars += segment.sequence.length;
+          const firstLineContent = segment.sequence.slice(0, sequenceWrapLength - lastLineLength);
+          const firstLine = segmentLineBreak + firstLineContent;
+          const remainingLines = splitStringIntoChunks(segment.sequence.slice(firstLineContent.length), sequenceWrapLength);
+          const printLines = [firstLine, ...remainingLines];
+          const color = getSegmentColor(segment.type);
+          const style = { whiteSpace: 'pre-line' };
+          if (color) {
+              style.background = color;
+              style.color = getContrastText(color);
+          }
+          const span = (jsxRuntime.jsx("span", { style: style, children: printLines.join('\n') }, `${segment.type}-${index}`));
+          seqElements.push(span);
+      }
+      return seqElements;
+  }
+  const SEQUENCE_WRAP_LENGTH = 60;
+  function SequenceViewer({ locationIntervals, refSeqName, sequenceSegments, strand, }) {
+      const theme = material.useTheme();
+      const seqRef = React.useRef(null);
+      function onCopyClick() {
+          const seqDiv = seqRef.current;
+          if (!seqDiv) {
+              return;
+          }
+          void copyToClipboard(seqDiv);
+      }
+      return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.Button, { variant: "contained", onClick: onCopyClick, style: { marginLeft: 10 }, size: "medium", children: "Copy sequence" }), jsxRuntime.jsxs(material.Paper, { style: {
+                      fontFamily: 'monospace',
+                      padding: theme.spacing(),
+                      overflowX: 'auto',
+                  }, ref: seqRef, children: [">", refSeqName, ":", locationIntervals
+                          .map((interval) => strand === 1
+                          ? `${interval.min + 1}-${interval.max}`
+                          : `${interval.max}-${interval.min + 1}`)
+                          .join(';'), "(strand=", strand === 1 ? '+' : '-', ";length=", getSequenceLength(sequenceSegments), ")", jsxRuntime.jsx("br", {}), wrapSequence(sequenceSegments, SEQUENCE_WRAP_LENGTH, (color) => theme.palette.getContrastText(color))] })] }));
+  }
 
   const useStyles$8 = makeStyles()((theme) => ({
       root: {
@@ -28544,6 +28700,10 @@
               { assemblyName: assembly, refName, start: min, end: max },
           ]);
       }
+      const sequenceSegments = sequence
+          ? [{ type: 'plain', sequence, locs: [{ min, max }] }]
+          : [];
+      const locationIntervals = getLocationIntervals(sequenceSegments);
       function handlePanelChange(expanded, panel) {
           if (expanded) {
               setPanelState([...panelState, panel]);
@@ -28556,7 +28716,7 @@
                       handlePanelChange(expanded, 'attributes');
                   }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel1-content", id: "panel1-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Attributes" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: jsxRuntime.jsx(Attributes, { feature: feature, session: session, assembly: currentAssembly._id, editable: true }) })] }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('sequence'), onChange: (e, expanded) => {
                       handlePanelChange(expanded, 'sequence');
-                  }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel2-content", id: "panel2-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Sequence" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: panelState.includes('sequence') && (jsxRuntime.jsx(Sequence$1, { feature: feature, session: session, assembly: currentAssembly._id, refName: refName })) })] }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('related_features'), onChange: (e, expanded) => {
+                  }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel2-content", id: "panel2-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Sequence" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: panelState.includes('sequence') && sequence && (jsxRuntime.jsx(SequenceViewer, { refSeqName: refName, strand: feature.strand === -1 ? -1 : 1, locationIntervals: locationIntervals, sequenceSegments: sequenceSegments })) })] }), jsxRuntime.jsxs(material.Accordion, { style: { marginTop: 10 }, expanded: panelState.includes('related_features'), onChange: (e, expanded) => {
                       handlePanelChange(expanded, 'related_features');
                   }, children: [jsxRuntime.jsx(material.AccordionSummary, { expandIcon: jsxRuntime.jsx(ExpandMoreIcon, { style: { color: 'white' } }), "aria-controls": "panel3-content", id: "panel3-header", children: jsxRuntime.jsx(material.Typography, { component: "span", children: "Related features" }) }), jsxRuntime.jsx(material.AccordionDetails, { children: jsxRuntime.jsx(FeatureDetailsNavigation, { model: model, feature: feature }) })] })] }));
   });
@@ -29480,188 +29640,31 @@
     newStyled[tagName] = newStyled(tagName);
   });
 
-  async function copyToClipboard(element) {
-      if (isSecureContext) {
-          const textBlob = new Blob([element.outerText], { type: 'text/plain' });
-          const htmlBlob = new Blob([element.outerHTML], { type: 'text/html' });
-          const clipboardItem = new ClipboardItem({
-              [textBlob.type]: textBlob,
-              [htmlBlob.type]: htmlBlob,
-          });
-          return navigator.clipboard.write([clipboardItem]);
-      }
-      const copyCallback = (event) => {
-          event.clipboardData?.setData('text/plain', element.outerText);
-          event.clipboardData?.setData('text/html', element.outerHTML);
-          event.preventDefault();
-      };
-      document.addEventListener('copy', copyCallback);
-      // fall back to deprecated only in non-secure contexts
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
-      document.execCommand('copy');
-      document.removeEventListener('copy', copyCallback);
+  function SequenceOptionSelector({ onChange, options, value, }) {
+      return (jsxRuntime.jsx(material.Select, { value: value, onChange: (e) => {
+              onChange(e.target.value);
+          }, size: "small", "data-testid": "sequenceOptionSelector", children: options.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option, "data-testid": `sequenceOption-${option}`, children: option }, option))) }));
   }
 
-  const SEQUENCE_WRAP_LENGTH = 60;
-  function getSequenceLength(segments) {
-      let length = 0;
-      for (const segment of segments) {
-          length += segment.sequence.length;
-      }
-      return length;
-  }
-  function getSequenceSegments(segmentType, feature, getSequence) {
-      const segments = [];
-      const { cdsLocations, strand, transcriptParts } = feature;
-      switch (segmentType) {
-          case 'genomic':
-          case 'cDNA': {
-              const [firstLocation] = transcriptParts;
-              for (const loc of firstLocation) {
-                  if (segmentType === 'cDNA' && loc.type === 'intron') {
-                      continue;
-                  }
-                  let sequence = getSequence(loc.min, loc.max);
-                  if (strand === -1) {
-                      sequence = util$1.revcom(sequence);
-                  }
-                  const type = loc.type === 'fivePrimeUTR' || loc.type === 'threePrimeUTR'
-                      ? 'UTR'
-                      : loc.type;
-                  const previousSegment = segments.at(-1);
-                  if (!previousSegment) {
-                      segments.push({
-                          type,
-                          sequence,
-                          locs: [{ min: loc.min, max: loc.max }],
-                      });
-                      continue;
-                  }
-                  if (previousSegment.type === type) {
-                      previousSegment.sequence += sequence;
-                      previousSegment.locs.push({ min: loc.min, max: loc.max });
-                  }
-                  else {
-                      segments.push({
-                          type,
-                          sequence,
-                          locs: [{ min: loc.min, max: loc.max }],
-                      });
-                  }
-              }
-              return segments;
-          }
-          case 'CDS': {
-              let wholeSequence = '';
-              const [firstLocation] = cdsLocations;
-              const locs = [];
-              for (const loc of firstLocation) {
-                  let locSeq = getSequence(loc.min, loc.max);
-                  if (strand === -1) {
-                      locSeq = util$1.revcom(locSeq);
-                  }
-                  wholeSequence += locSeq;
-                  locs.push({ min: loc.min, max: loc.max });
-              }
-              segments.push({ type: 'CDS', sequence: wholeSequence, locs });
-              return segments;
-          }
-          case 'protein': {
-              let wholeSequence = '';
-              const [firstLocation] = cdsLocations;
-              const locs = [];
-              for (const loc of firstLocation) {
-                  let locSeq = getSequence(loc.min, loc.max);
-                  if (strand === -1) {
-                      locSeq = util$1.revcom(locSeq);
-                  }
-                  wholeSequence += locSeq;
-                  locs.push({ min: loc.min, max: loc.max });
-              }
-              let protein = '';
-              for (let i = 0; i < wholeSequence.length; i += 3) {
-                  const codonSeq = wholeSequence.slice(i, i + 3).toUpperCase();
-                  protein +=
-                      util$1.defaultCodonTable[codonSeq] || '&';
-              }
-              segments.push({ type: 'protein', sequence: protein, locs });
-              return segments;
-          }
-      }
-  }
-  function getSegmentColor(type) {
-      switch (type) {
-          case 'upOrDownstream': {
-              return 'rgb(255,255,255)';
-          }
-          case 'exon':
-          case 'UTR': {
-              return 'rgb(194,106,119)';
-          }
-          case 'CDS': {
-              return 'rgb(93,168,153)';
-          }
-          case 'intron': {
-              return 'rgb(187,187,187)';
-          }
-          case 'protein': {
-              return 'rgb(148,203,236)';
-          }
-      }
-  }
-  function getLocationIntervals(seqSegments) {
-      const locIntervals = [];
-      const allLocs = seqSegments.flatMap((segment) => segment.locs);
-      let [previous] = allLocs;
-      for (let i = 1; i < allLocs.length; i++) {
-          if (previous.min === allLocs[i].max || previous.max === allLocs[i].min) {
-              previous = {
-                  min: Math.min(previous.min, allLocs[i].min),
-                  max: Math.max(previous.max, allLocs[i].max),
-              };
-          }
-          else {
-              locIntervals.push(previous);
-              previous = allLocs[i];
-          }
-      }
-      locIntervals.push(previous);
-      return locIntervals;
-  }
+  const defaultSelectedOption = 'genomic';
+  const defaultSequenceOptions = ['genomic', 'cDNA'];
   const TranscriptSequence = mobxReact.observer(function TranscriptSequence({ assembly, feature, refName, session, }) {
       const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
       const refData = currentAssembly?.getByRefName(refName);
       const { featureTypeOntology } = session.apolloDataStore.ontologyManager;
-      const defaultSelectedOption = 'genomic';
-      const defaultSequenceOptions = ['genomic', 'cDNA'];
-      const [sequenceOptions, setSequenceOptions] = React.useState(defaultSequenceOptions);
       const [selectedOption, setSelectedOption] = React.useState(defaultSelectedOption);
-      const [sequenceSegments, setSequenceSegments] = React.useState(() => {
-          return refData
-              ? getSequenceSegments(defaultSelectedOption, feature, (min, max) => refData.getSequence(min, max))
-              : [];
-      });
-      const [locationIntervals, setLocationIntervals] = React.useState(() => {
-          return getLocationIntervals(sequenceSegments);
-      });
-      const theme = material.useTheme();
-      const seqRef = React.useRef(null);
-      React.useEffect(() => {
-          const { cdsLocations } = feature;
-          const [firstLocation] = cdsLocations;
-          if (firstLocation.length > 0) {
-              setSequenceOptions([...defaultSequenceOptions, 'CDS', 'protein']);
-          }
-          else {
-              setSequenceOptions(defaultSequenceOptions);
-          }
-          // eslint-disable-next-line @eslint-react/exhaustive-deps
-      }, [feature]);
+      const [firstCdsLocation] = feature.cdsLocations;
+      const sequenceOptions = firstCdsLocation.length > 0
+          ? [...defaultSequenceOptions, 'CDS', 'protein']
+          : defaultSequenceOptions;
+      const effectiveSelectedOption = sequenceOptions.includes(selectedOption)
+          ? selectedOption
+          : defaultSelectedOption;
+      const sequenceSegments = React.useMemo(() => refData
+          ? getSequenceSegments(effectiveSelectedOption, feature, (min, max) => refData.getSequence(min, max))
+          : [], [refData, feature, effectiveSelectedOption]);
+      const locationIntervals = React.useMemo(() => getLocationIntervals(sequenceSegments), [sequenceSegments]);
       if (!(currentAssembly && refData)) {
-          return null;
-      }
-      const refSeq = currentAssembly.getByRefName(refName);
-      if (!refSeq) {
           return null;
       }
       if (!featureTypeOntology) {
@@ -29670,52 +29673,7 @@
       if (!featureTypeOntology.isTypeOf(feature.type, 'transcript')) {
           return null;
       }
-      function handleChangeSeqOption(e) {
-          const option = e.target.value;
-          setSelectedOption(option);
-          const seqSegments = refData
-              ? getSequenceSegments(option, feature, (min, max) => refData.getSequence(min, max))
-              : [];
-          const locIntervals = getLocationIntervals(seqSegments);
-          setSequenceSegments(seqSegments);
-          setLocationIntervals(locIntervals);
-      }
-      const onCopyClick = () => {
-          const seqDiv = seqRef.current;
-          if (!seqDiv) {
-              return;
-          }
-          void copyToClipboard(seqDiv);
-      };
-      function wrapSequence(sequenceSegments, sequenceWrapLength) {
-          const seqElements = [];
-          let processedChars = 0;
-          for (const [index, segment] of sequenceSegments.entries()) {
-              const lastLineLength = processedChars % sequenceWrapLength;
-              const segmentLineBreak = processedChars > 0 && lastLineLength === 0 ? '\n' : '';
-              processedChars += segment.sequence.length;
-              const firstLine = segmentLineBreak +
-                  segment.sequence.slice(0, sequenceWrapLength - lastLineLength);
-              const remainingLines = splitStringIntoChunks(segment.sequence.slice(firstLine.length), sequenceWrapLength);
-              const printLines = [firstLine, ...remainingLines];
-              const span = (jsxRuntime.jsx("span", { style: {
-                      background: getSegmentColor(segment.type),
-                      color: theme.palette.getContrastText(getSegmentColor(segment.type)),
-                      whiteSpace: 'pre-line',
-                  }, children: printLines.join('\n') }, `${segment.type}-${index}`));
-              seqElements.push(span);
-          }
-          return seqElements;
-      }
-      return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(material.Select, { defaultValue: "genomic", value: selectedOption, onChange: handleChangeSeqOption, size: "small", "data-testid": "sequenceOptionSelector", children: sequenceOptions.map((option) => (jsxRuntime.jsx(material.MenuItem, { value: option, "data-testid": `sequenceOption-${option}`, children: option }, option))) }), jsxRuntime.jsx(material.Button, { variant: "contained", onClick: onCopyClick, style: { marginLeft: 10 }, size: "medium", children: "Copy sequence" }), jsxRuntime.jsxs(material.Paper, { style: {
-                      fontFamily: 'monospace',
-                      padding: theme.spacing(),
-                      overflowX: 'auto',
-                  }, ref: seqRef, children: [">", refSeq.name, ":", locationIntervals
-                          .map((interval) => feature.strand === 1
-                          ? `${interval.min + 1}-${interval.max}`
-                          : `${interval.max}-${interval.min + 1}`)
-                          .join(';'), "(strand=", feature.strand === 1 ? '+' : '-', ";length=", getSequenceLength(sequenceSegments), ")", jsxRuntime.jsx("br", {}), wrapSequence(sequenceSegments, SEQUENCE_WRAP_LENGTH)] })] }));
+      return (jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [jsxRuntime.jsx(SequenceOptionSelector, { options: sequenceOptions, value: effectiveSelectedOption, onChange: setSelectedOption }), jsxRuntime.jsx(SequenceViewer, { refSeqName: refData.name, strand: feature.strand === -1 ? -1 : 1, locationIntervals: locationIntervals, sequenceSegments: sequenceSegments })] }));
   });
 
   var RemoveIcon = /*#__PURE__*/utils.createSvgIcon(/*#__PURE__*/jsxRuntime.jsx("path", {
