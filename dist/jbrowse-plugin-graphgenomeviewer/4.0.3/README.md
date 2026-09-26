@@ -79,11 +79,12 @@ variant map draws them as glyphs.
 A graph track's display is `LinearGraphDisplay`. It cuts the view's window plus
 a window-width each side and re-cuts once the view leaves the cut, keeping its
 sample rows in the order they were drawn. On a layout whose x is reference bp,
-such as Anchored or Sample rows, the graph draws under the view's own
-coordinates and pans and zooms with it. The force-directed, ordered and walk-row
-layouts draw in their own coordinates inside the track, fitted to it, with their
-own zoom in the track menu, the way a variant matrix does. The track menu also
-picks the layout, the colour, a walk to lift out, and opens the settings.
+such as Anchored, Sample rows, Walk rows or the Variant map, the graph draws
+under the view's own coordinates and pans and zooms with it. The force-directed
+and ordered layouts draw in their own coordinates inside the track, fitted to
+it, with their own zoom in the track menu, the way a variant matrix does. The
+track menu also picks the layout, the colour, a walk to lift out, and opens the
+settings.
 
 ```json
 {

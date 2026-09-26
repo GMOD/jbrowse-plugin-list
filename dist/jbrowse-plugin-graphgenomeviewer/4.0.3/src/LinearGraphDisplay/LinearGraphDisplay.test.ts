@@ -13,6 +13,7 @@ import { types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 
 import LinearGraphDisplayF from './index'
+import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
 import RgfaTabixAdapterF from '../RgfaTabixAdapter/index'
 
 import type { LinearGraphDisplayModel } from './model'
@@ -97,25 +98,28 @@ function createEnvironment({ tiered = true } = {}) {
   console.warn = vi.fn()
   const pluginManager = new PluginManager()
   RgfaTabixAdapterF(pluginManager)
-  pluginManager.addTrackType(() => {
-    const trackConfigSchema = ConfigurationSchema(
-      'FeatureTrack',
-      {},
-      {
-        baseConfiguration: createBaseTrackConfig(pluginManager),
-        explicitIdentifier: 'trackId',
-      },
-    )
-    return new TrackType({
-      name: 'FeatureTrack',
-      configSchema: trackConfigSchema,
-      stateModel: createBaseTrackModel(
-        pluginManager,
-        'FeatureTrack',
-        trackConfigSchema,
-      ),
+  GbzBaseSyntenyAdapterF(pluginManager)
+  for (const name of ['FeatureTrack', 'SyntenyTrack']) {
+    pluginManager.addTrackType(() => {
+      const trackConfigSchema = ConfigurationSchema(
+        name,
+        {},
+        {
+          baseConfiguration: createBaseTrackConfig(pluginManager),
+          explicitIdentifier: 'trackId',
+        },
+      )
+      return new TrackType({
+        name,
+        configSchema: trackConfigSchema,
+        stateModel: createBaseTrackModel(
+          pluginManager,
+          name,
+          trackConfigSchema,
+        ),
+      })
     })
-  })
+  }
   LinearGraphDisplayF(pluginManager)
   pluginManager.addViewType(
     () =>
@@ -155,7 +159,20 @@ function createEnvironment({ tiered = true } = {}) {
     },
     { pluginManager },
   )
-  const trackConfigs = [trackConfig]
+  const gbzTrackConfig = trackSchema.create(
+    {
+      type: 'SyntenyTrack',
+      trackId: 'walks',
+      name: 'walks',
+      assemblyNames: [ASM, 'HG1.1', 'HG2.1'],
+      adapter: { type: 'GbzBaseSyntenyAdapter', assemblyNames: [ASM] },
+      displays: [
+        { type: 'LinearGraphDisplay', displayId: 'walks-LinearGraphDisplay' },
+      ],
+    },
+    { pluginManager },
+  )
+  const trackConfigs = [trackConfig, gbzTrackConfig]
 
   const assemblyRegions = [
     { refName: REF, start: 0, end: CONTIG, assemblyName: ASM },
@@ -362,6 +379,37 @@ test("a launch names the pane's props without its type, and opens in that layout
   expect(display.pane.layoutMode).toBe('force')
   expect(display.pane.colorScheme).toBe('uniform')
   expect(display.pane.hostPlacesX).toBe(false)
+})
+
+test('a launch that states one pane prop takes the rest from the config', async () => {
+  const { view, cuts } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack(
+    'graph',
+    {},
+    {
+      type: 'LinearGraphDisplay',
+      pane: { colorScheme: 'uniform' },
+    },
+  )
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(1)
+  expect(display.pane.colorScheme).toBe('uniform')
+  expect(display.pane.layoutMode).toBe('auto')
+  expect(display.pane.hostPlacesX).toBe(true)
+})
+
+test('a GBZ track cuts for the lanes it names', async () => {
+  const { view } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('walks')
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  expect(display.type).toBe('LinearGraphDisplay')
+  expect(display.pane.subgraphHaplotypes).toEqual(['HG1.1', 'HG2.1'])
 })
 
 test('the track menu offers the layouts, colours and the settings dialog', async () => {
