@@ -114,11 +114,20 @@ export function hostCut(
   const margin = margins
     ? Math.max(0, Math.min(window.span, (capBp - visible) / 2))
     : 0
+  let start = Math.max(window.regionStart, Math.floor(window.start - margin))
+  let end = Math.min(window.regionEnd, Math.ceil(window.end + margin))
+  // Rounding outward can put a cut a base or two past the cap, which the load
+  // refuses whole; trim it back rather than lose the cut.
+  const over = end - start - capBp
+  if (over > 0) {
+    start += Math.floor(over / 2)
+    end -= Math.ceil(over / 2)
+  }
   return {
     refName: window.refName,
     assemblyName: window.assemblyName,
-    start: Math.max(window.regionStart, Math.floor(window.start - margin)),
-    end: Math.min(window.regionEnd, Math.ceil(window.end + margin)),
+    start,
+    end,
   }
 }
 
@@ -135,8 +144,9 @@ export function cutHolds(
   ) {
     return false
   }
+  // to the base, since a cut trimmed to its cap can end a base inside the window
   if (margins) {
-    return cut.start <= window.start && window.end <= cut.end
+    return cut.start <= window.start + 1 && window.end <= cut.end + 1
   }
   const exact = hostCut(window, Infinity, false)
   return (

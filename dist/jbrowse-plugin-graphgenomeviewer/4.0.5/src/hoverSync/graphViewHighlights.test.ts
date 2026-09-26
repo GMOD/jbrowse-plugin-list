@@ -22,6 +22,27 @@ test('a graph view launched from this linear view contributes its highlight', ()
 
 const linearView = (id: string) => ({ id, type: 'LinearGenomeView' })
 
+test("a graph pane inside this linear view's own track contributes its highlight", () => {
+  const view = {
+    ...linearView('lgv1'),
+    tracks: [
+      {
+        displays: [
+          {
+            id: 'display1',
+            type: 'LinearGraphDisplay',
+            pane: { type: 'GraphGenomeView', hoverHighlight: HIGHLIGHT },
+          },
+        ],
+      },
+    ],
+  }
+  expect(graphViewHighlights([view], 'lgv1')).toEqual([
+    { key: 'display1', region: HIGHLIGHT },
+  ])
+  expect(graphViewHighlights([view], 'lgv2')).toEqual([])
+})
+
 test('a graph view launched from a different linear view is ignored', () => {
   expect(
     graphViewHighlights(

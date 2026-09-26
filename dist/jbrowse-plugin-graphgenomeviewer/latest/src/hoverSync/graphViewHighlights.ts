@@ -89,6 +89,21 @@ function isOnAssembly(
 // The highlights a linear view should draw for the graph views connected to it.
 // Reads `session.views` structurally: the members it needs are declared by
 // GraphGenomeView, not by the AbstractViewModel the session array is typed as.
+// The graph panes inside a linear view's own tracks, connected to it by where
+// they sit.
+function trackPanes(view: Record<string, unknown>) {
+  const tracks = Array.isArray(view.tracks) ? view.tracks : []
+  return tracks.flatMap((track: unknown) => {
+    const displays =
+      isRecord(track) && Array.isArray(track.displays) ? track.displays : []
+    return displays.flatMap((display: unknown) =>
+      isRecord(display) && isRecord(display.pane)
+        ? [{ key: display.id, pane: display.pane }]
+        : [],
+    )
+  })
+}
+
 export function graphViewHighlights(
   views: unknown[],
   linearViewId: string,
@@ -101,6 +116,17 @@ export function graphViewHighlights(
     withRows(views).map(view => (isRecord(view) ? view.id : undefined)),
   )
   for (const view of views) {
+    if (isRecord(view) && view.id === linearViewId) {
+      for (const { key, pane } of trackPanes(view)) {
+        const region = readRegion(pane.hoverHighlight)
+        if (region && isOnAssembly(region, linearAssemblyNames)) {
+          highlights.push({
+            key: typeof key === 'string' ? key : 'graph-track',
+            region,
+          })
+        }
+      }
+    }
     if (
       isRecord(view) &&
       view.type === 'GraphGenomeView' &&
