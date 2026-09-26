@@ -159,7 +159,7 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
       "versions": [
         {
-          "pluginVersion": "3.0.5",
+          "pluginVersion": "3.1.0",
           "jbrowseRange": ">=5.0.0"
         }
       ]
