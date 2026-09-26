@@ -146,6 +146,23 @@
       "umdPath": "dist/jbrowse-plugin-tview.umd.production.min.js",
       "license": "MIT",
       "tags": ["bring-your-own-data", "alignment"]
+    },
+    {
+      "name": "GraphGenomeView",
+      "packageName": "jbrowse-plugin-graphgenomeviewer",
+      "authors": ["Colin Diesh"],
+      "description": "Graph genome (pangenome) view: rGFA reference-anchored layouts, the Bandage force-directed engine, and haplotype lanes read from a gbz-base database",
+      "location": "https://github.com/GMOD/jbrowse-plugin-graphgenomeviewer",
+      "esmPath": "dist/jbrowse-plugin-graphgenomeviewer.esm.js",
+      "license": "GPL-3.0-or-later",
+      "tags": ["bring-your-own-data", "pangenome"],
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
+      "versions": [
+        {
+          "pluginVersion": "3.0.5",
+          "jbrowseRange": ">=5.0.0"
+        }
+      ]
     }
   ]
 }

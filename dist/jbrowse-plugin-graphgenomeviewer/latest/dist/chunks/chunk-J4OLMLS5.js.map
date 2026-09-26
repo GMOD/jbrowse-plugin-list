@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/util"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/util\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,oBAAoB",
+  "names": ["require_util", "__commonJSMin", "exports", "module"]
+}

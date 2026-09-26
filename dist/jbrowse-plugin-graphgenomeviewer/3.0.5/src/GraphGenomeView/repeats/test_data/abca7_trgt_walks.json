@@ -1,0 +1,575 @@
+{
+  "source": "rows: walkRows() over GbzBaseSyntenyAdapter.getSubgraph of hprc-v2.1-mc-grch38.gbz.db at chr19:1,049,407-1,050,096, the ABCA7 VNTR. calls: AL and SD of the one record in jbrowse.org/demos/hprc/hprc_abca7_trgt.vcf.gz, PacBio TRGT genotypes of the same samples (TRGTdb, Zenodo 8329210)",
+  "rows": [
+    { "label": "HG00099#1", "sample": "HG00099", "bp": 3183, "complete": true },
+    { "label": "HG00099#2", "sample": "HG00099", "bp": 388, "complete": true },
+    { "label": "HG00280#1", "sample": "HG00280", "bp": 1050, "complete": true },
+    { "label": "HG00280#2", "sample": "HG00280", "bp": 2679, "complete": true },
+    { "label": "HG00323#1", "sample": "HG00323", "bp": 2639, "complete": true },
+    { "label": "HG00323#2", "sample": "HG00323", "bp": 1642, "complete": true },
+    { "label": "HG00423#1", "sample": "HG00423", "bp": 946, "complete": true },
+    { "label": "HG00423#2", "sample": "HG00423", "bp": 2797, "complete": true },
+    { "label": "HG00438#1", "sample": "HG00438", "bp": 2388, "complete": true },
+    { "label": "HG00438#2", "sample": "HG00438", "bp": 2232, "complete": true },
+    { "label": "HG00544#1", "sample": "HG00544", "bp": 3410, "complete": true },
+    { "label": "HG00544#2", "sample": "HG00544", "bp": 2625, "complete": true },
+    { "label": "HG00558#1", "sample": "HG00558", "bp": 3429, "complete": true },
+    { "label": "HG00558#2", "sample": "HG00558", "bp": 5359, "complete": true },
+    { "label": "HG00621#1", "sample": "HG00621", "bp": 1366, "complete": true },
+    { "label": "HG00621#2", "sample": "HG00621", "bp": 2642, "complete": true },
+    { "label": "HG00639#1", "sample": "HG00639", "bp": 2323, "complete": true },
+    { "label": "HG00639#2", "sample": "HG00639", "bp": 2386, "complete": true },
+    { "label": "HG00642#1", "sample": "HG00642", "bp": 2486, "complete": true },
+    { "label": "HG00642#2", "sample": "HG00642", "bp": 2689, "complete": true },
+    { "label": "HG00673#1", "sample": "HG00673", "bp": 1053, "complete": true },
+    { "label": "HG00673#2", "sample": "HG00673", "bp": 4715, "complete": true },
+    { "label": "HG00735#1", "sample": "HG00735", "bp": 3930, "complete": true },
+    { "label": "HG00735#2", "sample": "HG00735", "bp": 3930, "complete": true },
+    { "label": "HG00738#1", "sample": "HG00738", "bp": 1503, "complete": true },
+    { "label": "HG00738#2", "sample": "HG00738", "bp": 996, "complete": true },
+    { "label": "HG00741#1", "sample": "HG00741", "bp": 388, "complete": true },
+    { "label": "HG00741#2", "sample": "HG00741", "bp": 388, "complete": true },
+    { "label": "HG01071#1", "sample": "HG01071", "bp": 4014, "complete": true },
+    { "label": "HG01071#2", "sample": "HG01071", "bp": 3711, "complete": true },
+    { "label": "HG01081#1", "sample": "HG01081", "bp": 1555, "complete": true },
+    { "label": "HG01081#2", "sample": "HG01081", "bp": 3219, "complete": true },
+    { "label": "HG01099#1", "sample": "HG01099", "bp": 591, "complete": true },
+    { "label": "HG01099#2", "sample": "HG01099", "bp": 4653, "complete": true },
+    { "label": "HG01106#1", "sample": "HG01106", "bp": 2815, "complete": true },
+    { "label": "HG01106#2", "sample": "HG01106", "bp": 3271, "complete": true },
+    { "label": "HG01123#1", "sample": "HG01123", "bp": 2861, "complete": true },
+    { "label": "HG01123#2", "sample": "HG01123", "bp": 1072, "complete": true },
+    { "label": "HG01175#1", "sample": "HG01175", "bp": 2534, "complete": true },
+    { "label": "HG01175#2", "sample": "HG01175", "bp": 2534, "complete": true },
+    { "label": "HG01255#1", "sample": "HG01255", "bp": 1643, "complete": true },
+    { "label": "HG01255#2", "sample": "HG01255", "bp": 1206, "complete": true },
+    { "label": "HG01258#1", "sample": "HG01258", "bp": 3244, "complete": true },
+    { "label": "HG01258#2", "sample": "HG01258", "bp": 2395, "complete": true },
+    { "label": "HG01261#1", "sample": "HG01261", "bp": 2881, "complete": true },
+    { "label": "HG01261#2", "sample": "HG01261", "bp": 3736, "complete": true },
+    { "label": "HG01346#1", "sample": "HG01346", "bp": 907, "complete": true },
+    { "label": "HG01346#2", "sample": "HG01346", "bp": 4145, "complete": true },
+    { "label": "HG01361#1", "sample": "HG01361", "bp": 1946, "complete": true },
+    { "label": "HG01361#2", "sample": "HG01361", "bp": 388, "complete": true },
+    { "label": "HG01433#1", "sample": "HG01433", "bp": 1571, "complete": true },
+    { "label": "HG01433#2", "sample": "HG01433", "bp": 3416, "complete": true },
+    { "label": "HG01496#1", "sample": "HG01496", "bp": 1463, "complete": true },
+    { "label": "HG01496#2", "sample": "HG01496", "bp": 1732, "complete": true },
+    { "label": "HG01884#1", "sample": "HG01884", "bp": 3784, "complete": true },
+    { "label": "HG01884#2", "sample": "HG01884", "bp": 1798, "complete": true },
+    { "label": "HG01891#1", "sample": "HG01891", "bp": 1648, "complete": true },
+    { "label": "HG01891#2", "sample": "HG01891", "bp": 4127, "complete": true },
+    { "label": "HG01928#1", "sample": "HG01928", "bp": 2831, "complete": true },
+    { "label": "HG01928#2", "sample": "HG01928", "bp": 2831, "complete": true },
+    { "label": "HG01934#1", "sample": "HG01934", "bp": 1550, "complete": true },
+    { "label": "HG01934#2", "sample": "HG01934", "bp": 2503, "complete": true },
+    { "label": "HG01943#1", "sample": "HG01943", "bp": 2109, "complete": true },
+    { "label": "HG01943#2", "sample": "HG01943", "bp": 4847, "complete": true },
+    { "label": "HG01975#1", "sample": "HG01975", "bp": 1623, "complete": true },
+    { "label": "HG01975#2", "sample": "HG01975", "bp": 3432, "complete": true },
+    { "label": "HG01978#1", "sample": "HG01978", "bp": 1895, "complete": true },
+    { "label": "HG01978#2", "sample": "HG01978", "bp": 1606, "complete": true },
+    { "label": "HG01981#1", "sample": "HG01981", "bp": 3292, "complete": true },
+    { "label": "HG01981#2", "sample": "HG01981", "bp": 2752, "complete": true },
+    { "label": "HG01993#1", "sample": "HG01993", "bp": 3765, "complete": true },
+    { "label": "HG01993#2", "sample": "HG01993", "bp": 1337, "complete": true },
+    { "label": "HG02004#1", "sample": "HG02004", "bp": 1719, "complete": true },
+    { "label": "HG02004#2", "sample": "HG02004", "bp": 3709, "complete": true },
+    { "label": "HG02027#1", "sample": "HG02027", "bp": 1089, "complete": true },
+    { "label": "HG02027#2", "sample": "HG02027", "bp": 3859, "complete": true },
+    { "label": "HG02040#1", "sample": "HG02040", "bp": 3200, "complete": true },
+    { "label": "HG02040#2", "sample": "HG02040", "bp": 4201, "complete": true },
+    { "label": "HG02056#1", "sample": "HG02056", "bp": 1984, "complete": true },
+    { "label": "HG02056#2", "sample": "HG02056", "bp": 4066, "complete": true },
+    { "label": "HG02071#1", "sample": "HG02071", "bp": 4239, "complete": true },
+    { "label": "HG02071#2", "sample": "HG02071", "bp": 2510, "complete": true },
+    { "label": "HG02074#1", "sample": "HG02074", "bp": 2624, "complete": true },
+    { "label": "HG02074#2", "sample": "HG02074", "bp": 1704, "complete": true },
+    { "label": "HG02083#1", "sample": "HG02083", "bp": 3527, "complete": true },
+    { "label": "HG02083#2", "sample": "HG02083", "bp": 1161, "complete": true },
+    { "label": "HG02132#1", "sample": "HG02132", "bp": 935, "complete": true },
+    { "label": "HG02132#2", "sample": "HG02132", "bp": 909, "complete": true },
+    { "label": "HG02135#1", "sample": "HG02135", "bp": 1838, "complete": true },
+    { "label": "HG02135#2", "sample": "HG02135", "bp": 2875, "complete": true },
+    { "label": "HG02148#1", "sample": "HG02148", "bp": 2758, "complete": true },
+    { "label": "HG02148#2", "sample": "HG02148", "bp": 2319, "complete": true },
+    { "label": "HG02257#1", "sample": "HG02257", "bp": 3104, "complete": true },
+    { "label": "HG02257#2", "sample": "HG02257", "bp": 2099, "complete": true },
+    { "label": "HG02273#1", "sample": "HG02273", "bp": 2316, "complete": true },
+    { "label": "HG02273#2", "sample": "HG02273", "bp": 1286, "complete": true },
+    { "label": "HG02280#1", "sample": "HG02280", "bp": 916, "complete": true },
+    { "label": "HG02280#2", "sample": "HG02280", "bp": 2916, "complete": true },
+    { "label": "HG02293#1", "sample": "HG02293", "bp": 1262, "complete": true },
+    { "label": "HG02293#2", "sample": "HG02293", "bp": 1999, "complete": true },
+    { "label": "HG02300#1", "sample": "HG02300", "bp": 2030, "complete": true },
+    { "label": "HG02300#2", "sample": "HG02300", "bp": 4322, "complete": true },
+    { "label": "HG02486#1", "sample": "HG02486", "bp": 1653, "complete": true },
+    { "label": "HG02486#2", "sample": "HG02486", "bp": 2208, "complete": true },
+    { "label": "HG02523#1", "sample": "HG02523", "bp": 3279, "complete": true },
+    { "label": "HG02523#2", "sample": "HG02523", "bp": 3279, "complete": true },
+    { "label": "HG02559#1", "sample": "HG02559", "bp": 5525, "complete": true },
+    { "label": "HG02559#2", "sample": "HG02559", "bp": 493, "complete": true },
+    { "label": "HG02572#1", "sample": "HG02572", "bp": 2591, "complete": true },
+    { "label": "HG02572#2", "sample": "HG02572", "bp": 778, "complete": true },
+    { "label": "HG02602#1", "sample": "HG02602", "bp": 388, "complete": true },
+    { "label": "HG02602#2", "sample": "HG02602", "bp": 2015, "complete": true },
+    { "label": "HG02615#1", "sample": "HG02615", "bp": 1880, "complete": true },
+    { "label": "HG02615#2", "sample": "HG02615", "bp": 1877, "complete": true },
+    { "label": "HG02622#1", "sample": "HG02622", "bp": 2697, "complete": true },
+    { "label": "HG02622#2", "sample": "HG02622", "bp": 1931, "complete": true },
+    { "label": "HG02630#1", "sample": "HG02630", "bp": 877, "complete": true },
+    { "label": "HG02630#2", "sample": "HG02630", "bp": 1139, "complete": true },
+    { "label": "HG02647#1", "sample": "HG02647", "bp": 877, "complete": true },
+    { "label": "HG02647#2", "sample": "HG02647", "bp": 3859, "complete": true },
+    { "label": "HG02717#1", "sample": "HG02717", "bp": 993, "complete": true },
+    { "label": "HG02717#2", "sample": "HG02717", "bp": 1803, "complete": true },
+    { "label": "HG02738#1", "sample": "HG02738", "bp": 2179, "complete": true },
+    { "label": "HG02738#2", "sample": "HG02738", "bp": 462, "complete": true },
+    { "label": "HG02809#1", "sample": "HG02809", "bp": 937, "complete": true },
+    { "label": "HG02809#2", "sample": "HG02809", "bp": 4258, "complete": true },
+    { "label": "HG02886#1", "sample": "HG02886", "bp": 3323, "complete": true },
+    { "label": "HG02886#2", "sample": "HG02886", "bp": 1102, "complete": true },
+    { "label": "HG02965#1", "sample": "HG02965", "bp": 1901, "complete": true },
+    { "label": "HG02965#2", "sample": "HG02965", "bp": 2345, "complete": true },
+    { "label": "HG02976#1", "sample": "HG02976", "bp": 2884, "complete": true },
+    {
+      "label": "HG02976#2",
+      "sample": "HG02976",
+      "bp": 3653,
+      "complete": false
+    },
+    { "label": "HG03017#1", "sample": "HG03017", "bp": 1889, "complete": true },
+    { "label": "HG03017#2", "sample": "HG03017", "bp": 1783, "complete": true },
+    { "label": "HG03041#1", "sample": "HG03041", "bp": 1426, "complete": true },
+    { "label": "HG03041#2", "sample": "HG03041", "bp": 2523, "complete": true },
+    { "label": "HG03130#1", "sample": "HG03130", "bp": 2865, "complete": true },
+    { "label": "HG03130#2", "sample": "HG03130", "bp": 1562, "complete": true },
+    { "label": "HG03195#1", "sample": "HG03195", "bp": 3276, "complete": true },
+    { "label": "HG03195#2", "sample": "HG03195", "bp": 1646, "complete": true },
+    { "label": "HG03209#1", "sample": "HG03209", "bp": 4989, "complete": true },
+    { "label": "HG03209#2", "sample": "HG03209", "bp": 3098, "complete": true },
+    { "label": "HG03239#1", "sample": "HG03239", "bp": 2964, "complete": true },
+    { "label": "HG03239#2", "sample": "HG03239", "bp": 4968, "complete": true },
+    { "label": "HG03453#1", "sample": "HG03453", "bp": 2330, "complete": true },
+    { "label": "HG03453#2", "sample": "HG03453", "bp": 876, "complete": true },
+    { "label": "HG03471#1", "sample": "HG03471", "bp": 1120, "complete": true },
+    { "label": "HG03471#2", "sample": "HG03471", "bp": 1081, "complete": true },
+    { "label": "HG03516#1", "sample": "HG03516", "bp": 1876, "complete": true },
+    { "label": "HG03516#2", "sample": "HG03516", "bp": 1198, "complete": true },
+    { "label": "HG03540#1", "sample": "HG03540", "bp": 2734, "complete": true },
+    { "label": "HG03540#2", "sample": "HG03540", "bp": 2841, "complete": true },
+    { "label": "HG03579#1", "sample": "HG03579", "bp": 2335, "complete": true },
+    { "label": "HG03579#2", "sample": "HG03579", "bp": 2833, "complete": true },
+    { "label": "HG03654#1", "sample": "HG03654", "bp": 2936, "complete": true },
+    { "label": "HG03654#2", "sample": "HG03654", "bp": 2196, "complete": true },
+    { "label": "HG03669#1", "sample": "HG03669", "bp": 1996, "complete": true },
+    { "label": "HG03669#2", "sample": "HG03669", "bp": 2359, "complete": true },
+    { "label": "HG03688#1", "sample": "HG03688", "bp": 5321, "complete": true },
+    { "label": "HG03688#2", "sample": "HG03688", "bp": 4055, "complete": true },
+    { "label": "HG03831#1", "sample": "HG03831", "bp": 1217, "complete": true },
+    { "label": "HG03831#2", "sample": "HG03831", "bp": 388, "complete": true },
+    { "label": "HG03834#1", "sample": "HG03834", "bp": 3328, "complete": true },
+    { "label": "HG03834#2", "sample": "HG03834", "bp": 3633, "complete": true },
+    { "label": "HG03927#1", "sample": "HG03927", "bp": 1808, "complete": true },
+    { "label": "HG03927#2", "sample": "HG03927", "bp": 819, "complete": true },
+    { "label": "HG03942#1", "sample": "HG03942", "bp": 4292, "complete": true },
+    { "label": "HG03942#2", "sample": "HG03942", "bp": 4692, "complete": true },
+    { "label": "HG04115#1", "sample": "HG04115", "bp": 388, "complete": true },
+    { "label": "HG04115#2", "sample": "HG04115", "bp": 1127, "complete": true },
+    { "label": "HG04199#1", "sample": "HG04199", "bp": 1476, "complete": true },
+    {
+      "label": "HG04199#2",
+      "sample": "HG04199",
+      "bp": 3655,
+      "complete": false
+    },
+    { "label": "HG04204#1", "sample": "HG04204", "bp": 1919, "complete": true },
+    { "label": "HG04204#2", "sample": "HG04204", "bp": 4107, "complete": true },
+    { "label": "HG04228#1", "sample": "HG04228", "bp": 1255, "complete": true },
+    { "label": "HG04228#2", "sample": "HG04228", "bp": 2724, "complete": true },
+    { "label": "NA18747#1", "sample": "NA18747", "bp": 669, "complete": true },
+    { "label": "NA18747#2", "sample": "NA18747", "bp": 1501, "complete": true },
+    { "label": "NA18971#1", "sample": "NA18971", "bp": 2393, "complete": true },
+    { "label": "NA18971#2", "sample": "NA18971", "bp": 1398, "complete": true },
+    { "label": "NA19043#1", "sample": "NA19043", "bp": 2960, "complete": true },
+    { "label": "NA19043#2", "sample": "NA19043", "bp": 2818, "complete": true },
+    { "label": "NA20752#1", "sample": "NA20752", "bp": 1523, "complete": true },
+    { "label": "NA20752#2", "sample": "NA20752", "bp": 1778, "complete": true },
+    { "label": "NA20805#1", "sample": "NA20805", "bp": 779, "complete": true },
+    { "label": "NA20805#2", "sample": "NA20805", "bp": 2226, "complete": true }
+  ],
+  "calls": {
+    "HG00099": [
+      { "bp": 387, "spanningReads": 7 },
+      { "bp": 3161, "spanningReads": 1 }
+    ],
+    "HG00280": [
+      { "bp": 1047, "spanningReads": 1 },
+      { "bp": 1049, "spanningReads": 2 }
+    ],
+    "HG00323": [
+      { "bp": 2640, "spanningReads": 1 },
+      { "bp": 2640, "spanningReads": 0 }
+    ],
+    "HG00423": [
+      { "bp": 1115, "spanningReads": 2 },
+      { "bp": 2796, "spanningReads": 3 }
+    ],
+    "HG00438": [
+      { "bp": 2239, "spanningReads": 1 },
+      { "bp": 2397, "spanningReads": 2 }
+    ],
+    "HG00544": [
+      { "bp": 2624, "spanningReads": 1 },
+      { "bp": 3409, "spanningReads": 2 }
+    ],
+    "HG00558": [
+      { "bp": 2648, "spanningReads": 3 },
+      { "bp": 5343, "spanningReads": 2 }
+    ],
+    "HG00621": [
+      { "bp": 1369, "spanningReads": 1 },
+      { "bp": 1380, "spanningReads": 1 }
+    ],
+    "HG00639": [
+      { "bp": 2422, "spanningReads": 1 },
+      { "bp": 2422, "spanningReads": 0 }
+    ],
+    "HG00642": [
+      { "bp": 2464, "spanningReads": 1 },
+      { "bp": 2675, "spanningReads": 2 }
+    ],
+    "HG00673": [
+      { "bp": 1051, "spanningReads": 3 },
+      { "bp": 4011, "spanningReads": 1 }
+    ],
+    "HG00735": [
+      { "bp": 3962, "spanningReads": 1 },
+      { "bp": 3962, "spanningReads": 0 }
+    ],
+    "HG00738": [
+      { "bp": 1515, "spanningReads": 1 },
+      { "bp": 1515, "spanningReads": 0 }
+    ],
+    "HG00741": [
+      { "bp": 387, "spanningReads": 2 },
+      { "bp": 391, "spanningReads": 1 }
+    ],
+    "HG01071": [
+      { "bp": 3723, "spanningReads": 1 },
+      { "bp": 3723, "spanningReads": 0 }
+    ],
+    "HG01081": [
+      { "bp": 1591, "spanningReads": 2 },
+      { "bp": 3204, "spanningReads": 2 }
+    ],
+    "HG01099": [
+      { "bp": 600, "spanningReads": 2 },
+      { "bp": 4674, "spanningReads": 1 }
+    ],
+    "HG01106": [
+      { "bp": 2816, "spanningReads": 1 },
+      { "bp": 3287, "spanningReads": 2 }
+    ],
+    "HG01123": [
+      { "bp": 1072, "spanningReads": 1 },
+      { "bp": 1072, "spanningReads": 0 }
+    ],
+    "HG01175": [
+      { "bp": 2579, "spanningReads": 1 },
+      { "bp": 2579, "spanningReads": 0 }
+    ],
+    "HG01255": [
+      { "bp": 1206, "spanningReads": 1 },
+      { "bp": 1645, "spanningReads": 1 }
+    ],
+    "HG01258": [
+      { "bp": 3198, "spanningReads": 1 },
+      { "bp": 3198, "spanningReads": 0 }
+    ],
+    "HG01261": [
+      { "bp": 2883, "spanningReads": 1 },
+      { "bp": 2883, "spanningReads": 0 }
+    ],
+    "HG01346": [
+      { "bp": 910, "spanningReads": 1 },
+      { "bp": 4158, "spanningReads": 2 }
+    ],
+    "HG01361": [
+      { "bp": 390, "spanningReads": 1 },
+      { "bp": 1948, "spanningReads": 1 }
+    ],
+    "HG01433": [
+      { "bp": 1586, "spanningReads": 1 },
+      { "bp": 3421, "spanningReads": 1 }
+    ],
+    "HG01496": [
+      { "bp": 1724, "spanningReads": 1 },
+      { "bp": 1724, "spanningReads": 0 }
+    ],
+    "HG01884": [
+      { "bp": 1796, "spanningReads": 3 },
+      { "bp": 3775, "spanningReads": 2 }
+    ],
+    "HG01891": [
+      { "bp": 1653, "spanningReads": 1 },
+      { "bp": 4118, "spanningReads": 2 }
+    ],
+    "HG01928": [
+      { "bp": 4079, "spanningReads": 1 },
+      { "bp": 4079, "spanningReads": 0 }
+    ],
+    "HG01934": [
+      { "bp": 1548, "spanningReads": 2 },
+      { "bp": 2507, "spanningReads": 1 }
+    ],
+    "HG01943": [
+      { "bp": 4049, "spanningReads": 1 },
+      { "bp": 4062, "spanningReads": 1 }
+    ],
+    "HG01975": [
+      { "bp": 1642, "spanningReads": 2 },
+      { "bp": 1668, "spanningReads": 1 }
+    ],
+    "HG01978": [
+      { "bp": 1616, "spanningReads": 1 },
+      { "bp": 1899, "spanningReads": 2 }
+    ],
+    "HG01981": [
+      { "bp": 2738, "spanningReads": 1 },
+      { "bp": 2803, "spanningReads": 2 }
+    ],
+    "HG01993": [
+      { "bp": 1340, "spanningReads": 4 },
+      { "bp": 3748, "spanningReads": 1 }
+    ],
+    "HG02004": [
+      { "bp": 1731, "spanningReads": 1 },
+      { "bp": 3712, "spanningReads": 1 }
+    ],
+    "HG02027": [
+      { "bp": 1092, "spanningReads": 1 },
+      { "bp": 3104, "spanningReads": 1 }
+    ],
+    "HG02040": [
+      { "bp": 3213, "spanningReads": 1 },
+      { "bp": 3436, "spanningReads": 1 }
+    ],
+    "HG02056": [
+      { "bp": 4065, "spanningReads": 1 },
+      { "bp": 4065, "spanningReads": 0 }
+    ],
+    "HG02071": [
+      { "bp": 2507, "spanningReads": 4 },
+      { "bp": 4240, "spanningReads": 2 }
+    ],
+    "HG02074": [
+      { "bp": 1704, "spanningReads": 1 },
+      { "bp": 2613, "spanningReads": 2 }
+    ],
+    "HG02083": [
+      { "bp": 1157, "spanningReads": 1 },
+      { "bp": 1157, "spanningReads": 0 }
+    ],
+    "HG02132": [
+      { "bp": 922, "spanningReads": 5 },
+      { "bp": 936, "spanningReads": 6 }
+    ],
+    "HG02135": [
+      { "bp": 1838, "spanningReads": 3 },
+      { "bp": 2871, "spanningReads": 4 }
+    ],
+    "HG02148": [
+      { "bp": 2325, "spanningReads": 2 },
+      { "bp": 2342, "spanningReads": 1 }
+    ],
+    "HG02257": [
+      { "bp": 2105, "spanningReads": 1 },
+      { "bp": 3092, "spanningReads": 2 }
+    ],
+    "HG02273": [
+      { "bp": 1287, "spanningReads": 2 },
+      { "bp": 2301, "spanningReads": 2 }
+    ],
+    "HG02280": [
+      { "bp": 2916, "spanningReads": 1 },
+      { "bp": 2952, "spanningReads": 1 }
+    ],
+    "HG02293": [
+      { "bp": 1262, "spanningReads": 1 },
+      { "bp": 1996, "spanningReads": 2 }
+    ],
+    "HG02300": [
+      { "bp": 2027, "spanningReads": 3 },
+      { "bp": 2072, "spanningReads": 1 }
+    ],
+    "HG02486": [
+      { "bp": 1668, "spanningReads": 2 },
+      { "bp": 2224, "spanningReads": 1 }
+    ],
+    "HG02523": [
+      { "bp": 2357, "spanningReads": 1 },
+      { "bp": 3290, "spanningReads": 1 }
+    ],
+    "HG02559": [
+      { "bp": 491, "spanningReads": 1 },
+      { "bp": 491, "spanningReads": 0 }
+    ],
+    "HG02572": [
+      { "bp": 775, "spanningReads": 1 },
+      { "bp": 787, "spanningReads": 1 }
+    ],
+    "HG02602": [
+      { "bp": 387, "spanningReads": 6 },
+      { "bp": 2013, "spanningReads": 1 }
+    ],
+    "HG02615": [
+      { "bp": 1880, "spanningReads": 1 },
+      { "bp": 1880, "spanningReads": 0 }
+    ],
+    "HG02622": [
+      { "bp": 1924, "spanningReads": 1 },
+      { "bp": 2698, "spanningReads": 2 }
+    ],
+    "HG02630": [
+      { "bp": 877, "spanningReads": 1 },
+      { "bp": 1140, "spanningReads": 2 }
+    ],
+    "HG02647": [
+      { "bp": 876, "spanningReads": 4 },
+      { "bp": 891, "spanningReads": 2 }
+    ],
+    "HG02717": [
+      { "bp": 992, "spanningReads": 3 },
+      { "bp": 1796, "spanningReads": 1 }
+    ],
+    "HG02738": [
+      { "bp": 461, "spanningReads": 4 },
+      { "bp": 2202, "spanningReads": 1 }
+    ],
+    "HG02809": [
+      { "bp": 931, "spanningReads": 1 },
+      { "bp": 931, "spanningReads": 0 }
+    ],
+    "HG02886": [
+      { "bp": 1111, "spanningReads": 2 },
+      { "bp": 3324, "spanningReads": 1 }
+    ],
+    "HG02965": [
+      { "bp": 1887, "spanningReads": 1 },
+      { "bp": 1889, "spanningReads": 1 }
+    ],
+    "HG02976": [
+      { "bp": 2274, "spanningReads": 1 },
+      { "bp": 2886, "spanningReads": 1 }
+    ],
+    "HG03017": [
+      { "bp": 1871, "spanningReads": 1 },
+      { "bp": 1889, "spanningReads": 1 }
+    ],
+    "HG03041": [
+      { "bp": 1422, "spanningReads": 2 },
+      { "bp": 1422, "spanningReads": 0 }
+    ],
+    "HG03130": [
+      { "bp": 1620, "spanningReads": 2 },
+      { "bp": 2861, "spanningReads": 2 }
+    ],
+    "HG03195": [
+      { "bp": 1640, "spanningReads": 1 },
+      { "bp": 1645, "spanningReads": 1 }
+    ],
+    "HG03209": [
+      { "bp": 4993, "spanningReads": 2 },
+      { "bp": 5115, "spanningReads": 1 }
+    ],
+    "HG03239": [
+      { "bp": 2963, "spanningReads": 6 },
+      { "bp": 4972, "spanningReads": 1 }
+    ],
+    "HG03453": [
+      { "bp": 881, "spanningReads": 2 },
+      { "bp": 2328, "spanningReads": 3 }
+    ],
+    "HG03471": [
+      { "bp": 1079, "spanningReads": 3 },
+      { "bp": 1084, "spanningReads": 3 }
+    ],
+    "HG03516": [
+      { "bp": 1200, "spanningReads": 1 },
+      { "bp": 1873, "spanningReads": 3 }
+    ],
+    "HG03540": [
+      { "bp": 2733, "spanningReads": 7 },
+      { "bp": 2858, "spanningReads": 1 }
+    ],
+    "HG03579": [
+      { "bp": 2336, "spanningReads": 5 },
+      { "bp": 2831, "spanningReads": 1 }
+    ],
+    "HG03654": [
+      { "bp": 2208, "spanningReads": 1 },
+      { "bp": 3018, "spanningReads": 1 }
+    ],
+    "HG03669": [
+      { "bp": 2000, "spanningReads": 1 },
+      { "bp": 2356, "spanningReads": 1 }
+    ],
+    "HG03688": [
+      { "bp": 4063, "spanningReads": 2 },
+      { "bp": 5351, "spanningReads": 2 }
+    ],
+    "HG03831": [
+      { "bp": 388, "spanningReads": 1 },
+      { "bp": 388, "spanningReads": 0 }
+    ],
+    "HG03834": [
+      { "bp": 3323, "spanningReads": 1 },
+      { "bp": 3356, "spanningReads": 1 }
+    ],
+    "HG03927": [
+      { "bp": 821, "spanningReads": 1 },
+      { "bp": 1808, "spanningReads": 3 }
+    ],
+    "HG03942": [
+      { "bp": 4401, "spanningReads": 2 },
+      { "bp": 4748, "spanningReads": 1 }
+    ],
+    "HG04115": [
+      { "bp": 387, "spanningReads": 10 },
+      { "bp": 1132, "spanningReads": 1 }
+    ],
+    "HG04199": [
+      { "bp": 1485, "spanningReads": 2 },
+      { "bp": 8614, "spanningReads": 2 }
+    ],
+    "HG04204": [
+      { "bp": 2077, "spanningReads": 1 },
+      { "bp": 4100, "spanningReads": 1 }
+    ],
+    "HG04228": [
+      { "bp": 1259, "spanningReads": 2 },
+      { "bp": 1270, "spanningReads": 2 }
+    ],
+    "NA18747": [
+      { "bp": 678, "spanningReads": 2 },
+      { "bp": 1499, "spanningReads": 4 }
+    ],
+    "NA18971": [
+      { "bp": 2358, "spanningReads": 1 },
+      { "bp": 2396, "spanningReads": 1 }
+    ],
+    "NA19043": [
+      { "bp": 2951, "spanningReads": 1 },
+      { "bp": 2951, "spanningReads": 2 }
+    ],
+    "NA20752": [
+      { "bp": 1530, "spanningReads": 2 },
+      { "bp": 1774, "spanningReads": 3 }
+    ],
+    "NA20805": [
+      { "bp": 774, "spanningReads": 2 },
+      { "bp": 775, "spanningReads": 1 }
+    ]
+  }
+}

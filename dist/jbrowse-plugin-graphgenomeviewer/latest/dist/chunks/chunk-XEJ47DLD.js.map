@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:react/jsx-runtime", "global-externals:mobx-react", "global-externals:@mui/material", "global-externals:@jbrowse/core/ui", "global-externals:react"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"react/jsx-runtime\"];", "module.exports = JBrowseExports[\"mobx-react\"];", "module.exports = JBrowseExports[\"@mui/material\"];", "module.exports = JBrowseExports[\"@jbrowse/core/ui\"];", "module.exports = JBrowseExports[\"react\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,mBAAmB,ICAnD,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,YAAY,ICA5C,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,eAAe,ICA/C,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,kBAAkB,ICAlD,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe",
+  "names": ["require_jsx_runtime", "__commonJSMin", "exports", "module", "require_mobx_react", "__commonJSMin", "exports", "module", "require_material", "__commonJSMin", "exports", "module", "require_ui", "__commonJSMin", "exports", "module", "require_react", "__commonJSMin", "exports", "module"]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/data_adapters/BaseAdapter", "global-externals:@jbrowse/core/util/rxjs"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/data_adapters/BaseAdapter\"];", "module.exports = JBrowseExports[\"@jbrowse/core/util/rxjs\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,yCAAyC,ICAzE,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,yBAAyB",
+  "names": ["require_BaseAdapter", "__commonJSMin", "exports", "module", "require_rxjs", "__commonJSMin", "exports", "module"]
+}
