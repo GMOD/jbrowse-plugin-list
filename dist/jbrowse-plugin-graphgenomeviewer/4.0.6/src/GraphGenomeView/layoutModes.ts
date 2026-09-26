@@ -39,10 +39,11 @@ export interface LayoutMode {
   // rest rather than hiding them, so the reason a mode is unavailable stays
   // visible instead of the menu silently changing shape between graphs
   available: (graph: Graph) => boolean
-  // whether the drawing puts reference bp on x, so a host places it and a cut
-  // carries margins to pan over. A mode without one draws its own picture of
-  // the window, so its cut is the window alone.
-  referenceAxis: boolean
+  // whether a cut for this mode carries a window-width margin each side, to
+  // pan over before the next cut. A mode that draws a picture of the window
+  // — force, ordered, and walk rows, whose bars are lengths through it — is
+  // cut to the window alone.
+  cutMargins: boolean
   // whether `run` draws this graph itself, as opposed to handing off to the
   // engine. Not the same question as `available` and not derivable from it:
   // 'force' is available for every graph and draws none of them itself. The two
@@ -67,7 +68,7 @@ export const LAYOUT_MODES = [
     description:
       'x is reference bp, one row per stable rank. Needs rGFA tags or a reference path.',
     run: anchoredLayout,
-    referenceAxis: true,
+    cutMargins: true,
     available: hasBackbone,
     drawsLocally: hasBackbone,
   },
@@ -77,7 +78,7 @@ export const LAYOUT_MODES = [
     description:
       'x is reference bp, one row per contributing assembly. Needs rGFA tags or a reference path.',
     run: sampleRowLayout,
-    referenceAxis: true,
+    cutMargins: true,
     available: hasAlleles,
     drawsLocally: hasAlleles,
   },
@@ -87,7 +88,7 @@ export const LAYOUT_MODES = [
     description:
       "x is each walk's own bp: one bar per haplotype, sequence the reference also carries in blue and sequence it does not in purple, so a repeat expansion reads as bar length. Needs W or P lines.",
     run: walkRowLayout,
-    referenceAxis: true,
+    cutMargins: false,
     available: hasWalks,
     drawsLocally: hasWalks,
   },
@@ -97,7 +98,7 @@ export const LAYOUT_MODES = [
     description:
       'x is reference order, not bp: every node gets room, bubbles read as lenses. Needs rGFA tags or a reference path.',
     run: orderedLayout,
-    referenceAxis: false,
+    cutMargins: false,
     available: hasBackbone,
     drawsLocally: hasBackbone,
   },
@@ -107,7 +108,7 @@ export const LAYOUT_MODES = [
     description:
       'The reference as a line with one typed glyph per bubble, from the bubble index or from the graph itself: SNP, indel, deletion, inversion, repeat array. Click a glyph to open the graph inside it.',
     run: variantMapLayout,
-    referenceAxis: true,
+    cutMargins: true,
     available: hasBackbone,
     drawsLocally: hasBackbone,
   },
@@ -116,7 +117,7 @@ export const LAYOUT_MODES = [
     label: FORCE_LAYOUT_LABEL,
     description: 'OGDF FMMM, via the external Bandage engine.',
     run: () => undefined,
-    referenceAxis: false,
+    cutMargins: false,
     available: () => true,
     drawsLocally: () => false,
   },

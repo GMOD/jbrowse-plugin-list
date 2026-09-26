@@ -2508,7 +2508,7 @@ export default function stateModelFactory() {
       // window is cut to the window alone; one the host places carries
       // margins to pan over.
       settleOn(seen: HostWindow) {
-        const margins = layoutModeByValue(self.layoutMode).referenceAxis
+        const margins = layoutModeByValue(self.layoutMode).cutMargins
         const above = self.coarseAboveBpPerPx
         const tier =
           above !== undefined && seen.bpPerPx > above ? 'coarse' : 'fine'
