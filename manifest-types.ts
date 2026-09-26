@@ -18,7 +18,7 @@ export interface SourceVersion {
 }
 
 // Hand-edited source manifest entry (plugins.json). The authoritative bundle
-// location is `packageName` + `umdPath`; all served URLs are constructed from
+// location is `packageName` + its bundle path; all served URLs are constructed from
 // these plus a version, so nothing in the pipeline parses URLs.
 // Free-form labels shown and filtered on in the plugin store. Deliberately not
 // an enum: the vocabulary is data, so a new axis (a setup level, a data type, a
@@ -40,7 +40,11 @@ export interface SourcePlugin {
   description: string
   location: string
   tags?: PluginTag[]
-  umdPath: string
+  // Exactly one of these: a UMD bundle loaded by <script> and pinned by its
+  // integrity hash, or a native ES module loaded by import(), which can enforce
+  // no hash and resolves its own chunks relative to its url.
+  umdPath?: string
+  esmPath?: string
   license: string
   image?: string
   // Optional explicit version pins, listed oldest-to-newest. When omitted the
@@ -48,16 +52,35 @@ export interface SourcePlugin {
   versions?: SourceVersion[]
 }
 
+export function bundleOf(plugin: SourcePlugin) {
+  const { packageName, umdPath, esmPath } = plugin
+  if (umdPath !== undefined && esmPath !== undefined) {
+    throw new Error(`${packageName}: set one of umdPath and esmPath, not both`)
+  } else if (esmPath !== undefined) {
+    return { kind: 'esm' as const, path: esmPath }
+  } else if (umdPath !== undefined) {
+    return { kind: 'umd' as const, path: umdPath }
+  } else {
+    throw new Error(`${packageName}: needs a umdPath or an esmPath`)
+  }
+}
+
 export interface SourceManifest {
   plugins: SourcePlugin[]
 }
 
-// One resolved + downloaded version, with its immutable URL and integrity hash.
+// One resolved + downloaded version at its immutable url: `url` and
+// `integrity` for a UMD build, `esmUrl` alone for an ES module.
 export interface BuiltVersion {
   pluginVersion: string
   jbrowseRange: string
-  url: string
-  integrity: string
+  url?: string
+  integrity?: string
+  esmUrl?: string
+}
+
+export function builtUrlFields({ url, integrity, esmUrl }: BuiltVersion) {
+  return esmUrl !== undefined ? { esmUrl } : { url, integrity }
 }
 
 // Intermediate build output (build-manifest.json) bridging download and generate.
@@ -90,8 +113,9 @@ export interface V2Plugin {
   tags?: PluginTag[]
   license: string
   image?: string
-  url: string
-  integrity: string
+  url?: string
+  integrity?: string
+  esmUrl?: string
   versions: BuiltVersion[]
   // The version-agnostic `latest/` path, published for config GENERATORS and
   // never for installs. It is the one field here that names a mutable url, and
@@ -111,9 +135,9 @@ export interface V2Plugin {
 export function rehostedUrl(
   packageName: string,
   version: string,
-  umdPath: string,
+  bundlePath: string,
 ) {
-  return `${REHOST_BASE}${packageName}/${version}/${umdPath}`
+  return `${REHOST_BASE}${packageName}/${version}/${bundlePath}`
 }
 
 // The whole prefix one build is served under. Everything below it belongs to
@@ -135,8 +159,8 @@ export function latestRehostedPrefix(packageName: string) {
 // plugin (e.g. protein3d, which lazy-loads a `molstar-chunk.js` sibling) should
 // be referenced by a pinned `rehostedUrl` instead, so its bundle and sidecar
 // chunk stay a matched, immutable set.
-export function latestRehostedUrl(packageName: string, umdPath: string) {
-  return `${latestRehostedPrefix(packageName)}${umdPath}`
+export function latestRehostedUrl(packageName: string, bundlePath: string) {
+  return `${latestRehostedPrefix(packageName)}${bundlePath}`
 }
 
 export function subresourceIntegrity(filePath: string) {

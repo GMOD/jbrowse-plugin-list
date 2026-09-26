@@ -54,6 +54,7 @@ import { satisfies } from 'compare-versions'
 import { launch, type Browser } from 'puppeteer-core'
 
 import {
+  bundleOf,
   rehostedPrefix,
   type SourceManifest,
   type SourcePlugin,
@@ -102,9 +103,18 @@ function findChrome() {
 // assumed: msaview, protein3d and hubs all load on v3.7.0; v3.0.0 is the
 // highest host where they do not (agent-docs/2026-08-26-store-plugin-refs-older-clients.md).
 //
-// `semver` is what a plugin's jbrowseRange is tested against. The moving tags
-// get a sentinel above every real release, which is the honest reading: a plugin
-// declaring `<2.0.0` must not be treated as covering whatever `latest` is today.
+// `semver` is what a plugin's jbrowseRange is tested against. `latest` is read
+// from the release it serves today, so `<2.0.0` skips it and `>=5.0.0` skips it
+// until 5.0.0 ships. `main` gets a sentinel above every release.
+async function servedVersion(label: string) {
+  const url = `https://jbrowse.org/code/jb2/${label}/version.txt`
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`${url} returned ${response.status}`)
+  }
+  return (await response.text()).trim()
+}
+
 interface Host {
   label: string
   semver: string
@@ -115,7 +125,7 @@ const HOST_VERSIONS: Host[] = [
   { label: 'v4.0.0', semver: '4.0.0' },
   { label: 'v4.2.0', semver: '4.2.0' },
   { label: 'v4.3.0', semver: '4.3.0' },
-  { label: 'latest', semver: '999.999.999' },
+  { label: 'latest', semver: await servedVersion('latest') },
   { label: 'main', semver: '999.999.999', advisory: true },
 ]
 
@@ -253,11 +263,12 @@ const targets =
 //
 // A row that differs means the extra key is NOT inert on that host, and jb2hubs
 // must not emit it until the affected hosts are out of the wild.
-function configFor(name: string, url: string) {
+function configFor(name: string, kind: 'umd' | 'esm', url: string) {
+  const entry = kind === 'esm' ? { esmUrl: url } : { name, url }
   return JSON.stringify({
     assemblies: [],
     tracks: [],
-    plugins: [values.hybrid ? { name, url, storePlugin: name } : { name, url }],
+    plugins: [values.hybrid ? { ...entry, storePlugin: name } : entry],
   })
 }
 
@@ -294,10 +305,11 @@ async function probe(
   plugin: SourcePlugin,
   build: Build,
 ): Promise<Probe> {
-  const { name, packageName, umdPath } = plugin
+  const { name, packageName } = plugin
+  const bundle = bundleOf(plugin)
   const { pluginVersion } = build
   const bundlePrefix = rehostedPrefix(packageName, pluginVersion)
-  const bundleUrl = `${bundlePrefix}${umdPath}`
+  const bundleUrl = `${bundlePrefix}${bundle.path}`
   // Same origin as the app, so the config fetch is not a CORS case. Nothing is
   // ever published here — the request is answered from memory below.
   const configUrl = `https://jbrowse.org/plugin-smoke/${encodeURIComponent(packageName)}.json`
@@ -319,7 +331,7 @@ async function probe(
         status: 200,
         contentType: 'application/json',
         headers: { 'access-control-allow-origin': '*' },
-        body: configFor(name, bundleUrl),
+        body: configFor(name, bundle.kind, bundleUrl),
       })
       // The whole build prefix, not just the umd entry point: a code-split
       // plugin (protein3d lazy-loads a molstar chunk) fetches siblings at load
@@ -379,10 +391,15 @@ async function probe(
         : undefined
     })
 
-    result.globalDefined = await page.evaluate(
-      g => g in window,
-      `JBrowsePlugin${name}`,
-    )
+    result.globalDefined =
+      bundle.kind === 'esm'
+        ? await page.evaluate(
+            async url =>
+              typeof (await import(url).catch(() => ({}))).default ===
+              'function',
+            bundleUrl,
+          )
+        : await page.evaluate(g => g in window, `JBrowsePlugin${name}`)
   } catch (e) {
     result.threw = String(e).slice(0, 200)
   }
@@ -452,7 +469,9 @@ for (const plugin of targets) {
           'never settled (no session, no error page)',
         r.settled &&
           !r.globalDefined &&
-          `JBrowsePlugin${plugin.name} undefined`,
+          (bundleOf(plugin).kind === 'esm'
+            ? 'no default export'
+            : `JBrowsePlugin${plugin.name} undefined`),
       ].filter(p => typeof p === 'string')
       const note = r.vendored
         ? 'skipped, vendored into this host'

@@ -11,7 +11,11 @@ import {
   fetchPackageMetadata,
   type NpmPackageMetadata,
 } from './npm-fetch.ts'
-import { rehostedUrl, subresourceIntegrity } from './manifest-types.ts'
+import {
+  bundleOf,
+  rehostedUrl,
+  subresourceIntegrity,
+} from './manifest-types.ts'
 import type {
   BuildManifest,
   BuiltPlugin,
@@ -73,7 +77,8 @@ async function buildVersion(
   version: SourceVersion,
   metadata: NpmPackageMetadata,
 ): Promise<BuiltVersion> {
-  const { packageName, umdPath } = plugin
+  const { packageName } = plugin
+  const bundle = bundleOf(plugin)
   const { pluginVersion } = version
   const versionDir = path.join(outputDir, packageName, pluginVersion)
   const label = `${packageName}@${pluginVersion}`
@@ -89,7 +94,7 @@ async function buildVersion(
     await downloadVersionAtomic(
       release.dist.tarball,
       versionDir,
-      umdPath,
+      bundle.path,
       label,
     )
     console.log(`✓ Downloaded ${label}`)
@@ -98,8 +103,12 @@ async function buildVersion(
   return {
     pluginVersion,
     jbrowseRange: version.jbrowseRange,
-    url: rehostedUrl(packageName, pluginVersion, umdPath),
-    integrity: subresourceIntegrity(path.join(versionDir, umdPath)),
+    ...(bundle.kind === 'esm'
+      ? { esmUrl: rehostedUrl(packageName, pluginVersion, bundle.path) }
+      : {
+          url: rehostedUrl(packageName, pluginVersion, bundle.path),
+          integrity: subresourceIntegrity(path.join(versionDir, bundle.path)),
+        }),
   }
 }
 

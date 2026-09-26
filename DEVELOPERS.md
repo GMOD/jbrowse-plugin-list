@@ -48,8 +48,8 @@ repo (its previously-published objects stay frozen on S3 for any legacy client).
 - **download** (`download-plugins-npm-api.ts`) reads `plugins.json`, downloads
   the relevant NPM tarballs into version-pinned dirs
   `dist/<packageName>/<version>/` (an existing version dir is never
-  re-downloaded or overwritten), verifies each declared `umdPath` exists,
-  computes its sha384
+  re-downloaded or overwritten), verifies each declared `umdPath` or `esmPath`
+  exists, computes a UMD bundle's sha384
   [subresource integrity](https://developer.mozilla.org/docs/Web/Security/Subresource_Integrity)
   hash, and writes the intermediate `build-manifest.json`.
 - **generate** (`generate-plugins.ts`) reads `plugins.json` +
@@ -91,10 +91,11 @@ committed artifacts.
 
 `check-plugins.ts` boots each rehosted bundle on a matrix of hosted JBrowse
 releases plus unreleased `main` (`jbrowse.org/code/jb2/<version>/`) and asserts
-it loads: no error page, UMD global defined, `configure()` survived. It serves
-each plugin a synthetic config naming only that plugin, so a failure names one
-bundle with no ambiguity, and intercepts the whole `latest/` prefix so
-code-split plugins get their sidecar chunks from the same build.
+it loads: no error page, UMD global defined (or, for an ES module, a default
+export), `configure()` survived. It serves each plugin a synthetic config naming
+only that plugin, so a failure names one bundle with no ambiguity, and
+intercepts the whole `latest/` prefix so code-split plugins get their sidecar
+chunks from the same build.
 
 ```bash
 pnpm verify       # only the bundles this run promoted (the pre-upload gate)

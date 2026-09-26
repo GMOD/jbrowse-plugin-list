@@ -58,15 +58,18 @@ export async function downloadAndExtractTarball(
 export async function downloadVersionAtomic(
   tarballUrl: string,
   versionDir: string,
-  umdPath: string | undefined,
+  bundlePath: string | undefined,
   label: string,
 ): Promise<void> {
   const partialDir = `${versionDir}.partial`
   fs.rmSync(partialDir, { recursive: true, force: true })
   await downloadAndExtractTarball(tarballUrl, partialDir)
-  if (umdPath !== undefined && !fs.existsSync(path.join(partialDir, umdPath))) {
+  if (
+    bundlePath !== undefined &&
+    !fs.existsSync(path.join(partialDir, bundlePath))
+  ) {
     fs.rmSync(partialDir, { recursive: true, force: true })
-    throw new Error(`${label}: umdPath "${umdPath}" not found in package`)
+    throw new Error(`${label}: "${bundlePath}" not found in package`)
   }
   fs.rmSync(versionDir, { recursive: true, force: true })
   fs.renameSync(partialDir, versionDir)

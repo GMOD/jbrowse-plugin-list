@@ -24,6 +24,10 @@ A plugin is described with the following data:
   `dist/jbrowse-plugin-msaview.umd.production.min.js`. We build the served URL
   from `packageName`, the version, and this path, and verify the file exists in
   the published tarball — so we never have to guess where your bundle lives.
+- **esmPath:** in place of `umdPath`, for a plugin that ships a native ES
+  module, e.g. `dist/jbrowse-plugin-graphgenomeviewer.esm.js`. Its code-split
+  chunks are served beside it. An ES module carries no integrity hash, since
+  `import()` cannot enforce one.
 - **license:** the type of software license that your code is provided under. If
   you haven't specified a value, specify `"NONE"`.
 - **tags (optional):** free-form labels. The plugin store shows them on your

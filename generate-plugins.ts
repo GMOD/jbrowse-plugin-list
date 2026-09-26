@@ -6,7 +6,11 @@ import { parseArgs } from 'node:util'
 
 import { satisfies } from 'compare-versions'
 
-import { latestRehostedUrl } from './manifest-types.ts'
+import {
+  builtUrlFields,
+  bundleOf,
+  latestRehostedUrl,
+} from './manifest-types.ts'
 
 import type {
   BuildManifest,
@@ -113,13 +117,12 @@ const v2: V2Plugin[] = plugins.flatMap(plugin => {
       ...(tags === undefined ? {} : { tags }),
       license,
       ...(image === undefined ? {} : { image }),
-      url: latest.url,
-      integrity: latest.integrity,
+      ...builtUrlFields(latest),
       versions: built.versions,
       // Derived from plugins.json rather than carried through the build
-      // manifest: it is a pure function of packageName + umdPath, so passing it
-      // down would only create a second place for it to be stale.
-      latestUrl: latestRehostedUrl(plugin.packageName, plugin.umdPath),
+      // manifest: it is a pure function of packageName + bundle path, so
+      // passing it down would only create a second place for it to be stale.
+      latestUrl: latestRehostedUrl(plugin.packageName, bundleOf(plugin).path),
     },
   ]
 })

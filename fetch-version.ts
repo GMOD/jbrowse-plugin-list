@@ -31,6 +31,7 @@ import { parseArgs } from 'node:util'
 
 import { downloadVersionAtomic, fetchPackageMetadata } from './npm-fetch.ts'
 import {
+  bundleOf,
   rehostedUrl,
   subresourceIntegrity,
   type SourceManifest,
@@ -57,13 +58,14 @@ const outputDir = process.env.PLUGIN_DIST_DIR
   ? path.resolve(process.env.PLUGIN_DIST_DIR)
   : path.join(dir, 'dist')
 
-// umdPath is only needed to sanity-check the extraction and to locate the file
+// The bundle path is only needed to sanity-check the extraction and to locate the file
 // to verify against S3. A package that has since been dropped from plugins.json
 // (icgc, mafviewer) still fetches — it just skips those two checks.
 const { plugins } = JSON.parse(
   fs.readFileSync(path.join(dir, 'plugins.json'), 'utf8'),
 ) as SourceManifest
-const umdPath = plugins.find(p => p.packageName === packageName)?.umdPath
+const entry = plugins.find(p => p.packageName === packageName)
+const bundlePath = entry ? bundleOf(entry).path : undefined
 
 const versionDir = path.join(outputDir, packageName, version)
 const label = `${packageName}@${version}`
@@ -77,7 +79,7 @@ if (!release) {
   console.error(
     `${label} is not on npm (unpublished?).\n` +
       'The artifacts are still on S3 and can be fetched individually, e.g.\n' +
-      `  curl -O ${rehostedUrl(packageName, version, umdPath ?? 'dist/<bundle>.umd.production.min.js')}\n` +
+      `  curl -O ${rehostedUrl(packageName, version, bundlePath ?? 'dist/<bundle>.umd.production.min.js')}\n` +
       'or listed with `rclone --config rclone.conf lsf -R ' +
       `s3:jbrowse.org/plugins/${packageName}/${version}/` +
       '` if you have credentials.',
@@ -86,17 +88,17 @@ if (!release) {
 }
 
 console.log(`Fetching ${label} from npm...`)
-await downloadVersionAtomic(release.dist.tarball, versionDir, umdPath, label)
+await downloadVersionAtomic(release.dist.tarball, versionDir, bundlePath, label)
 console.log(`✓ Extracted to ${versionDir}`)
 
-if (values['no-verify'] || umdPath === undefined) {
+if (values['no-verify'] || bundlePath === undefined) {
   console.log(
-    umdPath === undefined
-      ? 'Skipped S3 verification: package is not in plugins.json, so no umdPath is known.'
+    bundlePath === undefined
+      ? 'Skipped S3 verification: package is not in plugins.json, so no bundle path is known.'
       : 'Skipped S3 verification (--no-verify).',
   )
 } else {
-  const url = rehostedUrl(packageName, version, umdPath)
+  const url = rehostedUrl(packageName, version, bundlePath)
   const response = await fetch(url)
   if (!response.ok) {
     console.error(
@@ -105,7 +107,7 @@ if (values['no-verify'] || umdPath === undefined) {
     process.exitCode = 1
   } else {
     const served = Buffer.from(await response.arrayBuffer())
-    const local = fs.readFileSync(path.join(versionDir, umdPath))
+    const local = fs.readFileSync(path.join(versionDir, bundlePath))
     if (served.equals(local)) {
       console.log(`✓ Byte-identical to what S3 serves (${url})`)
     } else {
@@ -114,7 +116,7 @@ if (values['no-verify'] || umdPath === undefined) {
       // repro against it is testing different bytes.
       console.error(
         `⚠ Does NOT match what S3 serves.\n` +
-          `  fetched  ${subresourceIntegrity(path.join(versionDir, umdPath))}\n` +
+          `  fetched  ${subresourceIntegrity(path.join(versionDir, bundlePath))}\n` +
           `  served   sha384-${(await import('crypto')).createHash('sha384').update(served).digest('base64')}\n` +
           `  ${url}`,
       )
