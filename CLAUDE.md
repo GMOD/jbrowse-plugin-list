@@ -100,6 +100,12 @@ dirs moved, not only `latest/`.
 
 ### Keeping a plugin off a range of hosts
 
+For a plugin that should keep tracking npm latest, set an entry-level
+`jbrowseRange` (GraphGenomeView: `">=5.0.0"`) rather than pinning `versions`. A
+pin freezes the store at the version written into it; `pnpm dep` moves an
+entry-level range to each new release with no edit here. Pin `versions` only to
+roll back or to serve several versions.
+
 A `versions` entry whose range excludes a host does this already, for the hosts
 that can read it. On such a host the store card reads "Not compatible" and a
 config ref fails with a message naming the supported ranges; it does not fall
