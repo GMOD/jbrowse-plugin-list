@@ -1,6 +1,14 @@
 import PluginManager from '@jbrowse/core/PluginManager'
-import { readConfObject } from '@jbrowse/core/configuration'
+import {
+  ConfigurationSchema,
+  readConfObject,
+} from '@jbrowse/core/configuration'
+import TrackType from '@jbrowse/core/pluggableElementTypes/TrackType'
 import ViewType from '@jbrowse/core/pluggableElementTypes/ViewType'
+import {
+  createBaseTrackConfig,
+  createBaseTrackModel,
+} from '@jbrowse/core/pluggableElementTypes/models'
 import { getSnapshot, types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 
@@ -91,6 +99,28 @@ function createEnvironment({ tiered = true } = {}) {
   const pluginManager = new PluginManager()
   RgfaTabixAdapterF(pluginManager)
   GbzBaseSyntenyAdapterF(pluginManager)
+  // the track types a 4.0 config names its graph on
+  for (const name of ['FeatureTrack', 'SyntenyTrack']) {
+    pluginManager.addTrackType(() => {
+      const trackConfigSchema = ConfigurationSchema(
+        name,
+        {},
+        {
+          baseConfiguration: createBaseTrackConfig(pluginManager),
+          explicitIdentifier: 'trackId',
+        },
+      )
+      return new TrackType({
+        name,
+        configSchema: trackConfigSchema,
+        stateModel: createBaseTrackModel(
+          pluginManager,
+          name,
+          trackConfigSchema,
+        ),
+      })
+    })
+  }
   LinearGraphDisplayF(pluginManager)
   GraphTrackF(pluginManager)
   pluginManager.addViewType(
@@ -144,7 +174,23 @@ function createEnvironment({ tiered = true } = {}) {
     },
     { pluginManager },
   )
-  const trackConfigs = [trackConfig, gbzTrackConfig]
+  const featureTrackConfig = trackSchema.create(
+    {
+      type: 'FeatureTrack',
+      trackId: 'graph-as-feature',
+      name: 'graph as a 4.0 config states it',
+      assemblyNames: [ASM],
+      adapter: { type: 'RgfaTabixAdapter', uri: 'graph' },
+      displays: [
+        {
+          type: 'LinearGraphDisplay',
+          displayId: 'graph-as-feature-LinearGraphDisplay',
+        },
+      ],
+    },
+    { pluginManager },
+  )
+  const trackConfigs = [trackConfig, gbzTrackConfig, featureTrackConfig]
 
   const assemblyRegions = [
     { refName: REF, start: 0, end: CONTIG, assemblyName: ASM },
@@ -540,6 +586,21 @@ test('closing a drawn track reads nothing of the dead display', async () => {
   expect(warn.mock.calls.map(c => String(c[0])).join('\n')).not.toMatch(
     /findParentThat|no longer part of a state tree/,
   )
+})
+
+// every hosted config and share link through 4.0.7 names the graph on a
+// FeatureTrack, and a store update reaches them all at once
+test('a 4.0 FeatureTrack config still opens as the graph', async () => {
+  const { view, cuts } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('graph-as-feature', {}, { type: 'LinearGraphDisplay' })
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  expect(display.type).toBe('LinearGraphDisplay')
+  display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(1)
+  expect(display.hasGraph).toBe(true)
 })
 
 test('a GBZ track cuts for the lanes it names', async () => {

@@ -16,7 +16,9 @@ export default function LinearGraphDisplayF(pluginManager: PluginManager) {
         displayName: 'Graph',
         configSchema,
         stateModel: stateModelFactory(configSchema),
-        trackType: 'GraphTrack',
+        // FeatureTrack and SyntenyTrack for the configs and share links that
+        // name the graph display on one, which 4.0.7 and before required
+        trackType: ['GraphTrack', 'FeatureTrack', 'SyntenyTrack'],
         viewType: 'LinearGenomeView',
         ReactComponent: lazy(() => import('./components/LinearGraphDisplay')),
       }),
