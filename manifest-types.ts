@@ -48,8 +48,20 @@ export interface SourcePlugin {
   license: string
   image?: string
   // Optional explicit version pins, listed oldest-to-newest. When omitted the
-  // download step tracks the npm `latest` tag with an unrestricted range.
+  // download step tracks the npm `latest` tag, under `jbrowseRange`.
   versions?: SourceVersion[]
+  // The range an entry without `versions` publishes npm latest under; `*` when
+  // omitted. For a plugin that needs a newer JBrowse but should track latest.
+  jbrowseRange?: string
+}
+
+export function latestRange(plugin: SourcePlugin) {
+  if (plugin.jbrowseRange !== undefined && plugin.versions?.length) {
+    throw new Error(
+      `${plugin.packageName}: set one of versions and jbrowseRange, not both`,
+    )
+  }
+  return plugin.jbrowseRange ?? '*'
 }
 
 export function bundleOf(plugin: SourcePlugin) {

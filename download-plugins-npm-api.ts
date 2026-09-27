@@ -13,6 +13,7 @@ import {
 } from './npm-fetch.ts'
 import {
   bundleOf,
+  latestRange,
   rehostedUrl,
   subresourceIntegrity,
 } from './manifest-types.ts'
@@ -58,7 +59,12 @@ function resolveTargetVersions(
   if (plugin.versions && plugin.versions.length > 0) {
     return plugin.versions
   }
-  return [{ pluginVersion: metadata['dist-tags'].latest, jbrowseRange: '*' }]
+  return [
+    {
+      pluginVersion: metadata['dist-tags'].latest,
+      jbrowseRange: latestRange(plugin),
+    },
+  ]
 }
 
 // Newest by semver — never by array position, so an author listing `versions`

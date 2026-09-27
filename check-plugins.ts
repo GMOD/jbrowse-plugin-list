@@ -55,6 +55,7 @@ import { launch, type Browser } from 'puppeteer-core'
 
 import {
   bundleOf,
+  latestRange,
   rehostedPrefix,
   type SourceManifest,
   type SourcePlugin,
@@ -273,7 +274,7 @@ function configFor(name: string, kind: 'umd' | 'esm', url: string) {
 }
 
 // One build of a plugin: a pinned version dir, or `latest/` when the entry
-// declares no `versions` and the download step tracks npm latest at `*`.
+// declares no `versions` and the download step tracks npm latest.
 interface Build {
   pluginVersion: string
   jbrowseRange: string
@@ -282,7 +283,7 @@ interface Build {
 function buildsOf(plugin: SourcePlugin): Build[] {
   return plugin.versions && plugin.versions.length > 0
     ? plugin.versions
-    : [{ pluginVersion: 'latest', jbrowseRange: '*' }]
+    : [{ pluginVersion: 'latest', jbrowseRange: latestRange(plugin) }]
 }
 
 interface Probe {

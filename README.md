@@ -61,7 +61,10 @@ A plugin is described with the following data:
   `{ "pluginVersion": "...", "jbrowseRange": "..." }` entries, listed
   oldest-to-newest, declaring which published versions to host and the semver
   range of JBrowse versions each supports (e.g. `">=3.0.0"`). Omit this to
-  simply track the latest published version for all JBrowse versions.
+  simply track the latest published version.
+- **jbrowseRange (optional):** the range the latest published version is offered
+  under when `versions` is omitted, e.g. `">=5.0.0"` for a plugin built against
+  JBrowse 5. Defaults to `"*"`; set this or `versions`, not both.
 - **image (optional):** if you would like an image of your plugin to be
   displayed in the store, please provide an 800 x 200 screenshot of the feature
   you want to show to the img directory. Please provide the download URL for
