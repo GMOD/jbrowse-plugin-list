@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/util/tracks"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/util/tracks\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,2BAA2B",
+  "names": ["require_tracks", "__commonJSMin", "exports", "module"]
+}
