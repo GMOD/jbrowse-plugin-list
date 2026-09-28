@@ -2484,6 +2484,54 @@ describe('walk rows', () => {
     model.setWalkRowSamples(['B'])
     expect(model.walkRowBars!.rows.map(r => r.label)).toEqual(['B#1'])
   })
+
+  test('walks lift together, each keeping the colour it was given', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'auto',
+      colorScheme: 'grey',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    model.liftWalks(['B#1#ctg', 'GRCh38#0#chr1'])
+    model.setWalkColor('B#1#ctg', { field: 'strand' })
+    model.setWalkColor('B#1#ctg', { scheme: 'greens' })
+    model.toggleWalk('A#1#ctg')
+    expect(model.walkLift!.walks.map(w => [w.name, w.encoding])).toEqual([
+      ['GRCh38#0#chr1', { field: 'reference', scheme: 'rainbow' }],
+      ['B#1#ctg', { field: 'strand', scheme: 'greens' }],
+      ['A#1#ctg', { field: 'progress', scheme: 'reds' }],
+    ])
+    // the reference is coloured by position whatever the node colour scheme
+    const ref = model.walkLift!.walks[0]!
+    expect(new Set(ref.colors.values()).size).toBe(2)
+    interface Item {
+      label?: string
+      checked?: boolean
+      subMenu?: Item[]
+    }
+    const walkMenu = (model.graphMenuItems() as Item[]).find(
+      item => item.label === 'Walk',
+    )!
+    const colour = walkMenu.subMenu!.find(item => item.label === 'Colour B#1')!
+    expect(
+      colour.subMenu.filter(item => item.checked).map(item => item.label),
+    ).toEqual(['Strand against the reference', 'Greens'])
+    model.liftWalks(['B#1#ctg'])
+    expect(model.walkLayers).toEqual([
+      { walk: 'B#1#ctg', color: { field: 'strand', scheme: 'greens' } },
+    ])
+    model.toggleWalk('B#1#ctg')
+    expect(model.walkLift).toBeUndefined()
+  })
+
+  test('a session naming the one walk the old field lifted opens with none', () => {
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      highlightedPath: 'A#1#ctg',
+    } as never)
+    expect(model.walkLayers).toEqual([])
+  })
 })
 
 describe('annotation reads beside a cut', () => {

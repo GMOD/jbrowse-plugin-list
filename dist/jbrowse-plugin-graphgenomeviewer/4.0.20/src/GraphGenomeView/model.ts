@@ -97,7 +97,8 @@ import {
   viewportOf,
   zoomAbout,
 } from '@jbrowse/bandage-core/viewport'
-import { walkHighlight } from '@jbrowse/bandage-core/walkHighlight'
+import { WALK_FIELDS, WALK_SCHEMES } from '@jbrowse/bandage-core/walkEncoding'
+import { walkLift } from '@jbrowse/bandage-core/walkHighlight'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { pushLaunchViewMenuItem } from '@jbrowse/core/ui'
 import {
@@ -179,6 +180,10 @@ import type {
 } from '@jbrowse/bandage-core/types'
 import type { AxisScale } from '@jbrowse/bandage-core/util/geometry'
 import type { NodeInk } from '@jbrowse/bandage-core/util/hitDetection'
+import type {
+  WalkEncoding,
+  WalkLayer,
+} from '@jbrowse/bandage-core/walkEncoding'
 import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 import type { MenuItem } from '@jbrowse/core/ui'
 import type { Feature } from '@jbrowse/core/util'
@@ -440,9 +445,10 @@ export function GraphPaneMixin() {
         // Samples whose walks the walk rows show, by the name before the
         // haplotype number; undefined shows every walk the cut holds.
         walkRowSamples: types.maybe(types.frozen<string[]>()),
-        // One walk, by its path name, lifted out of the drawing: its nodes and
-        // links keep their ink and the rest fades. Empty lifts none.
-        highlightedPath: types.optional(types.string, ''),
+        // Walks lifted out of the drawing, each a layer with a lane of its own
+        // and the rest fading, coloured by the encoding it states or by the
+        // default one. See walkEncoding.ts. Empty lifts none.
+        walkLayers: types.optional(types.frozen<WalkLayer[]>(), []),
         // Which of a general GFA's paths the anchored layouts put on x. A path
         // GFA's names are arbitrary and none of them is marked as the
         // reference, so this is a choice; empty means "infer", which is the
@@ -723,13 +729,6 @@ export function GraphPaneMixin() {
         const paths = self.graph?.paths
         return paths?.length ? pathLegend(paths) : []
       },
-      // The lifted walk, or undefined when none is named or the graph on
-      // screen does not carry the one that was.
-      get walkHighlight() {
-        return self.graph && self.highlightedPath
-          ? walkHighlight(self.graph, self.highlightedPath)
-          : undefined
-      },
       // Whether the drawing is actually painted per path, which is not the same
       // question as whether the user asked for it: past MAX_PATH_COLORS the
       // colours say nothing and cost a stroke per path per edge. A bare getter
@@ -753,6 +752,19 @@ export function GraphPaneMixin() {
       // extent (computeReferenceRamp)
       get rampDomain() {
         return self.colorDomain ?? self.graphRegion
+      },
+      // The lifted walks the graph on screen carries, or undefined when none
+      // is named or it carries none of those that were. A walk coloured by
+      // reference position reads the ramp whatever the node colour scheme.
+      get walkLift() {
+        const { graph } = self
+        return graph && self.walkLayers.length > 0
+          ? walkLift(
+              graph,
+              self.walkLayers,
+              computeReferenceRamp(graph, this.rampDomain),
+            )
+          : undefined
       },
       // The scheme the renderer actually paints with, which is the raw prop
       // unless it is 'auto'. A bare getter returns a resolved value (root
@@ -1419,7 +1431,7 @@ export function GraphPaneMixin() {
           ? referenceStripBlocks(graph, {
               colorScheme: self.effectiveColorScheme,
               referenceRamp: self.referenceRamp,
-              walkNodes: self.walkHighlight?.nodeIds,
+              walkNodes: self.walkLift?.nodeIds,
             })
           : []
       },
@@ -1765,8 +1777,25 @@ export function GraphPaneMixin() {
       setRepeatKey(key: string) {
         self.repeatKey = key
       },
-      setHighlightedPath(name: string) {
-        self.highlightedPath = name
+      setWalkLayers(layers: WalkLayer[]) {
+        self.walkLayers = layers
+      },
+      // Lift the walks named, in that order, keeping the colour any of them
+      // already had
+      liftWalks(names: string[]) {
+        const had = new Map(self.walkLayers.map(l => [l.walk, l]))
+        self.walkLayers = names.map(walk => had.get(walk) ?? { walk })
+      },
+      toggleWalk(walk: string) {
+        const layers = self.walkLayers
+        self.walkLayers = layers.some(l => l.walk === walk)
+          ? layers.filter(l => l.walk !== walk)
+          : [...layers, { walk }]
+      },
+      setWalkColor(walk: string, color: Partial<WalkEncoding>) {
+        self.walkLayers = self.walkLayers.map(l =>
+          l.walk === walk ? { ...l, color: { ...l.color, ...color } } : l,
+        )
       },
       // Undefined restores the built-in ceiling. Nothing recomputes: the pane
       // reads canvasHeight and the drawing is placed by zoomToFit, which the
@@ -2816,7 +2845,7 @@ export function GraphPaneMixin() {
                 connectorThickness: self.connectorThickness,
                 drawPaths: self.effectiveDrawPaths,
                 nodeWidth: self.nodeWidth,
-                highlight: self.walkHighlight,
+                highlight: self.walkLift,
                 // Untracked, so a zoom does not eagerly rebuild geometry — the
                 // debounced viewportDirty bump drives the scale-dependent
                 // rebuild (flatness, arrow visibility, viewport culling), same
@@ -3002,20 +3031,45 @@ export function GraphPaneMixin() {
                   label: 'Walk',
                   subMenu: [
                     {
-                      type: 'radio' as const,
                       label: 'None',
-                      checked: self.highlightedPath === '',
                       onClick: () => {
-                        self.setHighlightedPath('')
+                        self.setWalkLayers([])
                       },
                     },
                     ...walks.map(walk => ({
-                      type: 'radio' as const,
+                      type: 'checkbox' as const,
                       label: walk.label,
-                      checked: self.highlightedPath === walk.name,
+                      checked: self.walkLayers.some(l => l.walk === walk.name),
                       onClick: () => {
-                        self.setHighlightedPath(walk.name)
+                        self.toggleWalk(walk.name)
                       },
+                    })),
+                    ...(self.walkLift?.walks ?? []).map(lifted => ({
+                      label: `Colour ${walks.find(w => w.name === lifted.name)?.label ?? lifted.name}`,
+                      subMenu: [
+                        { type: 'subHeader' as const, label: 'Colour by' },
+                        ...WALK_FIELDS.map(field => ({
+                          type: 'radio' as const,
+                          label: field.label,
+                          checked: lifted.encoding.field === field.value,
+                          onClick: () => {
+                            self.setWalkColor(lifted.name, {
+                              field: field.value,
+                            })
+                          },
+                        })),
+                        { type: 'subHeader' as const, label: 'Palette' },
+                        ...WALK_SCHEMES.map(scheme => ({
+                          type: 'radio' as const,
+                          label: scheme.label,
+                          checked: lifted.encoding.scheme === scheme.value,
+                          onClick: () => {
+                            self.setWalkColor(lifted.name, {
+                              scheme: scheme.value,
+                            })
+                          },
+                        })),
+                      ],
                     })),
                   ],
                 },

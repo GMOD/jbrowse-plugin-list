@@ -30,7 +30,8 @@ session spec does the same with `loadedTrackId` and `loadedRegion`.
   walk rows, and sequenceTubeMap's tube map on its own axis or the reference's
 - Genes from the session's annotation track, drawn on the graph
 - Bubbles from `gfatools bubble` or the graph itself, opened level by level
-- gbz-base haplotypes as walks: carriage as node thickness, one walk lifted out
+- gbz-base haplotypes as walks: carriage as node thickness, several walks lifted
+  out at once, each lane coloured by progress, reference position or strand
 - GAF reads in the tube map, with their mismatches, from a gbz-base track
 
 ## Usage

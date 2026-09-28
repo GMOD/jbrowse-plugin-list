@@ -28,7 +28,7 @@ const BubbleHalos = observer(function BubbleHalos({
 }: {
   model: GraphPaneModel
 }) {
-  const { bubbleHalos, walkHighlight, hoveredBubble } = model
+  const { bubbleHalos, walkLift, hoveredBubble } = model
   if (bubbleHalos.length === 0) {
     return null
   }
@@ -41,10 +41,9 @@ const BubbleHalos = observer(function BubbleHalos({
     canvasHeight,
   } = model
   const halo = model.contigThickness * HALO_FACTOR
-  // a lifted walk dims the bubbles it never enters
+  // lifted walks dim the bubbles none of them enters
   const dimmedBubble = (h: BubbleHalo) =>
-    walkHighlight !== undefined &&
-    !h.nodeIds.some(id => walkHighlight.nodeIds.has(id))
+    walkLift !== undefined && !h.nodeIds.some(id => walkLift.nodeIds.has(id))
 
   return (
     <svg

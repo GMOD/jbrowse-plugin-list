@@ -7,6 +7,11 @@ import {
   findHoveredNode,
 } from '@jbrowse/bandage-core/util/hitDetection'
 import { wheelZoomFactor } from '@jbrowse/bandage-core/util/wheelZoom'
+import {
+  WALK_FIELDS,
+  encodingSwatchCss,
+  fieldLegend,
+} from '@jbrowse/bandage-core/walkEncoding'
 import { ErrorBanner, LoadingOverlay, Menu } from '@jbrowse/core/ui'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { useRenderingBackend } from '@jbrowse/render-core/useRenderingBackend'
@@ -176,30 +181,61 @@ const PathLegend = observer(function PathLegend({
   ) : null
 })
 
-// What the lifted walk carries through the window, against the reference walk
-// where the graph has one: the number the array's loops are drawn for.
+const walkSwatchStyle = { width: 26, height: 8, borderRadius: 2, flex: 'none' }
+
+// What each lifted walk carries through the window, against the reference
+// walk where the graph has one, beside the scale its lane is coloured by, and
+// what each field in use means
+function fieldName(field: string) {
+  return WALK_FIELDS.find(f => f.value === field)!.label.toLowerCase()
+}
+
 const WalkReadout = observer(function WalkReadout({
   model,
 }: {
   model: GraphPaneModel
 }) {
-  const h = model.walkHighlight
-  if (!h) {
+  const lift = model.walkLift
+  if (!lift) {
     return null
   }
-  const label = model.walkChoices.find(c => c.name === h.name)?.label ?? h.name
-  const delta =
-    h.referenceBp === undefined
-      ? ''
-      : h.bp === h.referenceBp
-        ? ', the reference length'
-        : `, ${h.bp > h.referenceBp ? '+' : '−'}${Math.abs(h.bp - h.referenceBp).toLocaleString()} bp against the reference`
+  const labelOf = (name: string) =>
+    model.walkChoices.find(c => c.name === name)?.label ?? name
   return (
     <div style={legendBoxStyle} data-testid="graph-walk-readout">
-      <strong>{label}</strong>: {h.steps.toLocaleString()} steps,{' '}
-      {h.bp.toLocaleString()} bp{delta}
-      <br />
-      paler: what {label} does not carry
+      {lift.walks.map(w => {
+        const delta =
+          w.referenceBp === undefined
+            ? ''
+            : w.bp === w.referenceBp
+              ? ', the reference length'
+              : `, ${w.bp > w.referenceBp ? '+' : '−'}${Math.abs(w.bp - w.referenceBp).toLocaleString()} bp against the reference`
+        return (
+          <div key={w.name} style={pathLegendRowStyle}>
+            <div
+              style={{
+                ...walkSwatchStyle,
+                background: encodingSwatchCss(w.encoding),
+              }}
+            />
+            <span>
+              <strong>{labelOf(w.name)}</strong>: {w.bp.toLocaleString()} bp
+              {delta} · {fieldName(w.encoding.field)}
+            </span>
+          </div>
+        )
+      })}
+      {WALK_FIELDS.filter(f =>
+        lift.walks.some(w => w.encoding.field === f.value),
+      ).map(f => (
+        <div key={f.value}>
+          {fieldName(f.value)}: {fieldLegend(f.value)}
+        </div>
+      ))}
+      <div>
+        paler nodes: on none of{' '}
+        {lift.walks.length > 1 ? 'these walks' : 'this walk'}
+      </div>
     </div>
   )
 })

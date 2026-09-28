@@ -34,14 +34,13 @@ const LabelLayer = observer(function LabelLayer({
   if (bubbles.length + genes.length + routes.length === 0) {
     return null
   }
-  const { walkHighlight, scaleY, translateY, contigThickness } = model
-  // a lifted walk dims the bubbles it never enters and the routes it does not
-  // take
+  const { walkLift, scaleY, translateY, contigThickness } = model
+  // lifted walks dim the bubbles none of them enters and the routes none of
+  // them takes
   const dimmedBubble = (h: BubbleHalo) =>
-    walkHighlight !== undefined &&
-    !h.nodeIds.some(id => walkHighlight.nodeIds.has(id))
+    walkLift !== undefined && !h.nodeIds.some(id => walkLift.nodeIds.has(id))
   const dimmedRoute = (r: RouteLabel) =>
-    walkHighlight !== undefined && !r.route.walks.includes(walkHighlight.name)
+    walkLift !== undefined && !r.route.walks.some(w => walkLift.names.has(w))
 
   return (
     <svg
