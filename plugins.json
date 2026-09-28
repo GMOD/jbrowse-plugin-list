@@ -158,6 +158,18 @@
       "tags": ["bring-your-own-data", "pangenome"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
       "jbrowseRange": ">=5.0.0"
+    },
+    {
+      "name": "TandemRepeat",
+      "packageName": "jbrowse-plugin-tandem-repeat",
+      "authors": ["Colin Diesh"],
+      "description": "A tandem repeat's alleles, one bar per haplotype with each copy coloured by its repeat unit, from VCF 4.5 <CNV:TR> records",
+      "location": "https://github.com/GMOD/jbrowse-plugin-tandem-repeat",
+      "esmPath": "dist/jbrowse-plugin-tandem-repeat.esm.js",
+      "license": "MIT",
+      "tags": ["bring-your-own-data", "variants", "view"],
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/tandemrepeat-fs8.png",
+      "jbrowseRange": ">=5.0.0"
     }
   ]
 }
