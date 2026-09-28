@@ -14,7 +14,6 @@ import InfoIcon from '@mui/icons-material/Info'
 import { observer } from 'mobx-react'
 
 import BubbleHalos, { HaloLegend } from './BubbleHalos'
-import BubbleOverlay from './BubbleOverlay'
 import GenePins from './GenePins'
 import GraphToolbar from './GraphToolbar'
 import LabelLayer from './LabelLayer'
@@ -22,6 +21,7 @@ import ReferenceStripOverlay, {
   ReferenceStripLegend,
 } from './ReferenceStripOverlay'
 import TubeMapOverlay, { TubeMapLegend } from './TubeMapOverlay'
+import UnpopButton from './UnpopButton'
 import WalkRowsOverlay, { WalkRowsLegend } from './WalkRowsOverlay'
 import { RAMP_GRADIENT_CSS } from './referenceRampCss'
 import { locLabel, nodeOwnLocation } from '../../launchFromGraph/contributors'
@@ -781,7 +781,7 @@ const GraphCanvas = observer(function GraphCanvas({
         <BubbleHalos model={model} />
         <GenePins model={model} />
         <LabelLayer model={model} />
-        <BubbleOverlay model={model} />
+        <UnpopButton model={model} />
         <WalkRowsOverlay model={model} />
         <Legends model={model} />
 

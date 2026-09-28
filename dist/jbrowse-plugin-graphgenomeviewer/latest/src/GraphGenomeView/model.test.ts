@@ -598,6 +598,21 @@ describe('layoutMode', () => {
     }
   }
 
+  test('a session naming options this build lacks opens on the defaults', () => {
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'variants',
+      colorScheme: 'dropped',
+      bubbleSpread: 'dropped',
+      nodeWidth: 'dropped',
+    } as never)
+    expect(model.layoutMode).toBeUndefined()
+    expect(model.chosenLayoutMode).toBe('force')
+    expect(model.colorScheme).toBeUndefined()
+    expect(model.bubbleSpread).toBe('auto')
+    expect(model.nodeWidth).toBe('depth')
+  })
+
   test('auto lays an rGFA out from the file, with no layout RPC', async () => {
     rpcRespond()
     const model = createAnchoredModel()
@@ -2347,14 +2362,12 @@ describe('popping a bubble', () => {
     longestAllele: undefined,
   }
 
-  test('opens the bubble force-directed and comes back to the window', async () => {
+  test('opens the bubble in the layout it was in and comes back to the window', async () => {
     rpcRespond()
     const model = createAnchoredModel()
-    model.setLayoutMode('variants')
+    model.setLayoutMode('force')
     await model.loadGFA(RGFA, 'rgfa')
     const window = model.graph!
-    // the variant map places the backbone only
-    expect(Object.keys(model.nodePositions!)).toEqual(['1+', '2+'])
 
     await model.popBubble(bubble)
     expect(model.layoutMode).toBe('force')
@@ -2368,28 +2381,23 @@ describe('popping a bubble', () => {
       '2+',
       '3+',
     ])
-    // a node layout draws the nodes, with halos rather than glyphs
-    expect(model.bubbleGlyphs).toEqual([])
 
     await model.unpopBubble()
     expect(model.graph).toBe(window)
-    expect(model.layoutMode).toBe('variants')
+    expect(model.layoutMode).toBe('force')
     expect(model.poppedFrom).toBeUndefined()
   })
 
-  // Without an index beside the source the map comes from the graph itself,
-  // and a popped graph gets its own, so a superbubble opens in steps.
+  // Without an index beside the source the bubbles come from the graph
+  // itself, and a popped graph gets its own, so a superbubble opens in steps.
   const RGFA_BUBBLE = RGFA + 'L\t3\t+\t2\t+\t0M\n'
 
-  test('a graph with no index maps its own bubbles', async () => {
+  test('a graph with no index derives its own bubbles', async () => {
     rpcRespond()
     const model = createAnchoredModel()
-    model.setLayoutMode('variants')
     await model.loadGFA(RGFA_BUBBLE, 'rgfa')
     expect(model.indexBubbles).toBeUndefined()
-    expect(model.bubbleGlyphs.map(g => [g.label, g.bubble.segments])).toEqual([
-      ['≤4 bp ins', '1,3,2'],
-    ])
+    expect(model.bubbles.map(b => b.segments)).toEqual(['1,3,2'])
   })
 
   test('a node layout marks each bubble along its own nodes', async () => {
@@ -2397,7 +2405,6 @@ describe('popping a bubble', () => {
     const model = createAnchoredModel()
     model.setLayoutMode('ordered')
     await model.loadGFA(RGFA_BUBBLE, 'rgfa')
-    expect(model.bubbleGlyphs).toEqual([])
     // off by default
     expect(model.bubbleHalos).toEqual([])
     model.setShowBubbles(true)
@@ -2408,25 +2415,24 @@ describe('popping a bubble', () => {
     expect(model.bubbleHalos).toEqual([])
   })
 
-  test('pops nest, and each level maps what it holds', async () => {
+  test('pops nest, and each level derives what it holds', async () => {
     rpcRespond()
     const model = createAnchoredModel()
-    model.setLayoutMode('variants')
+    model.setLayoutMode('ordered')
     await model.loadGFA(RGFA_BUBBLE, 'rgfa')
     const window = model.graph!
 
     await model.popBubble(model.bubbles[0]!)
     const inner = model.graph!
     expect(model.popStack.map(p => p.graph)).toEqual([window])
-    model.setLayoutMode('variants')
-    expect(model.bubbleGlyphs.map(g => g.bubble.segments)).toEqual(['1,3,2'])
+    expect(model.bubbles.map(b => b.segments)).toEqual(['1,3,2'])
 
     await model.popBubble(model.bubbles[0]!)
     expect(model.popStack.map(p => p.graph)).toEqual([window, inner])
 
     await model.unpopBubble()
     expect(model.graph).toBe(inner)
-    expect(model.layoutMode).toBe('variants')
+    expect(model.layoutMode).toBe('ordered')
     await model.unpopBubble()
     expect(model.graph).toBe(window)
     expect(model.poppedFrom).toBeUndefined()

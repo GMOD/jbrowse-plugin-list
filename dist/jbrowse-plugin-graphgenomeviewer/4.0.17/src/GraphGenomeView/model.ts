@@ -119,6 +119,7 @@ import {
   pickGeneTrack,
 } from './genes/geneFeatures'
 import { hostFrame, isLinearHost } from './host'
+import { lenientMaybeEnum, lenientOptionalEnum } from './lenientEnum'
 import { namesReads } from '../GetGraphReads'
 import {
   REPEAT_ADAPTER_TYPES,
@@ -190,7 +191,6 @@ const MAX_CANVAS_HEIGHT = 600
 // Floor, so a window holding only backbone — one row, no height at all — still
 // leaves room to hover a node and read its tooltip.
 const MIN_CANVAS_HEIGHT = 160
-const VARIANT_MAP_HEIGHT = 340
 // The thinnest a fit draws a tube map's tubes
 const MIN_FIT_TUBE_PX = 5
 
@@ -403,24 +403,18 @@ export function GraphPaneMixin() {
         linearLayout: types.optional(types.boolean, false),
         // unset takes the host's default: force in a view of its own, the
         // display config's in a track
-        layoutMode: types.maybe(types.enumeration(LAYOUT_MODE_VALUES)),
-        colorScheme: types.maybe(types.enumeration(COLOR_SCHEME_VALUES)),
+        layoutMode: lenientMaybeEnum(LAYOUT_MODE_VALUES),
+        colorScheme: lenientMaybeEnum(COLOR_SCHEME_VALUES),
         // How far the force layout opens a bubble, which on a variation graph is
         // the difference between a legible drawing and a rope. See
         // BUBBLE_SPREADS; no effect on the reference-anchored layouts, which
         // place a node from its coordinates rather than from a force sim.
-        bubbleSpread: types.optional(
-          types.enumeration(BUBBLE_SPREAD_VALUES),
-          'auto',
-        ),
+        bubbleSpread: lenientOptionalEnum(BUBBLE_SPREAD_VALUES, 'auto'),
         // Node thickness by depth, Bandage's own device; see NODE_WIDTHS.
-        nodeWidth: types.optional(
-          types.enumeration(NODE_WIDTH_VALUES),
-          'depth',
-        ),
+        nodeWidth: lenientOptionalEnum(NODE_WIDTH_VALUES, 'depth'),
         // Whether the node layouts draw each bubble as a halo along its nodes
-        // with a label that opens it. The variant map draws glyphs instead.
-        // Off by default: on a base-level cut every SNP's halo is a blob.
+        // with a label that opens it. Off by default: on a base-level cut
+        // every SNP's halo is a blob.
         showBubbles: types.optional(types.boolean, false),
         showDeletionEdges: types.optional(types.boolean, false),
         // The session's genes drawn onto the backbone: exons along the nodes
@@ -510,8 +504,8 @@ export function GraphPaneMixin() {
       // is placed under them
       legendSize: { width: 0, height: 0 },
       // The bubble index rows over the cut window, when the source track has
-      // one beside its segments. Undefined for a graph with no index, which the
-      // variant map draws from `derivedBubbles` instead.
+      // one beside its segments. Undefined for a graph with no index, whose
+      // bubbles are `derivedBubbles` instead.
       indexBubbles: undefined as MinigraphBubble[] | undefined,
       // the genes over the cut window, read once per cut from the gene track
       geneFeatures: undefined as GeneModel[] | undefined,
@@ -821,8 +815,8 @@ export function GraphPaneMixin() {
       },
     }))
     .views(self => ({
-      // What the variant map draws. Index rows win where both exist: gfatools
-      // measured every allele, the layered order only bounds them.
+      // The bubbles halos draw and pops open. Index rows win where both exist:
+      // gfatools measured every allele, the layered order only bounds them.
       get bubbles() {
         return self.indexBubbles?.length
           ? self.indexBubbles
@@ -1024,22 +1018,12 @@ export function GraphPaneMixin() {
           ...this.drawnRowLabels.map(r => rowLabelBox(r.label, 0).x1 + 6),
         )
       },
-      // Each bubble in the window with what it is, for the variant map's
-      // glyphs on the reference line.
-      get bubbleGlyphs() {
-        const bubbles = self.chosenLayoutMode === 'variants' ? self.bubbles : []
-        return bubbles.map(bubble => ({
-          bubble,
-          ...classifyBubble(bubble, self.repeatArrays),
-        }))
-      },
       // Exons and names on the backbone, in layout units. Reads
       // positionsVersion so a dragged node takes its exons with it.
       get genePins() {
         dependOn(self.positionsVersion)
         const positions = self.layoutResult?.nodePositions
         return self.showGenes &&
-          self.chosenLayoutMode !== 'variants' &&
           self.chosenLayoutMode !== 'walkrows' &&
           !self.layoutResult?.tubeMap &&
           self.graph &&
@@ -1048,14 +1032,13 @@ export function GraphPaneMixin() {
           ? genePins(self.graph, self.backboneGenes, positions)
           : []
       },
-      // The same bubbles over every other layout, as halos along their nodes.
+      // The bubbles as halos along their nodes.
       // Reads positionsVersion so a dragged node takes its halo with it.
       get bubbleHalos() {
         dependOn(self.positionsVersion)
         const positions = self.layoutResult?.nodePositions
         if (
           !self.showBubbles ||
-          self.chosenLayoutMode === 'variants' ||
           self.chosenLayoutMode === 'walkrows' ||
           self.layoutResult?.tubeMap ||
           !self.graph ||
@@ -1567,16 +1550,12 @@ export function GraphPaneMixin() {
           return ceiling
         }
         if (self.pixelRows) {
-          // The variant map's drawing is one line; its glyphs and labels are
-          // painted above it by the overlay and need the room a row layout
-          // would give to rows.
-          const floor =
-            self.chosenLayoutMode === 'variants'
-              ? VARIANT_MAP_HEIGHT
-              : MIN_CANVAS_HEIGHT
           return Math.min(
             ceiling,
-            Math.max(floor, bounds.h + this.fitPadTop + FIT_PADDING),
+            Math.max(
+              MIN_CANVAS_HEIGHT,
+              bounds.h + this.fitPadTop + FIT_PADDING,
+            ),
           )
         }
         return bounds.w > 0 && usableWidth > 0
@@ -2582,10 +2561,9 @@ export function GraphPaneMixin() {
           }
         }),
         // Open one bubble: the graph becomes the segments the bubble row names,
-        // drawn in the layout the reader is in, or force-directed from the
-        // variant map. The graph it came from stays behind it, one click away,
-        // and the popped graph gets its own derived bubbles, so a superbubble
-        // opens progressively.
+        // drawn in the layout the reader is in. The graph it came from stays
+        // behind it, one click away, and the popped graph gets its own derived
+        // bubbles, so a superbubble opens progressively.
         popBubble: flow(function* (bubble: MinigraphBubble) {
           const graph = self.graph
           if (!graph) {
@@ -2612,9 +2590,6 @@ export function GraphPaneMixin() {
           self.indexBubbles = undefined
           const label = `${BUBBLE_KIND_NAMES[classifyBubble(bubble, self.repeatArrays).kind]} at ${bubble.refName}:${bubble.start.toLocaleString()}`
           self.graph = { ...sub, name: label }
-          if (self.chosenLayoutMode === 'variants') {
-            self.layoutMode = 'force'
-          }
           self.clearInteractionState()
           self.viewportOwner = 'fit'
           self.isLoading = true

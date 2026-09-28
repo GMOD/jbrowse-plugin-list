@@ -26,9 +26,8 @@ session spec does the same with `loadedTrackId` and `loadedRegion`.
 
 ## Features
 
-- Eight layouts: force-directed (Bandage FMMM), variant map, ordered, anchored,
-  sample rows, walk rows, and sequenceTubeMap's tube map on its own axis or the
-  reference's
+- Seven layouts: force-directed (Bandage FMMM), ordered, anchored, sample rows,
+  walk rows, and sequenceTubeMap's tube map on its own axis or the reference's
 - Genes from the session's annotation track, drawn on the graph
 - Bubbles from `gfatools bubble` or the graph itself, opened level by level
 - gbz-base haplotypes as walks: carriage as node thickness, one walk lifted out
