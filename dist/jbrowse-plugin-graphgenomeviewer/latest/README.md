@@ -22,7 +22,7 @@ session spec does the same with `loadedTrackId` and `loadedRegion`.
 
 ![MICB's exons 2–4 as a tube map on its own axis, with the reference ruler under it](img/tube_map_micb.png)
 
-![KIV-2 walk rows: eight haplotypes, each copy coloured by its unit](img/walk_rows_kiv2.png)
+![KIV-2 walk rows: eight haplotypes, each bar tiled by the kringle unit](img/walk_rows_kiv2.png)
 
 ## Features
 

@@ -1,35 +1,13 @@
 import type { Feature } from '@jbrowse/core/util'
 
-// One run of an allele as VCF 4.5 states a repeat sequence: `count` copies of
-// one unit. `unit` is the unit's sequence where the record gives one (RUS),
-// else its length (RUL), and is what walk rows colour a run by.
-export interface RepeatSequence {
-  unit: string
-  unitLength: number
-  count: number
-  bp: number
-  // each copy's bases (RUB), where copies differ in length
-  copyBp?: number[]
-}
-
 export interface RepeatCall {
   bp: number
   // TRGT's `SD`. Zero means the allele is a copy of the one the reads did
   // support, so its length states nothing about a second haplotype; absent
   // where the genotyper writes no such field.
   spanningReads?: number
-  // the allele's runs in order, where the record states them
-  sequences?: RepeatSequence[]
   // the PanSN haplotype a phased genotype puts this allele on
   haplotype?: number
-}
-
-// A unit the record's alleles repeat, with the copies of it they carry
-// between them.
-export interface RepeatUnit {
-  unit: string
-  unitLength: number
-  copies: number
 }
 
 // A tandem repeat array as the walk rows need it: its span on the reference,
@@ -55,8 +33,6 @@ export interface RepeatArray {
   // (TRGT) or a genotype over VCF 4.5 <CNV:TR> alleles; absent from a
   // catalogue.
   calls?: Record<string, RepeatCall[]>
-  // the units the <CNV:TR> alleles repeat, most copies first
-  units?: RepeatUnit[]
 }
 
 export const REPEAT_ADAPTER_TYPES = new Set([
@@ -192,11 +168,11 @@ function strings(value: unknown) {
 
 const TANDEM_REPEAT = '<CNV:TR>'
 
-// Each ALT allele's runs, off VCF 4.5's flattened list-of-lists: RN says how
-// many RUS/RUL/RUC/RB entries each allele takes, and RUB holds one entry per
-// copy of every run. An allele that is not <CNV:TR>, or has a run stating no
-// unit, has none.
-function tandemAlleles(f: FeatureLike) {
+// Each ALT allele's length, off VCF 4.5's flattened list-of-lists: RN says how
+// many RUS/RUL/RUC/RB entries each allele takes, and the allele's bases are
+// its runs' RB, or unit length times count where RB is missing. An allele that
+// is not <CNV:TR>, or has a run stating neither, has none.
+function tandemAlleleBp(f: FeatureLike) {
   const alts = strings(own(f, 'ALT'))
   if (!alts.includes(TANDEM_REPEAT)) {
     return undefined
@@ -206,83 +182,52 @@ function tandemAlleles(f: FeatureLike) {
   const rul = numbers(field(f, 'RUL'))
   const ruc = numbers(field(f, 'RUC'))
   const rb = numbers(field(f, 'RB'))
-  const rub = numbers(field(f, 'RUB')).filter(bp => bp !== undefined)
-  const counted = ruc.every(Number.isInteger)
   let k = 0
-  let copy = 0
   return alts.map((alt, i) => {
     const n = rn[i] ?? (alt === TANDEM_REPEAT ? 1 : 0)
-    const runs: RepeatSequence[] = []
+    let bp = 0
+    let known = 0
     for (let j = 0; j < n; j++, k++) {
-      const stated = rus[k]
-      const sequence = stated && IUPAC.test(stated) ? stated : undefined
-      const unitLength = rul[k] ?? sequence?.length
-      const bp = rb[k]
-      const count =
-        ruc[k] ?? (unitLength && bp !== undefined ? bp / unitLength : undefined)
-      if (unitLength && count !== undefined) {
-        const copyBp =
-          counted && rub.length > 0 ? rub.slice(copy, copy + count) : undefined
-        runs.push({
-          unit: sequence ?? String(unitLength),
-          unitLength,
-          count,
-          bp: bp ?? Math.round(unitLength * count),
-          ...(copyBp?.length === count ? { copyBp } : {}),
-        })
+      const motif = rus[k]
+      const unitLength =
+        rul[k] ?? (motif && IUPAC.test(motif) ? motif.length : undefined)
+      const count = ruc[k]
+      const runBp =
+        rb[k] ??
+        (unitLength && count !== undefined
+          ? Math.round(unitLength * count)
+          : undefined)
+      if (runBp !== undefined) {
+        bp += runBp
+        known++
       }
-      copy += count ?? 0
     }
-    return alt === TANDEM_REPEAT && runs.length === n ? runs : undefined
+    return alt === TANDEM_REPEAT && n > 0 && known === n ? bp : undefined
   })
 }
 
-function unitsOf(alleles: (RepeatSequence[] | undefined)[]) {
-  const units = new Map<string, RepeatUnit>()
-  for (const { unit, unitLength, count } of alleles.flatMap(r => r ?? [])) {
-    const copies = (units.get(unit)?.copies ?? 0) + count
-    units.set(unit, { unit, unitLength, copies })
-  }
-  return units.size > 0
-    ? [...units.values()].sort(
-        (a, b) =>
-          b.copies - a.copies ||
-          a.unitLength - b.unitLength ||
-          a.unit.localeCompare(b.unit),
-      )
-    : undefined
-}
-
 // A sample's alleles through its genotype: 0 is the reference's, an index
-// past it the ALT allele's runs. A phased genotype's k-th allele is PanSN
+// past it the ALT allele's. A phased genotype's k-th allele is PanSN
 // haplotype k, the order vg deconstruct writes an assembly's haplotypes in.
 function genotyped(
   gt: string | undefined,
-  alleles: (RepeatSequence[] | undefined)[],
+  alleleBp: (number | undefined)[],
   referenceBp: number,
 ) {
   const phased = gt?.includes('|')
   return (gt ?? '').split(/[/|]/).flatMap((index, k): RepeatCall[] => {
     const i = Number(index)
-    const sequences = i > 0 ? alleles[i - 1] : undefined
-    if (!Number.isInteger(i) || (i > 0 && !sequences)) {
+    const bp = i > 0 ? alleleBp[i - 1] : referenceBp
+    if (!Number.isInteger(i) || bp === undefined) {
       return []
     }
-    return [
-      {
-        bp: sequences
-          ? sequences.reduce((sum, run) => sum + run.bp, 0)
-          : referenceBp,
-        ...(sequences ? { sequences } : {}),
-        ...(phased ? { haplotype: k + 1 } : {}),
-      },
-    ]
+    return [{ bp, ...(phased ? { haplotype: k + 1 } : {}) }]
   })
 }
 
 function callsOf(
   f: FeatureLike,
-  alleles: (RepeatSequence[] | undefined)[] | undefined,
+  alleleBp: (number | undefined)[] | undefined,
   referenceBp: number,
 ) {
   const samples = own(f, 'samples') as
@@ -296,9 +241,9 @@ function callsOf(
         : [],
     )
     const calls =
-      lengths.length > 0 || !alleles
+      lengths.length > 0 || !alleleBp
         ? lengths
-        : genotyped(strings(fields.GT)[0], alleles, referenceBp)
+        : genotyped(strings(fields.GT)[0], alleleBp, referenceBp)
     if (calls.length > 0) {
       called[sample] = calls
     }
@@ -308,11 +253,11 @@ function callsOf(
 
 // A <CNV:TR> record's POS is the base before the array and SVLEN the
 // reference allele's length, while a VCF feature starts at that padding base.
-function spanOf(f: FeatureLike, alleles: unknown[] | undefined) {
+function spanOf(f: FeatureLike, tandem: boolean) {
   const start = field(f, 'start') as number
   const end = field(f, 'end') as number
   const svlen = numbers(field(f, 'SVLEN'))[0]
-  return alleles && svlen !== undefined
+  return tandem && svlen !== undefined
     ? { start: start + 1, end: start + 1 + svlen }
     : { start, end }
 }
@@ -320,8 +265,8 @@ function spanOf(f: FeatureLike, alleles: unknown[] | undefined) {
 export function repeatArraysFrom(features: FeatureLike[]): RepeatArray[] {
   const arrays: RepeatArray[] = []
   for (const f of features) {
-    const alleles = tandemAlleles(f)
-    const { start, end } = spanOf(f, alleles)
+    const alleleBp = tandemAlleleBp(f)
+    const { start, end } = spanOf(f, alleleBp !== undefined)
     const unit = repeatUnitOf(f)
     if (!(end > start) || unit === undefined) {
       continue
@@ -329,7 +274,6 @@ export function repeatArraysFrom(features: FeatureLike[]): RepeatArray[] {
     const refName = field(f, 'refName') as string
     const motif = first(f, MOTIF_FIELDS)
     const stated = first(f, NAME_FIELDS)
-    const units = alleles && unitsOf(alleles)
     arrays.push({
       key: `${refName}:${start}-${end}`,
       name:
@@ -342,8 +286,7 @@ export function repeatArraysFrom(features: FeatureLike[]): RepeatArray[] {
       end,
       unit,
       motif,
-      calls: callsOf(f, alleles, end - start),
-      ...(units ? { units } : {}),
+      calls: callsOf(f, alleleBp, end - start),
     })
   }
   return arrays.sort((a, b) => a.start - b.start)

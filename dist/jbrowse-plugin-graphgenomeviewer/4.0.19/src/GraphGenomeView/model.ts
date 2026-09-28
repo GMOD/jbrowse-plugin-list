@@ -22,6 +22,7 @@ import { genePins } from '@jbrowse/bandage-core/genes/genePins'
 import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
 import { layoutLabels } from '@jbrowse/bandage-core/labelLayout'
 import { ROW_HEIGHT_PX } from '@jbrowse/bandage-core/layout/rowSpacing'
+import { trimToWindow } from '@jbrowse/bandage-core/layout/trimToWindow'
 import { walkRowsExtent } from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import {
@@ -989,15 +990,6 @@ export function GraphPaneMixin() {
         )
         return { ...bars, reference: reference!, rows: paired }
       },
-      // The units walk rows paint every bar by, once the selected repeat's
-      // record states a drawn walk's runs.
-      get walkRowUnits() {
-        const bars = this.walkRowBars
-        return bars &&
-          [bars.reference, ...bars.rows].some(row => row.call?.sequences)
-          ? self.selectedRepeat?.units
-          : undefined
-      },
       // The labels drawn beside the rows. Walk rows label from the bars
       // themselves, which follow the selected repeat and sample filter that
       // the layout, run once per cut, cannot.
@@ -1159,7 +1151,7 @@ export function GraphPaneMixin() {
       // neighbour walk to say what the first one already worked out.
       get referenceRampDomain() {
         const ramp = self.referenceRamp
-        return ramp && !self.walkRowUnits
+        return ramp
           ? { start: ramp.start, end: ramp.start + ramp.span }
           : undefined
       },
@@ -2086,15 +2078,17 @@ export function GraphPaneMixin() {
       // 'force' is expressed. See LAYOUT_MODES.
       function* computeLayout(graph: Graph) {
         const start = performance.now()
+        const tubeMap = TUBE_MAP_MODES.has(self.chosenLayoutMode)
+        // a tube map draws the window; the cut's context is for walk rows
+        const region = self.graphRegion
+        const drawn = tubeMap && region ? trimToWindow(graph, region) : graph
         // reads are placed by the cut's segment names, which a fold renames
         const coarse =
-          TUBE_MAP_MODES.has(self.chosenLayoutMode) &&
-          self.tubeMapFold > 0 &&
-          !graph.reads
-            ? coarsenTubeMap(graph, self.tubeMapFold)
+          tubeMap && self.tubeMapFold > 0 && !drawn.reads
+            ? coarsenTubeMap(drawn, self.tubeMapFold)
             : undefined
         const local = layoutModeByValue(self.chosenLayoutMode).run(
-          coarse?.graph ?? graph,
+          coarse?.graph ?? drawn,
           self.graphRegion,
           self.host ? self.layoutResult?.sampleRows : undefined,
         )
