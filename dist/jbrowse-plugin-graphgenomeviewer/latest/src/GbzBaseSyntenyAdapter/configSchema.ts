@@ -153,16 +153,13 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * Graph context around the reference walk, in bp, on top of
-     * `subgraphSnarls`. Since `@gmod/gbz-base` joins the pieces of a walk that
-     * leaves the window's nodes and comes back (the private stretch becomes the
-     * record's insertion, the skipped reference its deletion), a lane's record
-     * count is one per haplotype at any context; what context trades is nodes
-     * read against pieces to identify and join. A window inside a snarl far
+     * Graph context around the window, in bp, on top of `subgraphSnarls`: the
+     * cut, its reference walk and every haplotype walk extend this far past
+     * the window on each side. A haplotype walk breaks into pieces wherever it
+     * leaves the cut's nodes, so context and snarls together decide whether a
+     * lane's bubble is one record or several. A window inside a snarl far
      * larger than itself (MHC class II on the HPRC graph, 90 kb) is 1.1M pieces
-     * at 0 and 464 walks at 1000, three times faster; a window whose private
-     * stretches are short bubbles costs about the same either way. For the
-     * graph view's cut it is simply how far past the window the cut extends.
+     * at 0 and 464 walks at 1000, three times faster.
      */
     context: {
       type: 'number',

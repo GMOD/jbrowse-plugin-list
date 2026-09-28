@@ -539,6 +539,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
       db
         .getSubgraphForRange(reference, piece.start, piece.end, {
           context: this.getConf('context'),
+          snarls: this.getConf('subgraphSnarls'),
           haplotypes: 'all',
           limit: nodeLimit,
           signal: opts.signal,
@@ -568,8 +569,8 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
           ).filter(subgraph => subgraph !== undefined)
         : []
     const whole = subgraphs.every(subgraph => {
-      const walk = subgraph.stats.anchorWalk
-      return walk !== undefined && walk.fallback === undefined
+      const keep = subgraph.stats.keep
+      return keep !== undefined && keep.fallback === undefined
     })
     return whole
       ? subgraphs.flatMap(subgraph =>
