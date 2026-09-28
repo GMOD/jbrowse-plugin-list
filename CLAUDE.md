@@ -90,8 +90,8 @@ for the host to ship. `--versions main` carries the same flag, so a hand-run
 against `main` alone also exits 0 whatever it finds.
 
 The gate proves a bundle **loads**. It does not prove a track **renders** — that
-needs test data and belongs in the plugin's own repo, and of the 13 plugins here
-only msaview and protein3d have any e2e tests at all.
+needs test data and belongs in the plugin's own repo, and of the 15 plugins here
+only msaview, protein3d and graphgenomeviewer have any e2e tests at all.
 
 An entry that pins several `versions` gets each one booted from its own version
 dir, on the hosts that version's `jbrowseRange` names; hosts outside the range
@@ -225,14 +225,15 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   have done the job — `<5.0.0` still matches `5.0.0-beta.N` (the prerelease trap
   above). [Issue 34](https://github.com/GMOD/jbrowse-plugin-list/issues/34)
   tracks restoring it.
-- **`plugins.json` lists 13 plugins**, not the 17 several ADRs measured on
-  2026-08-06 or the 14 that stood until quantseq was retired. Those numbers are
-  dated records and are left as written; anything here that reads as current
-  says 13.
-- **No entry in `plugins.json` declares `versions`**, so all 13 get a single
-  auto-generated version at `jbrowseRange: "*"` and the range apparatus has no
-  live users _here_. A config naming a plugin by its store `name` is what gives
-  it some
+- **`plugins.json` lists 15 plugins** as of 2026-09-28, not the 17 several ADRs
+  measured on 2026-08-06 or the 13 that stood after quantseq was retired and
+  before GraphGenomeView and TandemRepeat joined. Those numbers are dated
+  records and are left as written.
+- **No entry in `plugins.json` declares `versions`**, so each gets a single
+  auto-generated version: at `jbrowseRange: "*"`, except GraphGenomeView and
+  TandemRepeat, whose entry-level `">=5.0.0"` carries over. The range apparatus
+  has no other live users _here_. A config naming a plugin by its store `name`
+  is what gives it some
   ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
   and it remains the right tool for rollback; for retirement it is the stronger
   lever for refs and no lever at all below 5.0.0
