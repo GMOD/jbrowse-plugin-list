@@ -10,17 +10,22 @@ const GENE_TRACK_SUFFIXES = [
     'augustusGene',
     'xenoRefGene',
 ];
-function withAbsoluteUris(value, base) {
+// A TwoBit adapter's bare `chromSizes` resolves against the `baseUri` beside
+// its `uri`, so rewriting each `uri` alone sent jb2hubs' relative chrom.sizes
+// to the page's origin
+function withBaseUri(value, base) {
     if (Array.isArray(value)) {
-        return value.map(item => withAbsoluteUris(item, base));
+        return value.map(item => withBaseUri(item, base));
     }
     if (typeof value === 'object' && value !== null) {
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+        const entries = Object.entries(value).map(([key, item]) => [
             key,
-            key === 'uri' && typeof item === 'string'
-                ? new URL(item, base).href
-                : withAbsoluteUris(item, base),
-        ]));
+            withBaseUri(item, base),
+        ]);
+        return Object.fromEntries(typeof value.uri === 'string' &&
+            !('baseUri' in value)
+            ? [...entries, ['baseUri', base]]
+            : entries);
     }
     return value;
 }
@@ -32,10 +37,8 @@ export function describeFromConfig(config, assemblyName, configUrl) {
     const tracks = new Map(config.tracks?.map(track => [track.trackId, track]));
     const geneAdapter = GENE_TRACK_SUFFIXES.map(suffix => tracks.get(`${assembly.name}-${suffix}`)?.adapter).find(adapter => adapter !== undefined);
     return {
-        displayName: assembly.displayName,
-        geneAdapter: geneAdapter && withAbsoluteUris(geneAdapter, configUrl),
-        refNameAliases: assembly.refNameAliases &&
-            withAbsoluteUris(assembly.refNameAliases, configUrl),
+        assembly: withBaseUri(assembly, configUrl),
+        geneAdapter: geneAdapter && withBaseUri(geneAdapter, configUrl),
     };
 }
 // throws on anything but a found config or a 404, so only a definitive
@@ -67,9 +70,10 @@ function describe(assemblyName) {
     return description;
 }
 /**
- * Core-describeAssemblies: what the hosted config of each named genome says
- * of it, read without connecting it. A name another plugin already described,
- * or one no hosted config could hold, is left alone
+ * Core-describeAssemblies: the assembly config and gene track adapter the
+ * hosted config of each named genome holds, read without connecting it. A
+ * name another plugin already described, or one no hosted config could hold,
+ * is left alone
  */
 export async function describeAssemblies(described, assemblyNames) {
     const before = typeof described === 'object' && described !== null ? described : {};

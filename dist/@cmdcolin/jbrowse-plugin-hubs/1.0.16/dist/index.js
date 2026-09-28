@@ -124,8 +124,8 @@ export default class HubsViewerPlugin extends Plugin {
             return defaultResult;
         });
         // A multi-way synteny lane whose genome the session lacks asks here for
-        // its name, gene track and chromosome aliases. Cores older than the point
-        // never fire it, so this is inert on them
+        // its assembly config and gene track. Cores older than the point never
+        // fire it, so this is inert on them
         pluginManager.addToExtensionPoint('Core-describeAssemblies', (described, args) => describeAssemblies(described, args.assemblyNames));
     }
     configure(pluginManager) {
