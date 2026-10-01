@@ -38,3 +38,12 @@ test('the v5 threshold scale keeps each bound in its own band', () => {
     expect(color(score)).toBe(plddtColor(score))
   }
 })
+
+test('the v5 key names each band, not its nudged cut', () => {
+  expect(thresholdBandColor('score', PLDDT_BANDS).labels).toEqual([
+    'very low <50',
+    'low 50-70',
+    'confident 70-90',
+    'very high >90',
+  ])
+})

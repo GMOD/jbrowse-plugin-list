@@ -32,5 +32,6 @@ export function thresholdBandColor(field: string, bands: Band[]) {
       .filter(band => band.upTo !== Infinity)
       .map(band => band.upTo + 1e-6),
     range: bands.map(band => band.color),
+    labels: bands.map(band => band.label),
   }
 }
