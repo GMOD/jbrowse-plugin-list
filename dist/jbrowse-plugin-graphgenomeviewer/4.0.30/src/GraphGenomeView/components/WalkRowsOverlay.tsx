@@ -43,7 +43,9 @@ const CALL_TICK = '#111'
 const UNBACKED_TICK = '#9e9e9e'
 const DISAGREES = '#c62828'
 const OFF_REFERENCE = '#8e3fbf'
+const OUTSIDE_CUT = '#bdbdbd'
 const BAR_PX = 12
+const GAP_PX = 4
 
 const swatchStyle = { width: 18, height: BAR_PX - 4, borderRadius: 2 }
 const tickSwatchStyle = {
@@ -95,6 +97,18 @@ export const WalkRowsLegend = observer(function WalkRowsLegend({
         />
         <span>carried by haplotypes only</span>
       </div>
+      {[bars.reference, ...bars.rows].some(row => row.gapBp > 0) ? (
+        <div style={legendRowStyle}>
+          <div
+            style={{
+              ...swatchStyle,
+              height: GAP_PX,
+              backgroundColor: OUTSIDE_CUT,
+            }}
+          />
+          <span>walked outside the cut</span>
+        </div>
+      ) : null}
       {calls.some(call => call.spanningReads !== 0) ? (
         <div style={legendRowStyle}>
           <TickSwatch color={CALL_TICK} />
@@ -128,16 +142,17 @@ function units(bp: number, unit: number | undefined) {
 }
 
 function readout(
-  row: { bp: number; complete: boolean; call?: WalkCall },
+  row: { bp: number; gapBp: number; complete: boolean; call?: WalkCall },
   referenceBp: number,
   unit: number | undefined,
 ) {
-  const { bp, complete, call } = row
+  const { bp, gapBp, complete, call } = row
   const delta = bp - referenceBp
   const against =
     delta === 0 ? '' : ` (${delta > 0 ? '+' : '−'}${kb(Math.abs(delta))})`
+  const outside = gapBp > 0 ? ` · ${kb(gapBp)} outside the cut` : ''
   const called = call ? calledReadout(call) : ''
-  return `${kb(bp)}${units(bp, unit)}${against}${complete ? '' : ' · partial walk'}${called}`
+  return `${kb(bp)}${units(bp, unit)}${against}${outside}${complete ? '' : ' · partial walk'}${called}`
 }
 
 function calledReadout(call: { bp: number; spanningReads?: number }) {
@@ -167,6 +182,9 @@ function runFill(
   ramp: { start: number; end: number } | undefined,
   gradientId: string,
 ) {
+  if (run.gap) {
+    return { fill: OUTSIDE_CUT }
+  }
   if (!ramp) {
     return { fill: run.onReference ? ON_REFERENCE : OFF_REFERENCE }
   }
@@ -248,13 +266,19 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
           strokeWidth={1}
         />
       ))
-  const rect = (start: number, bp: number, y: number, fill: string) => (
+  const rect = (
+    start: number,
+    bp: number,
+    y: number,
+    fill: string,
+    height = BAR_PX,
+  ) => (
     <rect
       key={start}
       x={X(origin + start)}
-      y={y - BAR_PX / 2}
+      y={y - height / 2}
       width={Math.max(1, bp * scaleX)}
-      height={BAR_PX}
+      height={height}
       fill={fill}
     />
   )
@@ -285,7 +309,7 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
               return (
                 <g key={run.start}>
                   {gradient}
-                  {rect(run.start, run.bp, y, fill)}
+                  {rect(run.start, run.bp, y, fill, run.gap ? GAP_PX : BAR_PX)}
                 </g>
               )
             })}
