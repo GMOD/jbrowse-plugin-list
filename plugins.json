@@ -6,10 +6,11 @@
       "authors": ["Colin Diesh"],
       "description": "multiple sequence alignment browser plugin for JBrowse 2",
       "location": "https://github.com/GMOD/jbrowse-plugin-msaview",
-      "umdPath": "dist/jbrowse-plugin-msaview.umd.production.min.js",
+      "esmPath": "dist/jbrowse-plugin-msaview.esm.js",
       "license": "Apache License 2.0",
       "tags": ["plug-and-play", "alignment"],
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png"
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
+      "jbrowseRange": ">=5.0.0"
     },
     {
       "name": "UCSC",
