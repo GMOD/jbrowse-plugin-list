@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@mui/material/SvgIcon", "../../node_modules/.pnpm/@mui+icons-material@9.4.0_@mui+material@9.4.0_@emotion+react@11.14.0_@types+react@19.3._3766ec55733e6b150ee672ad270cc236/node_modules/@mui/icons-material/utils/createSvgIcon.mjs"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@mui/material/SvgIcon\"];", "'use client';\n\nexport { createSvgIcon as default } from '@mui/material/SvgIcon';"],
+  "mappings": "+CAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,uBAAuB,ICEvD,IAAAC,EAAyC",
+  "names": ["require_SvgIcon", "__commonJSMin", "exports", "module", "import_SvgIcon"]
+}

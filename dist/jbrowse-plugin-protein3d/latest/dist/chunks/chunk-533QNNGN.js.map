@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:react/jsx-runtime"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"react/jsx-runtime\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,mBAAmB",
+  "names": ["require_jsx_runtime", "__commonJSMin", "exports", "module"]
+}

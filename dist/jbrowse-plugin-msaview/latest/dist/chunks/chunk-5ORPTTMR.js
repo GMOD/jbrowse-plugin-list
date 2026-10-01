@@ -1,0 +1,2 @@
+import{a}from"./chunk-FY3BTKY4.js";var i=a((p,c)=>{c.exports=JBrowseExports["@jbrowse/core/util/tss-react"]});function n(t){let o=navigator.clipboard;if(o?.writeText){o.writeText(t).catch(r=>{console.error("Failed to copy to clipboard:",r)});return}let e=document.createElement("textarea");e.value=t,e.style.position="fixed",e.style.opacity="0",document.body.append(e),e.select(),document.execCommand("copy"),e.remove()}export{i as a,n as b};
+//# sourceMappingURL=chunk-5ORPTTMR.js.map

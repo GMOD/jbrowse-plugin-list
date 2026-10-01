@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/components/ExternalLink.tsx", "../../node_modules/.pnpm/@mui+icons-material@9.4.0_@mui+material@9.4.0_@emotion+react@11.14.0_@types+react@19.3._3766ec55733e6b150ee672ad270cc236/node_modules/@mui/icons-material/OpenInNew.mjs"],
+  "sourcesContent": ["import React from 'react'\n\nimport OpenInNewIcon from '@mui/icons-material/OpenInNew'\nimport { Link } from '@mui/material'\n\nimport type { LinkProps } from '@mui/material'\n\nexport default function ExternalLink(props: LinkProps) {\n  const { children, ...rest } = props\n  return (\n    <Link {...rest} target=\"_blank\" rel=\"noreferrer\">\n      {children} <OpenInNewIcon fontSize=\"small\" />\n    </Link>\n  )\n}\n", "\"use client\";\n\nimport createSvgIcon from \"./utils/createSvgIcon.mjs\";\nimport { jsx as _jsx } from \"react/jsx-runtime\";\nexport default createSvgIcon(/*#__PURE__*/_jsx(\"path\", {\n  d: \"M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3z\"\n}), 'OpenInNew');"],
+  "mappings": "kKAAA,IAAAA,EAAkB,OCGlB,IAAAC,EAA4B,SACrBC,KAAQ,oBAA2B,EAAAC,KAAK,OAAQ,CACrD,EAAG,+HACL,CAAC,EAAG,WAAW,EDHf,IAAAC,EAAqB,OAIN,SAARC,EAA8BC,EAAkB,CACrD,GAAM,CAAE,SAAAC,EAAU,GAAGC,CAAK,EAAIF,EAC9B,OACE,EAAAG,QAAA,cAAC,QAAM,GAAGD,EAAM,OAAO,SAAS,IAAI,cACjCD,EAAS,IAAC,EAAAE,QAAA,cAACC,EAAA,CAAc,SAAS,QAAQ,CAC7C,CAEJ",
+  "names": ["import_react", "import_jsx_runtime", "OpenInNew_default", "_jsx", "import_material", "ExternalLink", "props", "children", "rest", "React", "OpenInNew_default"]
+}

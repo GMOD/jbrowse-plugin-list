@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/util", "global-externals:@mui/material/SvgIcon", "global-externals:react/jsx-runtime", "../../node_modules/.pnpm/@mui+icons-material@9.4.0_@mui+material@9.4.0_@emotion+react@11.14.0_@types+react@19.3._3766ec55733e6b150ee672ad270cc236/node_modules/@mui/icons-material/utils/createSvgIcon.mjs"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/util\"];", "module.exports = JBrowseExports[\"@mui/material/SvgIcon\"];", "module.exports = JBrowseExports[\"react/jsx-runtime\"];", "'use client';\n\nexport { createSvgIcon as default } from '@mui/material/SvgIcon';"],
+  "mappings": "+CAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,oBAAoB,ICApD,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,uBAAuB,ICAvD,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,mBAAmB,ICEnD,IAAAC,EAAyC",
+  "names": ["require_util", "__commonJSMin", "exports", "module", "require_SvgIcon", "__commonJSMin", "exports", "module", "require_jsx_runtime", "__commonJSMin", "exports", "module", "import_SvgIcon"]
+}

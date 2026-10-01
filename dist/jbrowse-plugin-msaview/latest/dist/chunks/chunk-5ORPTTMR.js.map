@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/util/tss-react", "../../node_modules/.pnpm/react-msaview@8.4.1_35cd7d1fa06820f3dff395dec9803110/node_modules/react-msaview/src/vendor/copyToClipboard.ts"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/util/tss-react\"];", "export default function copy(text: string) {\n  const clip = navigator.clipboard as Clipboard | undefined\n  if (clip?.writeText) {\n    clip.writeText(text).catch((e: unknown) => {\n      console.error('Failed to copy to clipboard:', e)\n    })\n    return\n  }\n  const textarea = document.createElement('textarea')\n  textarea.value = text\n  textarea.style.position = 'fixed'\n  textarea.style.opacity = '0'\n  document.body.append(textarea)\n  textarea.select()\n  document.execCommand('copy')\n  textarea.remove()\n}\n"],
+  "mappings": "mCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,8BAA8B,ICAhD,SAAPC,EAAsBC,EAAY,CACvC,IAAMC,EAAO,UAAU,UACvB,GAAIA,GAAM,UAAW,CACnBA,EAAK,UAAUD,CAAI,EAAE,MAAOE,GAAc,CACxC,QAAQ,MAAM,+BAAgCA,CAAC,CACjD,CAAC,EACD,MACF,CACA,IAAMC,EAAW,SAAS,cAAc,UAAU,EAClDA,EAAS,MAAQH,EACjBG,EAAS,MAAM,SAAW,QAC1BA,EAAS,MAAM,QAAU,IACzB,SAAS,KAAK,OAAOA,CAAQ,EAC7BA,EAAS,OAAM,EACf,SAAS,YAAY,MAAM,EAC3BA,EAAS,OAAM,CACjB",
+  "names": ["require_tss_react", "__commonJSMin", "exports", "module", "copy", "text", "clip", "e", "textarea"]
+}

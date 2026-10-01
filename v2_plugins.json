@@ -14,17 +14,15 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/3.10.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
-      "integrity": "sha384-WAykbbye5/4xhZdWtmnruYS1RH2I5pOz0yUZWZG7lzqj2nIwduc+s/7vVFS+BNNp",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/4.0.0/dist/jbrowse-plugin-msaview.esm.js",
       "versions": [
         {
-          "pluginVersion": "3.10.0",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/3.10.0/dist/jbrowse-plugin-msaview.umd.production.min.js",
-          "integrity": "sha384-WAykbbye5/4xhZdWtmnruYS1RH2I5pOz0yUZWZG7lzqj2nIwduc+s/7vVFS+BNNp"
+          "pluginVersion": "4.0.0",
+          "jbrowseRange": ">=5.0.0",
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/4.0.0/dist/jbrowse-plugin-msaview.esm.js"
         }
       ],
-      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/latest/dist/jbrowse-plugin-msaview.umd.production.min.js"
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/latest/dist/jbrowse-plugin-msaview.esm.js"
     },
     {
       "name": "UCSC",
@@ -255,17 +253,15 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.15.3/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-      "integrity": "sha384-3rMeQeGt8gIv0PipcraHHP1Woh4TCzH9QyNVfeKp5sDyTcj0hQaiG98Ixlo9RlsR",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.16.0/dist/jbrowse-plugin-protein3d.esm.js",
       "versions": [
         {
-          "pluginVersion": "0.15.3",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.15.3/dist/jbrowse-plugin-protein3d.umd.production.min.js",
-          "integrity": "sha384-3rMeQeGt8gIv0PipcraHHP1Woh4TCzH9QyNVfeKp5sDyTcj0hQaiG98Ixlo9RlsR"
+          "pluginVersion": "0.16.0",
+          "jbrowseRange": ">=5.0.0",
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/0.16.0/dist/jbrowse-plugin-protein3d.esm.js"
         }
       ],
-      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/jbrowse-plugin-protein3d.umd.production.min.js"
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/jbrowse-plugin-protein3d.esm.js"
     },
     {
       "name": "Hubs",

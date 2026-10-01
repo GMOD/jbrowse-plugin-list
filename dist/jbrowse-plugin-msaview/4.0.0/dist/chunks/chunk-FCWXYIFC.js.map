@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/mobx-state-tree"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"mobx-state-tree\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,iBAAiB",
+  "names": ["require_mobx_state_tree", "__commonJSMin", "exports", "module"]
+}

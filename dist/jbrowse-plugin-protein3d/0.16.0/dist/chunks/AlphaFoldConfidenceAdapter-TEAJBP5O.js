@@ -1,0 +1,2 @@
+import{a as c,b as r}from"./chunk-RVV3WHBT.js";import"./chunk-B3HKXTGK.js";import{c as i}from"./chunk-KVMUXFPB.js";var a=i(c());function d(o){return o.residueNumber.map((e,t)=>({uniqueId:`feat-${t}`,start:e-1,end:e,score:o.confidenceScore[t]}))}var n=class extends r{async loadFeatures(){let e=JSON.parse(await(0,a.openLocation)(this.getConf("location")).readFile("utf8"));return d(e)}};export{n as default,d as parseAlphaFoldConfidence};
+//# sourceMappingURL=AlphaFoldConfidenceAdapter-TEAJBP5O.js.map
