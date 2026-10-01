@@ -263,4 +263,5 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   3.10.0.** The jb2hubs configs carry `storePlugin` beside a url pinned to that
   version's `dist/…umd.production.min.js`, so v5 hosts resolve the ESM build
   here and v4 hosts load a build nobody republishes. `latest/dist/…umd…` also
-  stays at that version, by the append-only rule above.
+  stays at that version, by the append-only rule above
+  ([ADR 0009](agent-docs/architectural-decision-records/0009-esm-only-plugin-freezes-its-last-umd.md)).

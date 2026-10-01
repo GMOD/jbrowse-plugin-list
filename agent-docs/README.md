@@ -26,6 +26,11 @@ run the pipeline, see [../DEVELOPERS.md](../DEVELOPERS.md).
 - [architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md](architectural-decision-records/0007-retire-a-plugin-by-removal-not-by-range.md)
   — why narrowing `jbrowseRange` does not retire a broken plugin, and what
   ranges are still for
+- [architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md](architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)
+  — why a config names a store entry and an install names a version
+- [architectural-decision-records/0009-esm-only-plugin-freezes-its-last-umd.md](architectural-decision-records/0009-esm-only-plugin-freezes-its-last-umd.md)
+  — why a plugin that goes ESM-only leaves its last UMD under `latest/` for 4.x
+  hosts, and what that depends on
 
 ## Incidents
 
