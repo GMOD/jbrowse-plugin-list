@@ -230,10 +230,10 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   before GraphGenomeView and TandemRepeat joined. Those numbers are dated
   records and are left as written.
 - **No entry in `plugins.json` declares `versions`**, so each gets a single
-  auto-generated version: at `jbrowseRange: "*"`, except GraphGenomeView and
-  TandemRepeat, whose entry-level `">=5.0.0"` carries over. The range apparatus
-  has no other live users _here_. A config naming a plugin by its store `name`
-  is what gives it some
+  auto-generated version: at `jbrowseRange: "*"`, except GraphGenomeView,
+  TandemRepeat and Protein3d, whose entry-level `">=5.0.0"` carries over. The
+  range apparatus has no other live users _here_. A config naming a plugin by
+  its store `name` is what gives it some
   ([ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)),
   and it remains the right tool for rollback; for retirement it is the stronger
   lever for refs and no lever at all below 5.0.0
@@ -259,3 +259,8 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   browser that loaded the umd entry just before an upload lazy-loads its sidecar
   after it, and the stale chunk is what answers. Also ~50MB of orphans in one
   prefix, most of it `.js.map`.
+- **Protein3d is ESM-only after 0.15.3, its last UMD build.** The jb2hubs
+  configs carry `storePlugin: "Protein3d"` beside a url pinned to
+  `0.15.3/dist/…umd.production.min.js`, so v5 hosts resolve the ESM build here
+  and v4 hosts load a build nobody republishes. `latest/dist/…umd…` also stays
+  at 0.15.3, by the append-only rule above.

@@ -104,10 +104,11 @@
       "authors": ["Colin Diesh"],
       "description": "View 3-D protein structures in JBrowse 2",
       "location": "https://github.com/cmdcolin/jbrowse-plugin-protein3d",
-      "umdPath": "dist/jbrowse-plugin-protein3d.umd.production.min.js",
+      "esmPath": "dist/jbrowse-plugin-protein3d.esm.js",
       "license": "MIT",
       "tags": ["needs-setup", "protein", "structure"],
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png"
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
+      "jbrowseRange": ">=5.0.0"
     },
     {
       "name": "Hubs",
