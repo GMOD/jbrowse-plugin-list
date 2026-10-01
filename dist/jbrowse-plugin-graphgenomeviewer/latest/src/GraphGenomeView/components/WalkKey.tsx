@@ -46,6 +46,7 @@ export default function WalkKey({
         <span>
           <strong>{label}</strong>
           {key.delta}
+          {key.outside}
           {key.reversed}
         </span>
       </div>
