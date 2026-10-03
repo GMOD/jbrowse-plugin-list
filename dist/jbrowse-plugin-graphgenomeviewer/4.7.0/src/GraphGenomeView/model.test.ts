@@ -2714,6 +2714,47 @@ describe('walk rows', () => {
     expect(svg).toContain("'s path")
   })
 
+  test("the figure spec keeps the strip's sample filter", async () => {
+    rpcRespond()
+    mockReadFile.mockResolvedValue(WALKS_GFA)
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      gfaLocation: {
+        uri: 'https://example.com/graphs/walks.gfa',
+        locationType: 'UriLocation',
+      },
+      loadedRegion: TEST_REGION,
+      layoutMode: 'ordered',
+      walkStrip: true,
+      walkRowSamples: ['B'],
+    })
+    await model.load()
+    expect(model.walkStripRows!.rows.map(r => r.label)).toEqual(['B#1'])
+    expect(model.figureSpec()).toMatchObject({
+      walkStrip: true,
+      walkRowSamples: ['B'],
+    })
+    model.setWalkStrip(false)
+    expect(model.figureSpec()?.walkRowSamples).toBeUndefined()
+  })
+
+  test('walk rows offer no figure spec, since bandage-figure draws no walk rows', async () => {
+    rpcRespond()
+    mockReadFile.mockResolvedValue(WALKS_GFA)
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      gfaLocation: {
+        uri: 'https://example.com/graphs/walks.gfa',
+        locationType: 'UriLocation',
+      },
+      loadedRegion: TEST_REGION,
+      layoutMode: 'walkrows',
+    })
+    await model.load()
+    expect(model.walkRowBars).toBeDefined()
+    expect(model.figureSpecUnavailable).toMatch(/^bandage-figure draws no /)
+  })
+
   test('walks lift together, each keeping the colour it was given', async () => {
     rpcRespond()
     const model = stateModelFactory().create({

@@ -39,7 +39,7 @@ import {
   rowSpan,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { walkRowsExtent } from '@jbrowse/bandage-core/layout/walkRowLayout'
-import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
+import { filterSamples, walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import {
   segmentAt,
   stripMarks,
@@ -302,22 +302,6 @@ const VIEWPORT_DEBOUNCE_MS = 150
 const VIEWPORT_PANES_BUILT = 1
 // How many walk rows read their haplotype's genes, the first rows down
 const WALK_GENE_ROWS = 40
-
-// The rows a sample filter keeps, in the order it names them
-function filterSamples<R extends { sample: string; label: string }>(
-  rows: R[],
-  samples: string[] | undefined,
-) {
-  return samples
-    ? rows
-        .filter(r => samples.includes(r.sample))
-        .sort(
-          (a, b) =>
-            samples.indexOf(a.sample) - samples.indexOf(b.sample) ||
-            a.label.localeCompare(b.label),
-        )
-    : rows
-}
 
 // What the canvas draws under the tube map, whose ink is all TubeMapOverlay's
 const EMPTY_BATCH: RenderBatch = {
@@ -2387,6 +2371,9 @@ export function GraphPaneMixin() {
               : undefined,
             facet: self.walkLayers.length > 1 ? self.facetSpec : undefined,
             walkStrip: self.walkStripShown || undefined,
+            walkRowSamples: self.walkStripShown
+              ? self.walkRowSamples
+              : undefined,
             width: self.paneWidth,
             height: self.paneCeiling,
             colorScheme: self.chosenColorScheme,
@@ -2403,6 +2390,15 @@ export function GraphPaneMixin() {
           : self.drawsNodes || self.walkRowBars
             ? undefined
             : `${layoutModeByValue(self.chosenLayoutMode).label} draws a picture of its own, which the SVG export does not`
+      },
+      // Why bandage-figure can't make this drawing again: it draws only
+      // layouts with nodes, from a graph it can read for itself
+      get figureSpecUnavailable() {
+        return !self.drawsNodes
+          ? `bandage-figure draws no ${layoutModeByValue(self.chosenLayoutMode).label} layout`
+          : this.figureSpec()
+            ? undefined
+            : 'bandage-figure reads a graph cut from a gbz-base track or a GFA url'
       },
       // The drawing as a standalone SVG, fitted, with its genes, its lifted
       // walks' keys, facet panels and the strip of walk rows; see figureSvg
@@ -4193,9 +4189,8 @@ export function GraphPaneMixin() {
           },
           {
             label: 'Copy figure spec',
-            disabled: !self.figureSpec(),
-            disabledHelpText:
-              'bandage-figure reads a graph cut from a gbz-base track or a GFA url',
+            disabled: self.figureSpecUnavailable !== undefined,
+            disabledHelpText: self.figureSpecUnavailable,
             onClick: () => {
               const spec = self.figureSpec()
               const session = getSession(self)
