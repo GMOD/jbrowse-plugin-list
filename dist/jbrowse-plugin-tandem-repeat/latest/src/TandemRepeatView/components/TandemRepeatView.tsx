@@ -1,7 +1,14 @@
 import { Typography, useTheme } from '@mui/material'
 import { observer } from 'mobx-react'
 
-import { axisTicks, copiesOf, formatBp, readout } from '../layout'
+import {
+  BAR_PX,
+  axisTicks,
+  copiesOf,
+  formatBp,
+  readout,
+  rowLayout,
+} from '../layout'
 
 import type { RepeatAllele, TandemRepeat } from '../../tandemRepeat'
 import type { TandemRepeatViewModel } from '../model'
@@ -20,8 +27,6 @@ const UNIT_COLORS = [
   '#bab0ac',
 ]
 const NO_RUNS = '#bdbdbd'
-const ROW_PX = 22
-const BAR_PX = 12
 const AXIS_PX = 26
 const PAD = 12
 const CHAR_PX = 6.6
@@ -92,6 +97,8 @@ function Row({
   allele,
   repeat,
   y,
+  barPx,
+  labelled,
   X,
   scale,
   labelRight,
@@ -102,6 +109,8 @@ function Row({
   allele: RepeatAllele
   repeat: TandemRepeat
   y: number
+  barPx: number
+  labelled: boolean
   X: (bp: number) => number
   scale: number
   labelRight: number
@@ -109,16 +118,24 @@ function Row({
   gap: string
   referenceBp: number
 }) {
-  const top = y - BAR_PX / 2
+  const top = y - barPx / 2
   const copies = copiesOf(allele, repeat.units)
   const unit = repeat.unitLength
   const ticked =
     !allele.runs && unit !== undefined && unit * scale >= MIN_COPY_PX
   return (
     <g data-testid="tandem-repeat-row">
-      <text x={labelRight} y={y + 4} fontSize={11} textAnchor="end" fill={text}>
-        {allele.label}
-      </text>
+      {labelled ? (
+        <text
+          x={labelRight}
+          y={y + 4}
+          fontSize={11}
+          textAnchor="end"
+          fill={text}
+        >
+          {allele.label}
+        </text>
+      ) : null}
       {allele.runs ? (
         copies.map((copy, i) => {
           const px = copy.bp * scale
@@ -128,7 +145,7 @@ function Row({
               x={X(copy.start)}
               y={top}
               width={Math.max(1, px >= MIN_COPY_PX ? px - 1 : px)}
-              height={BAR_PX}
+              height={barPx}
               fill={unitColor(copy.unit)}
             >
               <title>
@@ -142,7 +159,7 @@ function Row({
           x={X(0)}
           y={top}
           width={Math.max(1, allele.bp * scale)}
-          height={BAR_PX}
+          height={barPx}
           fill={NO_RUNS}
         >
           <title>{`${allele.label}: ${allele.bp.toLocaleString()} bp`}</title>
@@ -157,14 +174,16 @@ function Row({
               x1={x}
               x2={x}
               y1={top}
-              y2={top + BAR_PX}
+              y2={top + barPx}
               stroke={gap}
             />
           ))
         : null}
-      <text x={X(allele.bp) + 6} y={y + 4} fontSize={11} fill={text}>
-        {readout(allele, referenceBp, unit)}
-      </text>
+      {labelled ? (
+        <text x={X(allele.bp) + 6} y={y + 4} fontSize={11} fill={text}>
+          {readout(allele, referenceBp, unit)}
+        </text>
+      ) : null}
     </g>
   )
 }
@@ -190,15 +209,21 @@ const TandemRepeatView = observer(function TandemRepeatView({
   }
   const { alleles, refName, start, end } = repeat
   const referenceBp = end - start
+  const { rowPx, barPx, labelled } = rowLayout(alleles.length)
+  const rows = labelled ? alleles : [...alleles].sort((a, b) => b.bp - a.bp)
   const readouts = alleles.map(a => readout(a, referenceBp, repeat.unitLength))
-  const labelPx = Math.max(...alleles.map(a => a.label.length)) * CHAR_PX + PAD
-  const readoutPx = Math.max(...readouts.map(r => r.length)) * CHAR_PX + PAD
+  const labelPx = labelled
+    ? Math.max(...alleles.map(a => a.label.length)) * CHAR_PX + PAD
+    : 0
+  const readoutPx = labelled
+    ? Math.max(...readouts.map(r => r.length)) * CHAR_PX + PAD
+    : 0
   const plotPx = Math.max(100, width - labelPx - readoutPx - 2 * PAD)
   const maxBp = Math.max(referenceBp, ...alleles.map(a => a.bp))
   const scale = plotPx / maxBp
   const left = PAD + labelPx
   const X = (bp: number) => left + bp * scale
-  const height = AXIS_PX + alleles.length * ROW_PX + PAD
+  const height = AXIS_PX + alleles.length * rowPx + PAD
   const text = theme.palette.text.primary
   const faint = theme.palette.text.secondary
   const gap = theme.palette.background.paper
@@ -217,6 +242,9 @@ const TandemRepeatView = observer(function TandemRepeatView({
           <b>{repeat.name}</b> · {refName}:{(start + 1).toLocaleString()}-
           {end.toLocaleString()} · {alleles.length} alleles, each on its own bp
           axis
+          {labelled
+            ? null
+            : ', longest first, too many to label: hover a copy for its row'}
         </Typography>
         <Legend repeat={repeat} referenceBp={referenceBp} />
       </div>
@@ -254,12 +282,14 @@ const TandemRepeatView = observer(function TandemRepeatView({
           stroke={faint}
           strokeDasharray="3 2"
         />
-        {alleles.map((allele, i) => (
+        {rows.map((allele, i) => (
           <Row
             key={`${allele.label}-${i}`}
             allele={allele}
             repeat={repeat}
-            y={AXIS_PX + i * ROW_PX + ROW_PX / 2}
+            y={AXIS_PX + i * rowPx + rowPx / 2}
+            barPx={barPx}
+            labelled={labelled}
             X={X}
             scale={scale}
             labelRight={left - 8}

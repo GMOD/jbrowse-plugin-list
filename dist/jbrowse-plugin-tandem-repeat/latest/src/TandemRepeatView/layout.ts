@@ -31,6 +31,24 @@ export function copiesOf(allele: RepeatAllele, units: RepeatUnit[]) {
   return boxes
 }
 
+export const ROW_PX = 22
+export const BAR_PX = 12
+const ROWS_MAX_PX = 30 * ROW_PX
+const LABEL_MIN_PX = 11
+
+// More rows than fit the plot's height squash into it, below a pixel if need
+// be, rather than growing the view; rows too thin for a label draw unlabelled,
+// their bars touching.
+export function rowLayout(rows: number) {
+  const rowPx = Math.min(ROW_PX, ROWS_MAX_PX / Math.max(1, rows))
+  const labelled = rowPx >= LABEL_MIN_PX
+  return {
+    rowPx,
+    barPx: labelled ? (rowPx * BAR_PX) / ROW_PX : rowPx,
+    labelled,
+  }
+}
+
 export function copyCount(allele: RepeatAllele) {
   return allele.runs?.reduce((sum, run) => sum + run.count, 0)
 }

@@ -1,4 +1,4 @@
-import { axisTicks, copiesOf, formatBp, readout } from './layout'
+import { axisTicks, copiesOf, formatBp, readout, rowLayout } from './layout'
 
 const units = [{ length: 5548, copies: 7 }]
 
@@ -51,4 +51,13 @@ test('ruler ticks step by 1, 2 or 5 times a power of ten', () => {
   expect(axisTicks(147189)).toEqual([0, 50000, 100000])
   expect(axisTicks(3161)).toEqual([0, 1000, 2000, 3000])
   expect(axisTicks(0)).toEqual([0])
+})
+
+test('rows past the height budget squash into it, unlabelled below a label', () => {
+  expect(rowLayout(9)).toEqual({ rowPx: 22, barPx: 12, labelled: true })
+  const cohort = rowLayout(464)
+  expect(cohort.rowPx * 464).toBeCloseTo(rowLayout(30).rowPx * 30)
+  expect(cohort.rowPx).toBeLessThan(2)
+  expect(cohort).toMatchObject({ barPx: cohort.rowPx, labelled: false })
+  expect(rowLayout(40).labelled).toBe(true)
 })
