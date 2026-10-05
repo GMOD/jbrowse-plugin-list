@@ -1,9 +1,9 @@
-# agent-docs
+# Decision records
 
 Decision records and incidents. Records are point-in-time, not
 maintained reference — each states when it was written and what was measured.
-For invariants that must stay true, see [../CLAUDE.md](../../CLAUDE.md); for how to
-run the pipeline, see [../DEVELOPERS.md](../../DEVELOPERS.md).
+For invariants that must stay true, see [CLAUDE.md](../../CLAUDE.md); for how to
+run the pipeline, see [DEVELOPERS.md](../../DEVELOPERS.md).
 
 ## Decisions that still bind
 
