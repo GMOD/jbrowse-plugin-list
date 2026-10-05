@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/ui", "global-externals:@mui/material"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/ui\"];", "module.exports = JBrowseExports[\"@mui/material\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,kBAAkB,ICAlD,IAAAC,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,eAAe",
+  "names": ["require_ui", "__commonJSMin", "exports", "module", "require_material", "__commonJSMin", "exports", "module"]
+}
