@@ -17,11 +17,13 @@ export default function GbzBaseSyntenyAdapterF(pluginManager: PluginManager) {
         // adapter and offer its lane picker over the whole graph.
         // lanePairsOnAnchor: a window of the anchor answers any two lanes'
         // alignment to each other, so the display fetches each adjacent pair
-        // rather than composing it through the reference
+        // rather than composing it through the reference.
+        // lanePairBatches: every pair on a window comes from one cut
         adapterCapabilities: [
           'getSubgraph',
           'headerLanes',
           'lanePairsOnAnchor',
+          'lanePairBatches',
         ],
         adapterMetadata: {
           category: 'Synteny adapters',
