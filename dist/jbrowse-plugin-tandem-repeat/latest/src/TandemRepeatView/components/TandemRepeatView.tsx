@@ -8,6 +8,7 @@ import {
   formatBp,
   readout,
   rowLayout,
+  squeezedOrder,
 } from '../layout'
 
 import type { RepeatAllele, TandemRepeat } from '../../tandemRepeat'
@@ -210,7 +211,8 @@ const TandemRepeatView = observer(function TandemRepeatView({
   const { alleles, refName, start, end } = repeat
   const referenceBp = end - start
   const { rowPx, barPx, labelled } = rowLayout(alleles.length)
-  const rows = labelled ? alleles : [...alleles].sort((a, b) => b.bp - a.bp)
+  const squeezed = squeezedOrder(alleles, repeat.units)
+  const rows = labelled ? alleles : squeezed.rows
   const readouts = alleles.map(a => readout(a, referenceBp, repeat.unitLength))
   const labelPx = labelled
     ? Math.max(...alleles.map(a => a.label.length)) * CHAR_PX + PAD
@@ -244,7 +246,7 @@ const TandemRepeatView = observer(function TandemRepeatView({
           axis
           {labelled
             ? null
-            : ', longest first, too many to label: hover a copy for its row'}
+            : `, ${squeezed.rule}, too many to label: hover a copy for its row`}
         </Typography>
         <Legend repeat={repeat} referenceBp={referenceBp} />
       </div>

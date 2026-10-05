@@ -100,11 +100,18 @@ and grouping copies within 1% of each other into a unit. Two units come out,
 
 `hprc_kiv2_copies_all` holds the same array in all 464 haplotypes whose walks
 reach both of its flanks, GRCh38 included. Past 30 rows the view squeezes its
-rows into the height of 30, longest first and unlabelled; hovering a copy names
-its haplotype. Unit 2 opens 245 of the 464 arrays, and every array that holds
-unit 2 opens with it except GRCh38's, whose only unit 2 copy sits fourth.
+rows into the height of 30, unlabelled, those with the most copies of the rarest
+unit first, then longest; hovering a copy names its haplotype. Unit 2 leads
+every array that holds it except GRCh38's, the lone row whose only unit 2 copy
+sits fourth. Given the exons of one copy, `--sites` shows the units differ in
+exon 1 at positions 14, 41 and 86, the sites that define KIV-2B:
 
-![LPA's KIV-2 array in 464 HPRC haplotypes, longest first, each copy coloured by its unit](img/kiv2_copies_all.png)
+```
+node scripts/tandem-repeat-vcf.mjs cut.gfa --bed arrays.bed --name KIV-2 \
+  --sites kiv2_exons.bed > /dev/null
+```
+
+![LPA's KIV-2 array in 464 HPRC haplotypes, those carrying unit 2 first, each copy coloured by its unit](img/kiv2_copies_all.png)
 
 ## Usage
 

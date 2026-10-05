@@ -384,12 +384,12 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/tandemrepeat-fs8.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tandem-repeat/0.1.2/dist/jbrowse-plugin-tandem-repeat.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tandem-repeat/0.1.3/dist/jbrowse-plugin-tandem-repeat.esm.js",
       "versions": [
         {
-          "pluginVersion": "0.1.2",
+          "pluginVersion": "0.1.3",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tandem-repeat/0.1.2/dist/jbrowse-plugin-tandem-repeat.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tandem-repeat/0.1.3/dist/jbrowse-plugin-tandem-repeat.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tandem-repeat/latest/dist/jbrowse-plugin-tandem-repeat.esm.js"

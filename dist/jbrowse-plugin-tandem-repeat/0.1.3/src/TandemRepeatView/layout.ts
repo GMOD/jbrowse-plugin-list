@@ -49,6 +49,26 @@ export function rowLayout(rows: number) {
   }
 }
 
+// Rows too many to label sort by their copies of the record's rarest unit,
+// then longest first, so the alleles carrying it gather into one band. A
+// record of one unit sorts longest first.
+export function squeezedOrder(alleles: RepeatAllele[], units: RepeatUnit[]) {
+  const rarest = units.length > 1 ? units.length - 1 : undefined
+  const carried = (allele: RepeatAllele) =>
+    rarest === undefined
+      ? 0
+      : (allele.runs ?? [])
+          .filter(run => run.unit === rarest)
+          .reduce((sum, run) => sum + run.count, 0)
+  return {
+    rows: [...alleles].sort((a, b) => carried(b) - carried(a) || b.bp - a.bp),
+    rule:
+      rarest === undefined
+        ? 'longest first'
+        : `most unit ${rarest + 1} first, then longest`,
+  }
+}
+
 export function copyCount(allele: RepeatAllele) {
   return allele.runs?.reduce((sum, run) => sum + run.count, 0)
 }

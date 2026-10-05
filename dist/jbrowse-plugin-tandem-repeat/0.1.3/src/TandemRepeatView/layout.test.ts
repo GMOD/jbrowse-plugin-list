@@ -1,4 +1,11 @@
-import { axisTicks, copiesOf, formatBp, readout, rowLayout } from './layout'
+import {
+  axisTicks,
+  copiesOf,
+  formatBp,
+  readout,
+  rowLayout,
+  squeezedOrder,
+} from './layout'
 
 const units = [{ length: 5548, copies: 7 }]
 
@@ -60,4 +67,35 @@ test('rows past the height budget squash into it, unlabelled below a label', () 
   expect(cohort.rowPx).toBeLessThan(2)
   expect(cohort).toMatchObject({ barPx: cohort.rowPx, labelled: false })
   expect(rowLayout(40).labelled).toBe(true)
+})
+
+test('squeezed rows gather the rarest unit, then run longest first', () => {
+  const two = [
+    { length: 5536, copies: 20 },
+    { length: 5559, copies: 3 },
+  ]
+  const allele = (label: string, bp: number, rare: number) => ({
+    label,
+    bp,
+    runs: [
+      ...(rare ? [{ unit: 1, count: rare, bp: rare * 5559 }] : []),
+      { unit: 0, count: 2, bp: bp - rare * 5559 },
+    ],
+  })
+  const { rows, rule } = squeezedOrder(
+    [
+      allele('none', 90_000, 0),
+      allele('one', 30_000, 1),
+      allele('two', 20_000, 2),
+    ],
+    two,
+  )
+  expect(rows.map(r => r.label)).toEqual(['two', 'one', 'none'])
+  expect(rule).toBe('most unit 2 first, then longest')
+  expect(squeezedOrder(rows, [two[0]!]).rule).toBe('longest first')
+  expect(squeezedOrder(rows, [two[0]!]).rows.map(r => r.label)).toEqual([
+    'none',
+    'one',
+    'two',
+  ])
 })
