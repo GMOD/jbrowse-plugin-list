@@ -56,7 +56,7 @@ Breaking any of these is a production incident, not a code-review comment.
    exactly the configs that have migrated — and for no others.
    ([ADR 0002](agent-docs/architectural-decision-records/0002-two-url-shapes-two-rollback-levers.md),
    [ADR 0008](agent-docs/architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md),
-   [post-mortem](agent-docs/2026-07-29-msaview-2.7.0-postmortem.md))
+   [post-mortem](agent-docs/reference/2026-07-29-msaview-2.7.0-postmortem.md))
 
 5. **A store listing must never shrink by accident.** `v2_plugins.json` _is_ the
    store; an entry that vanishes is a plugin nobody can install. The pipeline
@@ -137,7 +137,7 @@ to check the key is inert on hosts nobody can upgrade. Read it as a diff against
 the same run without the flag, never on its own — old hosts fail either way. Run
 it when a host joins `HOST_VERSIONS` or jb2hubs names a new entry; last measured
 2026-08-26 in
-[the older-client measurement](agent-docs/2026-08-26-store-plugin-refs-older-clients.md).
+[the older-client measurement](agent-docs/reference/2026-08-26-store-plugin-refs-older-clients.md).
 
 ### After uploading, invalidate and then wait
 

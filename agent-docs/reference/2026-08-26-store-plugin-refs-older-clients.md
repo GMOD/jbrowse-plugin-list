@@ -1,6 +1,6 @@
 # Is `storePlugin` inert on hosts nobody can upgrade? (2026-08-26)
 
-[ADR 0008](architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)
+[ADR 0008](../architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md)
 lets a jb2hubs config emit `{ name, url, storePlugin }` — the ref for a JBrowse
 that resolves it, the `latest/` url for one that does not. The whole migration
 rests on the second half: an old host must ignore the key it does not know and

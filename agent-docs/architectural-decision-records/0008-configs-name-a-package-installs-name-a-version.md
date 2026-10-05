@@ -90,7 +90,7 @@ that understands them ships.
 
 That rests on the extra key being inert on hosts nobody can upgrade, so it is
 measured rather than argued:
-[the older-client measurement](../2026-08-26-store-plugin-refs-older-clients.md).
+[the older-client measurement](../reference/2026-08-26-store-plugin-refs-older-clients.md).
 `check-plugins.ts --hybrid` is the standing gate.
 
 The fallback fires when the store gives **no answer** (unreachable, or the

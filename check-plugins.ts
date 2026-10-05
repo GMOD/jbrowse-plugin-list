@@ -102,7 +102,7 @@ function findChrome() {
 //
 // The real bundle floor sits just under the declared one and is measured, not
 // assumed: msaview, protein3d and hubs all load on v3.7.0; v3.0.0 is the
-// highest host where they do not (agent-docs/2026-08-26-store-plugin-refs-older-clients.md).
+// highest host where they do not (agent-docs/reference/2026-08-26-store-plugin-refs-older-clients.md).
 //
 // `semver` is what a plugin's jbrowseRange is tested against. `latest` is read
 // from the release it serves today, so `<2.0.0` skips it and `>=5.0.0` skips it

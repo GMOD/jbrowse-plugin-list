@@ -1,7 +1,7 @@
 # Handoff — configs naming plugins by package (2026-08-26)
 
 Design and reasoning:
-[ADR 0008](architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md).
+[ADR 0008](../architectural-decision-records/0008-configs-name-a-package-installs-name-a-version.md).
 This file is only what is done, what is not, and where the work sits.
 
 ## Where the branches are
@@ -94,7 +94,7 @@ Three follow-on fixes that the ref field exposed:
 The migration shape only works if an old host ignores the key and loads the url.
 That is now measured — paired boot matrix over `v2.1.0..latest`, plus the
 cross-origin trust gate, all rows identical with and without the key — in
-[the older-client measurement](2026-08-26-store-plugin-refs-older-clients.md).
+[the older-client measurement](../reference/2026-08-26-store-plugin-refs-older-clients.md).
 `check-plugins.ts --hybrid` is the gate that keeps it measured. The same doc
 records that the floor these configs already sit on is `v3.7.0`, set by the
 bundles rather than by the config shape, and that every plugin entry jb2hubs
@@ -134,13 +134,3 @@ gained until all three have happened.
   breaks any config that refs it; the fallback url is what keeps such a config
   working, which is an argument for keeping the fallback around longer than it
   looks like it is needed.
-
-## Not attempted, and worth doing
-
-Deriving `jbrowseRange` from the boot matrix rather than from a declaration.
-`check-plugins.ts` already boots every promoted bundle across `v4.0.0..latest`,
-which is a measured compatibility set, and it currently throws that measurement
-away and exits 1 on any host failure — so a plugin that legitimately drops
-v4.0.0 support jams the whole pipeline until someone hand-writes a narrowed pin.
-Refs are what would make a measured range do something: an old host and a new
-one loading the same genark config could be served different builds.
