@@ -4,12 +4,13 @@ import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import {
+  anchoredCut,
   closingLinks,
   closingSpans,
   formatSubgraph,
   linkKey,
   parseLinkLine,
-  parseSegmentLine,
+  parseSegmentRow,
   segmentSamples,
 } from './rgfaBed.ts'
 
@@ -125,7 +126,13 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
           this.fine.segments.getLines(tabixRefName, query.start, query.end, {
             signal,
             lineCallback: line => {
-              const segment = parseSegmentLine(line)
+              const { segment, anchored } = parseSegmentRow(line)
+              // An anchored index also returns the alleles under the region,
+              // which lie on other stable sequences and have no place on this
+              // one.
+              if (anchored && segment.refName !== tabixRefName) {
+                return
+              }
               // `samples` lists the haplotypes whose paths visit the segment and
               // `sampleCount` counts them. A lane's color reads the count, and
               // a count in jexl would otherwise rely on `.length` resolving
@@ -200,13 +207,33 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
         `${region.assemblyName} ${region.refName} is not in this graph's index; a graph with PanSN names (GRCh38#0#chr1) needs ${region.assemblyName} mapped to its prefix in assemblyNameToPanSN`,
       )
     }
+    const layout = { anchored: false }
     await index.segments.getLines(tabixRefName, region.start, region.end, {
       signal,
       lineCallback: line => {
-        const segment = parseSegmentLine(line)
-        segments.set(segment.id, segment)
+        const row = parseSegmentRow(line)
+        layout.anchored ||= row.anchored
+        segments.set(row.segment.id, row.segment)
       },
     })
+    // An anchored index files every allele and every link under the reference
+    // interval its bubble hangs from, so one read of each file holds the whole
+    // graph under the region and there is nothing to hop to or close.
+    if (layout.anchored) {
+      const found: RgfaLink[] = []
+      await index.links.getLines(tabixRefName, region.start, region.end, {
+        signal,
+        lineCallback: line => {
+          found.push(parseLinkLine(line))
+        },
+      })
+      const cut = anchoredCut(segments, found, {
+        refName: tabixRefName,
+        start: region.start,
+        end: region.end,
+      })
+      return formatSubgraph(cut.segments, cut.links)
+    }
     let frontier = offReference(
       await addLinksOver(tabixRefName, region.start, region.end),
     )

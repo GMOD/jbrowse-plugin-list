@@ -29,14 +29,28 @@ export interface RgfaLink {
 }
 
 export function parseSegmentLine(line: string): RgfaSegment {
+  return parseSegmentRow(line).segment
+}
+
+// gfa-to-tabix's anchored layout files a segment under the reference interval
+// its bubble hangs from and states the segment's own coordinate after the rank:
+// `anchorName anchorStart anchorEnd segmentId rank stableName start end [tags]`.
+// One query over a region then returns every segment of every bubble under it,
+// and `anchored` tells a cut it has nothing left to follow.
+export function parseSegmentRow(line: string) {
   const cols = line.split('\t')
+  const anchored = cols.length >= 8
+  const own = anchored ? 5 : 0
   return {
-    refName: cols[0]!,
-    start: +cols[1]!,
-    end: +cols[2]!,
-    id: cols[3]!,
-    rank: +cols[4]!,
-    tags: cols[5] ?? '',
+    anchored,
+    segment: {
+      refName: cols[own]!,
+      start: +cols[own + 1]!,
+      end: +cols[own + 2]!,
+      id: cols[3]!,
+      rank: +cols[4]!,
+      tags: cols[anchored ? 8 : 5] ?? '',
+    } satisfies RgfaSegment,
   }
 }
 
@@ -104,6 +118,50 @@ export function parseLinkLine(line: string): RgfaLink {
 
 export function linkKey(link: RgfaLink) {
   return `${link.source}${link.sourceStrand}${link.target}${link.targetStrand}`
+}
+
+// The cut an anchored index gives: `under` is what the segment file returned
+// for the window, every segment of every bubble under it, and `found` is what
+// the link file returned. gfa-to-tabix files a link widely enough that `found`
+// holds every link touching a segment in `under` and every link between the
+// segments those lead to, plus links of neither kind, which are dropped here.
+// A backbone link that jumps the whole window, as a deletion or inversion
+// spanning it does, touches nothing in `under` and is kept by its own rule.
+export function anchoredCut(
+  under: Map<string, RgfaSegment>,
+  found: RgfaLink[],
+  window: StableSpan,
+) {
+  const side = (segment: RgfaSegment) =>
+    segment.rank !== 0 || segment.refName !== window.refName
+      ? 0
+      : segment.end <= window.start
+        ? -1
+        : segment.start >= window.end
+          ? 1
+          : 0
+  const segments = new Map(under)
+  const links = new Map<string, RgfaLink>()
+  for (const link of found) {
+    if (
+      under.has(link.source) ||
+      under.has(link.target) ||
+      side(link.sourceSegment) * side(link.targetSegment) === -1
+    ) {
+      links.set(linkKey(link), link)
+      for (const segment of [link.sourceSegment, link.targetSegment]) {
+        if (!segments.has(segment.id)) {
+          segments.set(segment.id, segment)
+        }
+      }
+    }
+  }
+  for (const link of found) {
+    if (segments.has(link.source) && segments.has(link.target)) {
+      links.set(linkKey(link), link)
+    }
+  }
+  return { segments, links }
 }
 
 // Both endpoints of a link are written into every row, so the same link is

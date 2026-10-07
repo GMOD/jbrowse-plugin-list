@@ -403,3 +403,208 @@ test('a track with no coarse pair states no threshold', () => {
   const config = configSchema.create({ uri: 'hprc' })
   expect(readConfObject(config, ['coarse', 'aboveBpPerPx'])).toBeUndefined()
 })
+
+// The same graph through `gfa-to-tabix` 0.2.0's anchored layout, which files
+// each allele under the reference interval its bubble hangs from.
+function makeAnchoredAdapter() {
+  const local = (path: string) => ({
+    localPath: path,
+    locationType: 'LocalPathLocation',
+  })
+  const anchored = `${prefix}_anchored`
+  return new Adapter(
+    configSchema.create({
+      segmentsLocation: local(`${anchored}.segs.bed.gz`),
+      segmentsIndex: { location: local(`${anchored}.segs.bed.gz.tbi`) },
+      linksLocation: local(`${anchored}.links.bed.gz`),
+      linksIndex: { location: local(`${anchored}.links.bed.gz.tbi`) },
+    }),
+  )
+}
+
+function segmentIds(gfa: string) {
+  return gfa
+    .split('\n')
+    .filter(l => l.startsWith('S'))
+    .map(l => l.split('\t')[1]!)
+}
+
+test('an anchored index lists segments on the queried sequence only', async () => {
+  const features = await firstValueFrom(
+    makeAnchoredAdapter().getFeatures(k12).pipe(toArray()),
+  )
+  expect(features.map(f => f.get('name'))).toEqual(['s322', 's323'])
+})
+
+test('an anchored index returns the whole cut without hops', async () => {
+  const walked = segmentIds(await makeAdapter().getSubgraph(k12, { hops: 20 }))
+  const anchored = await makeAnchoredAdapter().getSubgraph(k12)
+  expect(segmentIds(anchored)).toEqual(expect.arrayContaining(walked))
+  expect(await makeAnchoredAdapter().getSubgraph(k12, { hops: 3 })).toBe(
+    anchored,
+  )
+})
+
+test('an anchored cut holds every link between two of its segments', async () => {
+  const all = gunzipSync(readFileSync(`${prefix}.links.bed.gz`))
+    .toString()
+    .split('\n')
+    .filter(Boolean)
+    .map(line => parseLinkLine(line))
+  const adapter = makeAnchoredAdapter()
+  for (let start = 900000; start < 1100000; start += 10000) {
+    const gfa = await adapter.getSubgraph({ ...k12, start, end: start + 10000 })
+    const held = new Set(segmentIds(gfa))
+    const drawn = new Set(
+      gfa
+        .split('\n')
+        .filter(l => l.startsWith('L'))
+        .map(l => {
+          const [, source, sourceStrand, target, targetStrand] = l.split('\t')
+          return `${source}${sourceStrand}${target}${targetStrand}`
+        }),
+    )
+    for (const link of all) {
+      if (held.has(link.source) && held.has(link.target)) {
+        expect(drawn).toContain(linkKey(link))
+      }
+    }
+  }
+})
+
+// The cut worked out from the whole graph with no index: the backbone under
+// the window, every bubble whose backbone attachments span it, the backbone
+// links that jump the window, the segments one link out, and the links among
+// all of those.
+function expectedCut(start: number, end: number) {
+  const rows = (kind: string) =>
+    gunzipSync(readFileSync(`${prefix}.${kind}.bed.gz`))
+      .toString()
+      .split('\n')
+      .filter(Boolean)
+  const segments = new Map(
+    rows('segs').map(line => {
+      const [refName, s, e, id, rank] = line.split('\t')
+      return [id!, { refName: refName!, start: +s!, end: +e!, rank: +rank! }]
+    }),
+  )
+  const links = [
+    ...new Map(
+      rows('links').map(line => {
+        const link = parseLinkLine(line)
+        return [linkKey(link), link]
+      }),
+    ).values(),
+  ]
+  const component = new Map<string, string>()
+  const find = (id: string): string => {
+    const parent = component.get(id) ?? id
+    if (parent === id) {
+      return id
+    }
+    const root = find(parent)
+    component.set(id, root)
+    return root
+  }
+  const allele = (id: string) => segments.get(id)!.rank !== 0
+  for (const link of links) {
+    if (allele(link.source) && allele(link.target)) {
+      component.set(find(link.source), find(link.target))
+    }
+  }
+  const span = new Map<string, { start: number; end: number }>()
+  for (const link of links) {
+    for (const [a, b] of [
+      [link.source, link.target],
+      [link.target, link.source],
+    ] as const) {
+      if (allele(a) && !allele(b)) {
+        const anchor = segments.get(b)!
+        const held = span.get(find(a)) ?? { start: Infinity, end: -Infinity }
+        span.set(find(a), {
+          start: Math.min(held.start, anchor.start),
+          end: Math.max(held.end, anchor.end),
+        })
+      }
+    }
+  }
+  const overlaps = (s: { start: number; end: number }) =>
+    s.start < end && s.end > start
+  const under = new Set(
+    [...segments.keys()].filter(id => {
+      const segment = segments.get(id)!
+      return allele(id)
+        ? overlaps(span.get(find(id)) ?? { start: 0, end: 0 })
+        : segment.refName === 'K12#1#chr' && overlaps(segment)
+    }),
+  )
+  const side = (id: string) => {
+    const segment = segments.get(id)!
+    return allele(id) || segment.refName !== 'K12#1#chr'
+      ? 0
+      : segment.end <= start
+        ? -1
+        : segment.start >= end
+          ? 1
+          : 0
+  }
+  const touching = links.filter(
+    l =>
+      under.has(l.source) ||
+      under.has(l.target) ||
+      side(l.source) * side(l.target) === -1,
+  )
+  const held = new Set([
+    ...under,
+    ...touching.flatMap(l => [l.source, l.target]),
+  ])
+  return {
+    segments: [...held].sort(),
+    links: links
+      .filter(l => held.has(l.source) && held.has(l.target))
+      .map(l => linkKey(l))
+      .sort(),
+  }
+}
+
+test('an anchored cut equals the cut worked out from the whole graph', async () => {
+  const adapter = makeAnchoredAdapter()
+  for (const width of [1, 500, 10000, 150000]) {
+    for (let start = 880000; start < 1120000; start += 7001) {
+      const end = start + width
+      const gfa = await adapter.getSubgraph({ ...k12, start, end })
+      const drawn = gfa
+        .split('\n')
+        .filter(l => l.startsWith('L'))
+        .map(l => {
+          const [, source, sourceStrand, target, targetStrand] = l.split('\t')
+          return `${source}${sourceStrand}${target}${targetStrand}`
+        })
+      expect({
+        segments: segmentIds(gfa).sort(),
+        links: drawn.sort(),
+      }).toEqual(expectedCut(start, end))
+    }
+  }
+})
+
+// s325 links straight to s327, a deletion of s326. A window inside s326
+// touches neither end, and the link is drawn all the same.
+test('an anchored cut keeps a backbone link that jumps the window', async () => {
+  const gfa = await makeAnchoredAdapter().getSubgraph({
+    ...k12,
+    start: 1007700,
+    end: 1007710,
+  })
+  expect(gfa).toContain('L\ts325\t+\ts327\t+\t0M')
+  const drawn = gfa
+    .split('\n')
+    .filter(l => l.startsWith('L'))
+    .map(l => {
+      const [, source, sourceStrand, target, targetStrand] = l.split('\t')
+      return `${source}${sourceStrand}${target}${targetStrand}`
+    })
+  expect({ segments: segmentIds(gfa).sort(), links: drawn.sort() }).toEqual(
+    expectedCut(1007700, 1007710),
+  )
+})

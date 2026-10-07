@@ -6,11 +6,12 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
 /**
  * #config RgfaTabixAdapter
  * #trackType GraphTrack
- * #fileFormat graph | Indexed rGFA | Built by `scripts/build_rgfa_tabix.sh`; serves segments as features and extracts local subgraphs
- * two tabix-indexed BED projections of an rGFA (minigraph). rGFA tags every
- * segment with `SN`/`SO`/`SR`, so both files record coordinates the graph
- * already states rather than inventing any. Plain GFA (pggb, odgi,
- * Minigraph-Cactus) has no such tags and is not supported.
+ * #fileFormat graph | Indexed GFA | Built by `gfa-to-tabix`; serves segments as features and extracts local subgraphs
+ * two tabix-indexed BED files, one of a graph's segments and one of its links,
+ * written by [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) from an rGFA
+ * or from a plain GFA with paths. Both of its layouts are read: `anchored`,
+ * where one query per file returns the graph under a region, and `contig`,
+ * where the adapter follows links onto other contigs.
  *
  * The `uri` shorthand takes the prefix the build script was given and resolves
  * `<uri>.segs.bed.gz`, `<uri>.links.bed.gz` and their `.tbi` indexes. `coarse`
