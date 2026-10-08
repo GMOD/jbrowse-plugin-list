@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "name": "jbrowse-plugin-protein3d",
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
     "clustal-js": "^2.0.19",
     "g2p_mapper": "^2.1.7",
     "molstar": "^5.13.0",
-    "p2s_mapper": "^1.2.0",
+    "p2s_mapper": "^1.2.1",
     "swr": "^2.5.1"
   },
   "devDependencies": {

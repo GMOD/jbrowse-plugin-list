@@ -37,9 +37,11 @@ Using the plugin:
   gene, and reads the R248 hotspot back to its codon;
   [Proteins on genomes.jbrowse.org](https://jbrowse.org/jb2/docs/tutorials/genomes_proteins/)
   launches a structure and an MSA from any gene's right-click menu.
-- [Demos](docs/demos.md): structures that are easy to map wrong, each one link
-  away — a peptide bound to a larger partner, a protein bound to DNA, a receptor
-  with another protein fused into it, a phosphorylated residue, and a
+- [Demos](docs/demos.md): one link each. Genes opened by name alone in human,
+  mouse, yeast, bacteria, fungi and viruses (E. coli recA, M. tuberculosis katG,
+  the SARS-CoV-2 spike, the HIV-1 capsid), then the structures that are easy to
+  map wrong — a peptide bound to a larger partner, a protein bound to DNA, a
+  receptor with another protein fused into it, a phosphorylated residue, and a
   mitochondrial protein.
 - [Your own structures](docs/your-own-structures.md): opening a model you folded
   yourself (ColabFold, AlphaFold 3, Boltz…) instead of the AlphaFold DB one,

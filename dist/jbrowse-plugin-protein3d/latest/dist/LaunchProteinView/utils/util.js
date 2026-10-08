@@ -122,6 +122,15 @@ export function findRecognizedDbIds(f) {
     }
     return [...new Set(recognizedIds)];
 }
+// `UniProtKB/Swiss-Prot:P0A7G6`, the reviewed entry before a TrEMBL one
+function dbxrefUniProtId(f) {
+    const entries = parseDbxref(f?.get('Dbxref') ?? f?.get('dbxref') ?? f?.get('db_xref'));
+    return ['UniProtKB/Swiss-Prot:', 'UniProtKB/TrEMBL:']
+        .flatMap(prefix => entries
+        .filter(e => e.startsWith(prefix))
+        .map(e => e.slice(prefix.length)))
+        .find(id => id.length > 0);
+}
 /**
  * Extract all useful identifiers from a feature for UniProt lookup.
  * If the feature is a gene, prioritizes identifiers from the preferred
@@ -140,13 +149,24 @@ export function extractFeatureIdentifiers(f, preferredTranscriptId) {
                 transcripts[0] ??
                 f;
     }
-    // --- Extracting Recognized IDs and UniProt ID from featureToProcess ---
-    const recognizedIds = findRecognizedDbIds(featureToProcess);
+    // NCBI's GFF3 puts the protein on the CDS record, not the transcript: its
+    // RefSeq accession always, and for a curated genome (E. coli K-12, yeast)
+    // the UniProt accession itself. A prokaryotic gene has no transcript record
+    // between, so the CDS is the only place either appears.
+    const cds = featureToProcess
+        .get('subfeatures')
+        ?.find(sub => sub.get('type')?.toLowerCase() === 'cds');
+    const recognizedIds = [
+        ...findRecognizedDbIds(featureToProcess),
+        ...findRecognizedDbIds(cds),
+    ];
     // Handle UniProt ID from feature attributes (trust that it's valid if present)
     const uniprotIdAttr = featureToProcess.get('uniprot') ??
         featureToProcess.get('uniprotId') ??
         featureToProcess.get('uniprotid') ??
-        featureToProcess.get('UniProt');
+        featureToProcess.get('UniProt') ??
+        dbxrefUniProtId(featureToProcess) ??
+        dbxrefUniProtId(cds);
     const uniprotId = typeof uniprotIdAttr === 'string' && uniprotIdAttr.length > 0
         ? uniprotIdAttr
         : undefined;
