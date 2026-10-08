@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../node_modules/.pnpm/react-msaview@8.4.1_3e54acfe76b6ad0d26e91cd532b7f775/node_modules/react-msaview/src/vendor/fileSaver.ts"],
+  "sourcesContent": ["export function saveAs(blob: Blob, name: string) {\n  const url = URL.createObjectURL(blob)\n  const a = document.createElement('a')\n  a.href = url\n  a.download = name\n  a.click()\n  setTimeout(() => {\n    URL.revokeObjectURL(url)\n  }, 40_000)\n}\n"],
+  "mappings": "AAAM,SAAUA,EAAOC,EAAYC,EAAY,CAC7C,IAAMC,EAAM,IAAI,gBAAgBF,CAAI,EAC9BG,EAAI,SAAS,cAAc,GAAG,EACpCA,EAAE,KAAOD,EACTC,EAAE,SAAWF,EACbE,EAAE,MAAK,EACP,WAAW,IAAK,CACd,IAAI,gBAAgBD,CAAG,CACzB,EAAG,GAAM,CACX",
+  "names": ["saveAs", "blob", "name", "url", "a"]
+}

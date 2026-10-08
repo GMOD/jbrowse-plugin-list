@@ -1,2 +1,0 @@
-import{a as m}from"./chunk-BX4Z274Q.js";import{a}from"./chunk-J6KYLXRD.js";import{b as o}from"./chunk-FY3BTKY4.js";var e=o(a(),1),t=o(m(),1);function b({checked:r,label:l,disabled:n,onChange:c}){return e.default.createElement("div",null,e.default.createElement(t.FormControlLabel,{control:e.default.createElement(t.Checkbox,{disabled:n,checked:r,onChange:()=>{c()}}),label:l}))}export{b as a};
-//# sourceMappingURL=chunk-P77DPK6B.js.map
