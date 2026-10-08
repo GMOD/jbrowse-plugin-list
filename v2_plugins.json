@@ -253,12 +253,12 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.2.1/dist/jbrowse-plugin-protein3d.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.3.0/dist/jbrowse-plugin-protein3d.esm.js",
       "versions": [
         {
-          "pluginVersion": "1.2.1",
+          "pluginVersion": "1.3.0",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.2.1/dist/jbrowse-plugin-protein3d.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.3.0/dist/jbrowse-plugin-protein3d.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/jbrowse-plugin-protein3d.esm.js"
@@ -359,12 +359,12 @@
       ],
       "license": "GPL-3.0-or-later",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/6.6.0/dist/jbrowse-plugin-graphgenomeviewer.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/6.7.0/dist/jbrowse-plugin-graphgenomeviewer.esm.js",
       "versions": [
         {
-          "pluginVersion": "6.6.0",
+          "pluginVersion": "6.7.0",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/6.6.0/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/6.7.0/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/latest/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
