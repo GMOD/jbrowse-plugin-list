@@ -34,6 +34,14 @@ const fixturePrefix = require
   .resolve('./test_data/walks_header.walks.bed.gz')
   .replace(/\.walks\.bed\.gz$/, '')
 
+// An unchopped graph, built by gfa-to-tabix --walks --refs GRCh38 --chunk 1000
+// (0.4.0), with the first header line 0.5.0 writes put in by hand:
+//   W GRCh38 0 chr1 >1>2>4   node 1 spans 0-2600, filed under chunk 0 alone
+//   W HG002  1 chr1 >1>3>4   3 replaces 2
+const maxNodePrefix = require
+  .resolve('./test_data/walks_maxnode.walks.bed.gz')
+  .replace(/\.walks\.bed\.gz$/, '')
+
 function makeAdapter(prefix = spikePrefix, slots = {}) {
   const local = (path: string) => ({
     localPath: path,
@@ -289,3 +297,69 @@ test.skipIf(!rustPresent)(
     })
   },
 )
+
+// tabix-js's getLines spins forever on a NaN end, so these mock it: a
+// regression fails here instead of hanging the suite
+test('a cut or a feature read over a range that is not finite queries nothing', async () => {
+  const getLines = vi
+    .spyOn(TabixIndexedFile.prototype, 'getLines')
+    .mockResolvedValue()
+  const bytes = vi
+    .spyOn(TabixIndexedFile.prototype, 'bytesForRegions')
+    .mockResolvedValue(0)
+  const adapter = makeAdapter(fixturePrefix, {
+    assemblyNameToPanSN: { hg38: 'GRCh38' },
+  })
+  const region = {
+    refName: 'chr1',
+    assemblyName: 'hg38',
+    start: Number.NaN,
+    end: 2600,
+  }
+  await expect(adapter.getSubgraph(region)).rejects.toThrow(
+    "GRCh38#0#chr1:NaN-2600 is not a finite range to query the graph's index for",
+  )
+  await expect(
+    firstValueFrom(adapter.getFeatures(region).pipe(toArray())),
+  ).rejects.toThrow(/not a finite range/)
+  expect(getLines).not.toHaveBeenCalled()
+  expect(bytes).not.toHaveBeenCalled()
+  getLines.mockRestore()
+  bytes.mockRestore()
+})
+
+test("a node longer than a chunk is read back as far as the header's maxnode reaches", async () => {
+  const adapter = makeAdapter(maxNodePrefix, {
+    assemblyNameToPanSN: { hg38: 'GRCh38' },
+  })
+  const region = {
+    refName: 'chr1',
+    assemblyName: 'hg38',
+    start: 2100,
+    end: 2500,
+  }
+  const features = await firstValueFrom(
+    adapter.getFeatures(region).pipe(toArray()),
+  )
+  expect(features.map(f => f.get('name'))).toContain('1')
+  const gfa = await adapter.getSubgraph(region)
+  expect(gfa).toMatch(/^S\t1\t/m)
+  expect(gfa).toMatch(/^W\tGRCh38\t0\tchr1\t0\t3200\t>1>2$/m)
+  expect(walkNames(gfa)).toEqual(['GRCh38#0#chr1', 'HG002#1#chr1'])
+})
+
+test('a header without maxnode reads from the chunk before the window', async () => {
+  const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
+  await makeAdapter(fixturePrefix, {
+    assemblyNameToPanSN: { hg38: 'GRCh38' },
+  }).getSubgraph({
+    refName: 'chr1',
+    assemblyName: 'hg38',
+    start: 2100,
+    end: 2600,
+  })
+  expect(new Set(getLines.mock.calls.map(call => call[1]))).toEqual(
+    new Set([1000]),
+  )
+  getLines.mockRestore()
+})

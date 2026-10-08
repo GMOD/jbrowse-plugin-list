@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 
+import { TabixIndexedFile } from '@gmod/tabix'
 import { parseGFA } from '@jbrowse/bandage-core/gfa-core/index'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { firstValueFrom } from 'rxjs'
@@ -243,6 +244,17 @@ const is5 = {
 // The lane this exists for: color a linear track by how many haplotypes carry
 // each segment. Before this the tag column reached the graph view's node popup
 // and stopped there, so a feature could say its rank but not its carriage.
+test('getSubgraph refuses a range that is not finite before querying', async () => {
+  const getLines = vi
+    .spyOn(TabixIndexedFile.prototype, 'getLines')
+    .mockResolvedValue()
+  await expect(
+    makeAdapter().getSubgraph({ ...k12, end: Number.NaN }, { hops: 1 }),
+  ).rejects.toThrow(/K12#1#chr:993236-NaN is not a finite range/)
+  expect(getLines).not.toHaveBeenCalled()
+  getLines.mockRestore()
+})
+
 test('getFeatures carries SM:Z: onto the feature', async () => {
   const features = await firstValueFrom(
     makePggbAdapter().getFeatures(is5).pipe(toArray()),

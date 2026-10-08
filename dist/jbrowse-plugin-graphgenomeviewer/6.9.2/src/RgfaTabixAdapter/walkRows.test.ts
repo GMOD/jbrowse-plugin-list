@@ -3,6 +3,7 @@ import {
   byteBudgetError,
   chunkQueryStart,
   joinPieces,
+  lookbackChunks,
   parseWalkRow,
   stepBudgetError,
   walkCut,
@@ -205,6 +206,35 @@ test("a walk file's header states its chunk, references and haplotypes", () => {
     references: ['GRCh38', 'CHM13'],
     haplotypes: ['HG00097#1', 'HG002#1'],
   })
+})
+
+test("a 0.5.0 header's first line gives the longest node beside the chunk", () => {
+  expect(
+    walkHeader([
+      '#walks\tchunk:i:65536\tmaxnode:i:1024\tcap:i:8192',
+      '#reference\tGRCh38',
+    ]),
+  ).toEqual({
+    chunk: 65_536,
+    maxNode: 1024,
+    references: ['GRCh38'],
+    haplotypes: [],
+  })
+  expect(walkHeader(['#walks\tmaxnode:i:300000\tchunk:i:1000'])).toMatchObject({
+    chunk: 1000,
+    maxNode: 300_000,
+  })
+})
+
+test('a cut looks back as many chunks as the longest node spans', () => {
+  expect(lookbackChunks(undefined, 65_536)).toBe(1)
+  expect(lookbackChunks(0, 65_536)).toBe(1)
+  expect(lookbackChunks(1024, 65_536)).toBe(1)
+  expect(lookbackChunks(65_536, 65_536)).toBe(1)
+  expect(lookbackChunks(65_537, 65_536)).toBe(2)
+  expect(lookbackChunks(300_000, 65_536)).toBe(5)
+  expect(chunkQueryStart(20_000_000, 65_536, 5)).toBe(19_660_800)
+  expect(chunkQueryStart(200_000, 65_536, 5)).toBe(0)
 })
 
 describe('the byte budget', () => {

@@ -65,15 +65,22 @@ export function parseWalkRow(line: string): WalkRow {
 
 export interface WalkHeader {
   chunk?: number
+  maxNode?: number
   references: string[]
   haplotypes: string[]
 }
 
+function integerTag(line: string, tag: string) {
+  const match = new RegExp(`(?:^|\\t)${tag}:i:(\\d+)`).exec(line)
+  return match ? +match[1]! : undefined
+}
+
 /**
  * What a walk file's header states: its chunk size in a
- * `#walks\tchunk:i:65536` line, and from gfa-to-tabix 0.4.0 a
+ * `#walks\tchunk:i:65536` line, from gfa-to-tabix 0.4.0 a
  * `#reference\tGRCh38` line per reference sample and a
- * `#haplotype\tHG002#1` line per other haplotype with rows
+ * `#haplotype\tHG002#1` line per other haplotype with rows, and from 0.5.0
+ * the longest node in bp as `maxnode:i:1024` beside the chunk size
  */
 export function walkHeader(lines: string[]): WalkHeader {
   const header: WalkHeader = { references: [], haplotypes: [] }
@@ -84,20 +91,29 @@ export function walkHeader(lines: string[]): WalkHeader {
     } else if (key === '#haplotype') {
       header.haplotypes.push(value)
     } else {
-      const match = /(?:^|\t)chunk:i:(\d+)/.exec(line)
-      if (match && header.chunk === undefined) {
-        header.chunk = +match[1]!
-      }
+      header.chunk ??= integerTag(line, 'chunk')
+      header.maxNode ??= integerTag(line, 'maxnode')
     }
   }
   return header
 }
 
-// The first base a cut queries: the start of the chunk holding the base one
-// chunk before the window, whose rows carry the detour a haplotype takes into
-// the window's first reference node
-export function chunkQueryStart(start: number, chunk: number) {
-  return Math.max(0, Math.floor((start - chunk) / chunk) * chunk)
+/**
+ * How many chunks before the window's own a cut reads. A node is filed under
+ * the chunk holding its start, so a node `maxNode` bp long reaching into the
+ * window starts at most ceil(maxNode / chunk) chunks back. At least one, since
+ * the chunk before carries the detour a haplotype takes into the window's
+ * first reference node; one when the header gives no `maxnode:i:`, which holds
+ * for vg's graphs, chopped to nodes of at most 1,024 bp.
+ */
+export function lookbackChunks(maxNode: number | undefined, chunk: number) {
+  return maxNode === undefined ? 1 : Math.max(1, Math.ceil(maxNode / chunk))
+}
+
+// The first base a cut queries: the start of the chunk `lookback` chunks
+// before the one holding the window's start
+export function chunkQueryStart(start: number, chunk: number, lookback = 1) {
+  return Math.max(0, (Math.floor(start / chunk) - lookback) * chunk)
 }
 
 // Which walks a cut decodes: the reference's, and those `wanted` names by
@@ -403,10 +419,10 @@ function endpoint(line: string, from: number, to: number) {
 
 /**
  * The zoom-in notice for a cut whose walk rows hold more steps than `budget`,
- * or undefined when they fit. A window reads whole chunks, the one before it
+ * or undefined when they fit. A window reads whole chunks, those before it
  * included, so the span that fits is counted in chunks from the window's
- * start; when the two chunks a window there always reads are over on their
- * own, no zoom fits and the notice asks for fewer haplotypes. A cut for every
+ * start; when the chunks a window there always reads are over on their own,
+ * no zoom fits and the notice asks for fewer haplotypes. A cut for every
  * haplotype is also offered fewer where the reference and one haplotype, at
  * the walks' average steps, would fit the whole window.
  */
@@ -453,7 +469,7 @@ export function stepBudgetError(
  * `budget` compressed bytes, or undefined when they fit. `bytesTo(end)` is the
  * indexes' estimate for a read from the window's first query base to `end`;
  * the span that fits grows a chunk at a time from the chunk holding the
- * window's start, and when that chunk and the one before are over on their
+ * window's start, and when that chunk and those before it are over on their
  * own, no zoom fits.
  */
 export async function byteBudgetError(

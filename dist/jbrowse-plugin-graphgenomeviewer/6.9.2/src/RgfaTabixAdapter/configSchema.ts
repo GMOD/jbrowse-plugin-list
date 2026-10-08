@@ -19,11 +19,13 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * `build_bubble_tier.sh` in jbrowse-components, plus the zoom past which a
  * graph view following a linear view cuts it.
  *
- * `walksUri` takes the prefix `gfa-to-tabix --walks -o <prefix>` was given, in
- * place of `uri`, and resolves `<prefix>.walks.bed.gz`, `<prefix>.nodes.bed.gz`,
- * `<prefix>.links.bed.gz` and their `.tbi` indexes. Such a graph's cut carries
- * the haplotypes' walks, and `defaultHaplotypes` names the ones it is cut for
- * until the user picks others.
+ * `walksUri` takes the prefix of a walk-indexed file set in place of `uri`, and
+ * resolves `<walksUri>.walks.bed.gz`, `<walksUri>.nodes.bed.gz`,
+ * `<walksUri>.links.bed.gz` and their `.tbi` indexes. `gfa-to-tabix --walks -o
+ * <prefix>` writes a set per reference sample from 0.5.0, so a track names one
+ * as `<prefix>.<sample>`; a set from 0.4.0 holds every reference, and the track
+ * names `<prefix>`. Such a graph's cut carries the haplotypes' walks, and
+ * `defaultHaplotypes` names the ones it is cut for until the user picks others.
  *
  * #example
  * ```js
@@ -38,8 +40,8 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```js
  * {
  *   type: 'RgfaTabixAdapter',
- *   walksUri: 'https://example.com/hprc-v2.1.chr22',
- *   assemblyNameToPanSN: { hg38: 'GRCh38', hs1: 'CHM13' },
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38.GRCh38',
+ *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  *   defaultHaplotypes: ['HG002', 'HG00733', 'HG02257', 'NA19240'],
  * }
  * ```
@@ -294,9 +296,10 @@ const RgfaTabixAdapter = ConfigurationSchema(
      * ```json
      * { "type": "RgfaTabixAdapter", "uri": "graph.rgfa" }
      * ```
-     * or, for a graph built by `gfa-to-tabix --walks -o chr22`,
+     * or, for the GRCh38 set of a graph built by `gfa-to-tabix --walks -o
+     * chr22`,
      * ```json
-     * { "type": "RgfaTabixAdapter", "walksUri": "chr22" }
+     * { "type": "RgfaTabixAdapter", "walksUri": "chr22.GRCh38" }
      * ```
      */
     preProcessSnapshot: normalizeSnapshot,
