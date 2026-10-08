@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:mobx-react"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"mobx-react\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,YAAY",
+  "names": ["require_mobx_react", "__commonJSMin", "exports", "module"]
+}
