@@ -1,0 +1,2 @@
+var e=JBrowseExports.react,t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from 'react' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o});var s=t("createElement");var n=t("lazy");var r=t("useEffect");var c=t("useId");var a=t("useMemo");var p=t("useRef"),u=t("useState");var i=e&&e.__esModule?e.default:e;export{s as a,n as b,r as c,c as d,a as e,p as f,u as g};
+//# sourceMappingURL=chunk-6OPB7FOJ.js.map

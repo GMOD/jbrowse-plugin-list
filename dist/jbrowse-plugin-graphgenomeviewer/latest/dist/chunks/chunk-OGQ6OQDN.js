@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/util/io"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/core/util/io' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o});var r=t("openLocation"),n=t("openTabixIndexFilehandle");var i=e&&e.__esModule?e.default:e;export{r as a,n as b};
+//# sourceMappingURL=chunk-OGQ6OQDN.js.map

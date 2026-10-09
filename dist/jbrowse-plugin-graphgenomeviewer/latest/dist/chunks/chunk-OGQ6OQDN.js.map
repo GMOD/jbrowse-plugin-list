@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["host:@jbrowse/core/util/io"],
+  "sourcesContent": ["const host = JBrowseExports[\"@jbrowse/core/util/io\"]\nconst read = name =>\n  host != null && name in Object(host)\n    ? host[name]\n    : Object.assign(\n        function () {\n          throw new Error(\n            \"This JBrowse does not provide '\" + name + \"' from '\" + \"@jbrowse/core/util/io\" + \"' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse\",\n          )\n        },\n        { jbrowseHostMissing: name },\n      )\nexport const CachedFilehandle = /* @__PURE__ */ read(\"CachedFilehandle\")\nexport const RemoteFileWithRangeCache = /* @__PURE__ */ read(\"RemoteFileWithRangeCache\")\nexport const getFetcher = /* @__PURE__ */ read(\"getFetcher\")\nexport const openLocation = /* @__PURE__ */ read(\"openLocation\")\nexport const openTabixIndexFilehandle = /* @__PURE__ */ read(\"openTabixIndexFilehandle\")\nexport const resolveUriLocation = /* @__PURE__ */ read(\"resolveUriLocation\")\nexport default host && host.__esModule ? host.default : host"],
+  "mappings": "AAAA,IAAMA,EAAO,eAAe,uBAAuB,EAC7CC,EAAOC,GACXF,GAAQ,MAAQE,KAAQ,OAAOF,CAAI,EAC/BA,EAAKE,CAAI,EACT,OAAO,OACL,UAAY,CACV,MAAM,IAAI,MACR,kCAAoCA,EAAO,uIAC7C,CACF,EACA,CAAE,mBAAoBA,CAAK,CAC7B,EAIC,IAAMC,EAA+BC,EAAK,cAAc,EAClDC,EAA2CD,EAAK,0BAA0B,EAEvF,IAAOE,EAAQC,GAAQA,EAAK,WAAaA,EAAK,QAAUA",
+  "names": ["host", "read", "name", "openLocation", "read", "openTabixIndexFilehandle", "io_default", "host"]
+}
