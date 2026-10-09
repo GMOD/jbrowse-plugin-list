@@ -1,0 +1,2 @@
+var e=JBrowseExports["mobx-state-tree"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from 'mobx-state-tree' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o}),s=t("addDisposer");var n=t("flow");var r=t("getEnv");var p=t("getRoot");var c=t("isAlive");var i=t("isStateTreeNode");var a=t("types");var x=e&&e.__esModule?e.default:e;export{s as a,n as b,r as c,p as d,c as e,i as f,a as g};
+//# sourceMappingURL=chunk-NDRLCGPC.js.map
