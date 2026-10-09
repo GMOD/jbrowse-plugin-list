@@ -1,0 +1,2 @@
+function n(e){let i=e.search(/[?#]/);return i===-1?{name:e,query:""}:{name:e.slice(0,i),query:e.slice(i)}}function a(e){return"uri"in e?n(e.uri).name:"localPath"in e?e.localPath:e.name}function o(e){return"uri"in e||"localPath"in e}function s(e,i){if("uri"in e){let{name:r,query:t}=n(e.uri);return{...e,uri:i(r)+t}}else{if("localPath"in e)return{...e,localPath:i(e.localPath)};throw new Error(`${e.name} was picked in the browser, which reads no file beside it; open it by URL`)}}export{n as a,a as b,o as c,s as d};
+//# sourceMappingURL=chunk-R3TRNF7N.js.map
