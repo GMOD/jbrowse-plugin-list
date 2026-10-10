@@ -253,12 +253,12 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.6.0/dist/jbrowse-plugin-protein3d.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.6.1/dist/jbrowse-plugin-protein3d.esm.js",
       "versions": [
         {
-          "pluginVersion": "1.6.0",
+          "pluginVersion": "1.6.1",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.6.0/dist/jbrowse-plugin-protein3d.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.6.1/dist/jbrowse-plugin-protein3d.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/jbrowse-plugin-protein3d.esm.js"
