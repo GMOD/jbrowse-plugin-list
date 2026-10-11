@@ -1,50 +1,41 @@
 import { useEffect, useRef } from 'react'
 
-import { formatBp } from '@jbrowse/bandage-core/graphLabels'
 import { edgeHoverText } from '@jbrowse/bandage-core/hoverText'
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
-import { RAMP_GRADIENT_CSS } from '@jbrowse/bandage-core/referenceRampCss'
-import {
-  LIFT_BACKDROP_CSS,
-  REFERENCE_RAMP_ALT_CSS,
-} from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { ErrorBanner, LoadingOverlay, Menu } from '@jbrowse/core/ui'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { useRenderingBackend } from '@jbrowse/render-core/useRenderingBackend'
 import InfoIcon from '@mui/icons-material/Info'
 import { observer } from 'mobx-react'
 
-import BubbleHalos, { HaloLegend, OpenBubbleLegend } from './BubbleHalos'
+import BubbleHalos from './BubbleHalos'
 import FacetPanels from './FacetPanels'
-import GenePins, { EXON_COLOR } from './GenePins'
+import GenePins from './GenePins'
 import GraphToolbar from './GraphToolbar'
 import HoverLayer from './HoverLayer'
 import LabelLayer from './LabelLayer'
-import ReferenceStripOverlay, {
-  ReferenceStripLegend,
-} from './ReferenceStripOverlay'
-import TubeMapOverlay, { TubeMapLegend } from './TubeMapOverlay'
-import WalkKey, { walkSwatchStyle } from './WalkKey'
+import { LegendPanel } from './Legend'
+import ReferenceStripOverlay from './ReferenceStripOverlay'
+import TubeMapOverlay from './TubeMapOverlay'
 import { WalkRowContextMenu } from './WalkRowContextMenu'
-import WalkRowsOverlay, { WalkRowsLegend } from './WalkRowsOverlay'
+import WalkRowsOverlay from './WalkRowsOverlay'
 import WalkStrip from './WalkStrip'
 import WalkStripLocator from './WalkStripLocator'
-import { UNPLACED_SWATCH, legendBoxStyle, legendRowStyle } from './legendStyles'
 import { usePaneGestures, useWheelZoom } from './usePaneGestures'
 import { locLabel, nodeOwnLocation } from '../../launchFromGraph/contributors'
 import { nodeLaunchMenuItems } from '../../launchFromGraph/graphMenuItems'
+import { TOOLTIP_INSET_PX } from '../pane/fitViews'
 import { createGraphRenderer } from '../renderer/GraphRenderer'
 
 import type { GraphPaneModel } from '../model'
 
 // Bottom RIGHT, not bottom left: the row labels of a row-structured layout are
 // pinned to the left edge, so a bottom-left tooltip lands on top of them and
-// covers the one thing that says which haplotype a row is. Nothing is drawn
-// against the right edge.
+// covers the one thing that says which haplotype a row is. Where the legend
+// reaches down to it, it moves left of the legend.
 const tooltipStyle = {
   position: 'absolute' as const,
-  bottom: 8,
-  right: 8,
+  bottom: TOOLTIP_INSET_PX,
   background: 'rgba(0,0,0,0.75)',
   color: 'white',
   padding: '4px 8px',
@@ -149,167 +140,19 @@ const RowLabels = observer(function RowLabels({
 
 // Top RIGHT: the row labels own the left edge and the hover tooltip owns the
 // bottom right, so this is the one corner nothing else claims. A row-structured
-// layout draws its band across the middle, which is what the keys are for. The
-// two keys stack rather than each claiming the corner, since a path-coloured
-// graph can also be reference-position coloured.
+// layout draws its band across the middle, which is what the keys are for.
+// Every key stretches to the widest, so together they read as one panel.
 const legendStackStyle = {
   position: 'absolute' as const,
   top: LEGEND_INSET_PX,
   right: LEGEND_INSET_PX,
   display: 'flex',
   flexDirection: 'column' as const,
-  alignItems: 'flex-end',
-  gap: 4,
+  borderRadius: 3,
+  overflow: 'hidden' as const,
   pointerEvents: 'none' as const,
   zIndex: 4,
 }
-
-const pathSwatchStyle = { width: 18, height: 3, borderRadius: 2 }
-
-// Which haplotype each ribbon colour is. The ribbons are one stroke per path
-// fanned across every edge the path crosses, so without this the drawing states
-// that the alleles are taken by *different* samples and never which.
-const PathLegend = observer(function PathLegend({
-  model,
-}: {
-  model: GraphPaneModel
-}) {
-  const { pathLegend } = model
-  return pathLegend.length > 0 ? (
-    <div style={legendBoxStyle} data-testid="graph-path-legend">
-      {pathLegend.map(({ name, label, color }) => (
-        <div key={name} style={legendRowStyle}>
-          <div style={{ ...pathSwatchStyle, backgroundColor: color }} />
-          <span>{label}</span>
-        </div>
-      ))}
-    </div>
-  ) : null
-})
-
-// Each lifted walk's key, then what the faded rest is
-const WalkReadout = observer(function WalkReadout({
-  model,
-}: {
-  model: GraphPaneModel
-}) {
-  const lift = model.walkLift
-  if (!lift) {
-    return null
-  }
-  return (
-    <div style={legendBoxStyle} data-testid="graph-walk-readout">
-      {lift.walks.map(w => (
-        <WalkKey
-          key={w.name}
-          walk={w}
-          label={model.walkLabel(w.name)}
-          reference={model.walkReference}
-          at={model.hoveredOn(w)}
-        />
-      ))}
-      {/* the ramp's own key, which names this, is off while walks are lifted */}
-      {model.liftPaintsOffReference ? <OffReferenceRow /> : null}
-      <div style={legendRowStyle}>
-        <div style={{ ...walkSwatchStyle, background: LIFT_BACKDROP_CSS }} />
-        <span>not on {model.liftedWalksLabel}</span>
-      </div>
-    </div>
-  )
-})
-
-// The reference-position ramp, as a strip labelled with the interval it runs
-// over. Nothing on screen used to say that red-to-magenta means left-to-right of
-// the cut window, so two tutorials carried that sentence in prose and a reader
-// arriving at a figure had no way to know it at all.
-const rampStripStyle = {
-  minWidth: 90,
-  height: 8,
-  borderRadius: 2,
-  background: RAMP_GRADIENT_CSS,
-}
-
-const rampEndsStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 8,
-}
-
-const ReferenceRampLegend = observer(function ReferenceRampLegend({
-  model,
-}: {
-  model: GraphPaneModel
-}) {
-  // under lifted walks each lane states its own scale, and the rest is grey
-  const domain = model.walkLift ? undefined : model.referenceRampDomain
-  const { offReference, unplaced } = model.referenceRampOffKeys
-  // a measured domain runs between node midpoints, which can fall on a half bp
-  const start = Math.round(domain?.start ?? 0)
-  const end = Math.round(domain?.end ?? 0)
-  return domain ? (
-    <div style={legendBoxStyle} data-testid="graph-ramp-legend">
-      <div style={rampStripStyle} />
-      <div style={rampEndsStyle}>
-        <span>{start.toLocaleString()}</span>
-        <span>({formatBp(end - start)})</span>
-        <span>{end.toLocaleString()}</span>
-      </div>
-      {offReference ? <OffReferenceRow /> : null}
-      {unplaced ? (
-        <div style={legendRowStyle}>
-          <div style={{ ...walkSwatchStyle, background: UNPLACED_SWATCH }} />
-          <span>no reference position</span>
-        </div>
-      ) : null}
-    </div>
-  ) : null
-})
-
-// The charcoal both the ramp and a lane coloured by reference position give
-// sequence the reference does not carry
-function OffReferenceRow() {
-  return (
-    <div style={legendRowStyle}>
-      <div style={{ ...walkSwatchStyle, background: REFERENCE_RAMP_ALT_CSS }} />
-      <span>off the reference</span>
-    </div>
-  )
-}
-
-const exonSwatchStyle = {
-  ...walkSwatchStyle,
-  border: `2px solid ${EXON_COLOR}`,
-  borderRadius: 5,
-  boxSizing: 'border-box' as const,
-}
-
-const FoldLegend = observer(function FoldLegend({
-  model,
-}: {
-  model: GraphPaneModel
-}) {
-  const note = model.foldNote
-  return note ? (
-    <div style={legendBoxStyle} data-testid="graph-fold-legend">
-      <span>{note}</span>
-    </div>
-  ) : null
-})
-
-const GeneLegend = observer(function GeneLegend({
-  model,
-}: {
-  model: GraphPaneModel
-}) {
-  return model.genePins.some(pin => pin.exonsByNode.length > 0) ? (
-    <div style={legendBoxStyle} data-testid="graph-gene-legend">
-      <div style={legendRowStyle}>
-        <div style={exonSwatchStyle} />
-        <span>exon</span>
-      </div>
-    </div>
-  ) : null
-})
 
 const nodeLabelStyle = {
   position: 'absolute' as const,
@@ -378,16 +221,7 @@ const Legends = observer(function Legends({
         top: LEGEND_INSET_PX + model.referenceStripZonePx,
       }}
     >
-      <OpenBubbleLegend model={model} />
-      <ReferenceRampLegend model={model} />
-      <ReferenceStripLegend model={model} />
-      <HaloLegend model={model} />
-      <GeneLegend model={model} />
-      <FoldLegend model={model} />
-      <PathLegend model={model} />
-      <TubeMapLegend model={model} />
-      <WalkRowsLegend model={model} />
-      <WalkReadout model={model} />
+      <LegendPanel model={model} />
     </div>
   )
 })
@@ -479,21 +313,22 @@ const HoverTooltips = observer(function HoverTooltips({
 
   const walkRow = model.hoveredWalkRowText
   const tube = model.hoveredTubeText
+  const tipStyle = { ...tooltipStyle, right: model.tooltipRightPx }
 
   return (
     <>
       {tube && !hoveredNodeData ? (
-        <div style={tooltipStyle} data-testid="graph-tube-tooltip">
+        <div style={tipStyle} data-testid="graph-tube-tooltip">
           <strong>{tube.label}</strong> — {tube.readout}
         </div>
       ) : null}
       {walkRow && !hoveredNodeData ? (
-        <div style={tooltipStyle} data-testid="graph-walk-row-tooltip">
+        <div style={tipStyle} data-testid="graph-walk-row-tooltip">
           <strong>{walkRow.label}</strong> — {walkRow.readout}
         </div>
       ) : null}
       {hoveredNodeData ? (
-        <div style={tooltipStyle}>
+        <div style={tipStyle}>
           <strong>{hoveredNodeData.name}</strong>
           {merged ? ` and ${merged.length - 1} more` : ''} —{' '}
           {hoveredNodeData.length.toLocaleString()} bp, depth{' '}
@@ -511,7 +346,7 @@ const HoverTooltips = observer(function HoverTooltips({
         </div>
       ) : null}
       {hoveredEdgeText ? (
-        <div style={tooltipStyle}>
+        <div style={tipStyle}>
           {/* A deletion edge is the one link that means something on its own —
               the backbone it skips is sequence some haplotype does not carry —
               so it says how much rather than just naming its endpoints. */}

@@ -16,9 +16,10 @@ import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
 import ElTree from './ElTree'
+import { LegendSwatchView } from './Legend'
 import { WalkRowContextMenu } from './WalkRowContextMenu'
-import { Swatch } from './WalkRowsOverlay'
 import { legendRowStyle } from './legendStyles'
+import { walkRowSwatch } from '../legendSections'
 
 import type { GraphPaneModel } from '../model'
 import type { RowGene } from '@jbrowse/bandage-core/layout/walkRowDraw'
@@ -178,7 +179,7 @@ const WalkStrip = observer(function WalkStrip({
       <div style={keyStyle} data-testid="graph-walk-strip-key">
         {key.map(entry => (
           <div key={entry.label} style={legendRowStyle}>
-            <Swatch swatch={entry.swatch} />
+            <LegendSwatchView swatch={walkRowSwatch(entry.swatch)} />
             <span>{entry.label}</span>
           </div>
         ))}

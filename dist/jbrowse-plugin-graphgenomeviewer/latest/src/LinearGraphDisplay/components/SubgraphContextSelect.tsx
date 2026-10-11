@@ -59,14 +59,10 @@ const SubgraphContextSelect = observer(function SubgraphContextSelect({
           ))}
         </Select>
       </FormControl>
-      <Typography variant="caption" color="text.secondary">
-        How far the cut follows links out of the region, one hop by default. A
-        detour that leaves the reference before the window and rejoins after it
-        is indexed under its own sequence, so at none its middle is missing and
-        the one bubble draws as two unrelated stubs. Each hop costs a query per
-        off-reference segment already reached. No effect on an index in
-        gfa-to-tabix&apos;s default anchored layout, which files each bubble
-        whole under its reference interval.
+      <Typography variant="caption" component="div" color="text.secondary">
+        How far the cut follows links out of the region. At none, a detour that
+        leaves the window draws as two stubs. No effect on gfa-to-tabix&apos;s
+        default anchored index.
       </Typography>
     </div>
   ) : null

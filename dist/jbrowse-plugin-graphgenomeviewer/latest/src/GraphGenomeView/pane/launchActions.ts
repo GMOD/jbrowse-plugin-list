@@ -4,7 +4,6 @@ import {
   LAYOUT_MODES,
   layoutModeByValue,
 } from '@jbrowse/bandage-core/layoutModes'
-import { pushLaunchViewMenuItem } from '@jbrowse/core/ui'
 import { getSession } from '@jbrowse/core/util'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import HubIcon from '@mui/icons-material/Hub'
@@ -29,6 +28,7 @@ import {
   showInLinearView,
 } from '../../launchFromGraph/launchFromGraph'
 import { launchTracks } from '../../launchFromGraph/launchTracks'
+import { pushLaunchItem } from '../../launchFromGraph/pushLaunchItem'
 import { launchableSyntenyTracks } from '../../launchFromGraph/syntenyTracks'
 import { downloadText } from '../download'
 import { HOVER_HIGHLIGHT_VALUES } from '../hoverHighlight'
@@ -38,6 +38,9 @@ import type { GraphLocation } from '../../launchFromGraph/contributors'
 import type { TubeMapPanelSplit } from '../tubeMapPanels'
 import type { ColorScheme } from '@jbrowse/bandage-core/colorSchemes'
 import type { MenuItem } from '@jbrowse/core/ui'
+
+const layoutMenuLabel = (mode: { label: string }) =>
+  mode.label.replace(/ layout$/, '')
 
 export const withLaunchActions = withRenderingActions
   .actions(self => ({
@@ -462,12 +465,12 @@ export const withLaunchActions = withRenderingActions
       const options = this.layoutOptionMenuItems()
       return [
         {
-          label: `Layout: ${layoutModeByValue(self.chosenLayoutMode).label.replace(/ layout$/, '')}`,
+          label: `Layout: ${layoutMenuLabel(layoutModeByValue(self.chosenLayoutMode))}`,
           icon: HubIcon,
           subMenu: [
             ...LAYOUT_MODES.map(mode => ({
               type: 'radio' as const,
-              label: mode.label,
+              label: layoutMenuLabel(mode),
               checked: self.chosenLayoutMode === mode.value,
               disabled: self.graph ? !mode.available(self.graph) : false,
               disabledHelpText: mode.description,
@@ -492,8 +495,10 @@ export const withLaunchActions = withRenderingActions
           ],
         },
         {
-          label: `Color: ${this.colorSchemeLabel(self.chosenColorScheme)}`,
+          label: `Color: ${self.colorSchemeLock?.value ?? this.colorSchemeLabel(self.chosenColorScheme)}`,
           icon: PaletteIcon,
+          disabled: self.colorSchemeLock !== undefined,
+          disabledHelpText: self.colorSchemeLock?.why,
           subMenu: COLOR_SCHEMES.map(scheme => ({
             type: 'radio' as const,
             label: this.colorSchemeLabel(scheme.value),
@@ -523,7 +528,7 @@ export const withLaunchActions = withRenderingActions
           self.showSyntenyView(trackId)
         },
       })) {
-        pushLaunchViewMenuItem(items, item)
+        pushLaunchItem(items, item)
       }
       return items
     },

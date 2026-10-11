@@ -134,12 +134,11 @@ const SubgraphHaplotypesField = observer(function SubgraphHaplotypesField({
       ) : (
         <HaplotypeListField key={key} model={model} />
       )}
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" component="div" color="text.secondary">
         {names
-          ? `The haplotypes the cut is for, of the graph's ${names.length.toLocaleString()}, or a PanSN prefix typed and entered (HG002 for both of its haplotypes).`
-          : 'The haplotypes the cut is for, as lane assembly names or PanSN prefixes (HG002#1, or HG002 for both), separated by commas.'}{' '}
-        The cut keeps their walks and the nodes those walks visit, with the
-        reference. Empty is every haplotype.
+          ? `Which of the graph's ${names.length.toLocaleString()} haplotypes to cut, or a PanSN prefix (HG002 for both).`
+          : 'Which haplotypes to cut, as lane assembly names or PanSN prefixes (HG002#1, or HG002 for both) separated by commas.'}{' '}
+        Empty is every haplotype.
       </Typography>
     </div>
   ) : null

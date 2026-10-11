@@ -21,6 +21,8 @@ export const PANEL_GAP = 28
 export const PANEL_REFERENCE_TUBE = '#4d4d4d'
 export const PANEL_TUBE = '#5b8cc4'
 export const PANEL_TUBES = [PANEL_TUBE, '#82abd9']
+// greys beside boxes tinted by the node scheme, so no tube shares a box's hue
+export const TINTED_TUBES = ['#8c8c8c', '#adadad']
 export const PANEL_TITLE_FONT = '12px sans-serif'
 
 export const TUBE_MAP_PANELS: { field: '' | FacetBy; label: string }[] = [
@@ -58,17 +60,18 @@ export type PaneLayout = LayoutResult & { tubeMapPanels?: TubeMapPanel[] }
 const walkOf = (name: string) => pathOrigin(name).name
 
 // A tube coloured by its role where no key could name a hue per walk: the
-// reference charcoal and the haplotypes blue, neighbours alternating two
-// shades so each stays countable in a bundle
+// reference charcoal and the haplotypes blue, or grey beside tinted boxes,
+// neighbours alternating two shades so each stays countable in a bundle
 export function roleTubeColors(
   paths: readonly { name: string }[],
   reference: string | undefined,
+  tubes = PANEL_TUBES,
 ) {
   let haplotype = 0
   return paths.map(p =>
     walkOf(p.name) === reference
       ? PANEL_REFERENCE_TUBE
-      : PANEL_TUBES[haplotype++ % PANEL_TUBES.length]!,
+      : tubes[haplotype++ % tubes.length]!,
   )
 }
 

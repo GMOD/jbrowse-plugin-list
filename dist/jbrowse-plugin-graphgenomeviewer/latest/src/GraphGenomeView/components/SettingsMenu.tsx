@@ -60,8 +60,10 @@ const SettingsMenu = observer(function SettingsMenu({
           },
           { type: 'divider' as const },
           {
-            label: 'Settings',
+            label: 'Graph settings...',
             icon: SettingsIcon,
+            helpText:
+              'Subgraph node limit; node width and path colors; the force-directed layout engine',
             onClick: () => {
               setSettingsOpen(true)
             },

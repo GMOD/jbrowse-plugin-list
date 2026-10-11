@@ -70,6 +70,8 @@ import { hostFrame } from '../host'
 import {
   NO_VALUE_TUBE,
   PANEL_GAP,
+  PANEL_TUBE,
+  TINTED_TUBES,
   boxOf,
   memberAt,
   paintPanelHover,
@@ -113,6 +115,9 @@ import type { LiftedWalk, WalkLift } from '@jbrowse/bandage-core/walkHighlight'
 import type { FileLocation } from '@jbrowse/core/util/types'
 
 const MAX_SHOWN_BASES = 20
+export const TOOLTIP_INSET_PX = 8
+// a two-line tooltip and its inset
+const TOOLTIP_ROOM_PX = 48
 // a squeezed stack of panels thins no further, as one tube map does
 const MIN_PANEL_Y_SCALE = 0.05
 
@@ -429,6 +434,18 @@ export const withFitViews = withHostViews
     },
     get facetGrid() {
       return this.facetGridIn(self.host ? this.canvasHeight : this.paneCeiling)
+    },
+    // The hover tooltip's distance from the pane's right edge: in the corner,
+    // unless the legend reaches down into its room, and then beside it. A
+    // faceted pane mounts no legend, so its last measured size is stale.
+    get tooltipRightPx() {
+      const { width, height } = self.legendSize
+      const legendBottom = LEGEND_INSET_PX + self.referenceStripZonePx + height
+      return !self.facetPanels &&
+        width > 0 &&
+        legendBottom > this.canvasHeight - TOOLTIP_ROOM_PX
+        ? width + 2 * LEGEND_INSET_PX
+        : TOOLTIP_INSET_PX
     },
     // The pane is as tall as the drawing, rather than a fixed box the drawing
     // floats in. A row layout's rows are px, so its height is a sum; an
@@ -1046,10 +1063,12 @@ export const withFitViews = withHostViews
             !(coloring && reads.length === 0) &&
             (split ||
               (layout?.tubeMap !== undefined &&
-                reads.length === 0 &&
-                !self.tubeMapNodeColors &&
-                (!pathColorsLegible(paths.length) ||
-                  paths.some(p => p.members)))),
+                (!!self.tubeMapNodeColors ||
+                  (reads.length === 0 &&
+                    (!pathColorsLegible(paths.length) ||
+                      paths.some(p => p.members)))))),
+          haplotypeTube:
+            !split && self.tubeMapNodeColors ? TINTED_TUBES[0]! : PANEL_TUBE,
           logWidths: layout?.tubeMap !== undefined && !layout.referenceAxis,
           foldBp:
             self.tubeMapDeviations.length > 0 ? self.tubeMapFold : undefined,

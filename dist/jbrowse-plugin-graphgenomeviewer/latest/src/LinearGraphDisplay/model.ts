@@ -10,7 +10,6 @@ import {
 } from '@jbrowse/core/configuration'
 import { BaseDisplay } from '@jbrowse/core/pluggableElementTypes'
 import { computeSvgReady } from '@jbrowse/core/svg/svgReady'
-import { pushLaunchViewMenuItem } from '@jbrowse/core/ui'
 import { getRpcSessionId, getSession } from '@jbrowse/core/util'
 import TrackHeightMixin from '@jbrowse/display-kit/TrackHeightMixin'
 import { editPlotMenuItems } from '@jbrowse/display-kit/plotMenu'
@@ -40,6 +39,7 @@ import {
   trackLanes,
   walkIndexed,
 } from '../graphTrackConfig'
+import { pushLaunchItem } from '../launchFromGraph/pushLaunchItem'
 import { trackAdapterConfig } from '../panSNAliases/trackAdapterConfig'
 
 import type { LinearGraphDisplayConfigModel } from './configSchema'
@@ -607,7 +607,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
     .views(self => ({
       // Which haplotypes a GBZ or walk-indexed cut is for: every one in the
       // graph, the config's default set or the assemblies the track names,
-      // or a list chosen in Settings
+      // or a list chosen in Graph settings
       cutMenuItems(): MenuItem[] {
         if (!cutsByHaplotype(self.adapterConfig)) {
           return []
@@ -648,7 +648,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             : []),
           {
             type: 'radio',
-            label: 'Chosen in Settings...',
+            label: 'Chosen in Graph settings...',
             checked: (chosen?.length ?? 0) > 0,
             onClick: () => {
               this.openSettings()
@@ -671,7 +671,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
       trackMenuItems(): MenuItem[] {
         const launches = self.launchMenuItems()
-        pushLaunchViewMenuItem(launches, {
+        pushLaunchItem(launches, {
           label: 'Graph genome view',
           icon: BubbleChartIcon,
           disabled: !self.graphViewSpec,
@@ -690,8 +690,10 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             : []),
           ...self.graphMenuItems(),
           {
-            label: 'Settings',
+            label: 'Graph settings...',
             icon: SettingsIcon,
+            helpText:
+              'Subgraph context, haplotypes and node limit; node width and path colors; the force-directed layout engine',
             onClick: () => {
               this.openSettings()
             },

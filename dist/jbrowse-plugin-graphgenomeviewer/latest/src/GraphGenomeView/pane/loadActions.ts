@@ -179,7 +179,7 @@ export const withLoadActions = withSettingActions.actions(self => {
       // the node cap is a drawing's cost, and walk rows draw a bar per walk
       if (self.modeDrawsNodes && graph.nodes.length > self.maxGraphNodes) {
         throw new Error(
-          `Graph too large to draw: ${graph.nodes.length.toLocaleString()} nodes (limit ${self.maxGraphNodes.toLocaleString()}). Pick Layout → Walk rows, zoom in to a smaller region, or raise the node limit in Settings.`,
+          `Graph too large to draw: ${graph.nodes.length.toLocaleString()} nodes (limit ${self.maxGraphNodes.toLocaleString()}). Pick Layout → Walk rows, zoom in to a smaller region, or raise the node limit in Graph settings.`,
         )
       }
       computed = yield* computeLayout(graph)

@@ -20,7 +20,6 @@ import { nodeInk } from '@jbrowse/bandage-core/nodeWidths'
 import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 import {
   pathColorsLegible,
-  pathGreyCssColor,
   pathLegend,
   walkLabelsOf,
 } from '@jbrowse/bandage-core/pathColors'
@@ -69,6 +68,7 @@ import {
 } from '../repeats/repeatFeatures'
 import { withCalls } from '../repeats/walkCalls'
 import {
+  TINTED_TUBES,
   columnKeyOf,
   roleTubeColors,
   valueTubeColors,
@@ -1071,10 +1071,9 @@ export const withGraphViews = paneBase
           )
         : undefined
     },
-    // Beside tinted boxes the tubes step through greys, as they do beside
-    // reads, so no tube shares a box's hue
-    // Past the walks a key can name, a hue per walk identifies nothing, so
-    // the tubes take their roles' colours
+    // Beside tinted boxes, and past the walks a key can name, the tubes take
+    // their roles' colours: a hue per walk would either share a box's or
+    // identify nothing
     get tubeMapTubeColors() {
       const drawing = self.layoutResult?.tubeMap
       const colors = drawing?.pathColors
@@ -1088,8 +1087,8 @@ export const withGraphViews = paneBase
               coloring.valueOf,
               coloring.palette,
             )
-          : colors && this.tubeMapNodeColors
-            ? colors.map((_, i) => pathGreyCssColor(i, colors.length))
+          : colors && paths && this.tubeMapNodeColors
+            ? roleTubeColors(paths, self.drawnGraph.referencePath, TINTED_TUBES)
             : colors &&
                 paths &&
                 drawing.layout.reads.length === 0 &&
@@ -1155,11 +1154,12 @@ export const withGraphViews = paneBase
       const paths = self.drawnGraph?.paths
       const tubeMap = self.layoutResult?.tubeMap
       const colouring = self.drawPaths || tubeMap
-      // tubes coloured by role or by a column take TubeMapLegend's key
+      // tubes coloured by role or by a column take the tube map's role or value key
       return colouring &&
         paths &&
         pathColorsLegible(paths.length) &&
         !self.layoutResult?.tubeMapPanels &&
+        !self.tubeMapNodeColors &&
         !paths.some(p => p.members) &&
         !self.tubeMapColoring
         ? pathLegend(paths, self.tubeMapTubeColors)

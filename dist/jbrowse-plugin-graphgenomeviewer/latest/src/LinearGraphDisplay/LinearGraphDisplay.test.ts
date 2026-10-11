@@ -17,6 +17,7 @@ import { LAUNCH_LABEL } from '@jbrowse/core/ui'
 import SimpleFeature from '@jbrowse/core/util/simpleFeature'
 import { types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { reaction } from 'mobx'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -1064,14 +1065,14 @@ test("a GBZ track's Haplotypes menu cuts for every haplotype, the track's lanes,
     'Load',
     'Every haplotype in the graph',
     "The track's 2 assemblies",
-    'Chosen in Settings...',
+    'Chosen in Graph settings...',
   ])
   expect(checked()).toBe("The track's 2 assemblies")
   menu()[1]!.onClick()
   expect(display.chosenHaplotypes).toEqual([])
   expect(checked()).toBe('Every haplotype in the graph')
   display.setSubgraphHaplotypes(['HG1.1'])
-  expect(checked()).toBe('Chosen in Settings...')
+  expect(checked()).toBe('Chosen in Graph settings...')
   menu()[2]!.onClick()
   expect(display.chosenHaplotypes).toEqual(['HG1.1', 'HG2.1'])
 })
@@ -1106,7 +1107,7 @@ test("a walk-indexed track cuts for its config's default haplotypes", async () =
     'Load',
     'Every haplotype in the graph (3)',
     "The track's default haplotypes",
-    'Chosen in Settings...',
+    'Chosen in Graph settings...',
   ])
   expect(menu().find(item => item.checked)?.label).toBe(
     "The track's default haplotypes",
@@ -1276,9 +1277,17 @@ test('the track menu offers the layouts, colours and the settings dialog', async
       'Layout: Anchored',
       'Color: Auto (Reference position)',
       'Show...',
-      'Settings',
+      'Graph settings...',
     ]),
   )
+})
+
+test('the track menu marks its launch submenu with a rocket', async () => {
+  const { display } = await shownGraph()
+  const launch = display
+    .trackMenuItems()
+    .find(item => 'label' in item && item.label === LAUNCH_LABEL)
+  expect(launch && 'icon' in launch && launch.icon).toBe(RocketLaunchIcon)
 })
 
 function graphViewItem(display: LinearGraphDisplayModel) {

@@ -1,0 +1,2 @@
+import{H as i,g as o,m as a}from"./chunk-E3WYW7Z6.js";import{c as r,d as e}from"./chunk-JMBDTNUR.js";var u=e(function({model:n,title:s,children:l,handleClose:m}){return r(o,{open:!0,title:s,onClose:()=>{m()},children:[l,n.trackWarnings.flatMap(({name:f,warnings:g},p)=>g.map((t,c)=>r(a,{severity:"warning",style:{marginBottom:8},children:[r(i,{variant:"subtitle2",children:[f,": ",t.message]}),t.effect]},`${p}_${c}`)))]})}),x=u;export{x as default};
+//# sourceMappingURL=TrackWarningsDialog-QT4YEXGD.js.map

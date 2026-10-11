@@ -6,8 +6,9 @@ import { autorun, computed } from 'mobx'
 import { observer } from 'mobx-react'
 
 import { hoverLayerStyle } from './HoverLayer'
-import WalkKey from './WalkKey'
+import { LegendRowView } from './Legend'
 import { useWheelZoom } from './usePaneGestures'
+import { walkKeyRow } from '../legendSections'
 
 import type { PaneHandlers } from './usePaneGestures'
 import type { GraphPaneModel } from '../model'
@@ -115,10 +116,8 @@ const FacetPanel = observer(function FacetPanel({
           model.setFacet('')
         }}
       >
-        <WalkKey
-          walk={walk}
-          label={label}
-          reference={model.walkReference}
+        <LegendRowView
+          row={walkKeyRow(model, walk)}
           hint={`click to lift ${label} alone`}
           at={model.hoveredOn(walk)}
         />

@@ -1,47 +1,32 @@
 import { FACET_GAP_PX, FACET_TITLE_PX } from '@jbrowse/bandage-core/facetGrid'
-import { formatBp } from '@jbrowse/bandage-core/graphLabels'
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
-import {
-  walkRowsKey,
-  walkRowsKeyTree,
-} from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
-import {
-  LIFT_BACKDROP_CSS,
-  REFERENCE_RAMP_ALT_CSS,
-} from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { svgCanvas } from '@jbrowse/bandage-core/renderer/svgCanvas'
 import { rulerInk } from '@jbrowse/bandage-core/tubeMap/axis'
-import { deviationInk } from '@jbrowse/bandage-core/tubeMap/deviations'
-import {
-  FORWARD_READ_COLORS,
-  REVERSE_READ_COLORS,
-} from '@jbrowse/bandage-core/tubeMap/reads'
-import { encodingStops } from '@jbrowse/bandage-core/walkEncoding'
-import { walkKey } from '@jbrowse/bandage-core/walkKey'
 import { PaintLayer } from '@jbrowse/core/util/paintLayer'
 
-import BubbleHalos, { haloKeyEntries } from './BubbleHalos'
-import ElTree from './ElTree'
-import GenePins, { EXON_COLOR } from './GenePins'
+import BubbleHalos from './BubbleHalos'
+import GenePins from './GenePins'
 import LabelLayer from './LabelLayer'
 import { paintReferenceStrip } from './ReferenceStripOverlay'
 import { paintTubeMap } from './TubeMapOverlay'
-import { PANEL_REFERENCE_TUBE, PANEL_TUBE } from '../tubeMapPanels'
 import WalkRowsOverlay from './WalkRowsOverlay'
-import { UNPLACED_SWATCH } from './legendStyles'
+import {
+  SWATCH_PX,
+  legendSections,
+  swatchWidth,
+  walkKeyRow,
+} from '../legendSections'
 
+import type { LegendRow, LegendSwatch, Stop } from '../legendSections'
 import type { GraphPaneModel } from '../model'
-import type { LiftedWalk, WalkLift } from '@jbrowse/bandage-core/walkHighlight'
+import type { WalkLift } from '@jbrowse/bandage-core/walkHighlight'
 import type { Ctx2D } from '@jbrowse/core/util/paintLayer'
 
 const FONT = { fontFamily: 'sans-serif', fontSize: 11 }
 const CHAR_PX = 6.2
 const ROW_PX = 16
-const SWATCH_PX = 18
-const BAR_PX = 48
 const RASTER_SCALE = 2
-const STRIP_SAMPLES = 6
 
 const asCanvasCtx = (ctx: Ctx2D) => ctx as CanvasRenderingContext2D
 
@@ -108,21 +93,33 @@ function Body({
   )
 }
 
-function Swatch({
+function Gradient({
   id,
   x,
-  y = -9,
+  y,
   stops,
   width,
-  height = 8,
+  height,
+  square,
 }: {
   id: string
   x: number
-  y?: number
-  stops: { offset: number; color: string }[]
+  y: number
+  stops: readonly Stop[]
   width: number
-  height?: number
+  height: number
+  square?: boolean
 }) {
+  const rect = (fill: string) => (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rx={square ? 0 : 2}
+      fill={fill}
+    />
+  )
   return stops.length > 1 ? (
     <>
       <defs>
@@ -132,244 +129,109 @@ function Swatch({
           ))}
         </linearGradient>
       </defs>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={2}
-        fill={`url(#${id})`}
-      />
+      {rect(`url(#${id})`)}
     </>
   ) : (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      rx={2}
-      fill={stops[0]?.color}
-    />
+    rect(stops[0]!.color)
   )
 }
 
-interface KeyRow {
-  key: string
-  width: number
-  height: number
-  draw: (right: number) => React.ReactNode
-}
-
-// A row of the key: a swatch, then its words, ending at `right`
-function swatchRow(
-  key: string,
-  swatch: (x: number) => React.ReactNode,
-  swatchWidth: number,
-  label: string,
-  after = '',
-  under?: string,
-): KeyRow {
-  const width = Math.max(
-    swatchWidth + 5 + (label.length + after.length) * CHAR_PX,
-    (under?.length ?? 0) * CHAR_PX,
-  )
-  return {
-    key,
-    width,
-    height: under ? ROW_PX * 2 : ROW_PX,
-    draw: right => {
-      const x = right - width
+// A row's swatch with its left edge at x, centred on the row's text 5 px
+// above the baseline, as the screen centres it
+function SvgSwatch({
+  swatch,
+  x,
+  id,
+}: {
+  swatch: LegendSwatch
+  x: number
+  id: string
+}) {
+  const mid = -5
+  switch (swatch.kind) {
+    case 'fill': {
+      const height = swatch.height ?? 8
       return (
-        <g key={key} {...FONT}>
-          {swatch(x)}
-          <text x={x + swatchWidth + 5} y={0}>
-            <tspan fontWeight="bold">{label}</tspan>
-            {after}
-          </text>
-          {under ? (
-            <text x={x} y={ROW_PX}>
-              {under}
-            </text>
-          ) : null}
-        </g>
+        <Gradient
+          id={id}
+          x={x}
+          y={mid - height / 2}
+          stops={swatch.stops}
+          width={swatchWidth(swatch)}
+          height={height}
+          square={swatch.square}
+        />
       )
-    },
-  }
-}
-
-function walkRow(model: GraphPaneModel, walk: LiftedWalk, id: string) {
-  const key = walkKey(walk, model.walkReference)
-  const stops = encodingStops(walk.encoding)
-  const width = key.shades ? BAR_PX : SWATCH_PX
-  return swatchRow(
-    walk.name,
-    x => <Swatch id={id} x={x} stops={stops} width={width} />,
-    width,
-    model.walkLabel(walk.name),
-    key.delta + key.outside + key.reversed,
-    key.scale,
-  )
-}
-
-function flatRow(key: string, color: string, label: string) {
-  return swatchRow(
-    key,
-    x => (
-      <Swatch id={key} x={x} stops={[{ offset: 0, color }]} width={SWATCH_PX} />
-    ),
-    SWATCH_PX,
-    '',
-    label,
-  )
-}
-
-// The strip's own colours, a row per lifted walk, else the node scheme's
-function stripStops(model: GraphPaneModel) {
-  const lift = model.walkLift
-  if (lift) {
-    return lift.walks.map(w => encodingStops(w.encoding))
-  }
-  if (model.effectiveColorScheme === 'reference-position') {
-    return [encodingStops({ field: 'reference', scheme: 'rainbow' })]
-  }
-  const colors = model.referenceStripBlocks
-    .map(b => b.colors[0]!)
-    .filter((c, i, all) => c !== all[i - 1])
-  const n = Math.min(STRIP_SAMPLES, colors.length)
-  return [
-    Array.from({ length: n }, (_, i) => ({
-      offset: n > 1 ? i / (n - 1) : 0,
-      color:
-        colors[n > 1 ? Math.round((i * (colors.length - 1)) / (n - 1)) : 0]!,
-    })),
-  ]
-}
-
-function stripKeyRows(model: GraphPaneModel, idPrefix: string): KeyRow[] {
-  if (!model.referenceStripShown) {
-    return []
-  }
-  const rowPerWalk = (model.walkLift?.walks.length ?? 0) > 1
-  const bands = stripStops(model)
-  const rows = [
-    swatchRow(
-      'strip',
-      x => (
+    }
+    case 'bands': {
+      const band = swatch.bands.length > 1 ? 3 : 4
+      const top = mid - (band * swatch.bands.length) / 2
+      return (
         <>
-          {bands.map((stops, i) => (
-            <g key={i} transform={`translate(0 ${(i * 8) / bands.length})`}>
-              <Swatch
-                id={`${idPrefix}-strip-${i}`}
-                x={x}
-                y={-9}
-                stops={stops}
-                width={SWATCH_PX}
-                height={8 / bands.length}
-              />
-            </g>
+          {swatch.bands.map((stops, i) => (
+            <Gradient
+              key={i}
+              id={`${id}-${i}`}
+              x={x}
+              y={top + i * band}
+              stops={stops}
+              width={SWATCH_PX}
+              height={band}
+              square
+            />
           ))}
         </>
-      ),
-      SWATCH_PX,
-      '',
-      `top strip: reference segments at their bp${rowPerWalk ? ', a row per walk' : ''}`,
-    ),
-  ]
-  if (model.referenceStripFaded) {
-    rows.push(
-      flatRow(
-        'strip-faded',
-        LIFT_BACKDROP_CSS,
-        `reference not on ${rowPerWalk ? "that row's walk" : model.liftedWalksLabel}`,
-      ),
-    )
-  }
-  if (model.referenceStripOverhangs) {
-    rows.push(
-      swatchRow(
-        'overhang',
-        x => (
-          <path
-            transform={`translate(${x} -10)`}
-            d="M0,5 L8,0 L8,10 Z M18,5 L10,0 L10,10 Z"
-            fill="#18181c"
-          />
-        ),
-        SWATCH_PX,
-        '',
-        'the graph draws reference past this edge',
-      ),
-    )
-  }
-  return rows
-}
-
-function haloRows(model: GraphPaneModel): KeyRow[] {
-  return haloKeyEntries(model).map(({ color, label }) =>
-    swatchRow(
-      `halo-${color}`,
-      x => (
+      )
+    }
+    case 'line':
+      return (
+        <rect
+          x={x}
+          y={mid - 1.5}
+          width={SWATCH_PX}
+          height={3}
+          rx={2}
+          fill={swatch.color}
+        />
+      )
+    case 'halo':
+      return (
         <line
           x1={x + 5}
           x2={x + 13}
-          y1={-5}
-          y2={-5}
-          stroke={color}
+          y1={mid}
+          y2={mid}
+          stroke={swatch.color}
           strokeOpacity={0.35}
           strokeWidth={8}
           strokeLinecap="round"
         />
-      ),
-      SWATCH_PX,
-      '',
-      label,
-    ),
-  )
-}
-
-function pathRows(model: GraphPaneModel): KeyRow[] {
-  return model.pathLegend.map(({ name, label, color }) =>
-    swatchRow(
-      `path-${name}`,
-      x => (
-        <rect x={x} y={-6} width={SWATCH_PX} height={3} rx={2} fill={color} />
-      ),
-      SWATCH_PX,
-      '',
-      label,
-    ),
-  )
-}
-
-function readStops(colors: readonly string[]) {
-  return colors.flatMap((color, i) => [
-    { offset: i / colors.length, color },
-    { offset: (i + 1) / colors.length, color },
-  ])
-}
-
-function tubeMapRows(model: GraphPaneModel, idPrefix: string): KeyRow[] {
-  if (!model.layoutResult?.tubeMap) {
-    return []
-  }
-  const {
-    roles,
-    bundled,
-    values,
-    logWidths,
-    foldBp,
-    forwardReads,
-    reverseReads,
-    substitution,
-    insertion,
-    deletion,
-  } = model.tubeMapKeys
-  const reads = model.readsShown
-  const rows: KeyRow[] = []
-  const glyph = (key: string, char: string, label: string) =>
-    swatchRow(
-      key,
-      x => (
+      )
+    case 'outline': {
+      const inset = swatch.stroke / 2
+      return (
+        <rect
+          x={x + inset}
+          y={mid - swatch.height / 2 + inset}
+          width={SWATCH_PX - swatch.stroke}
+          height={swatch.height - swatch.stroke}
+          rx={Math.max(0, swatch.radius - inset)}
+          fill="none"
+          stroke={swatch.color}
+          strokeWidth={swatch.stroke}
+        />
+      )
+    }
+    case 'overhang':
+      return (
+        <path
+          transform={`translate(${x} ${mid - 5})`}
+          d="M0,5 L8,0 L8,10 Z M18,5 L10,0 L10,10 Z"
+          fill="#18181c"
+        />
+      )
+    case 'glyph':
+      return (
         <text
           x={x + SWATCH_PX / 2}
           y={0}
@@ -377,159 +239,96 @@ function tubeMapRows(model: GraphPaneModel, idPrefix: string): KeyRow[] {
           fontFamily="monospace"
           fontSize={12}
         >
-          {char}
+          {swatch.char}
+        </text>
+      )
+    case 'tick': {
+      const y = mid - swatch.height / 2
+      return (
+        <>
+          {swatch.backing ? (
+            <rect
+              x={x}
+              y={y}
+              width={SWATCH_PX}
+              height={swatch.height}
+              fill={swatch.backing}
+            />
+          ) : null}
+          <rect
+            x={x + SWATCH_PX / 2 - 1}
+            y={y}
+            width={2}
+            height={swatch.height}
+            fill={swatch.color}
+          />
+        </>
+      )
+    }
+    case 'bracket':
+      return (
+        <path
+          transform={`translate(${x} ${mid - 4})`}
+          d={`M0.5,6 V1.5 H5.5 V6 M8.5,6 V1.5 H${SWATCH_PX - 0.5} V6`}
+          fill="none"
+          stroke={rulerInk()}
+        />
+      )
+    case 'blank':
+      return null
+  }
+}
+
+interface KeyRow {
+  key: string
+  width: number
+  height: number
+  draw: (left: number) => React.ReactNode
+}
+
+// A legend row as the screen lays it out: its swatch, then its words, the
+// line under it if any; a note is grey words alone
+function svgRow(row: LegendRow, id: string): KeyRow {
+  if (!row.swatch) {
+    return {
+      key: row.key,
+      width: row.label.length * CHAR_PX,
+      height: ROW_PX,
+      draw: left => (
+        <text key={row.key} {...FONT} x={left} y={0} fill="#666">
+          {row.label}
         </text>
       ),
-      SWATCH_PX,
-      '',
-      label,
-    )
-  if (values) {
-    rows.push(
-      flatRow('ref', PANEL_REFERENCE_TUBE, 'reference'),
-      ...values.map(({ value, color }) =>
-        flatRow(`value-${value}`, color, value),
-      ),
-    )
-  }
-  if (roles) {
-    rows.push(
-      flatRow('ref', PANEL_REFERENCE_TUBE, 'reference'),
-      flatRow(
-        'hap',
-        PANEL_TUBE,
-        bundled ? 'a route, as wide as the haplotypes taking it' : 'haplotype',
-      ),
-    )
-  }
-  if (forwardReads) {
-    rows.push(
-      swatchRow(
-        'fwd',
-        x => (
-          <Swatch
-            id={`${idPrefix}-fwd`}
-            x={x}
-            stops={readStops(FORWARD_READ_COLORS)}
-            width={SWATCH_PX}
-          />
-        ),
-        SWATCH_PX,
-        '',
-        'read on the forward strand',
-      ),
-    )
-  }
-  if (reverseReads) {
-    rows.push(
-      swatchRow(
-        'rev',
-        x => (
-          <Swatch
-            id={`${idPrefix}-rev`}
-            x={x}
-            stops={readStops(REVERSE_READ_COLORS)}
-            width={SWATCH_PX}
-          />
-        ),
-        SWATCH_PX,
-        '',
-        'read on the reverse strand',
-      ),
-    )
-  }
-  if (reads && reads.shown < reads.total) {
-    rows.push(
-      swatchRow(
-        'sampled',
-        () => null,
-        SWATCH_PX,
-        '',
-        `${reads.shown.toLocaleString('en-US')} of ${reads.total.toLocaleString('en-US')} reads shown`,
-      ),
-    )
-  }
-  if (substitution) {
-    rows.push(glyph('sub', 'A', "a read's base unlike the node's"))
-  }
-  if (insertion) {
-    rows.push(glyph('ins', '*', 'bases a read inserts'))
-  }
-  if (deletion) {
-    rows.push(flatRow('del', 'grey', 'bases a read skips'))
-  }
-  if (foldBp !== undefined) {
-    rows.push(
-      swatchRow(
-        'fold',
-        x => (
-          <>
-            <rect x={x} y={-9} width={SWATCH_PX} height={7} fill="#b8b8c0" />
-            <rect
-              x={x + SWATCH_PX / 2 - 1}
-              y={-9}
-              width={2}
-              height={7}
-              fill={deviationInk()}
-            />
-          </>
-        ),
-        SWATCH_PX,
-        '',
-        `a haplotype's variant under ${formatBp(foldBp)}`,
-      ),
-    )
-  }
-  if (logWidths) {
-    rows.push(
-      swatchRow(
-        'log',
-        x => (
-          <path
-            transform={`translate(${x} -9)`}
-            d={`M0.5,6 V1.5 H5.5 V6 M8.5,6 V1.5 H${SWATCH_PX - 0.5} V6`}
-            fill="none"
-            stroke={rulerInk()}
-          />
-        ),
-        SWATCH_PX,
-        '',
-        'width grows with log of length',
-      ),
-    )
-  }
-  return rows
-}
-
-function walkRowsKeyRows(model: GraphPaneModel, idPrefix: string): KeyRow[] {
-  const bars = model.walkRowBars
-  if (!bars) {
-    return []
-  }
-  return walkRowsKey(bars, {
-    ramp: model.referenceRampDomain,
-    genes: model.walkRowGeneKey,
-  }).map((entry, i) => {
-    const { tree, width } = walkRowsKeyTree(
-      [entry],
-      0,
-      0,
-      `${idPrefix}-rows-key-${i}`,
-    )
-    return {
-      key: `walk-rows-${i}`,
-      width,
-      height: ROW_PX,
-      draw: (right: number) => (
-        <g key={i} transform={`translate(${right - width} -12)`}>
-          <ElTree el={tree} />
-        </g>
-      ),
     }
-  })
+  }
+  const swatch = row.swatch
+  const sw = swatchWidth(swatch)
+  const words = (row.strong ?? '') + row.label
+  return {
+    key: row.key,
+    width: Math.max(
+      sw + 5 + words.length * CHAR_PX,
+      (row.under?.length ?? 0) * CHAR_PX,
+    ),
+    height: row.under ? ROW_PX * 2 : ROW_PX,
+    draw: left => (
+      <g key={row.key} {...FONT}>
+        <SvgSwatch swatch={swatch} x={left} id={id} />
+        <text x={left + sw + 5} y={0}>
+          {row.strong ? <tspan fontWeight="bold">{row.strong}</tspan> : null}
+          {row.label}
+        </text>
+        {row.under ? (
+          <text x={left} y={ROW_PX}>
+            {row.under}
+          </text>
+        ) : null}
+      </g>
+    ),
+  }
 }
 
-// The keys the screen stacks in the top right corner, in its order
+// The screen's legend panel, section by section
 function Keys({
   model,
   idPrefix,
@@ -537,92 +336,33 @@ function Keys({
   model: GraphPaneModel
   idPrefix: string
 }) {
-  const rows: KeyRow[] = []
-  const lift = model.walkLift
-  const domain = lift ? undefined : model.referenceRampDomain
-  if (domain) {
-    const start = Math.round(domain.start)
-    const end = Math.round(domain.end)
-    rows.push(
-      swatchRow(
-        'ramp',
-        x => (
-          <Swatch
-            id={`${idPrefix}-ramp`}
-            x={x}
-            stops={encodingStops({ field: 'reference', scheme: 'rainbow' })}
-            width={BAR_PX}
-          />
-        ),
-        BAR_PX,
-        '',
-        `${start.toLocaleString()}-${end.toLocaleString()} (${formatBp(end - start)})`,
-      ),
-    )
-    if (model.referenceRampOffKeys.offReference) {
-      rows.push(flatRow('off', REFERENCE_RAMP_ALT_CSS, 'off the reference'))
-    }
-    if (model.referenceRampOffKeys.unplaced) {
-      rows.push(flatRow('unplaced', UNPLACED_SWATCH, 'no reference position'))
-    }
-  }
-  rows.push(...stripKeyRows(model, idPrefix), ...haloRows(model))
-  if (model.genePins.some(pin => pin.exonsByNode.length > 0)) {
-    rows.push(
-      swatchRow(
-        'exon',
-        x => (
-          <rect
-            x={x + 1}
-            y={-10}
-            width={SWATCH_PX - 2}
-            height={10}
-            rx={4}
-            fill="none"
-            stroke={EXON_COLOR}
-            strokeWidth={2}
-          />
-        ),
-        SWATCH_PX,
-        '',
-        'exon',
-      ),
-    )
-  }
-  if (model.foldNote) {
-    rows.push(swatchRow('fold', () => null, 0, '', model.foldNote))
-  }
-  rows.push(
-    ...pathRows(model),
-    ...tubeMapRows(model, idPrefix),
-    ...walkRowsKeyRows(model, idPrefix),
+  const sections = legendSections(model).map(({ testid, rows }) =>
+    rows.map((row, i) => svgRow(row, `${idPrefix}-${testid}-${i}`)),
   )
-  if (lift && !model.facetPanels) {
-    lift.walks.forEach((walk, i) => {
-      rows.push(walkRow(model, walk, `${idPrefix}-walk-${i}`))
-    })
-    if (model.liftPaintsOffReference) {
-      rows.push(
-        flatRow('lift-off', REFERENCE_RAMP_ALT_CSS, 'off the reference'),
-      )
-    }
-    rows.push(
-      flatRow('faded', LIFT_BACKDROP_CSS, `not on ${model.liftedWalksLabel}`),
-    )
-  }
-  if (rows.length === 0) {
+  if (sections.length === 0) {
     return null
   }
+  const pad = 6
+  const rows = sections.flat()
+  const boxWidth = Math.max(...rows.map(r => r.width)) + pad * 2
+  const boxHeight =
+    rows.reduce((sum, r) => sum + r.height, 0) + sections.length * pad
+  const right = model.paneWidth - LEGEND_INSET_PX
+  const left = right - boxWidth + pad
   const top = LEGEND_INSET_PX + model.referenceStripZonePx
-  const right = model.paneWidth - LEGEND_INSET_PX - 6
-  const boxWidth = Math.max(...rows.map(r => r.width)) + 12
-  const left = right + 6 - boxWidth + 6
-  const boxHeight = rows.reduce((sum, r) => sum + r.height, 0) + 6
-  let y = top + ROW_PX
+  const placed: { row: KeyRow; y: number }[] = []
+  let y = top + 12 - pad / 2
+  for (const section of sections) {
+    y += pad
+    for (const row of section) {
+      placed.push({ row, y })
+      y += row.height
+    }
+  }
   return (
     <g data-testid="graph-svg-keys">
       <rect
-        x={left - 6}
+        x={left - pad}
         y={top}
         width={boxWidth}
         height={boxHeight}
@@ -630,15 +370,11 @@ function Keys({
         fill="#fff"
         fillOpacity={0.82}
       />
-      {rows.map(row => {
-        const at = y
-        y += row.height
-        return (
-          <g key={row.key} transform={`translate(0 ${at})`}>
-            {row.draw(left + row.width)}
-          </g>
-        )
-      })}
+      {placed.map(({ row, y }) => (
+        <g key={row.key} transform={`translate(0 ${y})`}>
+          {row.draw(left)}
+        </g>
+      ))}
     </g>
   )
 }
@@ -760,12 +496,10 @@ function Facets({
         const y =
           Math.floor(cell / columns) * (FACET_TITLE_PX + height + FACET_GAP_PX)
         const walk = lift.walks[0]!
-        const title = walkRow(model, walk, `${idPrefix}-facet-${i}`)
+        const title = svgRow(walkKeyRow(model, walk), `${idPrefix}-facet-${i}`)
         return (
           <g key={walk.name} transform={`translate(${x} ${y})`}>
-            <g transform={`translate(0 ${ROW_PX - 2})`}>
-              {title.draw(title.width + 6)}
-            </g>
+            <g transform={`translate(0 ${ROW_PX - 2})`}>{title.draw(6)}</g>
             <g transform={`translate(0 ${FACET_TITLE_PX})`}>
               <Body
                 model={model}

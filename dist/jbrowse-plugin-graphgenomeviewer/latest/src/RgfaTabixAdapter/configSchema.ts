@@ -262,7 +262,7 @@ const RgfaTabixAdapter = ConfigurationSchema(
     /**
      * #slot
      * the haplotypes a walk-indexed graph is cut for until the user picks
-     * others in the track's Haplotypes menu or Settings, as PanSN prefixes
+     * others in the track's Haplotypes menu or Graph settings, as PanSN prefixes
      * (`HG002#1`, or `HG002` for both of its haplotypes). Empty means every
      * haplotype, or the lanes the track's `assemblyNames` lists after its
      * reference.
