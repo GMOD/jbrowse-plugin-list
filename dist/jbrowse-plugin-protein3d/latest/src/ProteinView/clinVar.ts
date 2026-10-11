@@ -83,6 +83,14 @@ export interface ClinVarSnv {
   alt: string
 }
 
+/** A missense substitution with ClinVar's germline classification of it */
+export interface ClinVarMissense extends ClinVarSnv {
+  /** ClinVar's variation id, the VCF's ID column */
+  id: string | undefined
+  /** the terms of `CLNSIG`: `Pathogenic`, `Likely_benign`, `risk_factor`… */
+  significance: readonly string[]
+}
+
 const BASE = /^[ACGT]$/
 
 function infoField(info: string, key: string) {
@@ -90,15 +98,15 @@ function infoField(info: string, key: string) {
 }
 
 /**
- * The substitution a ClinVar VCF line records, when ClinVar's aggregate
- * germline classification calls it pathogenic or likely pathogenic and it is
- * missense on some transcript. `CLNSIG` joins classifications with `/`, `|`
- * and `,` (`Pathogenic/Likely_pathogenic`, `Pathogenic,_low_penetrance`);
- * `Conflicting_classifications_of_pathogenicity` holds no such term, so a
- * conflicted call does not count.
+ * The substitution a ClinVar VCF line records, when it is a single base,
+ * missense on some transcript, and carries a germline classification.
+ * `CLNSIG` joins classifications with `/`, `|` and `,`
+ * (`Pathogenic/Likely_pathogenic`, `Pathogenic,_low_penetrance`).
  */
-export function parseClinVarSnv(line: string): ClinVarSnv | undefined {
-  const [, pos, , ref, alt, , , info = ''] = line.split('\t')
+export function parseClinVarMissense(
+  line: string,
+): ClinVarMissense | undefined {
+  const [, pos, id, ref, alt, , , info = ''] = line.split('\t')
   const significance = infoField(info, 'CLNSIG')?.split(/[/|,]/)
   const consequences = infoField(info, 'MC')?.split(',')
   return pos &&
@@ -106,36 +114,99 @@ export function parseClinVarSnv(line: string): ClinVarSnv | undefined {
     alt &&
     BASE.test(ref) &&
     BASE.test(alt) &&
-    significance?.some(s => s === 'Pathogenic' || s === 'Likely_pathogenic') &&
+    significance &&
     consequences?.some(c => c.endsWith('|missense_variant'))
-    ? { start: +pos - 1, ref, alt }
+    ? {
+        start: +pos - 1,
+        ref,
+        alt,
+        id: id && id !== '.' ? id : undefined,
+        significance,
+      }
     : undefined
+}
+
+/**
+ * Whether ClinVar's aggregate germline classification calls a variant
+ * pathogenic or likely pathogenic.
+ * `Conflicting_classifications_of_pathogenicity` holds no such term, so a
+ * conflicted call does not count.
+ */
+export function isPathogenic(significance: readonly string[]) {
+  return significance.some(s => s === 'Pathogenic' || s === 'Likely_pathogenic')
+}
+
+/** The pathogenic or likely pathogenic missense substitution a line records */
+export function parseClinVarSnv(line: string): ClinVarSnv | undefined {
+  const variant = parseClinVarMissense(line)
+  return variant && isPathogenic(variant.significance)
+    ? { start: variant.start, ref: variant.ref, alt: variant.alt }
+    : undefined
+}
+
+export const CLINVAR_CATEGORIES = [
+  'pathogenic',
+  'likely pathogenic',
+  'conflicting',
+  'uncertain',
+  'likely benign',
+  'benign',
+  'other',
+] as const
+
+export type ClinVarCategory = (typeof CLINVAR_CATEGORIES)[number]
+
+const CATEGORY_TERMS: readonly (readonly [string, ClinVarCategory])[] = [
+  ['Pathogenic', 'pathogenic'],
+  ['Likely_pathogenic', 'likely pathogenic'],
+  ['Conflicting_classifications_of_pathogenicity', 'conflicting'],
+  ['Uncertain_significance', 'uncertain'],
+  ['Benign', 'benign'],
+  ['Likely_benign', 'likely benign'],
+]
+
+/** The one category a classification is shown under, its gravest term
+ * deciding: `Benign/Likely_benign` is benign, `Likely_pathogenic|risk_factor`
+ * likely pathogenic. */
+export function clinVarCategory(
+  significance: readonly string[],
+): ClinVarCategory {
+  return (
+    CATEGORY_TERMS.find(([term]) => significance.includes(term))?.[1] ?? 'other'
+  )
 }
 
 const COMPLEMENT: Record<string, string> = { A: 'T', C: 'G', G: 'C', T: 'A' }
 
+/** A variant translated on the transcript it was placed on */
+export interface PlacedMissense<T extends ClinVarSnv> {
+  variant: T
+  /** 0-based transcript residue */
+  residue: number
+  from: string
+  to: string
+}
+
 /**
- * How many distinct missense substitutions ClinVar calls pathogenic or likely
- * pathogenic at each 0-based residue of a transcript. Each substitution is
- * translated on this transcript's own codon: `p2gCodon` (g2p_mapper's, 0-based)
- * lists a codon's genome positions in reading order, so a codon split by an
- * intron and a minus-strand codon both read right. A variant the VCF calls
- * missense on another transcript but that is synonymous, nonsense or outside
- * the coding sequence of this one does not count, nor does one whose `REF`
- * disagrees with the genome. Two codon changes to one amino acid count once.
- * Every residue with a whole codon gets a count, zero included, so a residue
- * ClinVar has no call for is told apart from one the structure cannot place.
- * `checked` counts the variants that landed on a codon, and `disagreeing`
- * those whose `REF` the genome does not spell.
+ * Each variant translated on this transcript's own codon: `p2gCodon`
+ * (g2p_mapper's, 0-based) lists a codon's genome positions in reading order,
+ * so a codon split by an intron and a minus-strand codon both read right. A
+ * variant the VCF calls missense on another transcript but that is
+ * synonymous, nonsense or outside the coding sequence of this one is left
+ * out, as is one whose `REF` disagrees with the genome. `residues` lists
+ * every residue with a whole codon, so a residue ClinVar has no call for is
+ * told apart from one the structure cannot place. `checked` counts the
+ * variants that landed on a codon, and `disagreeing` those whose `REF` the
+ * genome does not spell.
  */
-export function pathogenicCountByTranscriptPosition({
+export function placeMissenseOnTranscript<T extends ClinVarSnv>({
   variants,
   p2gCodon,
   strand,
   genomeBase,
   codonTable,
 }: {
-  variants: Iterable<ClinVarSnv>
+  variants: Iterable<T>
   p2gCodon: Record<number, number[]>
   strand: number
   /** the forward-strand base at a 0-based genome position */
@@ -155,10 +226,11 @@ export function pathogenicCountByTranscriptPosition({
       })
     }
   }
-  const substitutions = new Map<number, Set<string>>()
+  const placed: PlacedMissense<T>[] = []
   let checked = 0
   let disagreeing = 0
-  for (const { start, ref, alt } of variants) {
+  for (const variant of variants) {
+    const { start, ref, alt } = variant
     const at = residueAt.get(start)
     const codon = at ? codons.get(at.residue) : undefined
     if (!at || !codon) {
@@ -173,17 +245,56 @@ export function pathogenicCountByTranscriptPosition({
     const from = codonTable[codon.join('')]
     const to = codonTable[mutated.join('')]
     if (from && to && from !== to && from !== '*' && to !== '*') {
-      const seen = substitutions.get(at.residue) ?? new Set()
-      seen.add(to)
-      substitutions.set(at.residue, seen)
+      placed.push({ variant, residue: at.residue, from, to })
     }
   }
-  const byPosition: ReadonlyMap<number, number> = new Map(
-    [...codons.keys()]
-      .toSorted((a, b) => a - b)
-      .map(residue => [residue, substitutions.get(residue)?.size ?? 0]),
+  return {
+    placed,
+    residues: [...codons.keys()].toSorted((a, b) => a - b),
+    checked,
+    disagreeing,
+  }
+}
+
+/**
+ * How many distinct substitutions land on each residue: two codon changes to
+ * one amino acid count once, and every residue with a whole codon gets a
+ * count, zero included.
+ */
+export function substitutionCountByResidue(
+  placed: readonly PlacedMissense<ClinVarSnv>[],
+  residues: readonly number[],
+): ReadonlyMap<number, number> {
+  const substitutions = new Map<number, Set<string>>()
+  for (const { residue, to } of placed) {
+    const seen = substitutions.get(residue) ?? new Set()
+    seen.add(to)
+    substitutions.set(residue, seen)
+  }
+  return new Map(
+    residues.map(residue => [residue, substitutions.get(residue)?.size ?? 0]),
   )
-  return { byPosition, checked, disagreeing }
+}
+
+/**
+ * How many distinct missense substitutions ClinVar calls pathogenic or likely
+ * pathogenic at each 0-based residue of a transcript, given the pathogenic
+ * ones.
+ */
+export function pathogenicCountByTranscriptPosition(args: {
+  variants: Iterable<ClinVarSnv>
+  p2gCodon: Record<number, number[]>
+  strand: number
+  genomeBase: (position: number) => string | undefined
+  codonTable: Record<string, string>
+}) {
+  const { placed, residues, checked, disagreeing } =
+    placeMissenseOnTranscript(args)
+  return {
+    byPosition: substitutionCountByResidue(placed, residues),
+    checked,
+    disagreeing,
+  }
 }
 
 /**

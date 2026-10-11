@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "name": "jbrowse-plugin-protein3d",
   "repository": {
     "type": "git",
@@ -17,9 +17,9 @@
   "dependencies": {
     "@gmod/tabix": "^3.10.1",
     "@jbrowse/plugin-linear-genome-view": "5.0.0-beta.9",
-    "@mui/icons-material": "^9.4.0",
+    "@mui/icons-material": "^9.5.0",
     "clustal-js": "^2.0.19",
-    "g2p_mapper": "^2.1.7",
+    "g2p_mapper": "^2.2.0",
     "molstar": "^5.13.1",
     "p2s_mapper": "^2.0.0",
     "swr": "^2.5.1"
@@ -31,9 +31,9 @@
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@jbrowse/core": "5.0.0-beta.9",
     "@jbrowse/mobx-state-tree": "^6.7.0",
-    "@mui/material": "^9.4.0",
+    "@mui/material": "^9.5.0",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
@@ -46,7 +46,7 @@
     "mobx-react": "^10.0.2",
     "pixelmatch": "^8.0.0",
     "pngjs": "^7.0.0",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "pretty-bytes": "^7.2.0",
     "puppeteer": "^25.13.0",
     "react": "^19.3.0",

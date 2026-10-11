@@ -1,6 +1,7 @@
 import { maybeLaunchSideBySide } from './sideBySide';
 import { getGeneDisplayName, getTranscriptDisplayName } from './util';
 import { proteinViewSnapshot } from '../../ProteinView/proteinViewSpec';
+import { clinVarTrackConfFor } from '../components/clinVarTrackSource';
 import { launchProteinAnnotationView } from '../components/launchProteinAnnotationView';
 import { canAddTemporaryAssembly } from '../components/proteinAssemblySetup';
 export function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
@@ -57,6 +58,7 @@ async function launch1DProteinView({ session, view, feature, selectedTranscript,
         confidenceUrl: entry === uniprotId ? confidenceUrl : undefined,
         connectedViewId: view.id,
         connectedAssemblyName: view.assemblyNames[0],
+        clinVar: (linkage, idPrefix) => clinVarTrackConfFor({ session, linkage, idPrefix }),
     });
 }
 // What the launches below are CALLED, shared for the same reason their

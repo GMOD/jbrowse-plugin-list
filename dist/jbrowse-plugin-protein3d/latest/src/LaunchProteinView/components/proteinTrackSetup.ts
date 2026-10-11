@@ -83,24 +83,6 @@ function antigenTrackConf(
   }
 }
 
-function variationTrackConf(
-  uniprotId: string,
-  idPrefix: string,
-): ProteinTrackConf {
-  return {
-    type: 'FeatureTrack',
-    trackId: `${idPrefix}-Variation`,
-    name: 'Variation',
-    adapter: {
-      type: 'UniProtVariationAdapter',
-      location: {
-        uri: `https://www.ebi.ac.uk/proteins/api/variation/${uniprotId}.json`,
-      },
-    },
-    assemblyNames: [uniprotId],
-  }
-}
-
 function alphaFoldConfidenceTrackConf({
   uniprotId,
   confidenceUrl,
@@ -163,9 +145,11 @@ function alphaMissenseTrackConf(
 }
 
 /**
- * Every annotation track of a UniProt entry, as configs for the view to carry.
- * `idPrefix` has to be unique to the view: two views of one entry each hold
- * their own copy, and a session tree cannot hold one trackId twice.
+ * Every annotation track of a UniProt entry that needs only the entry, as
+ * configs for the view to carry; the ClinVar track, which needs the linked
+ * transcript, is built by clinVarTrackSource. `idPrefix` has to be unique to
+ * the view: two views of one entry each hold their own copy, and a session
+ * tree cannot hold one trackId twice.
  */
 export function proteinTrackConfs({
   uniprotId,
@@ -181,7 +165,6 @@ export function proteinTrackConfs({
   return [
     ...uniProtFeatureTrackConfs({ uniprotId, featureTypes, idPrefix }),
     antigenTrackConf(uniprotId, idPrefix),
-    variationTrackConf(uniprotId, idPrefix),
     ...(confidenceUrl
       ? [alphaFoldConfidenceTrackConf({ uniprotId, confidenceUrl, idPrefix })]
       : []),

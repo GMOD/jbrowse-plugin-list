@@ -43,19 +43,6 @@ const antigen = {
   assemblyNames: ['P04637'],
 }
 
-const variation = {
-  type: 'FeatureTrack',
-  trackId: 'P04637-Variation',
-  name: 'Variation',
-  adapter: {
-    type: 'UniProtVariationAdapter',
-    location: {
-      uri: 'https://www.ebi.ac.uk/proteins/api/variation/P04637.json',
-    },
-  },
-  assemblyNames: ['P04637'],
-}
-
 function featureTrack(type: string) {
   return {
     type: 'FeatureTrack',
@@ -85,7 +72,6 @@ test('prefixed by the accession, the configs are the ones the session used to ho
     featureTrack('Chain'),
     featureTrack('DNA binding'),
     antigen,
-    variation,
     {
       type: 'QuantitativeTrack',
       trackId: 'P04637-AlphaFold-confidence',
@@ -126,7 +112,7 @@ test('an entry with no confidence url gets no confidence track', () => {
       confidenceUrl: undefined,
       idPrefix: 'P04637',
     }),
-  ).toEqual([antigen, variation, alphaMissense])
+  ).toEqual([antigen, alphaMissense])
 })
 
 test('the prefix reaches every track and display id, and nothing else', () => {
@@ -138,7 +124,7 @@ test('the prefix reaches every track and display id, and nothing else', () => {
   const plain = proteinTrackConfs({ ...args, idPrefix: 'P04637' })
   const prefixed = proteinTrackConfs({ ...args, idPrefix: 'view1-P04637' })
   const ids = JSON.stringify(prefixed).match(/"(trackId|displayId)":"[^"]+"/g)
-  expect(ids).toHaveLength(8)
+  expect(ids).toHaveLength(7)
   expect(ids?.every(id => id.includes(':"view1-P04637-'))).toBe(true)
   expect(
     JSON.parse(

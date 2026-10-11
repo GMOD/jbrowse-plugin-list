@@ -6,6 +6,7 @@ import {
 import { formatViewName } from '../utils/launchViewUtils'
 
 import type { TemporaryAssemblySession } from './proteinAssemblySetup'
+import type { ProteinTrackConf } from './proteinTrackSetup'
 import type { Protein1DLinkage } from '../../Protein1DLinkage'
 import type { Feature } from '@jbrowse/core/util'
 
@@ -49,6 +50,13 @@ function isTrackLaunchingView(view: object): view is TrackLaunchingView {
   )
 }
 
+/** The ClinVar track for a linked transcript, or none where the genome's
+ * build has no ClinVar VCF; see clinVarTrackSource. */
+export type ClinVarTrackSource = (
+  linkage: Protein1DLinkage,
+  idPrefix: string,
+) => Promise<ProteinTrackConf | undefined>
+
 interface AnnotationViewArgs {
   session: ProteinAnnotationSession
   feature?: Feature
@@ -57,6 +65,7 @@ interface AnnotationViewArgs {
   confidenceUrl?: string
   connectedViewId?: string
   connectedAssemblyName?: string
+  clinVar?: ClinVarTrackSource
 }
 
 export async function launchProteinAnnotationView(args: AnnotationViewArgs) {
@@ -76,6 +85,7 @@ export async function openProteinAnnotationView({
   connectedViewId,
   connectedAssemblyName,
   featureTypes,
+  clinVar,
 }: AnnotationViewArgs & { featureTypes: string[] }) {
   // A second view of an entry, another isoform's say, shares the first's
   // assembly; adding it again makes the host warn. `has`, where the host has
@@ -116,6 +126,26 @@ export async function openProteinAnnotationView({
     throw new Error('The host added a view that cannot open tracks')
   }
 
+  const idPrefix = `${view.id}-${uniprotId}`
+  const open = async (conf: ProteinTrackConf) => {
+    try {
+      // the host reports a config it rejects itself and resolves undefined
+      await view.launchTrack(conf.trackId, {}, {}, conf)
+    } catch (e) {
+      session.notifyError(`Could not open the ${conf.name} track: ${e}`, e)
+    }
+  }
+  // ClinVar waits on the transcript's alignment to the entry and a range read
+  // of NCBI's VCF, so it is asked for first and opened last, after the tracks
+  // that need only the entry
+  const clinVarTrack =
+    proteinLinkage && clinVar
+      ? clinVar(proteinLinkage, idPrefix).catch((e: unknown) => {
+          session.notifyError(`Could not open the ClinVar track: ${e}`, e)
+          return undefined
+        })
+      : undefined
+
   // Each config rides on its track in this view, not in the session's track
   // list: the host rejects a session track naming a temporary assembly, and
   // the track selector lists session tracks only, so every track opens here
@@ -124,15 +154,14 @@ export async function openProteinAnnotationView({
     uniprotId,
     featureTypes,
     confidenceUrl,
-    idPrefix: `${view.id}-${uniprotId}`,
+    idPrefix,
   })) {
-    try {
-      // the host reports a config it rejects itself and resolves undefined
-      await view.launchTrack(conf.trackId, {}, {}, conf)
-    } catch (e) {
-      session.notifyError(`Could not open the ${conf.name} track: ${e}`, e)
-    }
+    await open(conf)
   }
-
   await view.navToLocString(uniprotId, uniprotId)
+
+  const conf = await clinVarTrack
+  if (conf) {
+    await open(conf)
+  }
 }

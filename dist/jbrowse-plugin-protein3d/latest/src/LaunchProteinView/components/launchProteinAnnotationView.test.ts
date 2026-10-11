@@ -108,7 +108,7 @@ test('every track config goes to the view, under ids the view prefixes', async (
     confidenceUrl: 'https://example.org/confidence.json',
     idPrefix: 'view1-P04637',
   })
-  expect(confs).toHaveLength(6)
+  expect(confs).toHaveLength(5)
   expect(s.launched).toEqual(
     confs.map(conf => ({ viewId: 'view1', trackId: conf.trackId, conf })),
   )
@@ -137,11 +137,11 @@ test('a second view of an entry reuses its assembly and opens its own tracks', a
   expect(s.addView).toHaveBeenCalledTimes(2)
   const idsOf = (viewId: string) =>
     s.launched.filter(l => l.viewId === viewId).map(l => l.trackId)
-  expect(idsOf('view1')).toHaveLength(5)
+  expect(idsOf('view1')).toHaveLength(4)
   expect(idsOf('view2')).toEqual(
     idsOf('view1').map(id => id.replace('view1-', 'view2-')),
   )
-  expect(new Set(s.launched.map(l => l.trackId)).size).toBe(10)
+  expect(new Set(s.launched.map(l => l.trackId)).size).toBe(8)
 })
 
 // `get` on an unknown name sends the Hubs plugin to probe jbrowse.org/ucsc/
@@ -207,10 +207,84 @@ test('a track that fails to open is reported by name and the rest still open', a
     'view1-P04637-Chain',
     'view1-P04637-DNA binding',
     'view1-P04637-Antigen',
-    'view1-P04637-Variation',
     'view1-P04637-AlphaMissense-scores',
     'nav P04637 P04637',
   ])
+})
+
+const linkedArgs = {
+  feature,
+  selectedTranscript: feature,
+  uniprotId: 'P04637',
+  connectedViewId: 'genome1',
+  connectedAssemblyName: 'hg38',
+}
+
+// the ClinVar track waits on an alignment and a range read of the VCF, so
+// the tracks that need only the entry do not wait with it
+test('the ClinVar track opens last, built for the view the linkage names', async () => {
+  stubGff()
+  const s = stubSession()
+  const clinVar = vi.fn(
+    async (linkage: { uniprotId: string }, idPrefix: string) => ({
+      type: 'FeatureTrack',
+      trackId: `${idPrefix}-ClinVar`,
+      name: 'ClinVar',
+      assemblyNames: [linkage.uniprotId],
+    }),
+  )
+  await launchProteinAnnotationView({ session: s, ...linkedArgs, clinVar })
+  expect(clinVar).toHaveBeenCalledWith(
+    expect.objectContaining({
+      connectedViewId: 'genome1',
+      assemblyName: 'hg38',
+      uniprotId: 'P04637',
+    }),
+    'view1-P04637',
+  )
+  expect(s.views[0]?.events.slice(-2)).toEqual([
+    'nav P04637 P04637',
+    'view1-P04637-ClinVar',
+  ])
+  expect(s.notifyError).not.toHaveBeenCalled()
+})
+
+test('no ClinVar track where the source has none, and its failure is its own', async () => {
+  stubGff()
+  const none = stubSession()
+  await launchProteinAnnotationView({
+    session: none,
+    ...linkedArgs,
+    clinVar: async () => undefined,
+  })
+  expect(none.views[0]?.events.at(-1)).toBe('nav P04637 P04637')
+  expect(none.notifyError).not.toHaveBeenCalled()
+
+  const failed = stubSession()
+  await launchProteinAnnotationView({
+    session: failed,
+    ...linkedArgs,
+    clinVar: async () => {
+      throw new Error('VCF unreachable')
+    },
+  })
+  expect(failed.views[0]?.events.at(-1)).toBe('nav P04637 P04637')
+  expect(failed.notifyError.mock.calls[0]?.[0]).toBe(
+    'Could not open the ClinVar track: Error: VCF unreachable',
+  )
+})
+
+test('an unlinked view asks for no ClinVar track', async () => {
+  stubGff()
+  const s = stubSession()
+  const clinVar = vi.fn(async () => undefined)
+  await launchProteinAnnotationView({
+    session: s,
+    feature,
+    uniprotId: 'P04637',
+    clinVar,
+  })
+  expect(clinVar).not.toHaveBeenCalled()
 })
 
 // the host snackbars a config it rejects and resolves undefined, so a second

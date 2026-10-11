@@ -6,6 +6,7 @@ import {
   connectGenomeView,
   resolveTranscriptLinkage,
 } from './transcriptLinkage'
+import { clinVarTrackConfFor } from '../LaunchProteinView/components/clinVarTrackSource'
 import { openProteinAnnotationView } from '../LaunchProteinView/components/launchProteinAnnotationView'
 import { canAddTemporaryAssembly } from '../LaunchProteinView/components/proteinAssemblySetup'
 import { fetchUniProtFeatureTypes } from '../LaunchProteinView/components/proteinTrackSetup'
@@ -100,6 +101,8 @@ export default function LaunchProteinAnnotationViewF(
               ? viewAssemblyName(session, launch.connectedViewId)
               : undefined) ?? connectedView?.assembly,
           featureTypes,
+          clinVar: (linkage, idPrefix) =>
+            clinVarTrackConfFor({ session, linkage, idPrefix }),
         })
       } catch (e) {
         return fail(e)

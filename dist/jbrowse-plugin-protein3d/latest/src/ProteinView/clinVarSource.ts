@@ -5,15 +5,17 @@ import { transcriptGeneticCodeId } from '@jbrowse/core/util/translateTranscript'
 import {
   clinVarRefName,
   clinVarVcfUrl,
+  isPathogenic,
   isWrongBuild,
-  parseClinVarSnv,
-  pathogenicCountByTranscriptPosition,
+  parseClinVarMissense,
+  placeMissenseOnTranscript,
+  substitutionCountByResidue,
 } from './clinVar'
 import { VariantEffectRefusal } from './variantEffects'
 import { fetchRegionSequence } from '../LaunchProteinView/utils/translateTranscripts'
 import { genomeToTranscriptSeqMapping } from '../mappings'
 
-import type { ClinVarBuild, ClinVarSnv } from './clinVar'
+import type { ClinVarBuild, ClinVarMissense } from './clinVar'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 
 const files = new Map<ClinVarBuild, TabixIndexedFile>()
@@ -28,7 +30,7 @@ function clinVarVcf(build: ClinVarBuild) {
   return file
 }
 
-async function readPathogenicSnvs(
+async function readMissense(
   build: ClinVarBuild,
   refNames: readonly string[],
   start: number,
@@ -43,37 +45,39 @@ async function readPathogenicSnvs(
   if (!refName) {
     throw new Error(`ClinVar's ${build} VCF has no sequence ${refNames[0]}`)
   }
-  const variants: ClinVarSnv[] = []
+  const variants: ClinVarMissense[] = []
   await file.getLines(refName, start, end, {
     signal,
     lineCallback: line => {
-      const snv = parseClinVarSnv(line)
-      if (snv) {
-        variants.push(snv)
+      const variant = parseClinVarMissense(line)
+      if (variant) {
+        variants.push(variant)
       }
     },
   })
   return variants
 }
 
-/**
- * The pathogenic missense count at each residue of a transcript, read from
- * NCBI's ClinVar VCF by range over the transcript's coding span and translated
- * on the genome under it
- */
-export async function fetchClinVarCounts({
-  build,
-  feature,
-  assemblyName,
-  session,
-  signal,
-}: {
+export interface ClinVarTranscriptArgs {
   build: ClinVarBuild
   feature: Feature
   assemblyName: string
   session: AbstractSessionModel
   signal: AbortSignal
-}) {
+}
+
+/**
+ * Every missense substitution ClinVar classifies on a transcript, read from
+ * NCBI's VCF by range over the transcript's coding span and translated on
+ * the genome under it. Refuses when the genome is plainly another build.
+ */
+export async function placeClinVarOnTranscript({
+  build,
+  feature,
+  assemblyName,
+  session,
+  signal,
+}: ClinVarTranscriptArgs) {
   const { p2gCodon, strand, refName } = genomeToTranscriptSeqMapping(feature)
   const positions = Object.values(p2gCodon).flat()
   if (positions.length === 0) {
@@ -83,7 +87,7 @@ export async function fetchClinVarCounts({
   const end = Math.max(...positions) + 1
   const assembly = await session.assemblyManager.waitForAssembly(assemblyName)
   const [variants, genome] = await Promise.all([
-    readPathogenicSnvs(
+    readMissense(
       build,
       [refName, ...(assembly?.getAliasesForRefName(refName) ?? [])],
       start,
@@ -96,7 +100,7 @@ export async function fetchClinVarCounts({
   if (!seq) {
     throw new Error('no genome sequence under the transcript')
   }
-  const counts = pathogenicCountByTranscriptPosition({
+  const placement = placeMissenseOnTranscript({
     variants,
     p2gCodon,
     strand,
@@ -105,10 +109,23 @@ export async function fetchClinVarCounts({
       transcriptGeneticCodeId(feature, assemblyGeneticCodeId),
     ).codonTable,
   })
-  if (isWrongBuild(counts)) {
+  if (isWrongBuild(placement)) {
     throw new VariantEffectRefusal(
-      `ClinVar's REF disagrees with this assembly's sequence at ${counts.disagreeing} of ${counts.checked} variants; is the assembly ${build}?`,
+      `ClinVar's REF disagrees with this assembly's sequence at ${placement.disagreeing} of ${placement.checked} variants; is the assembly ${build}?`,
     )
   }
-  return counts.byPosition
+  return placement
+}
+
+/**
+ * The pathogenic missense count at each residue of a transcript, zero
+ * included for every residue with a whole codon; two codon changes to one
+ * amino acid count once.
+ */
+export async function fetchClinVarCounts(args: ClinVarTranscriptArgs) {
+  const { placed, residues } = await placeClinVarOnTranscript(args)
+  return substitutionCountByResidue(
+    placed.filter(p => isPathogenic(p.variant.significance)),
+    residues,
+  )
 }

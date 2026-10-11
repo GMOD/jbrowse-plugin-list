@@ -8,7 +8,6 @@ import LaunchProteinViewExtensionPointF from './LaunchProteinViewExtensionPoint'
 import LaunchProteinAnnotationViewF from './LaunchProteinViewExtensionPoint/annotationView';
 import Protein1DLinkageF from './Protein1DLinkage';
 import ProteinViewF from './ProteinView';
-import UniProtVariationAdapterF from './UniProtVariationAdapter';
 import { version } from './version';
 export default class ProteinViewer extends Plugin {
     name = 'ProteinViewer';
@@ -22,7 +21,6 @@ export default class ProteinViewer extends Plugin {
         AddHighlightModelF(pluginManager);
         AlphaFoldConfidenceAdapterF(pluginManager);
         AlphaMissensePathogenicityAdapterF(pluginManager);
-        UniProtVariationAdapterF(pluginManager);
         AlignTranscriptRpcF(pluginManager);
     }
     configure(_pluginManager) { }
