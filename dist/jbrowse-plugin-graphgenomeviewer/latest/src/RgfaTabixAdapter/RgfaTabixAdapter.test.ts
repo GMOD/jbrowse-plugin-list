@@ -210,7 +210,7 @@ test('getSubgraph refuses a sequence the index does not hold, saying how to map 
 })
 
 // The carriage half of the index, which no rGFA has: built by
-// scripts/build_pggb_tabix.sh in jbrowse-components from the same five-strain
+// gfa-to-tabix from the same five-strain
 // pggb graph the tutorial uses, sliced to the IS5 element at K12
 // chr:1,299,499-1,300,693. 24 segments spanning every carrier count from 1 to
 // 5, so the fixture covers a strain-private allele and core backbone in one
@@ -346,8 +346,7 @@ test('getSubgraph resolves through the mapping too', async () => {
 })
 
 // The same four strains at one node per bubble: `gfatools bubble` over
-// test_data/ecoli_rgfa_slice.gfa, collapsed by build_fold_tier.sh in
-// jbrowse-components at `--min-content 1000`. 14 bubbles over K12's 322 kb,
+// test_data/ecoli_rgfa_slice.gfa, collapsed by `gfa-to-tabix fold` at `--min-content 1000`. 14 bubbles over K12's 322 kb,
 // against 161 segments in the fine pair.
 function makeTieredAdapter() {
   const local = (path: string) => ({
@@ -423,6 +422,18 @@ test('the coarse pair takes the csi indexes its adapter states', () => {
   expect(readConfObject(config, ['coarse', 'linksIndex', 'indexType'])).toBe(
     'CSI',
   )
+})
+
+test('the coarse pair takes foldBelowBp in place of aboveBpPerPx', () => {
+  const config = configSchema.create({
+    uri: 'hprc',
+    coarse: { uri: 'hprc.fold10000', foldBelowBp: 10000 },
+  })
+  expect(readConfObject(config, ['coarse', 'foldBelowBp'])).toBe(10000)
+  expect(readConfObject(config, ['coarse', 'aboveBpPerPx'])).toBeUndefined()
+  expect(readConfObject(config, ['coarse', 'segmentsLocation'])).toMatchObject({
+    uri: 'hprc.fold10000.segs.bed.gz',
+  })
 })
 
 test('a track with no coarse pair states no threshold', () => {

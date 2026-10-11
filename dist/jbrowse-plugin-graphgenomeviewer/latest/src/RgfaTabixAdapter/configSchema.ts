@@ -16,8 +16,9 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * The `uri` shorthand takes the prefix the build script was given and resolves
  * `<uri>.segs.bed.gz`, `<uri>.links.bed.gz` and their `.tbi` indexes. `coarse`
  * takes the same shorthand for a second pair at one node per bubble, built by
- * `build_fold_tier.sh` in jbrowse-components, plus the zoom past which a
- * graph view following a linear view cuts it.
+ * `gfa-to-tabix fold`, plus either the zoom past which a graph view following
+ * a linear view cuts it (`aboveBpPerPx`) or the size it was folded at
+ * (`foldBelowBp`), from which the plugin derives that zoom.
  *
  * `walksUri` takes the prefix of a walk-indexed file set in place of `uri`, and
  * resolves `<walksUri>.walks.bed.gz`, `<walksUri>.nodes.bed.gz`,
@@ -32,7 +33,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * {
  *   type: 'RgfaTabixAdapter',
  *   uri: 'https://example.com/hprc.rgfa',
- *   coarse: { uri: 'https://example.com/hprc.tier10000', aboveBpPerPx: 1000 },
+ *   coarse: { uri: 'https://example.com/hprc.fold10000', foldBelowBp: 10000 },
  * }
  * ```
  *
@@ -118,12 +119,20 @@ const RgfaTabixCoarseTier = ConfigurationSchema('RgfaTabixCoarseTier', {
   /**
    * #slot
    * The linear view's bp per px past which a graph following it cuts this
-   * pair. Unset means the track has no coarse tier. There is no default,
+   * pair. Unset, with `foldBelowBp` unset too, means the track has no coarse
+   * tier. There is no default,
    * because the zoom a fine cut stays drawable to depends on the graph's
    * density: a minigraph graph averages ~7 kb per segment, a base-level pggb
    * graph ~17 bp.
    */
   aboveBpPerPx: { type: 'maybeNumber' },
+  /**
+   * #slot
+   * The size, in bp, this pair was folded at (`gfa-to-tabix fold --below`).
+   * When `aboveBpPerPx` is unset, the handover is `foldBelowBp / 10`, the zoom
+   * at which the fine cut folds the same variants away.
+   */
+  foldBelowBp: { type: 'maybeNumber' },
   /**
    * #slot
    */
@@ -283,8 +292,9 @@ const RgfaTabixAdapter = ConfigurationSchema(
      * #slot
      * The same graph at one node per bubble, which a graph view following a
      * linear view cuts once that view is zoomed out past `aboveBpPerPx`, and
-     * which no bp cap applies to. `{ uri, aboveBpPerPx }`, where `uri` is a
-     * prefix as the adapter's own is.
+     * which no bp cap applies to. `{ uri, aboveBpPerPx }` or `{ uri,
+     * foldBelowBp }`, where `uri` is a prefix as the adapter's own is;
+     * `aboveBpPerPx` wins when both are given.
      */
     coarse: RgfaTabixCoarseTier,
   },

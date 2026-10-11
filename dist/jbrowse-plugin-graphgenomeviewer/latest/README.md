@@ -33,19 +33,18 @@ Build the graph with [minigraph](https://github.com/lh3/minigraph) (rGFA),
 [Minigraph-Cactus](https://github.com/ComparativeGenomicsToolkit/cactus/blob/master/doc/pangenome.md)
 (GFA and GBZ), then index what you have:
 
-- **rGFA** — run
-  [`build_pangenome_graph.sh`](https://github.com/GMOD/jbrowse-components/blob/main/scripts/build_pangenome_graph.sh).
-  It calls [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) and
-  [gfatools](https://github.com/lh3/gfatools) and writes `.segs.bed.gz`,
-  `.links.bed.gz`, `.bubbles.bed.gz`, a coarse tier and a track config. Adapter:
-  `RgfaTabixAdapter`
-- **Plain GFA** (pggb, odgi, vg, base-level Minigraph-Cactus) — the same script,
-  with `--reference`, `--assembly` and `--snarls`, a VCF from `vg deconstruct`
-  or `pggb -V`
-- **Alleles, with a CIGAR each** — `gfa-to-tabix alleles <prefix>` (0.7.0+)
-  reads a `--layout contig` segment and link index (`build_pangenome_graph.sh`
-  writes one as `.contig.*`) and writes `.alleles.bed.gz`, which an alignments
-  track draws
+- **rGFA** — `gfa-to-tabix build graph.rgfa.gz -o out` (0.11.0+). It calls
+  [gfatools](https://github.com/lh3/gfatools) for the bubbles and writes
+  `.segs.bed.gz`, `.links.bed.gz`, `.bubbles.bed.gz`, `.alleles.bed.gz`, a
+  coarse tier, a `.graph.json` manifest and a track config. Opening
+  `out.segs.bed.gz` in **Add pangenome graph track** reads the manifest.
+  Adapter: `RgfaTabixAdapter`
+- **Plain GFA** (pggb, odgi, vg, base-level Minigraph-Cactus) — the same
+  command, with `--reference`, `--assembly` and `--snarls`, a VCF from
+  `vg deconstruct -a` or `pggb -V`
+- **Alleles, with a CIGAR each** — `build` writes `.alleles.bed.gz`, which an
+  alignments track draws; `gfa-to-tabix alleles <prefix>` makes one from a
+  `--layout contig` index
 - **Haplotype walks, as tabix files** — `vg convert -f graph.gbz`, then
   `gfa-to-tabix --walks`. Adapter: `WalkTabixSyntenyAdapter`, or
   `RgfaTabixAdapter` with `walksUri`
@@ -54,8 +53,8 @@ Build the graph with [minigraph](https://github.com/lh3/minigraph) (rGFA),
   `GbzBaseSyntenyAdapter`
 - **Reads** — `vg giraffe -o gaf`, `vg gamsort -G`, `bgzip`, `tabix` make a
   `.gaf.gz` for a gbz-base adapter's `reads`
-- **Minigraph paths per assembly** — `minigraph -cxasm --call`, which
-  `build_minigraph_paths.sh` runs per sample
+- **Minigraph paths per assembly** — `minigraph -cxasm --call` per sample, then
+  `gfa-to-tabix paths` (0.9.0+) writes one row per bubble and sample
 
 [vg](https://github.com/vgteam/vg) 1.69.0 or later covers the GBZ steps.
 
@@ -138,6 +137,10 @@ Needs JBrowse 5.0.0-beta.11 or later.
   (`.gbz.db`) as a `GraphTrack`. It finds the links and indexes beside the url,
   which a presigned url's signature doesn't cover; spell out each location in a
   config instead
+- Open track's **Add pangenome graph track** workflow also reads
+  `<prefix>.graph.json` beside a `<prefix>.segs.bed.gz` (written by
+  `gfa-to-tabix build`) for the coarse tier and the reference's PanSN sample;
+  without one, the track has no coarse tier
 - A hand-written track needs only the adapter:
 
 ```json
@@ -150,8 +153,8 @@ Needs JBrowse 5.0.0-beta.11 or later.
     "type": "RgfaTabixAdapter",
     "uri": "https://example.com/hprc",
     "coarse": {
-      "uri": "https://example.com/hprc.tier10000",
-      "aboveBpPerPx": 1000
+      "uri": "https://example.com/hprc.fold10000",
+      "foldBelowBp": 10000
     }
   }
 }
@@ -160,8 +163,8 @@ Needs JBrowse 5.0.0-beta.11 or later.
 - The track menu picks layout, colour and highlighted haplotypes, and switches
   to the segments lane or, for gbz-base and walk-indexed graphs, the haplotype
   lanes
-- Cuts the window plus a window each side, up to 5 Mb; past `aboveBpPerPx`, the
-  `coarse` tier (`build_fold_tier.sh` in jbrowse-components)
+- Cuts the window plus a window each side, up to 5 Mb; past `aboveBpPerPx`
+  (default `foldBelowBp / 10`), the `coarse` tier (`gfa-to-tabix fold`)
 - Past the cut (5 Mb, or a gbz-base adapter's `nodeLimit`) the track asks you to
   zoom in. For a population view of a wide window, add the graph's VCF as a
   variant track (`vg deconstruct` makes one from a GBZ)

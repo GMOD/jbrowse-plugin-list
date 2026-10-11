@@ -233,4 +233,78 @@ describe('buildTrackConfig', () => {
       assemblyNameToPanSN: { hg38: 'GRCh38' },
     })
   })
+
+  describe('with a .graph.json beside the segments', () => {
+    const tier = { prefix: 'hprc.fold10000', foldBelowBp: 10000 }
+    const args = {
+      choice: 'RgfaTabixAdapter' as const,
+      loc: { ...segs, uri: `${segs.uri}?sig=1` },
+      indexLoc: undefined,
+      assembly: 'hg38',
+      sample: '',
+      trackId: 'hprc',
+      name: 'HPRC graph',
+    }
+    const at = (name: string) => ({
+      uri: `https://example.com/${name}?sig=1`,
+      locationType: 'UriLocation',
+    })
+
+    it('adds the coarse tier it names, beside the segments', () => {
+      const conf = buildTrackConfig({ ...args, manifest: { tier } })
+      expect(conf.adapter).toMatchObject({
+        coarse: {
+          foldBelowBp: 10000,
+          segmentsLocation: at('hprc.fold10000.segs.bed.gz'),
+          segmentsIndex: {
+            indexType: 'TBI',
+            location: at('hprc.fold10000.segs.bed.gz.tbi'),
+          },
+          linksLocation: at('hprc.fold10000.links.bed.gz'),
+          linksIndex: { location: at('hprc.fold10000.links.bed.gz.tbi') },
+        },
+      })
+      expect(conf.adapter).not.toHaveProperty('coarse.aboveBpPerPx')
+    })
+
+    it('maps the assembly onto its reference unless the user named one', () => {
+      const reference = { reference: 'GRCh38' }
+      expect(
+        buildTrackConfig({ ...args, manifest: reference }).adapter,
+      ).toMatchObject({ assemblyNameToPanSN: { hg38: 'GRCh38' } })
+      expect(
+        buildTrackConfig({ ...args, sample: 'CHM13', manifest: reference })
+          .adapter,
+      ).toMatchObject({ assemblyNameToPanSN: { hg38: 'CHM13' } })
+      expect(
+        buildTrackConfig({ ...args, assembly: 'GRCh38', manifest: reference })
+          .adapter,
+      ).not.toHaveProperty('assemblyNameToPanSN')
+    })
+
+    it('an empty manifest builds what no manifest does', () => {
+      expect(buildTrackConfig({ ...args, manifest: {} })).toEqual(
+        buildTrackConfig(args),
+      )
+      expect(buildTrackConfig(args).adapter).not.toHaveProperty('coarse')
+    })
+
+    it('a local path finds its tier in the same directory', () => {
+      const conf = buildTrackConfig({
+        ...args,
+        loc: {
+          localPath: 'C:\\data\\hprc.segs.bed.gz',
+          locationType: 'LocalPathLocation',
+        },
+        manifest: { tier },
+      })
+      expect(conf.adapter).toMatchObject({
+        coarse: {
+          segmentsLocation: {
+            localPath: 'C:\\data\\hprc.fold10000.segs.bed.gz',
+          },
+        },
+      })
+    })
+  })
 })

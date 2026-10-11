@@ -21,6 +21,7 @@ import { reaction } from 'mobx'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import LinearGraphDisplayF from './index'
+import { FOLD_PX, coarseHandover } from './model'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
 import graphGenomeViewModel from '../GraphGenomeView/viewModel'
 import GraphTrackF from '../GraphTrack/index'
@@ -36,6 +37,10 @@ const ASM = 'hg38'
 const CONTIG = 10_000_000
 const WIDTH_PX = 1000
 const COARSE_ABOVE_BP_PER_PX = 1000
+const COARSE_TIER: Record<string, unknown> = {
+  uri: 'graph.tier10000',
+  aboveBpPerPx: COARSE_ABOVE_BP_PER_PX,
+}
 // the linear view's coarse blocks settle behind a debounce
 const SETTLE_MS = 700
 
@@ -175,6 +180,7 @@ const GENE_FEATURES = [
 
 function createEnvironment({
   tiered = true,
+  coarse = COARSE_TIER,
   paths = false,
   geneLaneFilter = undefined as string[] | undefined,
 } = {}) {
@@ -230,14 +236,7 @@ function createEnvironment({
       adapter: {
         type: 'RgfaTabixAdapter',
         uri: 'graph',
-        ...(tiered
-          ? {
-              coarse: {
-                uri: 'graph.tier10000',
-                aboveBpPerPx: COARSE_ABOVE_BP_PER_PX,
-              },
-            }
-          : {}),
+        ...(tiered ? { coarse } : {}),
       },
       displays: [
         { type: 'LinearGraphDisplay', displayId: 'graph-LinearGraphDisplay' },
@@ -508,10 +507,11 @@ async function shownGraph({
   windowStart = 1_000_000,
   windowBp = 60_000,
   tiered = true,
+  coarse = COARSE_TIER,
   paths = false,
   geneLaneFilter = undefined as string[] | undefined,
 } = {}) {
-  const env = createEnvironment({ tiered, paths, geneLaneFilter })
+  const env = createEnvironment({ tiered, coarse, paths, geneLaneFilter })
   const { view } = env
   view.zoomTo(windowBp / WIDTH_PX)
   view.scrollTo(windowStart / view.bpPerPx)
@@ -563,6 +563,32 @@ test('zooming out past the handover cuts the coarse tier, and back in the fine o
   await wait(SETTLE_MS)
   expect(cuts.at(-1)!.tier).toBe('fine')
   expect(pane.cutTier).toBe('fine')
+})
+
+test('a tier stating only foldBelowBp hands over at foldBelowBp / FOLD_PX', async () => {
+  const { view, pane, cuts } = await shownGraph({
+    coarse: { uri: 'graph.tier10000', foldBelowBp: 10_000 },
+  })
+  expect(pane.coarseAboveBpPerPx).toBe(10_000 / FOLD_PX)
+  view.zoomTo(3_000_000 / WIDTH_PX)
+  await wait(SETTLE_MS)
+  expect(cuts.at(-1)!.tier).toBe('coarse')
+})
+
+test('aboveBpPerPx wins over foldBelowBp', async () => {
+  const { pane } = await shownGraph({
+    coarse: { uri: 'graph.tier10000', aboveBpPerPx: 700, foldBelowBp: 50_000 },
+  })
+  expect(pane.coarseAboveBpPerPx).toBe(700)
+})
+
+test('coarseHandover', () => {
+  expect(coarseHandover(undefined)).toBeUndefined()
+  expect(coarseHandover({})).toBeUndefined()
+  expect(coarseHandover({ foldBelowBp: 50 })).toBe(5)
+  expect(coarseHandover({ foldBelowBp: 0 })).toBeUndefined()
+  expect(coarseHandover({ aboveBpPerPx: 1000, foldBelowBp: 50 })).toBe(1000)
+  expect(coarseHandover({ aboveBpPerPx: 1000 })).toBe(1000)
 })
 
 test('with no coarse tier the margins narrow to the cap, past it the track is too large, and force load cuts it', async () => {

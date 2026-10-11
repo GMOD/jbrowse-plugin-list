@@ -59,10 +59,24 @@ type GraphViewSpec = Omit<LaunchGraphGenomeViewArgs, 'session'>
 
 // A variant under this many of the linear view's pixels folds into the
 // reference before layout, so the drawing gains detail as the view zooms in.
-// It is the width build_pangenome_graph.sh gives a backbone node at the zoom a
+// It is the width `gfa-to-tabix build` gives a backbone node at the zoom a
 // graph hands over to its coarse tier, so a tier folded at its handover draws
 // what the fine cut drew just below it.
 export const FOLD_PX = 10
+
+// The linear view's bp per px past which a coarse tier is cut: its own
+// `aboveBpPerPx`, else the zoom at which the fine cut folds what the tier did
+export function coarseHandover(coarse: unknown) {
+  const { aboveBpPerPx, foldBelowBp } = (coarse ?? {}) as {
+    aboveBpPerPx?: unknown
+    foldBelowBp?: unknown
+  }
+  return typeof aboveBpPerPx === 'number'
+    ? aboveBpPerPx
+    : typeof foldBelowBp === 'number' && foldBelowBp > 0
+      ? foldBelowBp / FOLD_PX
+      : undefined
+}
 
 const GraphTrackSettingsDialog = lazy(
   () => import('./components/GraphTrackSettingsDialog'),
@@ -150,10 +164,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       // the linear view's zoom past which the track's coarse pair is cut, or
       // undefined for a track with none
       get coarseAboveBpPerPx() {
-        const coarse = self.adapterConfig.coarse as
-          { aboveBpPerPx?: unknown } | undefined
-        const above = coarse?.aboveBpPerPx
-        return typeof above === 'number' ? above : undefined
+        return coarseHandover(self.adapterConfig.coarse)
       },
     }))
     .views(self => ({

@@ -1,7 +1,9 @@
 import { makeIndexType } from '@jbrowse/core/util/tracks'
 
+import { besideSegments } from './graphManifest'
 import { locationName, readsSiblings, renamed } from '../locationName'
 
+import type { GraphManifest } from './graphManifest'
 import type { FileLocation } from '@jbrowse/core/util'
 
 export type GraphFileChoice =
@@ -15,7 +17,7 @@ export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
 
 export const GRAPH_FILE_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter:
-    'Path to segments BED (.segs.bed.gz from gfa-to-tabix; the .links.bed.gz and its index are assumed beside it)',
+    'Path to segments BED (.segs.bed.gz from gfa-to-tabix; the .links.bed.gz, its index and any .graph.json are read beside it)',
   GbzBaseSyntenyAdapter: 'Path to the .gbz.db written by gbz-base construct',
   MinigraphBubbleAdapter: 'Path to bubbles BED (.bed.gz from gfatools bubble)',
 }
@@ -77,6 +79,37 @@ function panSN(assembly: string, sample: string) {
   return name ? { assemblyNameToPanSN: { [assembly]: name } } : {}
 }
 
+function coarseTier(
+  loc: FileLocation,
+  indexLoc: FileLocation | undefined,
+  tier: GraphManifest['tier'],
+) {
+  if (!tier) {
+    return {}
+  }
+  const segs = besideSegments(loc, `${tier.prefix}${SEGMENTS_SUFFIX}`)
+  const links = besideSegments(loc, `${tier.prefix}.links.bed.gz`)
+  return {
+    coarse: {
+      foldBelowBp: tier.foldBelowBp,
+      segmentsLocation: segs,
+      segmentsIndex: siblingIndex(segs, indexLoc),
+      linksLocation: links,
+      linksIndex: siblingIndex(links, indexLoc),
+    },
+  }
+}
+
+// The user's sample wins; the manifest's reference stands in when blank
+function manifestPanSN(
+  assembly: string,
+  sample: string,
+  reference: string | undefined,
+) {
+  const fromManifest = reference === assembly ? undefined : reference
+  return panSN(assembly, sample.trim() || fromManifest || '')
+}
+
 // a bgzipped GAF is read by its tabix index, a plain one whole
 function readsConfig(readsLoc: FileLocation | undefined) {
   return readsLoc
@@ -94,6 +127,7 @@ export function buildAdapterConfig({
   loc,
   indexLoc,
   readsLoc,
+  manifest,
   assembly,
   sample,
 }: {
@@ -102,6 +136,8 @@ export function buildAdapterConfig({
   indexLoc: FileLocation | undefined
   // a GBZ track's GAF reads, which no other choice takes
   readsLoc?: FileLocation
+  // the `.graph.json` beside an rGFA segments file
+  manifest?: GraphManifest
   assembly: string
   sample: string
 }) {
@@ -130,7 +166,8 @@ export function buildAdapterConfig({
     segmentsIndex: tabixIndex(loc, indexLoc),
     linksLocation: links,
     linksIndex: siblingIndex(links, indexLoc),
-    ...panSN(assembly, sample),
+    ...manifestPanSN(assembly, sample, manifest?.reference),
+    ...coarseTier(loc, indexLoc, manifest?.tier),
   }
 }
 
@@ -139,6 +176,7 @@ export function buildTrackConfig(args: {
   loc: FileLocation
   indexLoc: FileLocation | undefined
   readsLoc?: FileLocation
+  manifest?: GraphManifest
   assembly: string
   sample: string
   trackId: string

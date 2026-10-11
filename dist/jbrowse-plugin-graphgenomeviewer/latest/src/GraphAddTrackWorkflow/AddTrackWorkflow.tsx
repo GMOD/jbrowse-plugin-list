@@ -1,9 +1,14 @@
 import { useState } from 'react'
 
 import { AssemblySelector, ErrorMessage, FileSelector } from '@jbrowse/core/ui'
-import { addTrackFromWidget, getSession, makeTrackId } from '@jbrowse/core/util'
+import {
+  addTrackFromWidget,
+  getEnv,
+  getSession,
+  makeTrackId,
+} from '@jbrowse/core/util'
 import { makeStyles } from '@jbrowse/core/util/tss-react'
-import { getRoot } from '@jbrowse/mobx-state-tree'
+import { getRoot, isAlive } from '@jbrowse/mobx-state-tree'
 import {
   Button,
   FormControl,
@@ -22,6 +27,7 @@ import {
   GRAPH_INDEX_FIELDS,
   buildTrackConfig,
 } from './buildTrackConfig'
+import { readGraphManifest } from './graphManifest'
 
 import type { GraphFileChoice } from './buildTrackConfig'
 import type {
@@ -67,13 +73,23 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
   const [sample, setSample] = useState('')
   const [trackName, setTrackName] = useState('Pangenome graph')
   const [error, setError] = useState<unknown>()
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!loc || !model.assembly) {
       return
     }
+    setError(undefined)
+    setSubmitting(true)
+    const manifest =
+      choice === 'RgfaTabixAdapter'
+        ? await readGraphManifest(loc, getEnv(model).pluginManager)
+        : undefined
+    setSubmitting(false)
+    if (!isAlive(model) || !model.assembly) {
+      return
+    }
     try {
-      setError(undefined)
       const name = trackName.trim()
       addTrackFromWidget({
         model,
@@ -83,6 +99,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           loc,
           indexLoc,
           readsLoc: gbz ? readsLoc : undefined,
+          manifest,
           assembly: model.assembly,
           sample,
           trackId: makeTrackId({ name }),
@@ -173,8 +190,10 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
       <Button
         variant="contained"
         className={classes.submit}
-        disabled={!loc || !trackName.trim() || !model.assembly}
-        onClick={handleSubmit}
+        disabled={!loc || !trackName.trim() || !model.assembly || submitting}
+        onClick={() => {
+          void handleSubmit()
+        }}
       >
         Submit
       </Button>
