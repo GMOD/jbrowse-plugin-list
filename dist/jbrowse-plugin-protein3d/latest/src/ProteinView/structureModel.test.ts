@@ -24,12 +24,17 @@ vi.mock('@jbrowse/core/util', async importActual => {
   }
 })
 
-// an RCSB url makes the model ask PDBe for SIFTS; an empty answer, so nothing
-// retries past the test
+// an RCSB url makes the model ask RCSB for the entry; an entry with nothing
+// in it, so nothing retries past the test
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => new Response('{}')),
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ data: { entry: { polymer_entities: [] } } }),
+        ),
+    ),
   )
 })
 
@@ -536,25 +541,35 @@ async function loadFusedReceptor(snapshot: {
   alignmentImported?: boolean
   initialTranscriptResidues?: { start: number; end: number }
 }) {
-  const segment = (start: number, end: number, unpStart: number) => ({
-    entity_id: 1,
-    chain_id: 'A',
-    start: { residue_number: start },
-    end: { residue_number: end },
-    unp_start: unpStart,
-    unp_end: unpStart + end - start,
+  const region = (start: number, end: number, unpStart: number) => ({
+    entity_beg_seq_id: start,
+    ref_beg_seq_id: unpStart,
+    length: end - start + 1,
   })
-  const sifts = {
-    '9zzz': {
-      UniProt: {
-        RECEPTOR: { mappings: [segment(1, 4, 1), segment(9, 12, 9)] },
-        PARTNER: { mappings: [segment(5, 8, 2)] },
+  const align = (accession: string, ...regions: object[]) => ({
+    reference_database_name: 'UniProt',
+    reference_database_accession: accession,
+    aligned_regions: regions,
+  })
+  const entry = {
+    data: {
+      entry: {
+        polymer_entities: [
+          {
+            rcsb_id: '9ZZZ_1',
+            rcsb_polymer_entity_container_identifiers: { auth_asym_ids: ['A'] },
+            rcsb_polymer_entity_align: [
+              align('RECEPTOR', region(1, 4, 1), region(9, 12, 9)),
+              align('PARTNER', region(5, 8, 2)),
+            ],
+          },
+        ],
       },
     },
   }
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => new Response(JSON.stringify(sifts))),
+    vi.fn(async () => new Response(JSON.stringify(entry))),
   )
   const parent = TestParent.create({
     structures: [

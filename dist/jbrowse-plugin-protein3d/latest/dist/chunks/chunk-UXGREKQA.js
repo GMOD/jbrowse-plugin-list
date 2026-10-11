@@ -1,0 +1,2 @@
+var n=/^(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2})(?:-\d+)?$/;function r(e){return n.test(e)}var o="A UniProt accession is six or ten characters, like P04637 or A0A024R1R8";async function i(e){if(!e.name.toLowerCase().endsWith(".gz"))return e.text();let t=e.stream().pipeThrough(new DecompressionStream("gzip"));return new Response(t).text()}var c=".pdb,.cif,.mmcif,.ent,.pdb.gz,.cif.gz,.mmcif.gz,.ent.gz";export{r as a,o as b,i as c,c as d};
+//# sourceMappingURL=chunk-UXGREKQA.js.map

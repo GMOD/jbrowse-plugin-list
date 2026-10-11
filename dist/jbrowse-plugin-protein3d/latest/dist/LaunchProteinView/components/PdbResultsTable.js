@@ -30,7 +30,7 @@ export default function PdbResultsTable({ entries, selectedPdbId, onSelect, }) {
     return (React.createElement(React.Fragment, null,
         React.createElement(Typography, { variant: "body2", color: "textSecondary" },
             entries.length,
-            " PDB entries, ranked by PDBe on coverage and resolution",
+            " PDB entries, ranked on coverage, then resolution",
             entries.length > shown.length
                 ? ` (showing the first ${MAX_ROWS})`
                 : ''),
@@ -43,7 +43,7 @@ export default function PdbResultsTable({ entries, selectedPdbId, onSelect, }) {
                         React.createElement(TableCell, { className: classes.headerCell }, "Method"),
                         React.createElement(TableCell, { className: classes.headerCell }, "Resolution"),
                         React.createElement(TableCell, { className: classes.headerCell },
-                            React.createElement(Tooltip, { title: "The span of the UniProt sequence this entry resolves, by SIFTS. A crystal is usually one domain rather than the whole protein." },
+                            React.createElement(Tooltip, { title: "The span of the UniProt sequence this entry resolves, by RCSB's UniProt alignment. A crystal is usually one domain rather than the whole protein." },
                                 React.createElement("span", null, "UniProt residues"))),
                         React.createElement(TableCell, { className: classes.headerCell }, "Coverage"),
                         React.createElement(TableCell, { className: classes.headerCell }, "Chains"))),
@@ -56,14 +56,14 @@ export default function PdbResultsTable({ entries, selectedPdbId, onSelect, }) {
                             React.createElement(Radio, { checked: selected, size: "small" })),
                         React.createElement(TableCell, null,
                             React.createElement(ExternalLink, { href: rcsbEntryUrl(entry.pdbId) }, entry.pdbId.toUpperCase())),
-                        React.createElement(TableCell, null, entry.experimentalMethod),
+                        React.createElement(TableCell, null, entry.method),
                         React.createElement(TableCell, null, entry.resolution === undefined
                             ? '-'
                             : `${entry.resolution.toFixed(2)} Å`),
                         React.createElement(TableCell, null,
-                            entry.unpStart,
+                            entry.start,
                             "-",
-                            entry.unpEnd),
+                            entry.end),
                         React.createElement(TableCell, null,
                             (entry.coverage * 100).toFixed(0),
                             "%"),

@@ -14,7 +14,7 @@ export default function HelpDialog({ handleClose, }) {
                         " resolves the feature to a UniProt accession \u2014 from its own identifiers, or one you type \u2014 and opens AlphaFold's predicted model for it."),
                     React.createElement("li", null,
                         React.createElement("b", null, "PDB search"),
-                        " lists the experimental structures PDBe maps to that accession, ranked on coverage and resolution. A crystal is usually one domain, often with binding partners, so the view picks the chain the transcript belongs to once the structure loads."),
+                        " lists the experimental structures RCSB aligns to that accession, ranked on coverage and resolution. A crystal is usually one domain, often with binding partners, so the view picks the chain the transcript belongs to once the structure loads."),
                     React.createElement("li", null,
                         React.createElement("b", null, "Foldseek search"),
                         " sends the protein sequence to the foldseek.com servers and lists structures similar in shape, including ones with little sequence similarity."),

@@ -35,7 +35,7 @@ export default function HelpDialog({
               AlphaFold&apos;s predicted model for it.
             </li>
             <li>
-              <b>PDB search</b> lists the experimental structures PDBe maps to
+              <b>PDB search</b> lists the experimental structures RCSB aligns to
               that accession, ranked on coverage and resolution. A crystal is
               usually one domain, often with binding partners, so the view picks
               the chain the transcript belongs to once the structure loads.

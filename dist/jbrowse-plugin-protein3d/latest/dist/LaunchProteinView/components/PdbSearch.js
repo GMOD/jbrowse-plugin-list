@@ -12,8 +12,8 @@ import UniProtLookupControls from './UniProtLookupControls';
 import UniProtLookupResults from './UniProtLookupResults';
 import ExternalLink from '../../components/ExternalLink';
 import useDebouncedValue from '../hooks/useDebouncedValue';
-import usePdbBestStructures from '../hooks/usePdbBestStructures';
-import usePdbEntryMolecules from '../hooks/usePdbEntryMolecules';
+import useExperimentalStructures from '../hooks/useExperimentalStructures';
+import usePdbEntry from '../hooks/usePdbEntry';
 import useTranscriptIsoformSelection from '../hooks/useTranscriptIsoformSelection';
 const useStyles = makeStyles()({
     dialogContent: {
@@ -26,18 +26,18 @@ const useStyles = makeStyles()({
         },
     },
 });
-// Experimental structures of the gene's protein, found through SIFTS: PDBe
-// lists every entry mapped to the UniProt accession, ranked on coverage and
-// resolution, so a reader who does not know a PDB id can still reach one.
+// Experimental structures of the gene's protein: RCSB lists every entry it
+// aligns to the UniProt accession, ranked on coverage and resolution, so a
+// reader who does not know a PDB id can still reach one.
 // A crystal is usually a fragment, often with partners, so the view aligns
 // the transcript to it after launch rather than expecting a sequence match
 // here.
 const PdbSearch = observer(function PdbSearch({ feature, preferredTranscriptId, session, view, handleClose, lookup, sideBySide, onSideBySideChange, }) {
     const { classes } = useStyles();
     const { uniprotId, isLookupLoading, lookupError } = lookup;
-    const { entries, error: pdbError, isLoading: isPdbLoading, } = usePdbBestStructures(uniprotId);
+    const { entries, error: pdbError, isLoading: isPdbLoading, } = useExperimentalStructures(uniprotId);
     const [userPdbId, setUserPdbId] = useState();
-    // A typed id reaches entries PDBe's SIFTS listing never offers: a structure
+    // A typed id reaches entries the accession's listing never offers: a structure
     // of a complex filed under a partner, anything a paper names. Debounced, so
     // the three characters on the way to four are not three fetches.
     const [typedPdbId, setTypedPdbId] = useState('');
@@ -55,7 +55,8 @@ const PdbSearch = observer(function PdbSearch({ feature, preferredTranscriptId, 
     // The chosen entry's residues, which rank the isoforms and label the picker,
     // the same annotation the AlphaFold tab shows. Their failure costs the
     // ranking rather than the launch, which reads the structure file itself.
-    const { sequences: structureSequences, error: moleculesError, isValidating: isMoleculesValidating, } = usePdbEntryMolecules(selectedPdbId);
+    const { entry, error: entryError, isValidating: isEntryValidating, } = usePdbEntry(selectedPdbId);
+    const structureSequences = entry?.proteinSequences;
     const { transcripts, structureSequence, ranking, isLoading: isIsoformLoading, isRanking, error: isoformError, partialFailure: isoformPartialFailure, selectedTranscriptId, setSelectedTranscriptId, selectedTranscript, selectedIsoform, } = useTranscriptIsoformSelection({
         feature,
         view,
@@ -66,21 +67,21 @@ const PdbSearch = observer(function PdbSearch({ feature, preferredTranscriptId, 
     // Until the entry's chains arrive the ranking has no structure and orders
     // the isoforms by length, so a launch that takes the ranked default waits.
     // The right-clicked isoform needs no ranking and launches at once.
-    // An entry PDBe cannot describe stops holding the launch.
-    const awaitsChains = isMoleculesValidating &&
-        !moleculesError &&
+    // An entry RCSB cannot describe stops holding the launch.
+    const awaitsChains = isEntryValidating &&
+        !entryError &&
         selectedTranscriptId !== preferredTranscriptId;
     const isoformStatuses = [
         isIsoformLoading && 'Loading protein sequences from transcript isoforms',
         isRanking && 'Aligning isoforms to the structure',
-        awaitsChains && 'Reading the chains of the entry from PDBe',
+        awaitsChains && 'Reading the chains of the entry from RCSB',
         // the selection reads the debounced id, so a launch inside the debounce
         // opened the entry selected before the typing
         trimmedTypedPdbId !== debouncedTypedPdbId && 'Reading the typed PDB ID',
     ];
     const lookupStatuses = [
         isLookupLoading && 'Looking up UniProt ID',
-        isPdbLoading && 'Listing PDB entries from PDBe',
+        isPdbLoading && 'Listing PDB entries from RCSB',
     ];
     const loadingStatuses = [...lookupStatuses, ...isoformStatuses].filter((s) => !!s);
     const isLoading = loadingStatuses.length > 0;
@@ -115,7 +116,7 @@ const PdbSearch = observer(function PdbSearch({ feature, preferredTranscriptId, 
                     setTypedPdbId(event.target.value);
                 }, slotProps: { inputLabel: { shrink: true } }, sx: { width: 240 } }),
             uniprotId && entries && !isPdbLoading ? (entries.length > 0 ? (React.createElement(PdbResultsTable, { entries: entries, selectedPdbId: selectedPdbId, onSelect: setUserPdbId })) : (React.createElement(Typography, null,
-                "PDBe lists no experimental structure for",
+                "RCSB lists no experimental structure for",
                 ' ',
                 React.createElement(ExternalLink, { href: uniprotEntryUrl(uniprotId) }, uniprotId),
                 ". The AlphaFoldDB tab has a predicted one."))) : null,

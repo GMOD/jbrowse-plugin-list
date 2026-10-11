@@ -70,13 +70,13 @@ const responses: Record<string, string> = {
   ].join('\n'),
 }
 
-// SIFTS never answers here; each test hands the structure its mapping
+// RCSB never answers here; each test hands the structure its mapping
 beforeEach(() => {
   testSession.views = []
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) =>
-      url.includes('ebi.ac.uk/pdbe')
+      url.includes('data.rcsb.org')
         ? new Promise<Response>(() => {})
         : url in responses
           ? new Response(responses[url])

@@ -17,7 +17,7 @@ import { makeStyles } from 'tss-react/mui'
 
 import ExternalLink from '../../components/ExternalLink'
 
-import type { PdbStructureEntry } from 'p2s_mapper'
+import type { ExperimentalStructure } from 'p2s_mapper'
 
 const useStyles = makeStyles()(theme => ({
   tableContainer: {
@@ -48,7 +48,7 @@ export default function PdbResultsTable({
   selectedPdbId,
   onSelect,
 }: {
-  entries: PdbStructureEntry[]
+  entries: ExperimentalStructure[]
   selectedPdbId?: string
   onSelect: (pdbId: string) => void
 }) {
@@ -57,7 +57,7 @@ export default function PdbResultsTable({
   return (
     <>
       <Typography variant="body2" color="textSecondary">
-        {entries.length} PDB entries, ranked by PDBe on coverage and resolution
+        {entries.length} PDB entries, ranked on coverage, then resolution
         {entries.length > shown.length
           ? ` (showing the first ${MAX_ROWS})`
           : ''}
@@ -71,7 +71,7 @@ export default function PdbResultsTable({
               <TableCell className={classes.headerCell}>Method</TableCell>
               <TableCell className={classes.headerCell}>Resolution</TableCell>
               <TableCell className={classes.headerCell}>
-                <Tooltip title="The span of the UniProt sequence this entry resolves, by SIFTS. A crystal is usually one domain rather than the whole protein.">
+                <Tooltip title="The span of the UniProt sequence this entry resolves, by RCSB's UniProt alignment. A crystal is usually one domain rather than the whole protein.">
                   <span>UniProt residues</span>
                 </Tooltip>
               </TableCell>
@@ -98,14 +98,14 @@ export default function PdbResultsTable({
                       {entry.pdbId.toUpperCase()}
                     </ExternalLink>
                   </TableCell>
-                  <TableCell>{entry.experimentalMethod}</TableCell>
+                  <TableCell>{entry.method}</TableCell>
                   <TableCell>
                     {entry.resolution === undefined
                       ? '-'
                       : `${entry.resolution.toFixed(2)} Å`}
                   </TableCell>
                   <TableCell>
-                    {entry.unpStart}-{entry.unpEnd}
+                    {entry.start}-{entry.end}
                   </TableCell>
                   <TableCell>{(entry.coverage * 100).toFixed(0)}%</TableCell>
                   <TableCell>{entry.chains.join(', ')}</TableCell>
