@@ -111,11 +111,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     minimized: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-}, "id" | "type" | "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth" | "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & Omit<Omit<Omit<{}, "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth"> & {
+}, "id" | "type" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth" | "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & Omit<Omit<Omit<{}, "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth"> & {
     drawLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     labelsAlignRight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    treeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    treeWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
+    treeAreaWidth: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<number>>;
+    treeWidth: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<number>>;
     showBranchLen: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     treeOrder: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<import("react-msaview").TreeOrder>, [undefined]>;
     drawTree: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
@@ -123,7 +123,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     drawNodeLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     showTreeOverview: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     overviewHeight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    autoTreeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
 }, "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats"> & {
     bgColor: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     colorSchemeName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
@@ -535,11 +534,10 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     removeActiveDialog(): void;
     queueDialog(cb: (doneCallback: () => void) => [import("@jbrowse/core/util").DialogComponentType, unknown]): void;
 } & {
-    setTreeAreaWidth(n: number): void;
-    setTreeWidth(n: number): void;
+    setTreeAreaWidth(n: number | undefined): void;
+    setTreeWidth(n: number | undefined): void;
     setLabelsAlignRight(arg: boolean): void;
     setDrawTree(arg: boolean): void;
-    setAutoTreeAreaWidth(arg: boolean): void;
     setShowBranchLen(arg: boolean): void;
     setTreeOrder(order: import("react-msaview").TreeOrder): void;
     setDrawNodeBubbles(arg: boolean): void;
@@ -671,6 +669,17 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly rowNamesSet: Map<string, number>;
     readonly resolvedClades: import("react-msaview").ResolvedClade[];
     readonly cladeGutterWidth: number;
+    readonly treeDrawn: boolean;
+    readonly treeTips: {
+        names: string[];
+        depth: number;
+    };
+    readonly maxTipLabelWidth: number;
+    readonly labelColumnWidth: number;
+    readonly fittedTreeAreaWidth: number;
+    readonly effectiveTreeAreaWidth: number;
+    readonly effectiveTreeWidth: number;
+    readonly showTreeText: boolean;
     readonly mouseOverRowName: string | undefined;
     readonly hoveredInsertion: {
         rowName: string;
@@ -736,7 +745,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly totalWidth: number;
 } & {
     readonly showMsaLetters: boolean;
-    readonly showTreeText: boolean;
 } & {
     readonly columnTrackContent: Map<string, {
         values?: number[];
@@ -747,9 +755,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     columnTrackModel(track: import("react-msaview").ColumnTrackSpec): import("react-msaview").BasicTrack;
     readonly columnTrackModels: import("react-msaview").BasicTrack[];
 } & {
-    readonly labelWidthMap: Map<string, number>;
-    readonly labelWidthScale: number;
-    readonly labelsWidth: number;
     readonly secondaryStructureConsensus: string | undefined;
     readonly secondaryStructureArcs: import("react-msaview").Arc[] | undefined;
     readonly adapterTrackModels: import("react-msaview").BasicTrack[];
@@ -1122,11 +1127,11 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     displayName: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     minimized: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-}, "id" | "type" | "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth" | "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & Omit<Omit<Omit<{}, "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth"> & {
+}, "id" | "type" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth" | "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & Omit<Omit<Omit<{}, "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth"> & {
     drawLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     labelsAlignRight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    treeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    treeWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
+    treeAreaWidth: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<number>>;
+    treeWidth: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<number>>;
     showBranchLen: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     treeOrder: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<import("react-msaview").TreeOrder>, [undefined]>;
     drawTree: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
@@ -1134,7 +1139,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     drawNodeLabels: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     showTreeOverview: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     overviewHeight: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<number>, [undefined]>;
-    autoTreeAreaWidth: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
 }, "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats"> & {
     bgColor: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
     colorSchemeName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
@@ -1523,7 +1527,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     dataStoreId: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<string>>;
     launchCompleted: import("@jbrowse/mobx-state-tree").IType<boolean | undefined, boolean, boolean>;
     mafRegion: import("@jbrowse/mobx-state-tree").IType<MafRegion | undefined, MafRegion | undefined, MafRegion | undefined>;
-}>, "id" | "type" | "autoTreeAreaWidth" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth" | "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & ({
+}>, "id" | "type" | "drawLabels" | "drawNodeBubbles" | "drawNodeLabels" | "drawTree" | "labelsAlignRight" | "overviewHeight" | "showBranchLen" | "showTreeOverview" | "treeAreaWidth" | "treeOrder" | "treeWidth" | "bgColor" | "colorSchemeName" | "customColorScheme" | "msaFormat" | "showColumnStats" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & ({
     bgColor: boolean;
     colorSchemeName: string;
     customColorScheme: Record<string, string> | undefined;
@@ -1531,8 +1535,8 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     msaFormat: import("msa-parsers").MSAFormat | undefined;
     drawLabels: boolean;
     labelsAlignRight: boolean;
-    treeAreaWidth: number;
-    treeWidth: number;
+    treeAreaWidth: number | undefined;
+    treeWidth: number | undefined;
     showBranchLen: boolean;
     treeOrder: import("react-msaview").TreeOrder;
     drawTree: boolean;
@@ -1540,7 +1544,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     drawNodeLabels: boolean;
     showTreeOverview: boolean;
     overviewHeight: number;
-    autoTreeAreaWidth: boolean;
     columnTracks: import("react-msaview").ColumnTrackSpec[];
     id: string;
     showDomains: boolean;
@@ -1669,8 +1672,8 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     msaFormat: import("msa-parsers").MSAFormat | undefined;
     drawLabels: boolean;
     labelsAlignRight: boolean;
-    treeAreaWidth: number;
-    treeWidth: number;
+    treeAreaWidth: number | undefined;
+    treeWidth: number | undefined;
     showBranchLen: boolean;
     treeOrder: import("react-msaview").TreeOrder;
     drawTree: boolean;
@@ -1678,7 +1681,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     drawNodeLabels: boolean;
     showTreeOverview: boolean;
     overviewHeight: number;
-    autoTreeAreaWidth: boolean;
     columnTracks?: undefined;
     id: string;
     showDomains: boolean;
