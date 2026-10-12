@@ -1,6 +1,8 @@
 import { mergeOverlappingByName } from '@jbrowse/bandage-core/genes/geneFiles'
 import { readConfObject } from '@jbrowse/core/configuration'
 
+import { REPEAT_TRACK_HINT } from '../repeats/repeatFeatures'
+
 import type { GeneModel } from '@jbrowse/bandage-core/genes/genePins'
 import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 import type { Feature } from '@jbrowse/core/util'
@@ -26,18 +28,23 @@ const BED_ADAPTER_TYPES = new Set(['BedTabixAdapter', 'BedAdapter'])
 
 // Which of the session's tracks to read genes from: the named one, else the
 // first gene-bearing track on the assembly whose name says it is annotation,
-// else the first non-BED gene-bearing track.
+// else the first non-BED gene-bearing track. A track whose name says repeats is
+// never picked unnamed, as "RepeatMasker annotation" would be.
 export function pickGeneTrack<
   T extends { trackId: string; name?: string; adapterType: string },
 >(tracks: T[], named: string) {
   if (named) {
     return tracks.find(t => t.trackId === named)
   }
-  const candidates = tracks.filter(t => GENE_ADAPTER_TYPES.has(t.adapterType))
+  const label = (t: T) => `${t.trackId} ${t.name ?? ''}`
+  const candidates = tracks.filter(
+    t =>
+      GENE_ADAPTER_TYPES.has(t.adapterType) &&
+      !REPEAT_TRACK_HINT.test(label(t)),
+  )
   return (
-    candidates.find(t =>
-      GENE_TRACK_HINT.test(`${t.trackId} ${t.name ?? ''}`),
-    ) ?? candidates.find(t => !BED_ADAPTER_TYPES.has(t.adapterType))
+    candidates.find(t => GENE_TRACK_HINT.test(label(t))) ??
+    candidates.find(t => !BED_ADAPTER_TYPES.has(t.adapterType))
   )
 }
 

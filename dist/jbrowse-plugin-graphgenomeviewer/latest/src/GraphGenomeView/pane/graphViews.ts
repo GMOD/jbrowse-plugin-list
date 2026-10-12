@@ -52,6 +52,7 @@ import { computed } from 'mobx'
 
 import { TUBE_MAP_MODES, dependOn, geometryPainted, paneBase } from './paneBase'
 import { walkRowRuns, walkRowsOf } from '../../RgfaTabixAdapter/walkRowRuns.ts'
+import { locationIsSet } from '../../locationName.ts'
 import { trackAdapterConfig } from '../../panSNAliases/trackAdapterConfig'
 import {
   GENE_ADAPTER_TYPES,
@@ -318,12 +319,6 @@ export const withGraphViews = paneBase
       return self.graph
         ? modeUsesLayoutEngine(self.chosenLayoutMode, self.graph)
         : false
-    },
-    // A rank-0 backbone to draw x against, whether the segments declared it
-    // (rGFA) or a path walk derived it. Only a GFA with neither tags nor
-    // paths has no backbone at all, and there force is the one honest layout.
-    get canAnchorLayout() {
-      return self.graph?.nodes.some(n => n.stable?.rank === 0) ?? false
     },
     // The paths this graph could be anchored on, for the picker. Empty for an
     // rGFA, which has no P/W records and needs none.
@@ -837,9 +832,7 @@ export const withGraphViews = paneBase
     get walkRowSamplesTsv(): FileLocation | undefined {
       const location = self.sourceAdapter?.samplesTsvLocation as
         FileLocation | undefined
-      return location && (!('uri' in location) || location.uri)
-        ? location
-        : undefined
+      return location && locationIsSet(location) ? location : undefined
     },
     // The sample table's columns walk rows can group by
     get walkRowGroupFields() {
@@ -910,10 +903,12 @@ export const withGraphViews = paneBase
     // Whether the canvas draws the graph's nodes. A tube map and walk rows
     // draw a picture of their own over it, so what sits on nodes (genes,
     // bubble halos, deletion arcs, the reference strip) has nowhere to go.
-    // Read off what was drawn rather than the mode asked for, which falls
-    // back to the force layout on a graph it cannot draw.
+    // Read off the mode that drew the layout on screen, not the one asked
+    // for: that one falls back to force on a graph it cannot draw, and its
+    // layout may still be on its way.
     get drawsNodes() {
-      return !self.layoutResult?.tubeMap && !this.walkRowBars
+      return layoutModeByValue(self.drawnLayoutMode ?? self.chosenLayoutMode)
+        .drawsNodes
     },
     // Exons and names on the nodes that carry them, in layout units. Reads
     // positionsVersion so a dragged node takes its exons with it.

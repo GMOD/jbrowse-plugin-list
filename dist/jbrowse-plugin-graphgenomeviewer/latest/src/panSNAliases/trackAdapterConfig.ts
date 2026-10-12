@@ -44,9 +44,15 @@ export function withPanSNAliases(
       }
 }
 
+// The adapters that declare `headerLanes`, whose lanes are PanSN haplotypes
+const LANE_ADAPTERS = new Set([
+  'GbzBaseSyntenyAdapter',
+  'WalkTabixSyntenyAdapter',
+])
+
 /**
  * A track's adapter config as its requests carry it. A worker has no assembly
- * manager, so a gbz-base track's lanes learn the session's PanSN aliases here.
+ * manager, so a lane track learns the session's PanSN aliases here.
  */
 export function trackAdapterConfig(
   node: IAnyStateTreeNode,
@@ -56,7 +62,7 @@ export function trackAdapterConfig(
     string,
     unknown
   >
-  return adapterConfig.type === 'GbzBaseSyntenyAdapter'
+  return LANE_ADAPTERS.has(adapterConfig.type as string)
     ? withPanSNAliases(
         adapterConfig,
         getSession(node).assemblyManager.assemblyList.map(conf => ({

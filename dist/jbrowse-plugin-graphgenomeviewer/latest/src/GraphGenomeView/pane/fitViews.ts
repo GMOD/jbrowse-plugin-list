@@ -1,4 +1,5 @@
 import {
+  FACET_GAP_PX,
   FACET_PAD_PX,
   facetCells,
   facetGrid,
@@ -66,7 +67,6 @@ import {
 import { getSession } from '@jbrowse/core/util'
 import { computed, untracked } from 'mobx'
 
-import { hostFrame } from '../host'
 import {
   NO_VALUE_TUBE,
   PANEL_GAP,
@@ -116,6 +116,9 @@ import type { FileLocation } from '@jbrowse/core/util/types'
 
 const MAX_SHOWN_BASES = 20
 export const TOOLTIP_INSET_PX = 8
+export const FACET_KEY_ROW_PX = 19
+// the facet key line and the grid gap above it
+export const FACET_KEY_PX = FACET_GAP_PX + FACET_KEY_ROW_PX
 // a two-line tooltip and its inset
 const TOOLTIP_ROOM_PX = 48
 // a squeezed stack of panels thins no further, as one tube map does
@@ -186,6 +189,10 @@ export const withFitViews = withHostViews
     get paneCeiling(): number {
       return Math.max(MIN_CANVAS_HEIGHT, self.paneHeight ?? MAX_CANVAS_HEIGHT)
     },
+    // the height a fit fills: a track's own, or the pane's ceiling
+    get fitRoom(): number {
+      return self.host ? this.canvasHeight : this.paneCeiling
+    },
     // Walk rows pack to fill the pane, as the strip does, so every walk of a
     // cohort is on screen; rows too thin to letter put their names and
     // readouts on hover
@@ -194,7 +201,7 @@ export const withFitViews = withHostViews
       if (!bars) {
         return undefined
       }
-      const room = self.host ? this.canvasHeight : this.paneCeiling
+      const room = this.fitRoom
       const headersPx =
         (self.walkRowGroups?.sections.length ?? 0) * SECTION_HEADER_PX
       return rowPitch(
@@ -343,8 +350,7 @@ export const withFitViews = withHostViews
         return 'top'
       }
       const base = this.fitPadTopBase
-      // a track's height is its own
-      const room = self.host ? this.canvasHeight : this.paneCeiling
+      const room = this.fitRoom
       const across = (padRight: number) =>
         (self.paneWidth - this.fitPadLeft - padRight) / bounds.w
       const down = (padTop: number) =>
@@ -432,8 +438,9 @@ export const withFitViews = withHostViews
           })
         : undefined
     },
+    // the facet grid's room leaves the key line under it
     get facetGrid() {
-      return this.facetGridIn(self.host ? this.canvasHeight : this.paneCeiling)
+      return this.facetGridIn(this.fitRoom - FACET_KEY_PX)
     },
     // The hover tooltip's distance from the pane's right edge: in the corner,
     // unless the legend reaches down into its room, and then beside it. A
@@ -461,7 +468,7 @@ export const withFitViews = withHostViews
       }
       const grid = this.facetGrid
       if (grid) {
-        return Math.max(MIN_CANVAS_HEIGHT, grid.total)
+        return Math.max(MIN_CANVAS_HEIGHT, grid.total + FACET_KEY_PX)
       }
       // never shorter than the legend, which a flat drawing would clip
       const floor = Math.max(
@@ -814,16 +821,12 @@ export const withFitViews = withHostViews
       const frame = self.tubeMapFrame
       return picture && frame ? frame.y(picture.bounds.minY) - 2 : 0
     },
-    // Read off the live blocks, so the bands' tops follow every frame of a
-    // pan in the linear view and their bottoms every pan of the tubes
+    // The bands' tops follow every frame of a pan in the linear view and
+    // their bottoms every pan of the tubes
     get tubeMapConnectors() {
       const boxes = self.tubeMapConnectedBoxes
       const frame = self.tubeMapFrame
-      const { host, graphRegion } = self
-      const bp =
-        boxes && frame && host?.initialized && graphRegion
-          ? hostFrame(host, graphRegion)
-          : undefined
+      const bp = boxes && frame ? self.hostBpFrame : undefined
       return boxes && frame && bp
         ? tubeMapConnectors(
             boxes,

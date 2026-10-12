@@ -1,3 +1,4 @@
+import { TabixIndexedFile } from '@gmod/tabix'
 import {
   bubbleDescription,
   bubbleLabel,
@@ -115,6 +116,23 @@ test('an inversion bubble says so', () => {
 // The fixture is bare-named (`chr6`), as HPRC's published v1.0 bubbles are.
 // A Minigraph-Cactus graph's bubbles are PanSN instead, so the same query has
 // to reach them through assemblyNameToPanSN.
+// tabix-js's getLines spins forever on a NaN end, so this mocks it: a
+// regression fails here instead of hanging the suite
+test('a range that is not finite queries nothing', async () => {
+  const getLines = vi
+    .spyOn(TabixIndexedFile.prototype, 'getLines')
+    .mockResolvedValue()
+  await expect(
+    firstValueFrom(
+      makeAdapter()
+        .getFeatures({ ...mhc, end: Number.NaN })
+        .pipe(toArray()),
+    ),
+  ).rejects.toThrow(/not a finite range/)
+  expect(getLines).not.toHaveBeenCalled()
+  getLines.mockRestore()
+})
+
 test('a bare-named bubble file needs no mapping', async () => {
   const features = await firstValueFrom(
     makeAdapter().getFeatures(mhc).pipe(toArray()),

@@ -1,5 +1,7 @@
 import { readConfObject } from '@jbrowse/core/configuration'
 
+import { snapshotNamesFile } from './locationName.ts'
+
 import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 
 function isStringArray(value: unknown): value is string[] {
@@ -18,14 +20,12 @@ export function trackLanes(track: AnyConfigurationModel) {
 // or the location it expands to: an rGFA track may, and a
 // WalkTabixSyntenyAdapter one does
 export function walkIndexed(adapterConfig: Record<string, unknown>) {
-  const walks = adapterConfig.walksLocation as
-    { uri?: string; localPath?: string } | undefined
   return (
     adapterConfig.type === 'WalkTabixSyntenyAdapter' ||
     (adapterConfig.type === 'RgfaTabixAdapter' &&
       ((typeof adapterConfig.walksUri === 'string' &&
         adapterConfig.walksUri !== '') ||
-        (walks?.uri ?? walks?.localPath ?? '') !== ''))
+        snapshotNamesFile(adapterConfig.walksLocation)))
   )
 }
 

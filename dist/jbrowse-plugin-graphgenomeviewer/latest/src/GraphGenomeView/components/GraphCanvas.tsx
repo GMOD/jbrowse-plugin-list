@@ -27,15 +27,16 @@ import { nodeLaunchMenuItems } from '../../launchFromGraph/graphMenuItems'
 import { TOOLTIP_INSET_PX } from '../pane/fitViews'
 import { createGraphRenderer } from '../renderer/GraphRenderer'
 
+import type { chipReadoutAt } from './LabelLayer'
 import type { GraphPaneModel } from '../model'
 
-// Bottom RIGHT, not bottom left: the row labels of a row-structured layout are
-// pinned to the left edge, so a bottom-left tooltip lands on top of them and
-// covers the one thing that says which haplotype a row is. Where the legend
-// reaches down to it, it moves left of the legend.
+// Bottom right of the canvas, clear of the row labels on the left edge and of
+// a walk strip under the canvas. Where the legend reaches down to it, it moves
+// left of the legend.
 const tooltipStyle = {
   position: 'absolute' as const,
   bottom: TOOLTIP_INSET_PX,
+  lineHeight: 'normal',
   background: 'rgba(0,0,0,0.75)',
   color: 'white',
   padding: '4px 8px',
@@ -139,9 +140,9 @@ const RowLabels = observer(function RowLabels({
 })
 
 // Top RIGHT: the row labels own the left edge and the hover tooltip owns the
-// bottom right, so this is the one corner nothing else claims. A row-structured
-// layout draws its band across the middle, which is what the keys are for.
-// Every key stretches to the widest, so together they read as one panel.
+// bottom right, so this is the one corner nothing else claims. Every key
+// stretches to the widest, so together they read as one panel. It takes the
+// pointer, for its rows' titles and its close button.
 const legendStackStyle = {
   position: 'absolute' as const,
   top: LEGEND_INSET_PX,
@@ -150,7 +151,6 @@ const legendStackStyle = {
   flexDirection: 'column' as const,
   borderRadius: 3,
   overflow: 'hidden' as const,
-  pointerEvents: 'none' as const,
   zIndex: 4,
 }
 
@@ -284,8 +284,10 @@ const GraphSizeLabels = observer(function GraphSizeLabels({
 
 const HoverTooltips = observer(function HoverTooltips({
   model,
+  chip,
 }: {
   model: GraphPaneModel
+  chip: ReturnType<typeof chipReadoutAt>
 }) {
   const hoveredNodeData = model.hoveredNode
     ? model.hoverNodeById?.get(model.hoveredNode)
@@ -315,7 +317,11 @@ const HoverTooltips = observer(function HoverTooltips({
   const tube = model.hoveredTubeText
   const tipStyle = { ...tooltipStyle, right: model.tooltipRightPx }
 
-  return (
+  return chip ? (
+    <div style={tipStyle} data-testid="graph-chip-tooltip">
+      <strong>{chip.label}</strong> — {chip.readout}
+    </div>
+  ) : (
     <>
       {tube && !hoveredNodeData ? (
         <div style={tipStyle} data-testid="graph-tube-tooltip">
@@ -436,7 +442,7 @@ const GraphCanvas = observer(function GraphCanvas({
     error: renderError,
     retry: retryRender,
   } = useRenderingBackend(createGraphRenderer, model)
-  const { handlers, contextNode, contextRow, closeContextMenu } =
+  const { handlers, contextNode, contextRow, closeContextMenu, hoveredChip } =
     usePaneGestures(model)
   useWheelZoom(canvas, model)
   const faceted = model.facetPanels !== undefined
@@ -516,11 +522,11 @@ const GraphCanvas = observer(function GraphCanvas({
             />
           </div>
         ) : null}
+
+        <HoverTooltips model={model} chip={hoveredChip} />
       </div>
 
       {model.walkStripShown ? <WalkStrip model={model} /> : null}
-
-      <HoverTooltips model={model} />
 
       {contextNode ? (
         <NodeContextMenu

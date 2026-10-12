@@ -25,7 +25,8 @@ export const withHostViews = withWalkRowViews
     get xIsReferenceBp() {
       return (
         self.layoutResult?.referenceAxis === true &&
-        layoutModeByValue(self.chosenLayoutMode).cutMargins
+        layoutModeByValue(self.drawnLayoutMode ?? self.chosenLayoutMode)
+          .cutMargins
       )
     },
   }))
@@ -47,11 +48,18 @@ export const withHostViews = withWalkRowViews
     },
   }))
   .views(self => ({
-    get hostFrame() {
+    // The linear view's bp to screen x over the cut, read off its live
+    // blocks so it follows every frame of a pan
+    get hostBpFrame() {
       const { host, graphRegion } = self
-      return self.hostPlacesX && host && graphRegion
+      return host?.initialized && graphRegion
         ? hostFrame(host, graphRegion)
         : undefined
+    },
+  }))
+  .views(self => ({
+    get hostFrame() {
+      return self.hostPlacesX ? self.hostBpFrame : undefined
     },
     get tubeMapPicture() {
       const drawing = self.layoutResult?.tubeMap
@@ -125,27 +133,18 @@ export const withHostViews = withWalkRowViews
           )
         : blocks
     },
-    // Read off the live blocks, so the strip follows every frame of a pan
-    // in the linear view
-    get referenceStripFrame() {
-      const { host, graphRegion } = self
-      return host?.initialized && graphRegion
-        ? hostFrame(host, graphRegion)
-        : undefined
-    },
   }))
   .views(self => ({
     get referenceStripShown() {
       return (
-        self.referenceStripBlocks.length > 0 &&
-        self.referenceStripFrame !== undefined
+        self.referenceStripBlocks.length > 0 && self.hostBpFrame !== undefined
       )
     },
     // Whether the graph draws reference past the window's edges. A boolean
     // rather than the bp, which moves on every frame of a pan and would
     // resize the legend with it.
     get referenceStripOverhangs() {
-      const frame = self.referenceStripFrame
+      const frame = self.hostBpFrame
       if (!frame || self.referenceStripBlocks.length === 0) {
         return false
       }
@@ -190,7 +189,7 @@ export const withHostViews = withWalkRowViews
         : undefined
     },
     referenceStripNodeAt(sx: number, sy: number) {
-      const frame = self.referenceStripFrame
+      const frame = self.hostBpFrame
       return self.referenceStripShown && frame
         ? stripBlockAt(self.referenceStripBlocks, frame, sx, sy)
         : undefined

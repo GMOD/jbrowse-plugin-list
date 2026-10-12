@@ -68,10 +68,15 @@ test('a window past the bp cap replaces the graph with the zoom-in notice', () =
       phase="tooLarge"
       drawn={false}
       testid="linear-graph-display"
+      data-layout="auto"
     >
       <canvas data-testid="graph-canvas" />
     </GraphStatusChrome>,
   )
+  const chrome = screen.getByTestId('linear-graph-display')
+  expect(chrome.dataset.displayPhase).toBe('tooLarge')
+  expect(chrome.dataset.displayDrawn).toBe('false')
+  expect(chrome.dataset.layout).toBe('auto')
   expect(screen.queryByTestId('graph-canvas')).toBeNull()
   expect(screen.getByText(/Region too large for a graph cut/)).toBeTruthy()
   expect(screen.getByText('Force load')).toBeTruthy()

@@ -3,6 +3,8 @@ import { parseGFA } from '@jbrowse/bandage-core/gfa-core/index'
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
 
+import type { WalkCut } from './walkRowRuns.ts'
+
 // A level-of-detail tier: the same two files the adapter always reads, but one
 // node per bubble instead of one per GFA segment. Built by
 // jbrowse-components/scripts/bubbles_to_tier_bed.py from HPRC release 2's
@@ -12,6 +14,13 @@ import configSchema from './configSchema.ts'
 const prefix = require
   .resolve('./test_data/bubble_tier_chrY.segs.bed.gz')
   .replace(/\.segs\.bed\.gz$/, '')
+
+function gfaText(cut: string | WalkCut) {
+  if (typeof cut !== 'string') {
+    throw new Error('expected a GFA text cut')
+  }
+  return cut
+}
 
 function makeAdapter() {
   const local = (path: string) => ({
@@ -41,13 +50,17 @@ const wholeChromosome = {
 // layout does not get better with more nodes"), and the fine tier over the same
 // span would be six figures of segments.
 test('a whole chromosome collapses to a drawable node count', async () => {
-  const graph = parseGFA(await makeAdapter().getSubgraph(wholeChromosome))
+  const graph = parseGFA(
+    gfaText(await makeAdapter().getSubgraph(wholeChromosome)),
+  )
   expect(graph.nodes.length).toBe(114)
   expect(graph.nodes.length).toBeLessThan(500)
 })
 
 test('the collapse summary reaches GraphNode.tags', async () => {
-  const graph = parseGFA(await makeAdapter().getSubgraph(wholeChromosome))
+  const graph = parseGFA(
+    gfaText(await makeAdapter().getSubgraph(wholeChromosome)),
+  )
   const bubbles = graph.nodes.filter(n => n.tags.ct === 'bubble')
   const backbone = graph.nodes.filter(n => n.tags.ct === 'backbone')
   expect(bubbles).toHaveLength(57)
@@ -64,7 +77,9 @@ test('the collapse summary reaches GraphNode.tags', async () => {
 // It is drawn 1 bp wide and states its real size in cl, which is why the
 // producer thresholds on content rather than on `end - start`.
 test('a pure insertion survives as a 1 bp node stating its true length', async () => {
-  const graph = parseGFA(await makeAdapter().getSubgraph(wholeChromosome))
+  const graph = parseGFA(
+    gfaText(await makeAdapter().getSubgraph(wholeChromosome)),
+  )
   const insertions = graph.nodes.filter(
     n => n.tags.ct === 'bubble' && n.length === 1,
   )
@@ -75,7 +90,7 @@ test('a pure insertion survives as a 1 bp node stating its true length', async (
 // Backbone and bubble strictly alternate, so the tier is one connected chain
 // rather than islands, which is what makes it pan-able as a graph.
 test('the tier is a connected alternating chain', async () => {
-  const gfa = await makeAdapter().getSubgraph(wholeChromosome)
+  const gfa = gfaText(await makeAdapter().getSubgraph(wholeChromosome))
   const graph = parseGFA(gfa)
   const rank = new Map(graph.nodes.map(n => [n.id, n.tags.ct]))
   expect(graph.links.length).toBe(113)

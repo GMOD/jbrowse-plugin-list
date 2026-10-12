@@ -8,6 +8,8 @@ import {
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
+import { walkIndexed } from '../../graphTrackConfig'
+
 import type { LinearGraphCutModel } from '../model'
 
 const useStyles = makeStyles()({
@@ -19,7 +21,8 @@ const useStyles = makeStyles()({
   },
 })
 
-// Only an rGFA cut reads hops; a GBZ cut widens by its adapter's bp `context`.
+// Only an rGFA cut from segment rows reads hops: a GBZ cut widens by its
+// adapter's bp `context`, and a walk-indexed cut follows its walks.
 // Hops past the region's own segments, each costing a tabix query per
 // off-reference segment already reached. One is the default: at none a single
 // detour draws as two unrelated stubs, which is a wrong picture of the graph
@@ -39,7 +42,8 @@ const SubgraphContextSelect = observer(function SubgraphContextSelect({
   model: LinearGraphCutModel
 }) {
   const { classes } = useStyles()
-  return model.adapterConfig.type === 'RgfaTabixAdapter' ? (
+  return model.adapterConfig.type === 'RgfaTabixAdapter' &&
+    !walkIndexed(model.adapterConfig) ? (
     <div className={classes.section}>
       <FormControl className={classes.formControl}>
         <InputLabel>Graph context</InputLabel>

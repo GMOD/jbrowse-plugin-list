@@ -1,3 +1,5 @@
+import { panSNSample } from '@jbrowse/bandage-core/pansn'
+
 import type { ComparativeOptions } from '@jbrowse/synteny-core'
 
 /**
@@ -45,4 +47,17 @@ export function requestedPairs(opts: LaneFeatureOptions): LanePair[] {
   } else {
     return [{ queryAssemblyName, targetAssemblyName }]
   }
+}
+
+/**
+ * The lane a haplotype draws on: the JBrowse assembly the config maps to its
+ * `sample#haplotype` prefix, else to its sample, else the prefix itself. The
+ * fallback stays at haplotype depth, unlike the multi-genome PAF adapters',
+ * because a diploid sample's two walks are two lanes.
+ */
+export function laneAssemblyName(
+  asmByPrefix: Record<string, string>,
+  prefix: string,
+) {
+  return asmByPrefix[prefix] ?? asmByPrefix[panSNSample(prefix)] ?? prefix
 }

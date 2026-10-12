@@ -2,16 +2,20 @@ import { findCompanion, siblingCompanion } from './companion.ts'
 
 import type * as IO from '@jbrowse/core/util/io'
 
-const statError = vi.hoisted(() => ({ current: undefined as unknown }))
+const statError = vi.hoisted((): { current: Error | undefined } => ({
+  current: undefined,
+}))
 
 vi.mock('@jbrowse/core/util/io', async importOriginal => {
   const io = await importOriginal<typeof IO>()
   return {
     ...io,
-    openLocation: (...args: Parameters<typeof io.openLocation>) =>
-      statError.current === undefined
+    openLocation: (...args: Parameters<typeof io.openLocation>) => {
+      const error = statError.current
+      return error === undefined
         ? io.openLocation(...args)
-        : { stat: () => Promise.reject(statError.current as Error) },
+        : { stat: () => Promise.reject(error) }
+    },
   }
 })
 

@@ -1,5 +1,6 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
-import { types } from '@jbrowse/mobx-state-tree'
+
+import { tabixIndexSchema, tbiBeside } from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -33,13 +34,6 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```
  */
 
-function tbi(uri: string, baseUri: unknown, csi: unknown) {
-  return {
-    indexType: csi ? 'CSI' : 'TBI',
-    location: { uri: `${uri}.${csi ? 'csi' : 'tbi'}`, baseUri },
-  }
-}
-
 export function normalizeSnapshot(snap: Record<string, unknown>) {
   const { walksUri, baseUri, csi } = snap
   if (typeof walksUri !== 'string') {
@@ -49,32 +43,13 @@ export function normalizeSnapshot(snap: Record<string, unknown>) {
   return {
     ...snap,
     walksLocation: { uri: file('walks'), baseUri },
-    walksIndex: tbi(file('walks'), baseUri, csi),
+    walksIndex: tbiBeside(file('walks'), baseUri, csi),
     nodesLocation: { uri: file('nodes'), baseUri },
-    nodesIndex: tbi(file('nodes'), baseUri, csi),
+    nodesIndex: tbiBeside(file('nodes'), baseUri, csi),
     linksLocation: { uri: file('links'), baseUri },
-    linksIndex: tbi(file('links'), baseUri, csi),
+    linksIndex: tbiBeside(file('links'), baseUri, csi),
   }
 }
-
-const indexSchema = (name: string) =>
-  ConfigurationSchema(name, {
-    /**
-     * #slot
-     */
-    indexType: {
-      model: types.enumeration('IndexType', ['TBI', 'CSI']),
-      type: 'stringEnum',
-      defaultValue: 'TBI',
-    },
-    /**
-     * #slot
-     */
-    location: {
-      type: 'fileLocation',
-      defaultValue: { uri: '', locationType: 'UriLocation' },
-    },
-  })
 
 const location = (uri: string) => ({
   type: 'fileLocation' as const,
@@ -105,7 +80,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     /**
      * #slot
      */
-    walksIndex: indexSchema('WalkTabixWalksIndex'),
+    walksIndex: tabixIndexSchema('WalkTabixWalksIndex'),
     /**
      * #slot
      * one row per node a chunk's walks visit, with its length and its place
@@ -115,7 +90,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     /**
      * #slot
      */
-    nodesIndex: indexSchema('WalkTabixNodesIndex'),
+    nodesIndex: tabixIndexSchema('WalkTabixNodesIndex'),
     /**
      * #slot
      * one row per link between consecutive steps of a chunk's walks, which
@@ -125,7 +100,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     /**
      * #slot
      */
-    linksIndex: indexSchema('WalkTabixLinksIndex'),
+    linksIndex: tabixIndexSchema('WalkTabixLinksIndex'),
     /**
      * #slot
      * the reference chunk the rows are filed under, in bp, when the walk

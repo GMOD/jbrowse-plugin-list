@@ -25,7 +25,7 @@ export function paintReferenceStrip(
     dpr,
   }: { lit: GraphPaneModel['referenceStripLit'] | undefined; dpr: number },
 ) {
-  const frame = model.referenceStripFrame
+  const frame = model.hostBpFrame
   if (frame) {
     drawReferenceStrip(ctx, model.referenceStripBlocks, frame, {
       width: model.paneWidth,

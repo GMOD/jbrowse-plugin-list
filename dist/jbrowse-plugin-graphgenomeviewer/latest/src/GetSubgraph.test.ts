@@ -11,12 +11,19 @@ import { isRpcResult } from '@jbrowse/core/util/librpc'
 import GetSubgraph from './GetSubgraph'
 import GraphPlugin from './index'
 
-import type { RpcResult } from '@jbrowse/core/rpc/RpcServer'
 import type { AbstractRootModel } from '@jbrowse/core/util'
+import type { RpcResult } from '@jbrowse/core/util/librpc'
 
 vi.mock('@jbrowse/core/data_adapters/dataAdapterCache')
 
 const mockGetAdapter = vi.mocked(getAdapter)
+
+function adapterWith(dataAdapter: object) {
+  mockGetAdapter.mockResolvedValue({
+    dataAdapter,
+    sessionIds: new Set(),
+  } as Awaited<ReturnType<typeof getAdapter>>)
+}
 
 const region = {
   refName: 'chr',
@@ -52,14 +59,9 @@ test('the plugin registers GetSubgraph under the name the view calls', () => {
 
 test('forwards the region and context to the adapter', async () => {
   const getSubgraph = vi.fn().mockResolvedValue('H\tVN:Z:1.0')
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getSubgraph },
-  })
+  adapterWith({ getSubgraph })
 
-  await makeMethod().execute(
-    { ...makeArgs(), opts: { hops: 2 } },
-    'MainThreadRpcDriver',
-  )
+  await makeMethod().execute({ ...makeArgs(), opts: { hops: 2 } })
   expect(getSubgraph).toHaveBeenCalledWith(region, { hops: 2 })
 })
 
@@ -69,11 +71,9 @@ test('reads a text cut into tables, buffers to transfer', async () => {
   const getSubgraph = vi
     .fn()
     .mockResolvedValue('S\t1\tACGT\nW\tGRCh38\t0\tchr1\t0\t4\t>1\n')
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getSubgraph },
-  })
+  adapterWith({ getSubgraph })
 
-  const result = await makeMethod().execute(makeArgs(), 'MainThreadRpcDriver')
+  const result = await makeMethod().execute(makeArgs())
   expect(isRpcResult(result)).toBe(true)
   const { value, transferables } = result as RpcResult
   expect(value).toMatchObject({
@@ -85,13 +85,9 @@ test('reads a text cut into tables, buffers to transfer', async () => {
 
 test('hands back as text a cut the tables cannot hold', async () => {
   const text = 'S\t1\tACGT\tSM:Z:K12.1\n'
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getSubgraph: vi.fn().mockResolvedValue(text) },
-  })
+  adapterWith({ getSubgraph: vi.fn().mockResolvedValue(text) })
 
-  expect(await makeMethod().execute(makeArgs(), 'MainThreadRpcDriver')).toBe(
-    text,
-  )
+  expect(await makeMethod().execute(makeArgs())).toBe(text)
 })
 
 // A walk-indexed cut's tables go to postMessage with their buffers listed, so
@@ -103,11 +99,9 @@ test('hands a cut of tables back with its buffers to transfer', async () => {
     nodes: { names: ['1', '2'], lengths },
     walks: { names: ['GRCh38#0#chr1'], steps },
   })
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getSubgraph },
-  })
+  adapterWith({ getSubgraph })
 
-  const result = await makeMethod().execute(makeArgs(), 'MainThreadRpcDriver')
+  const result = await makeMethod().execute(makeArgs())
   expect(isRpcResult(result)).toBe(true)
   expect((result as RpcResult).transferables).toEqual([
     lengths.buffer,
@@ -120,15 +114,10 @@ test('hands a cut of tables back with its buffers to transfer', async () => {
 // cut the view had replaced went on reading to the end.
 test('hands the call its signal on to the adapter', async () => {
   const getSubgraph = vi.fn().mockResolvedValue('')
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getSubgraph },
-  })
+  adapterWith({ getSubgraph })
   const { signal } = new AbortController()
 
-  await makeMethod().execute(
-    { ...makeArgs(), opts: { hops: 1 }, signal },
-    'MainThreadRpcDriver',
-  )
+  await makeMethod().execute({ ...makeArgs(), opts: { hops: 1 }, signal })
   expect(getSubgraph.mock.calls[0]![1].signal).toBe(signal)
 })
 
@@ -136,14 +125,12 @@ test('hands the call its signal on to the adapter', async () => {
 // and leaves the rest alone, so what the view sends is what the adapter gets.
 test('forwards the haplotype set to the adapter', async () => {
   const getSubgraph = vi.fn().mockResolvedValue('H\tVN:Z:1.1')
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getSubgraph },
-  })
+  adapterWith({ getSubgraph })
 
-  await makeMethod().execute(
-    { ...makeArgs(), opts: { hops: 1, haplotypes: ['HG002#1', 'HG005'] } },
-    'MainThreadRpcDriver',
-  )
+  await makeMethod().execute({
+    ...makeArgs(),
+    opts: { hops: 1, haplotypes: ['HG002#1', 'HG005'] },
+  })
   expect(getSubgraph).toHaveBeenCalledWith(region, {
     hops: 1,
     haplotypes: ['HG002#1', 'HG005'],
@@ -179,14 +166,11 @@ test('renames the region onto the adapter spelling before the call', async () =>
     session: { assemblyManager },
   } as unknown as AbstractRootModel
 
-  const serialized = await method.serializeArguments(
-    {
-      adapterConfig: { type: 'RgfaTabixAdapter' },
-      region: { refName: '6', assemblyName: 'hg38', start: 0, end: 100 },
-      sessionId: 'graph',
-    },
-    'MainThreadRpcDriver',
-  )
+  const serialized = await method.serializeArguments({
+    adapterConfig: { type: 'RgfaTabixAdapter' },
+    region: { refName: '6', assemblyName: 'hg38', start: 0, end: 100 },
+    sessionId: 'graph',
+  })
   expect(serialized.region).toMatchObject({ refName: 'chr6' })
 })
 
@@ -194,12 +178,10 @@ test('renames the region onto the adapter spelling before the call', async () =>
 // track, so it returns empty rather than throwing; the view turns that into a
 // message.
 test('returns empty for an adapter that cannot cut subgraphs', async () => {
-  mockGetAdapter.mockResolvedValue({
-    dataAdapter: { getFeatures: vi.fn() },
-  })
+  adapterWith({ getFeatures: vi.fn() })
 
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const result = await makeMethod().execute(makeArgs(), 'MainThreadRpcDriver')
+  const result = await makeMethod().execute(makeArgs())
   expect(result).toBe('')
   expect(warn).toHaveBeenCalled()
   warn.mockRestore()

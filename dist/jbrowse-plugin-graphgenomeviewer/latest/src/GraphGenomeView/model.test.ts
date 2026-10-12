@@ -21,10 +21,11 @@ import { abgrAlpha } from '@jbrowse/bandage-core/renderer/colorBits'
 import { recordingCanvas } from '@jbrowse/bandage-core/renderer/recordingCanvas'
 import { walkHighlight } from '@jbrowse/bandage-core/walkHighlight'
 import { readConfObject } from '@jbrowse/core/configuration'
-import { LAUNCH_LABEL } from '@jbrowse/core/ui'
-import { applySnapshot, getSnapshot } from '@jbrowse/mobx-state-tree'
+import { LAUNCH_LABEL, resolveSubMenu } from '@jbrowse/core/ui'
+import { applySnapshot, getSnapshot, types } from '@jbrowse/mobx-state-tree'
 
 import { walkRowTrees } from './components/WalkRowsOverlay'
+import { facetKeyRows } from './legendSections'
 import { MAX_GRAPH_REGION_BP, formatSpanBp } from './model'
 import { walkRowGeneKey } from './pane/fitViews'
 import { EMPTY_BATCH, SELECT_BRIGHTEN } from './pane/paneBase'
@@ -103,6 +104,7 @@ vi.mock('@jbrowse/core/util', () => {
     },
     getRpcSessionId: () => 'test',
     isSessionModelWithWidgets: () => false,
+    statusMessageText: (status: unknown) => status,
     // Add stubs for other potentially imported items
     parseLocString: () => ({}),
     getEnv: () => ({}),
@@ -120,9 +122,11 @@ vi.mock('@jbrowse/core/util', () => {
 // config schema) call ConfigurationSchema at module-eval time.
 vi.mock(import('@jbrowse/core/configuration'), async importOriginal => ({
   ...(await importOriginal()),
-  readConfObject: vi.fn((obj: Record<string, unknown>, key: string) =>
-    key === 'assemblyNames' ? (obj.assemblyNames ?? []) : obj[key],
-  ),
+  readConfObject: vi
+    .fn<typeof readConfObject>()
+    .mockImplementation((obj: Record<string, unknown>, key?: unknown) =>
+      key === 'assemblyNames' ? (obj.assemblyNames ?? []) : obj[String(key)],
+    ),
 }))
 
 const mockReadFile = vi.hoisted(() => vi.fn())
@@ -398,7 +402,7 @@ describe('performance instrumentation', () => {
     expect(model.showLoading).toBe(true)
     model.setGeometryMetrics(1, EMPTY_BATCH, {
       scale: 1,
-      bounds: { minX: 0, minY: 0, w: 1, h: 1 },
+      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
     })
     expect(model.showLoading).toBe(true)
     model.markPainted()
@@ -406,7 +410,7 @@ describe('performance instrumentation', () => {
 
     model.setGeometryMetrics(1, EMPTY_BATCH, {
       scale: 1,
-      bounds: { minX: 0, minY: 0, w: 1, h: 1 },
+      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
     })
     expect(model.showLoading).toBe(true)
     model.markPainted()
@@ -426,6 +430,53 @@ describe('performance instrumentation', () => {
     expect(model.lastLayoutMs).toBeUndefined()
     expect(model.lastGeometryMs).toBeUndefined()
     expect(model.lastGeometryStrokeCount).toBeUndefined()
+  })
+
+  test('only the force run the live layout waits on writes the status line', async () => {
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(SIMPLE_GFA, 'imported')
+    const runs: ((status: string) => void)[] = []
+    mockRpcCall.mockImplementation(
+      (_sid: unknown, _method: string, args: { statusCallback: never }) => {
+        runs.push(args.statusCallback)
+        return new Promise(() => {})
+      },
+    )
+    model.setLayoutQuality(3)
+    void model.recomputeLayout()
+    model.setLayoutQuality(1)
+    void model.recomputeLayout()
+    runs[0]!('superseded')
+    expect(model.statusMessage).toBe('Computing layout')
+    runs[1]!('live')
+    expect(model.statusMessage).toBe('live')
+
+    // back to a run still in flight, which the force cache shares
+    model.setLayoutQuality(3)
+    void model.recomputeLayout()
+    expect(runs).toHaveLength(2)
+    runs[0]!('shared')
+    expect(model.statusMessage).toBe('shared')
+
+    model.stopLoad()
+    runs[0]!('stopped')
+    expect(model.statusMessage).toBe('')
+  })
+
+  test('clearGraph drops every hover naming a part of the graph', async () => {
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(SIMPLE_GFA, 'imported')
+    model.setHoveredNode('1+', { x: 5, y: 5 })
+    model.setHoveredTube({ track: 1 })
+    model.setHoveredRowWalks(['A#1#ctg'])
+    model.setStripHover({ row: 'A#1#ctg', offset: 3 })
+    model.clearGraph()
+    expect(model.hoveredAt).toBeNull()
+    expect(model.hoveredTube).toBeNull()
+    expect(model.hoveredRowWalks).toEqual([])
+    expect(model.stripHover).toBeNull()
   })
 
   test('clearGraph drops the source with the graph, so the import form is not a view still loading', async () => {
@@ -779,7 +830,6 @@ describe('layoutMode', () => {
     const model = createAnchoredModel()
     await model.loadGFA(RGFA, 'rgfa')
 
-    expect(model.canAnchorLayout).toBe(true)
     expect(layoutCalls()).toHaveLength(0)
     expect(model.layoutResult).toBeDefined()
   })
@@ -839,7 +889,6 @@ describe('layoutMode', () => {
     const model = createModel()
     await model.loadGFA(SIMPLE_GFA, 'plain')
 
-    expect(model.canAnchorLayout).toBe(false)
     expect(layoutCalls()).toHaveLength(1)
     const { graph, options } = layoutArgs(0)
     expect(graph.nodes.some(n => 'x' in n || 'y' in n)).toBe(false)
@@ -1042,7 +1091,6 @@ describe('reference path', () => {
     await model.loadGFA(PGGB_GFA, 'pggb')
 
     expect(model.activeReferencePath).toBe('K12#1#chr')
-    expect(model.canAnchorLayout).toBe(true)
     // laid out from the walk, so the force engine is never reached
     expect(layoutCalls()).toHaveLength(0)
     expect(backboneStarts(model)).toEqual(['1@100', '2@105', '4@106'])
@@ -1582,6 +1630,19 @@ describe('zoomToFit on a tube map', () => {
     expect(nodes.length).toBeGreaterThan(0)
     expect(nodes.every(n => model.tubeMapNodeColors!.has(n.name))).toBe(true)
     expect(model.referenceRampOffKeys.unplaced).toBe(false)
+  })
+
+  test('a fold change lays the tube map out again', async () => {
+    rpcRespond()
+    const { view: model } = types
+      .model({ view: stateModelFactory() })
+      .create({ view: { type: 'GraphGenomeView', layoutMode: 'tubemap' } })
+    await model.loadGFA(snpChainGfa(2), '2 SNPs')
+    expect(model.layoutResult!.tubeMap!.coarse).toBeUndefined()
+    model.setTubeMapFold(1000)
+    expect(model.layoutResult!.tubeMap!.coarse).toBeDefined()
+    model.setTubeMapFold(0)
+    expect(model.layoutResult!.tubeMap!.coarse).toBeUndefined()
   })
   test('a hovered lane row keeps its tube and fades the rest', async () => {
     const model = await tubeMap(2)
@@ -2678,6 +2739,9 @@ describe('the auto color scheme', () => {
 
     model.setColorScheme('depth')
     expect(model.referenceRampDomain).toBeUndefined()
+    model.setColorScheme('uniform')
+    model.setColorScheme('reference-position')
+    expect(model.referenceRampDomain).toEqual({ start: 1000, end: 5000 })
   })
 
   // With no region stated it falls back to what was drawn, so a file-loaded
@@ -2944,6 +3008,30 @@ describe('walk rows', () => {
     expect(model.walkStripShown).toBe(false)
   })
 
+  test('walk rows still on screen draw no nodes until the force layout replacing them lands', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    expect(model.drawsNodes).toBe(false)
+    let land = () => {}
+    mockRpcCall.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          land = () => {
+            resolve({ result: MOCK_LAYOUT, duration: 5 })
+          }
+        }),
+    )
+    const relayout = model.switchLayout('force')
+    expect(model.drawsNodes).toBe(false)
+    land()
+    await relayout
+    expect(model.drawsNodes).toBe(true)
+  })
+
   test('a cohort of walks packs into the pane, its names and readouts on hover', async () => {
     rpcRespond()
     const cohort = [
@@ -3119,7 +3207,6 @@ describe('walk rows', () => {
     const model = stateModelFactory().create({
       type: 'GraphGenomeView',
       layoutMode: 'auto',
-      colorScheme: 'grey',
     })
     await model.loadGFA(WALKS_GFA, 'walks')
     model.liftWalks(['B#1#ctg', 'GRCh38#0#chr1'])
@@ -3196,7 +3283,12 @@ describe('walk rows', () => {
     model.zoom(2, 10, 10)
     expect(model.viewportOwner).toBe('user')
 
-    model.setFacetColumns(model.facetGrid!.columns === 1 ? 2 : 1)
+    model.writeGrammar({
+      facet: {
+        ...model.facetSetting,
+        columns: model.facetGrid!.columns === 1 ? 2 : 1,
+      },
+    })
     expect(model.scale).toBeCloseTo(model.fittedTransform!.scale, 10)
   })
 
@@ -3221,7 +3313,7 @@ describe('walk rows', () => {
     ])
     // a row layout's x is bp, so its panels stack full width
     expect(model.facetGrid!.columns).toBe(1)
-    model.setFacetColumns(2)
+    model.writeGrammar({ facet: { ...model.facetSetting, columns: 2 } })
     expect(model.facetGrid!.columns).toBe(2)
     model.setFacet('')
     expect(model.facetPanels).toBeUndefined()
@@ -3240,7 +3332,11 @@ describe('walk rows', () => {
     model.setFacet('walk')
     const grid = model.facetGrid!
     expect(model.viewBox).toEqual({ width: grid.width, height: grid.height })
-    expect(model.canvasHeight).toBe(Math.max(160, grid.total))
+    // the grid, then the key line under it
+    expect(model.canvasHeight).toBe(Math.max(160, grid.total + 8 + 19))
+    expect(facetKeyRows(model).map(r => r.label)).toEqual([
+      "not on the panel's walk",
+    ])
     expect(model.scale).toBeCloseTo(grid.scale, 10)
     expect(model.scale).not.toBeCloseTo(whole, 10)
     expect(
@@ -3283,7 +3379,7 @@ describe('walk rows', () => {
     })
     model.setFacet('walk')
     expect(model.facetSpec).toEqual({ field: 'walk', domain: [], columns: 3 })
-    model.setFacetColumns(undefined)
+    model.writeGrammar({ facet: { ...model.facetSetting, columns: undefined } })
     expect(model.facetSpec).toBe('walk')
     expect(
       stateModelFactory().create({
@@ -3359,13 +3455,13 @@ describe('walk rows', () => {
       model
         .layoutOptionMenuItems()
         .flatMap(item =>
-          'subMenu' in item && item.label === 'Panels' ? item.subMenu : [],
+          'subMenu' in item && item.label === 'Panels'
+            ? resolveSubMenu(item)
+            : [],
         )
-    expect(panels().map(item => item.label)).toEqual([
-      'None',
-      'A panel per sample',
-      'A panel per haplotype',
-    ])
+    expect(
+      panels().map(item => ('label' in item ? item.label : undefined)),
+    ).toEqual(['None', 'A panel per sample', 'A panel per haplotype'])
 
     model.setFacet('sample')
     await model.recomputeLayout()
@@ -3475,8 +3571,9 @@ describe('annotation reads beside a cut', () => {
     assemblyNames: ['hg38'],
     adapter: { type, tag: trackId },
   })
-  const bySlot = (obj: Record<string, unknown>, key: string) => obj[key]
-  const adapterOnly = (obj: Record<string, unknown>, key: string) =>
+  const bySlot = (obj: Record<string, unknown>, key?: unknown) =>
+    obj[String(key)]
+  const adapterOnly = (obj: Record<string, unknown>, key?: unknown) =>
     key === 'adapter' ? obj.adapter : undefined
 
   // each CoreGetFeatures read, held open until the test settles it
@@ -3630,8 +3727,9 @@ describe('genes on a backbone of another assembly', () => {
 
   let gfa = CHR6_WALKS
   let geneAt = { refName: 'chr6', start: 1002, end: 1008 }
-  const bySlot = (obj: Record<string, unknown>, key: string) => obj[key]
-  const adapterOnly = (obj: Record<string, unknown>, key: string) =>
+  const bySlot = (obj: Record<string, unknown>, key?: unknown) =>
+    obj[String(key)]
+  const adapterOnly = (obj: Record<string, unknown>, key?: unknown) =>
     key === 'adapter' ? obj.adapter : undefined
 
   function sessionWith(assemblyName: string, graphAdapter = {}) {
@@ -3960,6 +4058,15 @@ describe('walk rows grouped by a sample column', () => {
       expect.stringContaining('404'),
       'warning',
     )
+    mockReadFile.mockResolvedValue(TSV)
+    await model.loadWalkRowSampleTable()
+    expect(model.walkRowGroupFields).toEqual(['population', 'superpopulation'])
+  })
+
+  test('a dropped graph takes its samples table with it', async () => {
+    const model = await groupedModel()
+    model.clearGraph()
+    expect(model.walkRowSampleTable).toBeUndefined()
   })
 
   test('a track with no samples TSV reads nothing', async () => {

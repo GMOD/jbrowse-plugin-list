@@ -15,7 +15,7 @@ import {
 } from '@jbrowse/core/pluggableElementTypes/models'
 import { LAUNCH_LABEL } from '@jbrowse/core/ui'
 import SimpleFeature from '@jbrowse/core/util/simpleFeature'
-import { types } from '@jbrowse/mobx-state-tree'
+import { getType, types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { reaction } from 'mobx'
@@ -32,6 +32,7 @@ import type { LinearGraphDisplayModel } from './model'
 import type { SubgraphRegion, SubgraphTier } from '../GetSubgraph'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 import type { MenuItem } from '@jbrowse/core/ui'
+import type { Instance } from '@jbrowse/mobx-state-tree'
 
 const REF = 'chr1'
 const ASM = 'hg38'
@@ -355,6 +356,7 @@ function createEnvironment({
       args: {
         region: SubgraphRegion
         opts?: { tier?: SubgraphTier; snarls?: string; hops?: number }
+        options?: { engine: string }
         signal?: AbortSignal
         adapterConfig?: { type?: string }
       },
@@ -423,6 +425,7 @@ function createEnvironment({
     .model({
       name: 'testSession',
       view: types.maybe(LinearGenomeModel),
+      other: types.maybe(LinearGenomeModel),
       configuration: types.map(types.frozen()),
     })
     .volatile(() => ({
@@ -451,15 +454,19 @@ function createEnvironment({
         return []
       },
       get views() {
-        return self.view ? [self.view] : []
+        return [self.view, self.other].filter(v => v !== undefined)
       },
       getDisplayTypeDefault(): unknown {
         return undefined
       },
     }))
     .actions(self => ({
-      setView(view: InstanceType<typeof LinearGenomeModel>) {
+      setView(view: Instance<typeof LinearGenomeModel>) {
         self.view = view
+        return view
+      },
+      setOther(view: Instance<typeof LinearGenomeModel>) {
+        self.other = view
         return view
       },
       notify() {},
@@ -674,7 +681,7 @@ test('the phase is loading until the graph is drawn, and a failed cut is an erro
   })
   // the chrome shows a ready track's status as background progress
   expect(display.statusMessage).toBe('')
-  rpcCall.mockImplementationOnce(() => Promise.reject(new Error('index gone')))
+  rpcCall.mockRejectedValueOnce(new Error('index gone'))
   display.reload()
   await vi.waitFor(() => {
     expect(display.displayPhase).toBe('error')
@@ -870,7 +877,7 @@ test('a force track lays out with the stress engine by default, and switching as
   const engines = () =>
     rpcCall.mock.calls
       .filter(c => c[1] === 'GraphComputeLayout')
-      .map(c => (c[2] as { options: { engine: string } }).options.engine)
+      .map(c => c[2].options?.engine)
   expect(engines()).toEqual(['stress'])
 
   display.setLayoutEngine('fmmm')
@@ -963,10 +970,17 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setFacet('walk')
   display.setWalkRowSamples(['HG1'])
   display.setHover('off')
-  const slots = ['layoutMode', 'color', 'size', 'layers', 'facet', 'rows']
+  const slots = [
+    'layoutMode',
+    'color',
+    'size',
+    'layers',
+    'facet',
+    'rows',
+  ] as const
   expect(
     Object.fromEntries(
-      [...slots, 'hover'].map(s => [
+      [...slots, 'hover' as const].map(s => [
         s,
         readConfObject(display.configuration, s),
       ]),
@@ -1043,7 +1057,7 @@ test('a GBZ track cuts for the lanes it names', async () => {
   view.showTrack('walks')
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
   expect(display.type).toBe('LinearGraphDisplay')
-  expect(display.chosenHaplotypes).toEqual(['HG1.1', 'HG2.1'])
+  expect(display.cutHaplotypes).toEqual(['HG1.1', 'HG2.1'])
 })
 
 test("a GBZ track's Haplotypes menu cuts for every haplotype, the track's lanes, or a list", () => {
@@ -1069,12 +1083,12 @@ test("a GBZ track's Haplotypes menu cuts for every haplotype, the track's lanes,
   ])
   expect(checked()).toBe("The track's 2 assemblies")
   menu()[1]!.onClick()
-  expect(display.chosenHaplotypes).toEqual([])
+  expect(display.cutHaplotypes).toEqual([])
   expect(checked()).toBe('Every haplotype in the graph')
   display.setSubgraphHaplotypes(['HG1.1'])
   expect(checked()).toBe('Chosen in Graph settings...')
   menu()[2]!.onClick()
-  expect(display.chosenHaplotypes).toEqual(['HG1.1', 'HG2.1'])
+  expect(display.cutHaplotypes).toEqual(['HG1.1', 'HG2.1'])
 })
 
 function walkIndexedDisplay(names?: string[] | null) {
@@ -1100,7 +1114,7 @@ function walkIndexedDisplay(names?: string[] | null) {
 
 test("a walk-indexed track cuts for its config's default haplotypes", async () => {
   const { display, menu } = walkIndexedDisplay()
-  expect(display.chosenHaplotypes).toEqual(['HG1', 'HG2#1'])
+  expect(display.cutHaplotypes).toEqual(['HG1', 'HG2#1'])
   await wait(0)
   expect(display.haplotypeNames).toEqual(['HG1#1', 'HG1#2', 'HG2#1'])
   expect(menu().map(item => item.label)).toEqual([
@@ -1113,9 +1127,9 @@ test("a walk-indexed track cuts for its config's default haplotypes", async () =
     "The track's default haplotypes",
   )
   menu()[1]!.onClick()
-  expect(display.chosenHaplotypes).toEqual([])
+  expect(display.cutHaplotypes).toEqual([])
   menu()[2]!.onClick()
-  expect(display.chosenHaplotypes).toEqual(['HG1', 'HG2#1'])
+  expect(display.cutHaplotypes).toEqual(['HG1', 'HG2#1'])
 })
 
 test("a walk-indexed track's cut and the graph view it opens carry the default set", async () => {
@@ -1127,6 +1141,16 @@ test("a walk-indexed track's cut and the graph view it opens carry the default s
     (cut?.[2] as { opts?: { haplotypes?: string[] } }).opts?.haplotypes,
   ).toEqual(['HG1', 'HG2#1'])
   expect(display.graphViewSpec?.subgraphHaplotypes).toEqual(['HG1', 'HG2#1'])
+})
+
+test('haplotype names read for an adapter config the track has since changed are dropped', async () => {
+  const { display } = walkIndexedDisplay()
+  await wait(0)
+  display.setHaplotypeNames(undefined)
+  await display.fetchHaplotypeNames({ ...display.adapterConfig })
+  expect(display.haplotypeNames).toBeUndefined()
+  await display.fetchHaplotypeNames(display.adapterConfig)
+  expect(display.haplotypeNames).toEqual(['HG1#1', 'HG1#2', 'HG2#1'])
 })
 
 test('a walk-indexed graph whose header names no haplotype counts none', async () => {
@@ -1301,8 +1325,12 @@ function graphViewItem(display: LinearGraphDisplayModel) {
 }
 
 test('the track menu opens the window on screen in a graph genome view, drawn as the track draws it', async () => {
-  const { display, addedViews } = await shownGraph()
+  const { view, display, addedViews } = await shownGraph()
   display.setLayoutMode('tubemapref')
+  display.setLayoutQuality(3)
+  display.setBubbleSpread('compress')
+  display.setLinearLayout(true)
+  display.setMaxGraphNodes(50_000)
   const item = graphViewItem(display)!
   expect(item.disabled).toBe(false)
 
@@ -1315,6 +1343,12 @@ test('the track menu opens the window on screen in a graph genome view, drawn as
     loadedRegion: { refName: REF, assemblyName: ASM },
     layoutMode: 'tubemapref',
     subgraphContext: display.subgraphContext,
+    layoutEngine: 'stress',
+    layoutQuality: 3,
+    bubbleSpread: 'compress',
+    linearLayout: true,
+    maxGraphNodes: 50_000,
+    connectedViewId: view.id,
   })
   const { loadedRegion } = spec as { loadedRegion: SubgraphRegion }
   expect(loadedRegion.start).toBeCloseTo(1_000_000, -1)
@@ -1327,6 +1361,48 @@ test('the track menu opens the window on screen in a graph genome view, drawn as
       ...(spec as object),
     }),
   ).not.toThrow()
+})
+
+test('after a cut refused over its node limit, the graph genome view launch is disabled', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const env = await shownWalks(60_000)
+  const { view, display } = env
+  expect(graphViewItem(display)!.disabled).toBe(false)
+  env.setDenseAbove(500_000)
+  view.zoomTo(1_000_000 / WIDTH_PX)
+  await vi.waitFor(() => {
+    expect(display.dense).toBeDefined()
+  })
+  expect(display.hasGraph).toBe(true)
+  expect(graphViewItem(display)!.disabled).toBe(true)
+})
+
+test('with two linear views on its assembly, a node shows and highlights in the one hosting the track', async () => {
+  const { session, view, display, addedViews } = await shownGraph()
+  const other = session.setOther(
+    getType(view).create({
+      type: 'LinearGenomeView',
+      tracks: [],
+    }) as typeof view,
+  )
+  other.setWidth(WIDTH_PX)
+  other.setDisplayedRegions([
+    { refName: REF, start: 0, end: CONTIG, assemblyName: ASM },
+  ])
+  expect(session.views).toHaveLength(2)
+  expect(display.pairedViewId).toBe(view.id)
+  expect(display.canHighlightInLinearView).toBe(true)
+  display.showInLinearView({
+    location: {
+      sample: ASM,
+      haplotype: undefined,
+      refName: REF,
+      start: 1_010_000,
+      end: 1_011_000,
+    },
+    assembly: ASM,
+  })
+  expect(addedViews).toHaveLength(0)
 })
 
 test('zoomed out to the coarse tier, the graph genome view launch is disabled', async () => {

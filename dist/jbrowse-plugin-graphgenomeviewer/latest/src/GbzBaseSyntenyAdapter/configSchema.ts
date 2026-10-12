@@ -3,6 +3,7 @@ import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { types } from '@jbrowse/mobx-state-tree'
 
 import { splitUri } from '../locationName'
+import { tabixIndexSchema } from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -97,23 +98,7 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
      * The `tabix -p gaf` index of a bgzipped `readsLocation`, which fetches the
      * reads over each window's node ids. Empty reads the GAF whole, up to 50 MB.
      */
-    readsIndex: ConfigurationSchema('GbzBaseReadsIndex', {
-      /**
-       * #slot
-       */
-      indexType: {
-        model: types.enumeration('IndexType', ['TBI', 'CSI']),
-        type: 'stringEnum',
-        defaultValue: 'TBI',
-      },
-      /**
-       * #slot
-       */
-      location: {
-        type: 'fileLocation',
-        defaultValue: { uri: '', locationType: 'UriLocation' },
-      },
-    }),
+    readsIndex: tabixIndexSchema('GbzBaseReadsIndex'),
     /**
      * #slot
      * A tab-separated table of per-sample metadata, which the graph view's

@@ -87,13 +87,14 @@ export const withRenderingActions = withLoadActions
           ),
         )
         // Walk rows and tube map panels read the source track's samples
-        // TSV, to group by its columns
+        // TSV, to group by its columns, again for a graph after a dropped one
         addDisposer(
           self,
           reaction(
             () =>
-              self.chosenLayoutMode === 'walkrows' ||
-              TUBE_MAP_MODES.has(self.chosenLayoutMode)
+              self.hasGraph &&
+              (self.chosenLayoutMode === 'walkrows' ||
+                TUBE_MAP_MODES.has(self.chosenLayoutMode))
                 ? JSON.stringify(self.walkRowSamplesTsv ?? null)
                 : undefined,
             key => {
@@ -191,6 +192,8 @@ export const withRenderingActions = withLoadActions
             () => `${self.scale}-${self.translateX}-${self.translateY}`,
             () => {
               self.setHoveredNode(null)
+              self.setHoveredTube(null)
+              self.setHoveredWalkRow(null)
               self.setHoveredPanel(null)
               self.setHoveredBubble(null)
               self.setHoveredEdge(null)
@@ -335,14 +338,15 @@ export const withRenderingActions = withLoadActions
           },
         ),
       )
-      // a tube map lays out again for its panels, its routes and the column
-      // its routes split by
+      // a tube map lays out again for its fold, its panels, its routes and
+      // the column its routes split by
       addDisposer(
         self,
         reaction(
           () =>
             TUBE_MAP_MODES.has(self.chosenLayoutMode)
               ? JSON.stringify({
+                  fold: self.tubeMapFold,
                   facet: self.facetSetting,
                   groupBy: self.walkRowGroupBy,
                   table: self.walkRowGroupBy && self.walkRowSampleTable?.length,

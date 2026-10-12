@@ -75,6 +75,39 @@ const StripBars = observer(function StripBars({
   return <ElTree el={tree} />
 })
 
+// The hovered row's readout where the rows are too thin to letter, at the
+// pointer's place on its bar. Its own observer, so a move along a bar redraws
+// the tip and not the strip.
+export const StripTip = observer(function StripTip({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
+  const bars = model.walkStripRows
+  const frame = model.walkStripFrame
+  const hover = model.stripHover
+  const all = bars ? [bars.reference, ...bars.rows] : []
+  const index = hover ? all.findIndex(r => r.name === hover.row) : -1
+  const row = all[index]
+  if (!bars || !frame || frame.labelled || !hover || !row) {
+    return null
+  }
+  return (
+    <div
+      data-testid="graph-walk-strip-tip"
+      style={{
+        ...tipStyle,
+        left:
+          (bars.origin + hover.offset) * frame.scaleX + frame.translateX + 12,
+        top: index * frame.rowPx + frame.translateY - 18,
+      }}
+    >
+      {row.label} ·{' '}
+      {walkRowReadout(row, index === 0 ? undefined : bars.reference)}
+    </div>
+  )
+})
+
 const WalkStrip = observer(function WalkStrip({
   model,
 }: {
@@ -85,17 +118,12 @@ const WalkStrip = observer(function WalkStrip({
   const [menu, setMenu] = useState<
     { row: number; top: number; left: number } | undefined
   >(undefined)
-  const [tip, setTip] = useState<
-    { text: string; x: number; y: number } | undefined
-  >(undefined)
   if (!bars || !frame) {
     return null
   }
   const hit = (e: React.MouseEvent<SVGSVGElement>) => {
     const box = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - box.left
-    const y = e.clientY - box.top
-    return { ...stripRowAt(bars, frame, x, y), x, y }
+    return stripRowAt(bars, frame, e.clientX - box.left, e.clientY - box.top)
   }
   const key = walkRowsKey(bars, {
     ramp: model.referenceRampDomain,
@@ -114,48 +142,37 @@ const WalkStrip = observer(function WalkStrip({
           model.setPointerInPane(false)
           model.setStripHover(null)
         }
-        setTip(undefined)
       }}
     >
       <svg
         width={frame.width}
         height={frame.height}
-        style={{ display: 'block', cursor: 'pointer' }}
+        style={{ display: 'block' }}
         onMouseMove={e => {
           const at = hit(e)
-          if (at.row) {
-            model.setStripHover({ row: at.row.name, offset: at.offset! })
-            setTip(
-              frame.labelled
-                ? undefined
-                : {
-                    text: `${at.row.label} · ${walkRowReadout(
-                      at.row,
-                      at.index === 0 ? undefined : bars.reference,
-                    )}`,
-                    x: at.x,
-                    y: at.y,
-                  },
-            )
-          } else {
-            model.setStripHover(null)
-            setTip(undefined)
-          }
+          e.currentTarget.style.cursor = at && at.index > 0 ? 'pointer' : ''
+          model.setStripHover(
+            at ? { row: at.row.name, offset: at.offset } : null,
+          )
         }}
         onClick={e => {
           const at = hit(e)
-          if (at.row && at.index! > 0) {
+          if (at && at.index > 0) {
             model.toggleWalk(at.row.name)
           }
         }}
         onContextMenu={e => {
           const at = hit(e)
-          if (at.row) {
+          if (at) {
             e.preventDefault()
-            setMenu({ row: at.index!, top: e.clientY, left: e.clientX })
+            setMenu({ row: at.index, top: e.clientY, left: e.clientX })
           }
         }}
       >
+        <title>
+          Ticks mark where each walk passes the node under the pointer. Click a
+          bar to lift its walk.
+        </title>
         <StripBars
           bars={bars}
           frame={frame}
@@ -171,11 +188,7 @@ const WalkStrip = observer(function WalkStrip({
           )}
         />
       </svg>
-      {tip ? (
-        <div style={{ ...tipStyle, left: tip.x + 12, top: tip.y - 18 }}>
-          {tip.text}
-        </div>
-      ) : null}
+      <StripTip model={model} />
       <div style={keyStyle} data-testid="graph-walk-strip-key">
         {key.map(entry => (
           <div key={entry.label} style={legendRowStyle}>
@@ -183,12 +196,6 @@ const WalkStrip = observer(function WalkStrip({
             <span>{entry.label}</span>
           </div>
         ))}
-        <div style={legendRowStyle}>
-          <span>
-            ▮ ticks: where each walk passes the node under the pointer · click a
-            bar to lift its walk
-          </span>
-        </div>
       </div>
       {menu ? (
         <WalkRowContextMenu

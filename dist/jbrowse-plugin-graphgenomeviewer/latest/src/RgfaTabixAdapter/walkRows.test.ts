@@ -135,6 +135,7 @@ describe('the step budget', () => {
           [100, 5],
         ]),
         10,
+        1,
         { start: 150, end: 190 },
         chunk,
         false,
@@ -151,6 +152,7 @@ describe('the step budget', () => {
         [400, 50],
       ]),
       10,
+      1,
       { start: 250, end: 480 },
       chunk,
       false,
@@ -176,10 +178,10 @@ describe('the step budget', () => {
       'NA19240#1#chr1',
     ].flatMap(name => rows(each).map(row => ({ ...row, name })))
     const window = { start: 250, end: 480 }
-    expect(stepBudgetError(four, 10, window, chunk, false)!.message).toBe(
+    expect(stepBudgetError(four, 10, 1, window, chunk, false)!.message).toBe(
       'Zoom in to about 50bp, or choose fewer haplotypes, to see the graph',
     )
-    expect(stepBudgetError(four, 10, window, chunk, true)!.message).toBe(
+    expect(stepBudgetError(four, 10, 1, window, chunk, true)!.message).toBe(
       'Zoom in to about 50bp to see the graph',
     )
   })
@@ -190,13 +192,14 @@ describe('the step budget', () => {
         [100, 50],
         [200, 3],
       ]),
-      10,
+      5,
+      2,
       { start: 250, end: 280 },
       chunk,
       true,
     )!
-    expect(error.message).toMatch(
-      /to draw these haplotypes.*choose fewer haplotypes/,
+    expect(error.message).toBe(
+      'Too many haplotype steps here to draw these haplotypes (50 steps read, over 2 × walkStepBudget of 5); choose fewer haplotypes',
     )
   })
 })

@@ -2,7 +2,6 @@ import {
   backboneNodes,
   backboneSpan,
 } from '@jbrowse/bandage-core/anchoredNodes'
-import { nodeReferenceSpan } from '@jbrowse/bandage-core/referenceSpan'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { getContainingView, getSession } from '@jbrowse/core/util'
 
@@ -25,6 +24,27 @@ import { isLinearHost } from '../host'
 import type { LinearHost } from '../host'
 
 export const withLaunchViews = withGraphViews
+  .views(self => ({
+    // The linear view this pane draws inside, when a display hosts it: x is
+    // that view's window and the cut is re-made when the window leaves it.
+    // A pane that is a view of its own has none.
+    get host(): LinearHost | undefined {
+      let view: unknown
+      try {
+        view = getContainingView(self)
+      } catch {
+        return undefined
+      }
+      return isLinearHost(view) ? view : undefined
+    },
+  }))
+  .views(self => ({
+    // the linear view a node's "show" and "highlight" move: the host, else
+    // the view a graph of its own is paired with
+    get pairedViewId() {
+      return self.host?.id ?? self.connectedViewId
+    },
+  }))
   .views(self => ({
     // Every assembly this graph names a segment from, with the locus each one
     // contributes here. rGFA's SN tag is what makes this knowable: the graph
@@ -123,7 +143,7 @@ export const withLaunchViews = withGraphViews
         region !== undefined &&
         linearViewTarget({
           views: [...getSession(self).views],
-          connectedViewId: self.connectedViewId,
+          connectedViewId: self.pairedViewId,
           assemblyName: region.assemblyName,
         }) !== undefined
       )
@@ -139,12 +159,7 @@ export const withLaunchViews = withGraphViews
         ? resolveLocationAssembly(self.assemblyResolver, own)
         : undefined
       const region = self.graphRegion
-      const nodeById = self.nodeById
-      const neighbors = self.nodeNeighbors
-      const span =
-        region && nodeById && neighbors
-          ? nodeReferenceSpan({ nodeId, nodeById, neighbors })
-          : undefined
+      const span = region ? self.nodeSpan(nodeId) : undefined
       const onReference =
         region && span
           ? {
@@ -173,19 +188,5 @@ export const withLaunchViews = withGraphViews
             ? { location: onReference, assembly: region.assemblyName }
             : undefined,
       }
-    },
-  }))
-  .views(self => ({
-    // The linear view this pane draws inside, when a display hosts it: x is
-    // that view's window and the cut is re-made when the window leaves it.
-    // A pane that is a view of its own has none.
-    get host(): LinearHost | undefined {
-      let view: unknown
-      try {
-        view = getContainingView(self)
-      } catch {
-        return undefined
-      }
-      return isLinearHost(view) ? view : undefined
     },
   }))

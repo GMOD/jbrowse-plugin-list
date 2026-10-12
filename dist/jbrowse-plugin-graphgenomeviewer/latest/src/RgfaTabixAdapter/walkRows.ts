@@ -2,6 +2,9 @@ import { NodeLimitError } from '@jbrowse/bandage-core/gbzWindow'
 import { panSNMatchesPrefix } from '@jbrowse/bandage-core/pansn'
 import { getBpDisplayStr } from '@jbrowse/core/util'
 
+import { placeAndLink } from './walkFormat2.ts'
+
+import type { Format2Chunk } from './walkFormat2.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 
 // A walk-indexed graph is three tabix files filed under fixed chunks of each
@@ -26,6 +29,8 @@ export interface WalkRow {
   piece: number
   n: number
   enc: string
+  // a format-2 row's steps, decoded with its chunk
+  steps?: { ids: Int32Array; rev: Uint8Array }
   chunkStart: number
   prev?: WalkChunk
   next?: WalkChunk
@@ -92,6 +97,8 @@ export function parseWalkRow(line: string): WalkRow {
 }
 
 export interface WalkHeader {
+  // 2 for gfa-to-tabix's format 2 (format:i:2); format 1 states none
+  format?: number
   chunk?: number
   maxNode?: number
   references: string[]
@@ -119,6 +126,7 @@ export function walkHeader(lines: string[]): WalkHeader {
     } else if (key === '#haplotype') {
       header.haplotypes.push(value)
     } else {
+      header.format ??= integerTag(line, 'format')
       header.chunk ??= integerTag(line, 'chunk')
       header.maxNode ??= integerTag(line, 'maxnode')
     }
@@ -232,7 +240,12 @@ function decodeRun(pieces: WalkRow[]): WalkRun {
   const rev = new Uint8Array(n)
   let at = 0
   for (const p of pieces) {
-    decodeSteps(p.enc, p.n, ids, rev, at)
+    if (p.steps) {
+      ids.set(p.steps.ids, at)
+      rev.set(p.steps.rev, at)
+    } else {
+      decodeSteps(p.enc, p.n, ids, rev, at)
+    }
     at += p.n
   }
   const first = pieces[0]!
@@ -422,6 +435,8 @@ function tabs(line: string, n: number, out: number[]) {
 export class WalkGraph {
   readonly nodes = new Map<number, WalkNode>()
   private links: number[] = []
+  // format 2's chunks, whose nodes off R and links tables() fills in
+  private readonly format2: Format2Chunk[] = []
   private readonly t: number[] = []
 
   constructor(private window: WalkWindow) {}
@@ -430,23 +445,38 @@ export class WalkGraph {
     const t = tabs(line, 8, this.t)
     const id = +line.slice(t[2]! + 1, t[3])
     if (!this.nodes.has(id)) {
-      const rank = +line.slice(t[3]! + 1, t[4])
-      const refName = line.slice(t[4]! + 1, t[5])
-      const start = +line.slice(t[5]! + 1, t[6])
-      const end = +line.slice(t[6]! + 1, t[7] === -1 ? undefined : t[7])
-      const { window } = this
-      this.nodes.set(id, {
-        rank,
-        refName,
-        start,
-        end,
-        onWindow:
-          rank === 0 &&
-          refName === window.refName &&
-          end > window.start - window.context &&
-          start < window.end + window.context,
+      this.placeNode(id, {
+        rank: +line.slice(t[3]! + 1, t[4]),
+        refName: line.slice(t[4]! + 1, t[5]),
+        start: +line.slice(t[5]! + 1, t[6]),
+        end: +line.slice(t[6]! + 1, t[7] === -1 ? undefined : t[7]),
       })
     }
+  }
+
+  // A node with its position, unless the cut already holds it
+  placeNode(id: number, node: Omit<WalkNode, 'onWindow'>) {
+    if (this.nodes.has(id)) {
+      return
+    }
+    const { window } = this
+    this.nodes.set(id, {
+      ...node,
+      onWindow:
+        node.rank === 0 &&
+        node.refName === window.refName &&
+        node.end > window.start - window.context &&
+        node.start < window.end + window.context,
+    })
+  }
+
+  // A link between two endpoints, each id * 2 + 1 when reversed
+  addLinkEnds(source: number, target: number) {
+    this.links.push(source, target)
+  }
+
+  addFormat2Chunk(chunk: Format2Chunk) {
+    this.format2.push(chunk)
   }
 
   // An endpoint is held as id * 2 + 1 when reversed
@@ -466,6 +496,21 @@ export class WalkGraph {
    * for the same rows.
    */
   tables(kept: Set<number>, fragments: WalkFragment[]): GraphTables {
+    if (this.format2.length > 0) {
+      placeAndLink(
+        this.format2,
+        kept,
+        (id, node) => {
+          const held = this.nodes.get(id)
+          if (held) {
+            this.nodes.set(id, { ...held, ...node })
+          }
+        },
+        (a, b) => {
+          this.links.push(a, b)
+        },
+      )
+    }
     const held: (WalkNode & { id: number })[] = []
     for (const id of kept) {
       const node = this.nodes.get(id)
@@ -587,8 +632,8 @@ function endpoint(line: string, from: number, to: number) {
 }
 
 /**
- * The zoom-in notice for a cut whose walk rows hold more steps than `budget`,
- * or undefined when they fit. A window reads whole chunks, those before it
+ * The zoom-in notice for a cut whose walk rows hold more steps than
+ * `readPerKept` times `stepBudget`, or undefined when they fit. A window reads whole chunks, those before it
  * included, so the span that fits is counted in chunks from the window's
  * start; when the chunks a window there always reads are over on their own,
  * no zoom fits and the notice asks for fewer haplotypes. A cut for every
@@ -597,7 +642,8 @@ function endpoint(line: string, from: number, to: number) {
  */
 export function stepBudgetError(
   rows: WalkRow[],
-  budget: number,
+  stepBudget: number,
+  readPerKept: number,
   window: { start: number; end: number },
   chunk: number,
   filtered: boolean,
@@ -610,6 +656,7 @@ export function stepBudgetError(
     perChunk.set(row.chunkStart, (perChunk.get(row.chunkStart) ?? 0) + row.n)
     walks.add(row.name)
   }
+  const budget = stepBudget * readPerKept
   if (total <= budget) {
     return undefined
   }
@@ -629,7 +676,7 @@ export function stepBudgetError(
   error.message =
     fitsBp > 0
       ? `Zoom in to about ${getBpDisplayStr(fitsBp)}${fewerFit ? ', or choose fewer haplotypes,' : ''} to see the graph`
-      : `Too many haplotype steps here to draw ${filtered ? 'these haplotypes' : 'every haplotype'} (${read.toLocaleString()} against walkStepBudget ${budget.toLocaleString()}); choose fewer haplotypes`
+      : `Too many haplotype steps here to draw ${filtered ? 'these haplotypes' : 'every haplotype'} (${read.toLocaleString()} steps read, over ${readPerKept} × walkStepBudget of ${stepBudget.toLocaleString()}); choose fewer haplotypes`
   return error
 }
 

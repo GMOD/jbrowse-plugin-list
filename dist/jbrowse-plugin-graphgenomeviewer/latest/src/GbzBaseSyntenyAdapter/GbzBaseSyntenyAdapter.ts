@@ -22,10 +22,11 @@ import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import { findCompanion } from './companion.ts'
 import { walkCutFor } from '../RgfaTabixAdapter/walkRowRuns.ts'
 import { GafFile } from '../gaf/gafFile.ts'
+import { locationIsSet } from '../locationName.ts'
 import { openTabixSlot } from '../panSNTabix.ts'
 import { ComparativeAdapterBase } from '../synteny/ComparativeAdapterBase.ts'
 import SyntenyFeature from '../synteny/SyntenyFeature.ts'
-import { requestedPairs } from '../synteny/lanePairs.ts'
+import { laneAssemblyName, requestedPairs } from '../synteny/lanePairs.ts'
 
 import type { GbzBaseSyntenyAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
@@ -42,11 +43,6 @@ import type {
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature, SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { FileLocation, Region } from '@jbrowse/core/util/types'
-
-export {
-  NoReferenceSampleError,
-  resolveReferenceSample,
-} from '@jbrowse/bandage-core/gbzWindow'
 
 export class NoHaplotypeIndexError extends Error {
   override name = 'NoHaplotypeIndexError'
@@ -74,7 +70,7 @@ export interface GbzHaplotype {
  * fetched features' mates carry, `label` its PanSN prefix and `group` its
  * sample, so a diploid sample's two lanes sit together
  */
-export interface GbzHeaderLane {
+interface GbzHeaderLane {
   name: string
   label: string
   group: string
@@ -82,7 +78,6 @@ export interface GbzHeaderLane {
 
 export { PairTargetError } from '../synteny/lanePairs.ts'
 export type { LanePair } from '../synteny/lanePairs.ts'
-export type GbzFeatureOptions = LaneFeatureOptions
 
 export class HaplotypeWindowError extends Error {
   override name = 'HaplotypeWindowError'
@@ -94,19 +89,7 @@ export class HaplotypeWindowError extends Error {
   }
 }
 
-/**
- * The lane a haplotype draws on: the JBrowse assembly the config maps to it at
- * haplotype or sample depth, else its own PanSN prefix. The fallback stays at
- * haplotype depth, unlike the multi-genome PAF adapters', because a diploid
- * sample's two walks are two lanes here.
- */
-export function laneAssemblyName(
-  asmByPrefix: Record<string, string>,
-  name: Pick<PathName, 'sample' | 'haplotype'>,
-) {
-  const prefix = haplotypePrefix(name)
-  return asmByPrefix[prefix] ?? asmByPrefix[name.sample] ?? prefix
-}
+type ResolvedAlignment = Extract<HaplotypeAlignment, { resolved: true }>
 
 /**
  * The id of one haplotype fragment: the walk's GBWT position at its first node
@@ -114,7 +97,7 @@ export function laneAssemblyName(
  * the same id on a refetch of the same window and the display's hover and
  * selection survive it. `clipToRegion` suffixes the window.
  */
-function fragmentId(name: PathName, alignment: HaplotypeAlignment) {
+function fragmentId(name: PathName, alignment: ResolvedAlignment) {
   return `${haplotypePrefix(name)}#${name.contig}@${alignment.start.node}.${alignment.start.offset}`
 }
 
@@ -124,13 +107,13 @@ export function fragmentFeature({
   refName,
   lane,
 }: {
-  alignment: HaplotypeAlignment
+  alignment: ResolvedAlignment
   assemblyName: string
   refName: string
   lane: string
 }) {
   const { refStart, refEnd, strand, cigar } = alignment
-  if (!alignment.resolved || refEnd <= refStart) {
+  if (refEnd <= refStart) {
     return undefined
   } else {
     const { name, hapStart, hapEnd } = alignment
@@ -210,7 +193,12 @@ export function widestWalkGap(subgraphs: Subgraph[], kept: Set<string>) {
       const prefix = haplotypePrefix(name)
       if (kept.has(prefix)) {
         const key = `${prefix}#${name.contig}`
-        byPath.set(key, [...(byPath.get(key) ?? []), [start, end]])
+        const spans = byPath.get(key)
+        if (spans) {
+          spans.push([start, end])
+        } else {
+          byPath.set(key, [[start, end]])
+        }
       }
     }
   }
@@ -243,16 +231,13 @@ const wholeBp = (region: Region) => ({
   end: Math.ceil(region.end),
 })
 
-const isSet = (location: FileLocation) =>
-  !('uri' in location) || location.uri !== ''
-
 export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBaseSyntenyAdapterConfig> {
   private graph = cachedSetup({
     label: 'Opening pangenome database',
     setup: async () => {
       const gbzDb: FileLocation = this.getConf('gbzDbLocation')
       const configured: FileLocation = this.getConf('haplotypeIndexLocation')
-      const companion = isSet(configured)
+      const companion = locationIsSet(configured)
         ? { location: configured }
         : await findCompanion(gbzDb, this.pluginManager)
       const indexLocation = companion.location
@@ -336,7 +321,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
     for (const haplotype of await this.getHaplotypes(opts)) {
       if (haplotype.sample !== referenceSample) {
         lanes.push({
-          name: laneAssemblyName(asmByPrefix, haplotype),
+          name: laneAssemblyName(asmByPrefix, haplotype.prefix),
           label: haplotype.prefix,
           group: haplotype.sample,
         })
@@ -447,10 +432,10 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
     setup: async () => {
       const location: FileLocation = this.getConf('readsLocation')
       const index: FileLocation = this.getConf(['readsIndex', 'location'])
-      return isSet(location)
+      return locationIsSet(location)
         ? new GafFile(
             openLocation(location, this.pluginManager),
-            isSet(index)
+            locationIsSet(index)
               ? openTabixSlot(this, ['readsLocation'], ['readsIndex'])
               : undefined,
           )
@@ -482,7 +467,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
     )
   }
 
-  private async anchorFeatures(region: Region, opts: GbzFeatureOptions) {
+  private async anchorFeatures(region: Region, opts: LaneFeatureOptions) {
     const { db } = await this.graph(opts)
     const { assemblyName, refName, start, end } = region
     const targetPrefix = resolvePanSNPrefix(this, opts.targetAssemblyName)
@@ -520,7 +505,10 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
             alignment,
             assemblyName,
             refName,
-            lane: laneAssemblyName(asmByPrefix, alignment.name),
+            lane: laneAssemblyName(
+              asmByPrefix,
+              haplotypePrefix(alignment.name),
+            ),
           })
         : undefined
       return feature === undefined ? [] : [feature]
@@ -539,7 +527,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
   private async pairFeatures(
     region: Region,
     pairs: LanePair[],
-    opts: GbzFeatureOptions,
+    opts: LaneFeatureOptions,
   ) {
     const { db } = await this.graph(opts)
     const { refName, start, end } = region
@@ -623,7 +611,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
     )
   }
 
-  getFeatures(asked: Region, opts: GbzFeatureOptions = {}) {
+  getFeatures(asked: Region, opts: LaneFeatureOptions = {}) {
     const region = wholeBp(asked)
     return ObservableCreate<Feature>(async observer => {
       const { db, anchor, unreadableIndex } = await this.graph(opts)

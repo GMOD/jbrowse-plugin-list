@@ -18,6 +18,7 @@ import Adapter from '../GbzBaseSyntenyAdapter/GbzBaseSyntenyAdapter'
 import configSchema from '../GbzBaseSyntenyAdapter/configSchema'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
 import GraphTrackF from '../GraphTrack/index'
+import WalkTabixSyntenyAdapterF from '../WalkTabixSyntenyAdapter/index'
 
 import type { AssemblyAliases } from './trackAdapterConfig'
 import type { SyntenyMate } from '@jbrowse/synteny-core'
@@ -147,96 +148,100 @@ describe('the lanes the adapter reads with that map', () => {
 
 // Core's display stood in for by BaseDisplay, which is where its
 // `adapterConfig` comes from
-test("a core synteny display under a lanes track hands its requests the session's aliases", () => {
-  const pluginManager = new PluginManager()
-  GbzBaseSyntenyAdapterF(pluginManager)
-  pluginManager.addDisplayType(() => {
-    const displaySchema = ConfigurationSchema(
-      'MultiWaySyntenyDisplay',
-      {},
-      { explicitlyTyped: true, explicitIdentifier: 'displayId' },
-    )
-    return new DisplayType({
-      name: 'MultiWaySyntenyDisplay',
-      configSchema: displaySchema,
-      stateModel: types.compose(
+test.each(['GbzBaseSyntenyAdapter', 'WalkTabixSyntenyAdapter'])(
+  "a core synteny display under a %s lanes track hands its requests the session's aliases",
+  type => {
+    const pluginManager = new PluginManager()
+    GbzBaseSyntenyAdapterF(pluginManager)
+    WalkTabixSyntenyAdapterF(pluginManager)
+    pluginManager.addDisplayType(() => {
+      const displaySchema = ConfigurationSchema(
         'MultiWaySyntenyDisplay',
-        BaseDisplay,
-        types.model({
-          type: types.literal('MultiWaySyntenyDisplay'),
-          configuration: ConfigurationReference(displaySchema),
-        }),
-      ),
-      trackType: 'GraphTrack',
-      viewType: 'LinearGenomeView',
-      ReactComponent: () => null,
-    })
-  })
-  GraphTrackF(pluginManager)
-  PanSNAliasesF(pluginManager)
-  pluginManager.addViewType(
-    () =>
-      new ViewType({
-        name: 'LinearGenomeView',
-        stateModel: linearGenomeViewStateModelFactory(pluginManager),
+        {},
+        { explicitlyTyped: true, explicitIdentifier: 'displayId' },
+      )
+      return new DisplayType({
+        name: 'MultiWaySyntenyDisplay',
+        configSchema: displaySchema,
+        stateModel: types.compose(
+          'MultiWaySyntenyDisplay',
+          BaseDisplay,
+          types.model({
+            type: types.literal('MultiWaySyntenyDisplay'),
+            configuration: ConfigurationReference(displaySchema),
+          }),
+        ),
+        trackType: 'GraphTrack',
+        viewType: 'LinearGenomeView',
         ReactComponent: () => null,
-      }),
-  )
-  pluginManager.createPluggableElements()
-  pluginManager.configure()
-
-  const track = pluginManager.pluggableConfigSchemaType('track').create(
-    {
-      type: 'GraphTrack',
-      trackId: 'lanes',
-      name: 'lanes',
-      assemblyNames: ['hg38', 'HG00621.1'],
-      adapter: { ...GBZ, assemblyNameToPanSN: { hg38: 'GRCh38#0' } },
-      displays: [
-        { type: 'MultiWaySyntenyDisplay', displayId: 'lanes-multiway' },
-      ],
-    },
-    { pluginManager },
-  )
-  const LinearGenomeView =
-    pluginManager.getViewType('LinearGenomeView').stateModel
-  const Session = types
-    .model({
-      view: LinearGenomeView,
-      configuration: types.map(types.frozen()),
+      })
     })
-    .volatile(() => ({
-      rpcManager: {},
-      assemblyManager: {
-        assemblyList: [{ name: 'hg38', aliases: ['GRCh38'] }, HG00621_1],
-        get: () => undefined,
-        has: () => true,
-        isValidRefName: () => true,
+    GraphTrackF(pluginManager)
+    PanSNAliasesF(pluginManager)
+    pluginManager.addViewType(
+      () =>
+        new ViewType({
+          name: 'LinearGenomeView',
+          stateModel: linearGenomeViewStateModelFactory(pluginManager),
+          ReactComponent: () => null,
+        }),
+    )
+    pluginManager.createPluggableElements()
+    pluginManager.configure()
+
+    const track = pluginManager.pluggableConfigSchemaType('track').create(
+      {
+        type: 'GraphTrack',
+        trackId: 'lanes',
+        name: 'lanes',
+        assemblyNames: ['hg38', 'HG00621.1'],
+        adapter: { ...GBZ, type, assemblyNameToPanSN: { hg38: 'GRCh38#0' } },
+        displays: [
+          { type: 'MultiWaySyntenyDisplay', displayId: 'lanes-multiway' },
+        ],
       },
-    }))
-    .views(() => ({
-      get tracks() {
-        return [track]
+      { pluginManager },
+    )
+    const LinearGenomeView =
+      pluginManager.getViewType('LinearGenomeView').stateModel
+    const Session = types
+      .model({
+        view: LinearGenomeView,
+        configuration: types.map(types.frozen()),
+      })
+      .volatile(() => ({
+        rpcManager: {},
+        assemblyManager: {
+          assemblyList: [{ name: 'hg38', aliases: ['GRCh38'] }, HG00621_1],
+          get: () => undefined,
+          has: () => true,
+          isValidRefName: () => true,
+        },
+      }))
+      .views(() => ({
+        get tracks() {
+          return [track]
+        },
+        getTrackById(id: string) {
+          return readConfObject(track, 'trackId') === id ? track : undefined
+        },
+        getDisplayTypeDefault(): unknown {
+          return undefined
+        },
+      }))
+    const session = Session.create(
+      {
+        view: { type: 'LinearGenomeView', tracks: [] },
+        configuration: {},
       },
-      getTrackById(id: string) {
-        return readConfObject(track, 'trackId') === id ? track : undefined
-      },
-      getDisplayTypeDefault(): unknown {
-        return undefined
-      },
-    }))
-  const session = Session.create(
-    {
-      view: { type: 'LinearGenomeView', tracks: [] },
-      configuration: {},
-    },
-    { pluginManager },
-  )
-  session.view.showTrack('lanes')
-  const display = session.view.tracks[0]!.displays[0]!
-  expect(display.type).toBe('MultiWaySyntenyDisplay')
-  expect(display.adapterConfig.assemblyNameToPanSN).toEqual({
-    'HG00621.1': 'HG00621#1',
-    hg38: 'GRCh38#0',
-  })
-})
+      { pluginManager },
+    )
+    session.view.showTrack('lanes')
+    const display = session.view.tracks[0]!.displays[0]!
+    expect(display.type).toBe('MultiWaySyntenyDisplay')
+    expect(display.adapterConfig.assemblyNameToPanSN).toEqual({
+      'HG00621.1': 'HG00621#1',
+      hg38: 'GRCh38#0',
+    })
+  },
+)

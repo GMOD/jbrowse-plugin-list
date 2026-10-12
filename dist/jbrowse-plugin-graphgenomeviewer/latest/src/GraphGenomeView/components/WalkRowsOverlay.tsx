@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef } from 'react'
 
 import { walkRowsTree } from '@jbrowse/bandage-core/layout/walkRowDraw'
+import { getDpr } from '@jbrowse/bandage-core/renderer/canvas'
+import { autorun, computed } from 'mobx'
 import { observer } from 'mobx-react'
 
 import ElTree from './ElTree'
@@ -83,79 +85,77 @@ export function walkRowTrees(
 
 const canvasStyle = { ...svgStyle, overflow: undefined }
 
+// Repainted by an autorun, as the other overlay canvases are, so a pan moves
+// the bars in the same frame as the drawing. The spans are recut only when
+// the rows, the zoom or the ramp change.
 const WalkRowSpansCanvas = observer(function WalkRowSpansCanvas({
   model,
-  rows,
-  origin,
 }: {
   model: GraphPaneModel
-  rows: WalkRowsWithCalls['rows']
-  origin: number
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
-  const { scaleX, scaleY, translateX, translateY, paneWidth, canvasHeight } =
-    model
-  const place = model.walkRowPlacement
-  const pitch = model.walkRowPitch
-  const sections = model.walkRowGroups?.sections
-  const ramp = model.referenceRampDomain
-  const spans = useMemo(
-    () => walkRowSpans(rows, scaleX, ramp),
-    [rows, scaleX, ramp],
-  )
   useEffect(() => {
-    const canvas = ref.current
-    const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx || !place || !pitch) {
-      return
-    }
-    const dpr = window.devicePixelRatio || 1
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, paneWidth, canvasHeight)
-    const blocks = sections?.length
-      ? [
-          { first: 0, count: 1, rowY: place.rowY(0) },
-          ...sections.map(s => ({
-            first: s.first,
-            count: s.count,
-            rowY: place.rowY(s.first),
-          })),
-        ]
-      : [{ first: 0, count: rows.length, rowY: place.rowY(0) }]
-    paintWalkRowSpans(ctx, spans, {
-      scaleX,
-      scaleY,
-      translateX,
-      translateY,
-      width: paneWidth,
-      height: canvasHeight,
-      rowPx: pitch.rowPx,
-      barPx: pitch.barPx,
-      origin,
-      blocks,
+    const spans = computed(() => {
+      const bars = model.walkRowBars
+      return bars
+        ? walkRowSpans(
+            [bars.reference, ...bars.rows],
+            model.scaleX,
+            model.referenceRampDomain,
+          )
+        : undefined
     })
-  }, [
-    spans,
-    rows.length,
-    origin,
-    place,
-    pitch,
-    sections,
-    scaleX,
-    scaleY,
-    translateX,
-    translateY,
-    paneWidth,
-    canvasHeight,
-  ])
-  const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
+    return autorun(() => {
+      const canvas = ref.current
+      const ctx = canvas?.getContext('2d')
+      const bars = model.walkRowBars
+      const place = model.walkRowPlacement
+      const pitch = model.walkRowPitch
+      const painted = spans.get()
+      if (!canvas || !ctx || !bars || !place || !pitch || !painted) {
+        return
+      }
+      const width = model.paneWidth
+      const height = model.canvasHeight
+      const dpr = getDpr()
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, width, height)
+      const sections = model.walkRowGroups?.sections
+      const blocks = sections?.length
+        ? [
+            { first: 0, count: 1, rowY: place.rowY(0) },
+            ...sections.map(s => ({
+              first: s.first,
+              count: s.count,
+              rowY: place.rowY(s.first),
+            })),
+          ]
+        : [{ first: 0, count: bars.rows.length + 1, rowY: place.rowY(0) }]
+      paintWalkRowSpans(ctx, painted, {
+        scaleX: model.scaleX,
+        scaleY: model.scaleY,
+        translateX: model.translateX,
+        translateY: model.translateY,
+        width,
+        height,
+        rowPx: pitch.rowPx,
+        barPx: pitch.barPx,
+        origin: bars.origin,
+        blocks,
+      })
+    })
+  }, [model])
   return (
     <canvas
       ref={ref}
       data-testid="graph-walk-rows-spans"
-      width={Math.round(paneWidth * dpr)}
-      height={Math.round(canvasHeight * dpr)}
-      style={{ ...canvasStyle, width: paneWidth, height: canvasHeight }}
+      style={{
+        ...canvasStyle,
+        width: model.paneWidth,
+        height: model.canvasHeight,
+      }}
     />
   )
 })
@@ -172,19 +172,16 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
   const bars = model.walkRowBars
   const place = model.walkRowPlacement
   const pitch = model.walkRowPitch
-  const drawn = useMemo(
+  const bare = useMemo(
     () =>
       bars && {
-        all: [bars.reference, ...bars.rows],
-        bare: {
-          ...bars,
-          reference: { ...bars.reference, runs: [] },
-          rows: bars.rows.map(r => ({ ...r, runs: [] })),
-        },
+        ...bars,
+        reference: { ...bars.reference, runs: [] },
+        rows: bars.rows.map(r => ({ ...r, runs: [] })),
       },
     [bars],
   )
-  if (!bars || !drawn || !place || !pitch) {
+  if (!bars || !bare || !place || !pitch) {
     return null
   }
   const { paneWidth: width, canvasHeight } = model
@@ -207,13 +204,7 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
   }
   return (
     <>
-      {vector ? null : (
-        <WalkRowSpansCanvas
-          model={model}
-          rows={drawn.all}
-          origin={bars.origin}
-        />
-      )}
+      {vector ? null : <WalkRowSpansCanvas model={model} />}
       <svg
         style={svgStyle}
         width={width}
@@ -221,7 +212,7 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
         data-testid="graph-walk-rows"
       >
         {walkRowTrees(
-          vector ? bars : drawn.bare,
+          vector ? bars : bare,
           model.walkRowGroups?.sections ?? [],
           place.rowY,
           frame,

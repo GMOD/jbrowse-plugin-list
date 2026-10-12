@@ -142,9 +142,15 @@ test('a contributor resolves through an assembly alias, under its own name', () 
 })
 
 test('a locstring is 1-based inclusive', () => {
-  expect(locString({ sample: 'K12', refName: 'chr', start: 0, end: 100 })).toBe(
-    'chr:1-100',
-  )
+  expect(
+    locString({
+      sample: 'K12',
+      haplotype: undefined,
+      refName: 'chr',
+      start: 0,
+      end: 100,
+    }),
+  ).toBe('chr:1-100')
 })
 
 // HPRC release 2.1 names every node `sample#hap#contig`, so one sample is two

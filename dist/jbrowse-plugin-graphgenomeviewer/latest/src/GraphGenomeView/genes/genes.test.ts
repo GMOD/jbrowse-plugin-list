@@ -191,6 +191,20 @@ test('the gene track is the named one, else the annotation-looking one', () => {
   expect(pickGeneTrack(tracks.slice(0, 1), '')).toBeUndefined()
 })
 
+test('a repeat track is never the gene track unnamed, whatever its name says besides', () => {
+  const tracks = [
+    {
+      trackId: 'rmsk',
+      name: 'RepeatMasker annotation',
+      adapterType: 'Gff3TabixAdapter',
+    },
+    { trackId: 'genes', name: 'GENCODE', adapterType: 'Gff3TabixAdapter' },
+  ]
+  expect(pickGeneTrack(tracks, '')?.trackId).toBe('genes')
+  expect(pickGeneTrack(tracks.slice(0, 1), '')).toBeUndefined()
+  expect(pickGeneTrack(tracks, 'rmsk')?.trackId).toBe('rmsk')
+})
+
 // v1 covers chr1:0-10 and v2 chr1:10-20, each drawn as a straight 100-unit
 // line; a1 is an allele with no coordinates and gets nothing.
 const GFA = `S\tv1\t${'A'.repeat(10)}\tSN:Z:chr1\tSO:i:0\tSR:i:0

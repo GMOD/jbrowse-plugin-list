@@ -24,6 +24,19 @@ export function canonicalAssemblyName(session: TrackScanSession, name: string) {
   return manager?.has(name) ? (manager.get(name)?.name ?? name) : name
 }
 
+// The assemblies a track config covers, by canonical name
+export function trackAssemblies(
+  session: TrackScanSession,
+  track: AnyConfigurationModel,
+) {
+  const names: unknown = readConfObject(track, 'assemblyNames')
+  return Array.isArray(names)
+    ? names
+        .filter(n => typeof n === 'string')
+        .map(n => canonicalAssemblyName(session, n))
+    : []
+}
+
 export interface GraphLaunchSession extends TrackScanSession {
   addView: (type: string, snapshot?: Record<string, unknown>) => { id: string }
   // The session's own loader for a view whose state model is registered
@@ -199,26 +212,18 @@ export function highlightInLinearView({
   return target !== undefined
 }
 
-// Which assemblies a track config says it covers, for deciding whether a panel
-// can draw it at all. A trackId naming nothing in the session reads as covering
-// nothing, so a stale id drops the lane rather than adding one the panel would
-// fail to load.
+// Which assemblies a track covers, for deciding whether a panel can draw it at
+// all. A trackId naming nothing in the session reads as covering nothing, so a
+// stale id drops the lane rather than adding one the panel would fail to load.
 function assemblyNamesOfTrack(
   session: GraphLaunchSession,
   trackId: string | undefined,
 ) {
-  if (trackId === undefined) {
-    return []
-  }
-  const track = session.tracks.find(
-    t => readConfObject(t, 'trackId') === trackId,
-  )
-  const names: unknown = track ? readConfObject(track, 'assemblyNames') : []
-  return Array.isArray(names)
-    ? names
-        .filter(n => typeof n === 'string')
-        .map(n => canonicalAssemblyName(session, n))
-    : []
+  const track =
+    trackId === undefined
+      ? undefined
+      : session.tracks.find(t => readConfObject(t, 'trackId') === trackId)
+  return track ? trackAssemblies(session, track) : []
 }
 
 // One panel per contributing assembly, each framed on the locus that assembly

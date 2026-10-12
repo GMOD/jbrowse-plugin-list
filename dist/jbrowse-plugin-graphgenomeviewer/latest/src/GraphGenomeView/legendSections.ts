@@ -42,6 +42,9 @@ export const BAR_PX = 48
 
 // getNodeColor's grey for a node the ramp cannot place
 export const UNPLACED_SWATCH = 'rgb(160, 160, 160)'
+// LIFT_BACKDROP_CSS reads paler alone than faded strokes do where they
+// overlap, so the key samples it darker
+const FADED_SWATCH = 'rgba(160, 160, 160, 0.45)'
 
 const STRIP_SAMPLES = 6
 const TUBE_SWATCH_PX = 7
@@ -496,13 +499,21 @@ function walkReadoutRows(model: GraphPaneModel): LegendRow[] {
           ),
         ]
       : []),
-    fillRow(
-      'faded',
-      LIFT_BACKDROP_CSS,
-      `not on ${model.liftedWalksLabel}`,
-      width,
-    ),
+    fillRow('faded', FADED_SWATCH, `not on ${model.liftedWalksLabel}`, width),
   ]
+}
+
+// The faceted pane's one key line under its panels: each panel's title keys
+// its walk, so this keys only what every panel greys
+export function facetKeyRows(model: GraphPaneModel): LegendRow[] {
+  return model.facetPanels
+    ? [
+        ...(model.liftPaintsOffReference
+          ? [fillRow('lift-off', REFERENCE_RAMP_ALT_CSS, 'off the reference')]
+          : []),
+        fillRow('faded', FADED_SWATCH, "not on the panel's walk"),
+      ]
+    : []
 }
 
 // The keys in the order the panel stacks them, top first

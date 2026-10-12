@@ -14,6 +14,7 @@ import type { MenuItem } from '@jbrowse/core/ui'
 function contributor(sample: string, rank: number, start = 1000): Contributor {
   return {
     sample,
+    haplotype: undefined,
     refName: 'chr',
     start,
     end: start + 5000,
@@ -57,6 +58,7 @@ function linearView(id: string, assemblyNames: string[]) {
 
 const K12_LOCATION = {
   sample: 'K12',
+  haplotype: undefined,
   refName: 'chr',
   start: 1000,
   end: 6000,

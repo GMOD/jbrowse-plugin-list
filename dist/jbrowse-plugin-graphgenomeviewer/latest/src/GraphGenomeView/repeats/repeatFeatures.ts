@@ -43,7 +43,7 @@ export const REPEAT_ADAPTER_TYPES = new Set([
   'VcfTabixAdapter',
 ])
 
-const REPEAT_TRACK_HINT =
+export const REPEAT_TRACK_HINT =
   /repeat|tandem|\bstr\b|vntr|trf|trgt|vamos|expansion|microsat/i
 
 export function pickRepeatTrack<

@@ -11,6 +11,8 @@ import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
 import { linkKey, parseLinkLine } from './rgfaBed.ts'
 
+import type { WalkCut } from './walkRowRuns.ts'
+
 // Built by `gfa-to-tabix --layout contig` from the minigraph rGFA of four E. coli
 // strains at jbrowse.org/demos/ecoli_pangenome/ecoli_rgfa_slice.gfa (the
 // pangenome tutorial's figure data): 161 segments across four stable sequences,
@@ -19,6 +21,13 @@ import { linkKey, parseLinkLine } from './rgfaBed.ts'
 const prefix = require
   .resolve('./test_data/rgfa_ecoli.segs.bed.gz')
   .replace(/\.segs\.bed\.gz$/, '')
+
+function gfaText(cut: string | WalkCut) {
+  if (typeof cut !== 'string') {
+    throw new Error('expected a GFA text cut')
+  }
+  return cut
+}
 
 function makeAdapter() {
   const local = (path: string) => ({
@@ -125,8 +134,8 @@ test('getSubgraph context adds another hop', async () => {
       .filter(l => l.startsWith('S'))
       .map(l => l.split('\t')[1]!)
 
-  const near = ids(await adapter.getSubgraph(k12))
-  const far = ids(await adapter.getSubgraph(k12, { hops: 1 }))
+  const near = ids(gfaText(await adapter.getSubgraph(k12)))
+  const far = ids(gfaText(await adapter.getSubgraph(k12, { hops: 1 })))
   expect(far.length).toBeGreaterThan(near.length)
   expect(far).toEqual(expect.arrayContaining(near))
 })
@@ -164,9 +173,11 @@ test('getSubgraph holds every link between two of its segments', async () => {
   for (const hops of [1, 2]) {
     for (let start = 993_000; start < 1_315_000; start += 4000) {
       const { held, expected } = among(
-        await adapter.getSubgraph(
-          { ...k12, start, end: start + 8000 },
-          { hops },
+        gfaText(
+          await adapter.getSubgraph(
+            { ...k12, start, end: start + 8000 },
+            { hops },
+          ),
         ),
       )
       expect([...expected].filter(key => !held.has(key))).toEqual([])
@@ -279,7 +290,7 @@ test('getFeatures carries SM:Z: onto the feature', async () => {
 // synthesized S-line, and rgfaBed.test.ts asserts that from a hand-written row.
 // This is the same claim against a real indexed file.
 test('getSubgraph keeps the tag on the S-line it synthesizes', async () => {
-  const gfa = await makePggbAdapter().getSubgraph(is5)
+  const gfa = gfaText(await makePggbAdapter().getSubgraph(is5))
   expect(gfa.split('\n')).toContain(
     'S\t196827\t*\tLN:i:1199\tSN:Z:K12#1#chr\tSO:i:1299498\tSR:i:0\tSM:Z:K12.1',
   )
@@ -339,7 +350,9 @@ test('without the mapping the same query resolves nothing', async () => {
 })
 
 test('getSubgraph resolves through the mapping too', async () => {
-  const gfa = await makeMappedAdapter({ ecoli_k12: 'K12' }).getSubgraph(renamed)
+  const gfa = gfaText(
+    await makeMappedAdapter({ ecoli_k12: 'K12' }).getSubgraph(renamed),
+  )
   expect(gfa.split('\n').filter(l => l.startsWith('S')).length).toBeGreaterThan(
     0,
   )
@@ -380,9 +393,9 @@ const k12Span = {
 
 test("getSubgraph with tier: 'coarse' cuts the coarse pair", async () => {
   const adapter = makeTieredAdapter()
-  const fine = parseGFA(await adapter.getSubgraph(k12Span))
+  const fine = parseGFA(gfaText(await adapter.getSubgraph(k12Span)))
   const coarse = parseGFA(
-    await adapter.getSubgraph(k12Span, { tier: 'coarse' }),
+    gfaText(await adapter.getSubgraph(k12Span, { tier: 'coarse' })),
   )
   const bubbles = coarse.nodes.filter(n => n.tags.ct === 'bubble')
   expect(bubbles).toHaveLength(14)
@@ -474,8 +487,10 @@ test('an anchored index lists segments on the queried sequence only', async () =
 })
 
 test('an anchored index returns the whole cut without hops', async () => {
-  const walked = segmentIds(await makeAdapter().getSubgraph(k12, { hops: 20 }))
-  const anchored = await makeAnchoredAdapter().getSubgraph(k12)
+  const walked = segmentIds(
+    gfaText(await makeAdapter().getSubgraph(k12, { hops: 20 })),
+  )
+  const anchored = gfaText(await makeAnchoredAdapter().getSubgraph(k12))
   expect(segmentIds(anchored)).toEqual(expect.arrayContaining(walked))
   expect(await makeAnchoredAdapter().getSubgraph(k12, { hops: 3 })).toBe(
     anchored,
@@ -490,7 +505,9 @@ test('an anchored cut holds every link between two of its segments', async () =>
     .map(line => parseLinkLine(line))
   const adapter = makeAnchoredAdapter()
   for (let start = 900000; start < 1100000; start += 10000) {
-    const gfa = await adapter.getSubgraph({ ...k12, start, end: start + 10000 })
+    const gfa = gfaText(
+      await adapter.getSubgraph({ ...k12, start, end: start + 10000 }),
+    )
     const held = new Set(segmentIds(gfa))
     const drawn = new Set(
       gfa
@@ -609,7 +626,7 @@ test('an anchored cut equals the cut worked out from the whole graph', async () 
   for (const width of [1, 500, 10000, 150000]) {
     for (let start = 880000; start < 1120000; start += 7001) {
       const end = start + width
-      const gfa = await adapter.getSubgraph({ ...k12, start, end })
+      const gfa = gfaText(await adapter.getSubgraph({ ...k12, start, end }))
       const drawn = gfa
         .split('\n')
         .filter(l => l.startsWith('L'))
@@ -628,11 +645,13 @@ test('an anchored cut equals the cut worked out from the whole graph', async () 
 // s325 links straight to s327, a deletion of s326. A window inside s326
 // touches neither end, and the link is drawn all the same.
 test('an anchored cut keeps a backbone link that jumps the window', async () => {
-  const gfa = await makeAnchoredAdapter().getSubgraph({
-    ...k12,
-    start: 1007700,
-    end: 1007710,
-  })
+  const gfa = gfaText(
+    await makeAnchoredAdapter().getSubgraph({
+      ...k12,
+      start: 1007700,
+      end: 1007710,
+    }),
+  )
   expect(gfa).toContain('L\ts325\t+\ts327\t+\t0M')
   const drawn = gfa
     .split('\n')

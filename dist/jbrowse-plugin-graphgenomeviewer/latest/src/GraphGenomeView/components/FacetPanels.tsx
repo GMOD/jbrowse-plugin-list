@@ -8,7 +8,8 @@ import { observer } from 'mobx-react'
 import { hoverLayerStyle } from './HoverLayer'
 import { LegendRowView } from './Legend'
 import { useWheelZoom } from './usePaneGestures'
-import { walkKeyRow } from '../legendSections'
+import { facetKeyRows, walkKeyRow } from '../legendSections'
+import { FACET_KEY_ROW_PX } from '../pane/fitViews'
 
 import type { PaneHandlers } from './usePaneGestures'
 import type { GraphPaneModel } from '../model'
@@ -44,6 +45,17 @@ const titleStyle = {
 }
 
 const panelStyle = { position: 'relative' as const }
+
+const keyStyle = {
+  gridColumn: '1 / -1',
+  height: FACET_KEY_ROW_PX,
+  padding: '2px 6px',
+  boxSizing: 'border-box' as const,
+  display: 'flex',
+  gap: 14,
+  fontSize: 11,
+  lineHeight: '15px',
+}
 
 const FacetPanel = observer(function FacetPanel({
   model,
@@ -181,6 +193,17 @@ const FacetPanels = observer(function FacetPanels({
           handlers={handlers}
         />
       ))}
+      <div
+        style={{
+          ...keyStyle,
+          gridRow: Math.floor(Math.max(...place.cells) / columns) + 2,
+        }}
+        data-testid="graph-facet-key"
+      >
+        {facetKeyRows(model).map(row => (
+          <LegendRowView key={row.key} row={row} />
+        ))}
+      </div>
     </div>
   )
 })

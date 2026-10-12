@@ -1,9 +1,11 @@
-import { panSNHaplotype, resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
+import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
+import { locationIsSet } from '../locationName.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
+import { getLines } from '../tabixRange.ts'
 import {
   anchoredCut,
   closingLinks,
@@ -14,10 +16,8 @@ import {
   parseSegmentRow,
   segmentSamples,
 } from './rgfaBed.ts'
-import { getLines } from './tabixRange.ts'
-import { WalkReader } from './walkReader.ts'
-import { walkCutFor } from './walkRowRuns.ts'
-import { walkNameFilter } from './walkRows.ts'
+import { referenceNodes } from './walkFormat2.ts'
+import { WalkReader, walkSubgraph } from './walkReader.ts'
 
 import type { RgfaTabixAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions, SubgraphTier } from '../GetSubgraph.ts'
@@ -70,11 +70,9 @@ interface GraphIndex {
   segments: TabixIndexedFile
   links: TabixIndexedFile
   walks?: WalkReader
+  walkFile?: TabixIndexedFile
   refNames: PanSNRefNames
 }
-
-// How much graph a walk cut keeps around the window, on the reference
-const WALK_CONTEXT = 1000
 
 export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAdapterConfig> {
   public static capabilities = ['getFeatures', 'getRefNames']
@@ -93,7 +91,8 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
 
   // refNames off the SEGMENT index: it is the one that names every stable
   // sequence the graph is anchored to, where the link index only names those a
-  // link touches.
+  // link touches. A walk-indexed graph's walk file names the same sequences,
+  // and format 2 has no segment file.
   private openIndex(under: string[]): GraphIndex {
     const segments = openTabixSlot(
       this,
@@ -101,28 +100,26 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       [...under, 'segmentsIndex'],
     )
     const walksLocation: FileLocation = this.getConf('walksLocation')
-    const hasWalks =
-      under.length === 0 &&
-      (!('uri' in walksLocation) || walksLocation.uri !== '')
+    const hasWalks = under.length === 0 && locationIsSet(walksLocation)
     const links = openTabixSlot(
       this,
       [...under, 'linksLocation'],
       [...under, 'linksIndex'],
     )
+    const walkFile = hasWalks
+      ? openTabixSlot(this, ['walksLocation'], ['walksIndex'])
+      : undefined
     return {
       segments,
       links,
-      walks: hasWalks
+      walkFile,
+      walks: walkFile
         ? new WalkReader(
-            {
-              walks: openTabixSlot(this, ['walksLocation'], ['walksIndex']),
-              nodes: segments,
-              links,
-            },
+            { walks: walkFile, nodes: segments, links },
             this.getConf('walkChunk'),
           )
         : undefined,
-      refNames: new PanSNRefNames(segments, this),
+      refNames: new PanSNRefNames(walkFile ?? segments, this),
     }
   }
 
@@ -158,9 +155,52 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       if (tabixRefName !== undefined) {
         // a walk-indexed node row names only its chunk's first base, and a
         // node crossing in from a chunk before is filed there
-        const start = this.fine.walks
-          ? await this.fine.walks.queryStart(query.start, opts)
+        const { walks, walkFile } = this.fine
+        const start = walks
+          ? await walks.queryStart(query.start, opts)
           : query.start
+        if (walkFile && (await walks?.header(opts))?.format === 2) {
+          // a format-2 graph's reference nodes are its ref rows' steps
+          const refRows: string[][] = []
+          await updateStatus('Downloading walks', statusCallback, () =>
+            getLines(walkFile, tabixRefName, start, query.end, {
+              signal,
+              lineCallback: line => {
+                const cols = line.split('\t')
+                if (cols[3] === 'ref') {
+                  refRows.push(cols)
+                }
+              },
+            }),
+          )
+          // as format 1's node rows do, every node of the chunks read that
+          // ends past the window's start
+          const seen = new Set<number>()
+          for (const node of referenceNodes(refRows)) {
+            if (
+              node.refName === tabixRefName &&
+              node.end > query.start &&
+              !seen.has(node.id)
+            ) {
+              seen.add(node.id)
+              const id = String(node.id)
+              observer.next(
+                new SimpleFeature({
+                  uniqueId: id,
+                  refName: query.refName,
+                  start: node.start,
+                  end: node.end,
+                  name: id,
+                  type: 'segment',
+                  rank: 0,
+                  stableName: node.refName,
+                }),
+              )
+            }
+          }
+          observer.complete()
+          return
+        }
         await updateStatus('Downloading segments', statusCallback, () =>
           getLines(this.fine.segments, tabixRefName, start, query.end, {
             signal,
@@ -168,8 +208,11 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
               const { segment, anchored } = parseSegmentRow(line)
               // An anchored index also returns the alleles under the region,
               // which lie on other stable sequences and have no place on this
-              // one.
-              if (anchored && segment.refName !== tabixRefName) {
+              // one; a lookback chunk returns nodes ending before it
+              if (
+                (anchored && segment.refName !== tabixRefName) ||
+                segment.end <= query.start
+              ) {
                 return
               }
               // `samples` lists the haplotypes whose paths visit the segment and
@@ -251,7 +294,13 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       )
     }
     if (index.walks) {
-      return this.walkSubgraph(index.walks, tabixRefName, region, opts)
+      return walkSubgraph(index.walks, tabixRefName, region, {
+        signal,
+        prefixes: opts.haplotypes?.map(lane => resolvePanSNPrefix(this, lane)),
+        walkRows: opts.walkRows,
+        stepBudget: this.getConf('walkStepBudget'),
+        byteBudget: this.getConf('walkByteBudget'),
+      })
     }
     const layout = { anchored: false }
     await getLines(index.segments, tabixRefName, region.start, region.end, {
@@ -324,25 +373,5 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     }
 
     return formatSubgraph(segments, links)
-  }
-
-  // Only the walks `haplotypes` asks for, and the reference's, are decoded
-  private async walkSubgraph(
-    walks: WalkReader,
-    refName: string,
-    region: Region,
-    opts: SubgraphAdapterOptions,
-  ) {
-    const { graph, kept, fragments } = await walks.cut(refName, region, {
-      signal: opts.signal,
-      keep: walkNameFilter(
-        opts.haplotypes?.map(lane => resolvePanSNPrefix(this, lane)),
-        panSNHaplotype(refName),
-      ),
-      stepBudget: opts.walkRows ? Infinity : this.getConf('walkStepBudget'),
-      byteBudget: this.getConf('walkByteBudget'),
-      context: WALK_CONTEXT,
-    })
-    return walkCutFor(graph.tables(kept, fragments), region, opts.walkRows)
   }
 }

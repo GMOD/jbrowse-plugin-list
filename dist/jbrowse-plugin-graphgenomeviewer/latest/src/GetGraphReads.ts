@@ -1,6 +1,8 @@
 import { getAdapter } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes'
 
+import { snapshotNamesFile } from './locationName.ts'
+
 import type { GafReads } from './gaf/gafFile'
 import type { RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry'
 
@@ -36,22 +38,12 @@ function isReadsAdapter(adapter: object): adapter is ReadsAdapter {
   )
 }
 
-const isNamed = (location: unknown) =>
-  typeof location === 'object' &&
-  location !== null &&
-  Object.entries(location).some(
-    ([key, value]) =>
-      ['uri', 'localPath', 'blobId'].includes(key) &&
-      typeof value === 'string' &&
-      value !== '',
-  )
-
 // Whether an adapter config as written names reads, so a graph without them
 // makes no round trip to ask
 export function namesReads(adapterConfig: Record<string, unknown>) {
   return (
     (typeof adapterConfig.reads === 'string' && adapterConfig.reads !== '') ||
-    isNamed(adapterConfig.readsLocation)
+    snapshotNamesFile(adapterConfig.readsLocation)
   )
 }
 

@@ -6,7 +6,6 @@ import {
   clampZoom,
   fittedTranslateY,
 } from '@jbrowse/bandage-core/pipeline'
-import { nodeReferenceSpan } from '@jbrowse/bandage-core/referenceSpan'
 import { zoomAbout } from '@jbrowse/bandage-core/viewport'
 import { getSession, isSessionModelWithWidgets } from '@jbrowse/core/util'
 import { isAlive } from '@jbrowse/mobx-state-tree'
@@ -79,6 +78,22 @@ export const withSettingActions = withFitViews
       self.translateY = t.translateY
     },
   }))
+  .actions(self => {
+    // a stated reference-position domain, kept through schemes that take
+    // none so switching back restores it
+    let keptDomain: typeof self.statedColorDomain
+    return {
+      setColorScheme(scheme: ColorScheme) {
+        if (
+          self.statedColorDomain ||
+          self.chosenColorScheme === 'reference-position'
+        ) {
+          keptDomain = self.statedColorDomain
+        }
+        self.writeGrammar({ color: colorOfScheme(scheme, keptDomain) })
+      },
+    }
+  })
   .actions(self => ({
     setError(error: unknown) {
       self.error = error
@@ -151,11 +166,6 @@ export const withSettingActions = withFitViews
     setShowPerf(show: boolean) {
       self.showPerf = show
     },
-    setColorScheme(scheme: ColorScheme) {
-      self.writeGrammar({
-        color: colorOfScheme(scheme, self.statedColorDomain),
-      })
-    },
     setBubbleSpread(spread: BubbleSpread) {
       self.bubbleSpread = spread
     },
@@ -225,9 +235,6 @@ export const withSettingActions = withFitViews
           },
         })
       }
-    },
-    setFacetColumns(columns: number | undefined) {
-      self.writeGrammar({ facet: { ...self.facetSetting, columns } })
     },
     toggleWalk(walk: string) {
       const layers = self.walkLayers
@@ -344,6 +351,10 @@ export const withSettingActions = withFitViews
     // is replaced, and by clearGraph.
     clearInteractionState() {
       self.hoveredNode = null
+      self.hoveredAt = null
+      self.hoveredTube = null
+      self.hoveredRowWalks = []
+      self.stripHover = null
       self.hoveredPanel = null
       self.hoveredWalkRow = null
       self.hoveredBubble = null
@@ -354,17 +365,13 @@ export const withSettingActions = withFitViews
     },
     showNodeDetails(nodeId: string) {
       const node = self.nodeById?.get(nodeId)
-      const nodeById = self.nodeById
-      const neighbors = self.nodeNeighbors
-      if (node && nodeById && neighbors) {
+      if (node) {
         const session = getSession(self)
         const region = self.graphRegion
         // refName/start/end are what makes the widget show a location rather
         // than a bare id, and they are the same span the linear view
         // highlights on hover.
-        const span = region
-          ? nodeReferenceSpan({ nodeId, nodeById, neighbors })
-          : undefined
+        const span = region ? self.nodeSpan(nodeId) : undefined
         if (isSessionModelWithWidgets(session)) {
           session.showWidget(
             session.addWidget('BaseFeatureWidget', 'baseFeature', {

@@ -153,11 +153,15 @@ test('a zoom drops a hover the pointer can no longer be over', async () => {
   expect(model.selectedNode).toBe('1+')
 })
 
-test('a pan drops it too', async () => {
+test('a pan drops it too, and the tube or walk row under the pointer', async () => {
   const model = await drawnModel()
   model.setHoveredNode('1+')
+  model.setHoveredTube({ track: 1 })
+  model.setHoveredWalkRow('A#1#ctg')
   model.setTransform(model.scale, model.translateX + 40, model.translateY)
   expect(model.hoveredNode).toBeNull()
+  expect(model.hoveredTube).toBeNull()
+  expect(model.hoveredWalkRow).toBeNull()
 })
 
 // The two signals name different events and are read by different consumers:

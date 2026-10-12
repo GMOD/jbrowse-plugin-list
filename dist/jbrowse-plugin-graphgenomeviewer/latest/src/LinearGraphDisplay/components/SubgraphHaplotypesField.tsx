@@ -27,11 +27,11 @@ const HaplotypeListField = observer(function HaplotypeListField({
 }: {
   model: LinearGraphCutModel
 }) {
-  const [draft, setDraft] = useState(model.chosenHaplotypes?.join(', ') ?? '')
+  const [draft, setDraft] = useState(model.cutHaplotypes?.join(', ') ?? '')
   const apply = () => {
     const parsed = parseHaplotypeList(draft) ?? []
     const unchanged =
-      parsed.join('\n') === (model.chosenHaplotypes ?? []).join('\n')
+      parsed.join('\n') === (model.cutHaplotypes ?? []).join('\n')
     if (!unchanged) {
       model.setSubgraphHaplotypes(parsed)
       void model.cut()
@@ -69,10 +69,10 @@ const HaplotypePickField = observer(function HaplotypePickField({
   model: LinearGraphCutModel
   names: string[]
 }) {
-  const [draft, setDraft] = useState(model.chosenHaplotypes ?? [])
+  const [draft, setDraft] = useState(model.cutHaplotypes ?? [])
   const [open, setOpen] = useState(false)
   const apply = (haplotypes: string[]) => {
-    if (haplotypes.join('\n') !== (model.chosenHaplotypes ?? []).join('\n')) {
+    if (haplotypes.join('\n') !== (model.cutHaplotypes ?? []).join('\n')) {
       model.setSubgraphHaplotypes(haplotypes)
       void model.cut()
     }
@@ -126,7 +126,7 @@ const SubgraphHaplotypesField = observer(function SubgraphHaplotypesField({
 }) {
   const { classes } = useStyles()
   const names = model.haplotypeNames
-  const key = model.chosenHaplotypes?.join(',') ?? ''
+  const key = model.cutHaplotypes?.join(',') ?? ''
   return cutsByHaplotype(model.adapterConfig) ? (
     <div className={classes.section}>
       {names ? (

@@ -14,9 +14,10 @@ import type { ComparativeOptions } from '@jbrowse/synteny-core'
  * What every adapter in this plugin answers the same way.
  *
  * `hasDataForRefName` is true unconditionally because deciding it properly is a
- * `getFeatures` — and it has to be true, or BaseFeatureDataAdapter filters the
- * track out and `getFeatures` is never called at all. Eight adapters carried
- * that method and its three-line explanation verbatim.
+ * `getFeatures`, and it has to be true, or BaseFeatureDataAdapter filters the
+ * track out and `getFeatures` is never called at all. The two feature
+ * adapters, RgfaTabixAdapter and MinigraphBubbleAdapter, answer it the same
+ * way on their own.
  *
  * Only the answers that do not depend on config live here. Anything reading a
  * slot stays in the concrete adapter, for the reason `getAssemblyNamesFromConf`

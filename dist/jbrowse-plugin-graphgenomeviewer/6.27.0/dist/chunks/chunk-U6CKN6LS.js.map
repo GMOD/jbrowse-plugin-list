@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/tabixRange.ts"],
+  "sourcesContent": ["import type { TabixIndexedFile } from '@gmod/tabix'\n\n// tabix-js loops forever on a NaN end and reads nothing for a NaN start\n// (GMOD/tabix-js#157), so every query refuses a range that is not finite first\nexport function checkRange(refName: string, start: number, end: number) {\n  if (!Number.isFinite(start) || !Number.isFinite(end)) {\n    throw new Error(\n      `${refName}:${start}-${end} is not a finite range to query the graph's index for`,\n    )\n  }\n}\n\nexport async function getLines(\n  file: TabixIndexedFile,\n  refName: string,\n  start: number,\n  end: number,\n  opts: {\n    signal?: AbortSignal\n    lineCallback: (line: string, fileOffset: number) => void\n  },\n) {\n  checkRange(refName, start, end)\n  return file.getLines(refName, start, end, opts)\n}\n"],
+  "mappings": "AAIO,SAASA,EAAWC,EAAiBC,EAAeC,EAAa,CACtE,GAAI,CAAC,OAAO,SAASD,CAAK,GAAK,CAAC,OAAO,SAASC,CAAG,EACjD,MAAM,IAAI,MACR,GAAGF,CAAO,IAAIC,CAAK,IAAIC,CAAG,uDAC5B,CAEJ,CAEA,eAAsBC,EACpBC,EACAJ,EACAC,EACAC,EACAG,EAIA,CACA,OAAAN,EAAWC,EAASC,EAAOC,CAAG,EACvBE,EAAK,SAASJ,EAASC,EAAOC,EAAKG,CAAI,CAChD",
+  "names": ["checkRange", "refName", "start", "end", "getLines", "file", "opts"]
+}

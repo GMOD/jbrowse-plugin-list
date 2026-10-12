@@ -6,13 +6,14 @@ import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
 import { EXON_COLOR } from './GenePins'
-import LabelChip from './LabelChip'
+import LabelChip, { inChip } from './LabelChip'
 
 import type { GraphPaneModel } from '../model'
 import type {
   BubbleHalo,
   RouteLabel,
 } from '@jbrowse/bandage-core/bubbles/bubbleHalos'
+import type { LabelLayout } from '@jbrowse/bandage-core/labelLayout'
 
 // Every chip drawn over the graph, above all of its ink: bubble names, gene
 // names on their pins, and the routes' walkers. `overlayLabels` has placed
@@ -30,6 +31,32 @@ const svgStyle = {
 const GENE_INK = '#1c1c22'
 const TICK_PX = 9
 const TICK_WIDTH = 3
+
+// What the gene or route chip under a point reads out, for the hover tooltip:
+// those chips leave the pointer to the canvas, so a drag can start on one
+export function chipReadoutAt(
+  { genes, routes }: Pick<LabelLayout, 'genes' | 'routes'>,
+  px: number,
+  py: number,
+) {
+  const pin = genes.find(chip => inChip(chip, px, py))?.item
+  if (pin) {
+    const { gene } = pin
+    const note = geneCoverageNote(pin)
+    return {
+      label: gene.name,
+      readout: `${gene.refName}:${gene.start.toLocaleString()}-${gene.end.toLocaleString()}${note ? `, ${note} in the cut` : ''}`,
+    }
+  }
+  const walks = routes.find(chip => inChip(chip, px, py))?.item.route.route
+    .walks
+  return walks
+    ? {
+        label: `${walks.length} walk${walks.length === 1 ? '' : 's'}`,
+        readout: walks.join(', '),
+      }
+    : undefined
+}
 
 const LabelLayer = observer(function LabelLayer({
   model,
@@ -97,7 +124,6 @@ const LabelLayer = observer(function LabelLayer({
       </g>
       {genes.map(({ item: pin, x, y, w, text }) => {
         const { gene } = pin
-        const note = geneCoverageNote(pin)
         return (
           <g key={`${gene.name}-${gene.start}`}>
             <line
@@ -118,7 +144,6 @@ const LabelLayer = observer(function LabelLayer({
               color={GENE_INK}
               edge={EXON_COLOR}
               italic
-              title={`${gene.name} ${gene.refName}:${gene.start.toLocaleString()}-${gene.end.toLocaleString()}${note ? `, ${note} in the cut` : ''}`}
               testId="graph-gene-pin-label"
             />
           </g>
@@ -134,7 +159,6 @@ const LabelLayer = observer(function LabelLayer({
           color={BUBBLE_KIND_COLORS[h.kind]}
           small
           dimmed={dimmedRoute(route)}
-          title={`${route.route.walks.length} walk(s): ${route.route.walks.join(', ')}`}
           testId="graph-route-label"
         />
       ))}

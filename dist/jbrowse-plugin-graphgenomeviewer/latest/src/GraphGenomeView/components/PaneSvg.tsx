@@ -13,6 +13,7 @@ import { paintTubeMap } from './TubeMapOverlay'
 import WalkRowsOverlay from './WalkRowsOverlay'
 import {
   SWATCH_PX,
+  facetKeyRows,
   legendSections,
   swatchWidth,
   walkKeyRow,
@@ -488,8 +489,18 @@ function Facets({
     return null
   }
   const { columns, width, height } = grid
+  const keyY = grid.total + FACET_GAP_PX + 14
+  const key = facetKeyRows(model).map((row, i) =>
+    svgRow(row, `${idPrefix}-facet-key-${i}`),
+  )
+  const keyX = key.map((_, i) =>
+    key.slice(0, i).reduce((x, row) => x + row.width + 14, 6),
+  )
   return (
     <>
+      <g transform={`translate(0 ${keyY})`}>
+        {key.map((row, i) => row.draw(keyX[i]!))}
+      </g>
       {panels.map((lift, i) => {
         const cell = place.cells[i]!
         const x = (cell % columns) * (width + FACET_GAP_PX)

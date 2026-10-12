@@ -1,5 +1,6 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
-import { types } from '@jbrowse/mobx-state-tree'
+
+import { tabixIndexSchema, tbiBeside } from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -30,10 +31,7 @@ export function normalizeSnapshot(snap: Record<string, unknown>) {
     ? {
         ...snap,
         bubblesLocation: { uri, baseUri },
-        index: {
-          indexType: csi ? 'CSI' : 'TBI',
-          location: { uri: `${uri}.${csi ? 'csi' : 'tbi'}`, baseUri },
-        },
+        index: tbiBeside(uri, baseUri, csi),
       }
     : snap
 }
@@ -54,26 +52,10 @@ const MinigraphBubbleAdapter = ConfigurationSchema(
     /**
      * #slot
      */
-    index: ConfigurationSchema('MinigraphBubbleIndex', {
-      /**
-       * #slot index.indexType
-       */
-      indexType: {
-        model: types.enumeration('IndexType', ['TBI', 'CSI']),
-        type: 'stringEnum',
-        defaultValue: 'TBI',
-      },
-      /**
-       * #slot index.location
-       */
-      location: {
-        type: 'fileLocation',
-        defaultValue: {
-          uri: '/path/to/graph.bb.bed.gz.tbi',
-          locationType: 'UriLocation',
-        },
-      },
-    }),
+    index: tabixIndexSchema(
+      'MinigraphBubbleIndex',
+      '/path/to/graph.bb.bed.gz.tbi',
+    ),
     /**
      * #slot
      * Maps a JBrowse assembly name to its PanSN sample prefix, for when they

@@ -8,6 +8,7 @@ import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
+import { getLines } from '../tabixRange.ts'
 
 import type { MinigraphBubbleAdapterConfig } from './configSchema.ts'
 import type PluginManager from '@jbrowse/core/PluginManager'
@@ -50,7 +51,7 @@ export default class MinigraphBubbleAdapter extends BaseFeatureDataAdapter<Minig
       const tabixRefName = await this.refNames.resolve(query, opts)
       if (tabixRefName !== undefined) {
         await updateStatus('Downloading bubbles', statusCallback, () =>
-          this.bubbles.getLines(tabixRefName, query.start, query.end, {
+          getLines(this.bubbles, tabixRefName, query.start, query.end, {
             signal,
             lineCallback: (line, fileOffset) => {
               const bubble = parseBubbleLine(line)

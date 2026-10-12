@@ -6,8 +6,10 @@ import {
   panSNSample,
   resolvePanSNPrefix,
 } from '@jbrowse/bandage-core/pansn'
+import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { cachedSetup } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { openLocation, openTabixIndexFilehandle } from '@jbrowse/core/util/io'
+import { types } from '@jbrowse/mobx-state-tree'
 
 import type {
   BaseFeatureDataAdapter,
@@ -35,6 +37,36 @@ import type { Region } from '@jbrowse/core/util/types'
 // over a small index: the segment and link files for a 5 Mb window are tens of
 // kB of compressed blocks, and re-fetching them per pan is the cost this avoids.
 const CHUNK_CACHE_SIZE = 50 * 2 ** 20
+
+/**
+ * The index slot `openTabixSlot` reads: its own `location` and `indexType`
+ */
+export const tabixIndexSchema = (name: string, defaultUri = '') =>
+  ConfigurationSchema(name, {
+    /**
+     * #slot
+     */
+    indexType: {
+      model: types.enumeration('IndexType', ['TBI', 'CSI']),
+      type: 'stringEnum',
+      defaultValue: 'TBI',
+    },
+    /**
+     * #slot
+     */
+    location: {
+      type: 'fileLocation',
+      defaultValue: { uri: defaultUri, locationType: 'UriLocation' },
+    },
+  })
+
+// The index slot's snapshot for a file whose `.tbi`, or `.csi`, sits beside it
+export function tbiBeside(uri: string, baseUri: unknown, csi: unknown) {
+  return {
+    indexType: csi ? 'CSI' : 'TBI',
+    location: { uri: `${uri}.${csi ? 'csi' : 'tbi'}`, baseUri },
+  }
+}
 
 // One indexed file from the pair of slots that names it: the data location, and
 // an index slot holding its own `location` and `indexType`. Paths, so the pair

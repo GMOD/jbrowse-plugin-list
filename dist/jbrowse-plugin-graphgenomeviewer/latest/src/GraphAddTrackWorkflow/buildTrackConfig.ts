@@ -1,7 +1,12 @@
 import { makeIndexType } from '@jbrowse/core/util/tracks'
 
 import { besideSegments } from './graphManifest'
-import { locationName, readsSiblings, renamed } from '../locationName'
+import {
+  SEGMENTS_SUFFIX,
+  locationName,
+  readsSiblings,
+  renamed,
+} from '../locationName'
 
 import type { GraphManifest } from './graphManifest'
 import type { FileLocation } from '@jbrowse/core/util'
@@ -31,8 +36,6 @@ export const GRAPH_INDEX_FIELDS: Record<GraphFileChoice, string> = {
     'Path to the haplotype index (optional; graph.haplotype-index.db beside the database is assumed)',
   MinigraphBubbleAdapter: TABIX_INDEX_FIELD,
 }
-
-const SEGMENTS_SUFFIX = '.segs.bed.gz'
 
 function sibling(loc: FileLocation, suffix: string) {
   return renamed(loc, name => name + suffix)

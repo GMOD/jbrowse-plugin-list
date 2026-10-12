@@ -1,5 +1,26 @@
 import type { FileLocation } from '@jbrowse/core/util'
 
+export const SEGMENTS_SUFFIX = '.segs.bed.gz'
+
+// A schema's unset file slot defaults to an empty uri
+export function locationIsSet(loc: FileLocation) {
+  return !('uri' in loc) || loc.uri !== ''
+}
+
+// Whether a location as a config snapshot writes it names a file
+export function snapshotNamesFile(location: unknown) {
+  return (
+    typeof location === 'object' &&
+    location !== null &&
+    Object.entries(location).some(
+      ([key, value]) =>
+        ['uri', 'localPath', 'blobId'].includes(key) &&
+        typeof value === 'string' &&
+        value !== '',
+    )
+  )
+}
+
 // A url's query string (a presigned signature, a token) follows the file name
 export function splitUri(uri: string) {
   const end = uri.search(/[?#]/)

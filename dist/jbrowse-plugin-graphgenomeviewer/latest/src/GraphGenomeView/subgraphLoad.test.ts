@@ -1,5 +1,7 @@
 import stateModelFactory from './viewModel'
 
+import type { readConfObject } from '@jbrowse/core/configuration'
+
 const mockRpcCall = vi.fn()
 const mockSession = {
   tracks: [] as Record<string, unknown>[],
@@ -32,9 +34,11 @@ vi.mock('@jbrowse/core/util', () => ({
 
 vi.mock(import('@jbrowse/core/configuration'), async importOriginal => ({
   ...(await importOriginal()),
-  readConfObject: vi.fn(
-    (obj: Record<string, unknown>, key: string) => obj[key],
-  ),
+  readConfObject: vi
+    .fn<typeof readConfObject>()
+    .mockImplementation(
+      (obj: Record<string, unknown>, key?: unknown) => obj[String(key)],
+    ),
 }))
 
 // pangenome_hprc's segments track once NA20809 haplotype 2 is loaded
@@ -296,7 +300,7 @@ describe('reads', () => {
     secondary: false,
   }
 
-  function cutWithReads(reads: () => Promise<unknown>) {
+  async function cutWithReads(reads: () => Promise<unknown>) {
     mockSession.tracks = [READS_TRACK]
     mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
       method === 'GetSubgraph'
@@ -310,7 +314,8 @@ describe('reads', () => {
       loadedTrackId: READS_TRACK.trackId,
       loadedRegion: ON_HG38,
     })
-    return model.load().then(() => model)
+    await model.load()
+    return model
   }
 
   test('a track naming reads fetches them over the cut before its layout', async () => {
@@ -492,6 +497,30 @@ describe('reads', () => {
     expect(fold.subMenu.filter(i => i.checked).map(i => i.label)).toEqual([
       'None',
     ])
+  })
+
+  test('a re-cut stopped while reading reads leaves the last count in its legend', async () => {
+    const model = await cutWithReads(() =>
+      Promise.resolve({ records: [READ], total: 3 }),
+    )
+    let answer: (reads: unknown) => void = () => {}
+    const graph = model.graph
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(PATHS)
+        : new Promise(resolve => {
+            answer = resolve
+          }),
+    )
+    const load = model.load()
+    await vi.waitFor(() => {
+      expect(mockRpcCall.mock.calls.at(-1)![1]).toBe('GetGraphReads')
+    })
+    model.stopLoad()
+    answer({ records: [READ, READ], total: 9 })
+    await load
+    expect(model.graph).toBe(graph)
+    expect(model.readsShown).toEqual({ shown: 1, total: 3 })
   })
 
   test('reads that fail to load leave the graph drawn without them', async () => {

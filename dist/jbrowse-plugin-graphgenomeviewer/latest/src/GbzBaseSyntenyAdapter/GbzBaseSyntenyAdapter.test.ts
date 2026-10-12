@@ -4,9 +4,11 @@ import path from 'path'
 
 import { Subgraph } from '@gmod/gbz-base'
 import {
+  NoReferenceSampleError,
   cutWindowGFA,
   cutWindowTables,
   referencePathQuery,
+  resolveReferenceSample,
 } from '@jbrowse/bandage-core/gbzWindow'
 import { gfaTables } from '@jbrowse/bandage-core/gfa/gfaTables'
 import { graphTablesGFA } from '@jbrowse/bandage-core/gfa/graphTables'
@@ -20,17 +22,16 @@ import { toArray } from 'rxjs/operators'
 
 import Adapter, {
   NoHaplotypeIndexError,
-  NoReferenceSampleError,
   PairTargetError,
-  laneAssemblyName,
-  resolveReferenceSample,
   widestWalkGap,
 } from './GbzBaseSyntenyAdapter.ts'
 import configSchema from './configSchema.ts'
 import GbzBaseSyntenyAdapterF from './index.ts'
 import { walkRowsOf } from '../RgfaTabixAdapter/walkRowRuns.ts'
+import { laneAssemblyName } from '../synteny/lanePairs.ts'
 
 import type { WalkCut } from '../RgfaTabixAdapter/walkRowRuns.ts'
+import type { GBZBase } from '@gmod/gbz-base'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 import type { SyntenyMate } from '@jbrowse/synteny-core'
 
@@ -81,6 +82,7 @@ const clipped = (adapter: Adapter, region: Record<string, unknown>) =>
 
 const mateOf = (f: { get: (k: string) => unknown }) =>
   f.get('mate') as SyntenyMate
+const cigarOf = (f: { get: (k: string) => unknown }) => f.get('CIGAR') as string
 
 const window = {
   refName: 'chr6',
@@ -204,15 +206,13 @@ test('a target assembly is what gbz-base is asked to walk', async () => {
     .find(name => name !== target)!
   const { db } = await (
     adapter as unknown as {
-      graph: () => Promise<{ db: { getAlignments: unknown } }>
+      graph: () => Promise<{ db: GBZBase }>
     }
   ).graph()
   const read = vi.spyOn(db, 'getAlignments')
 
   await feats(adapter, window, { targetAssemblyName: target })
-  const { keep } = read.mock.calls.at(-1)![0] as {
-    keep?: (name: { sample: string; haplotype: number }) => boolean
-  }
+  const { keep } = read.mock.calls.at(-1)![0]
   const named = (lane: string) => {
     const [sample, haplotype] = lane.split('#')
     return { sample: sample!, haplotype: +haplotype!, contig: '', fragment: 0 }
@@ -387,7 +387,7 @@ test('the node limit fails lanes and a graph cut as a zoom-in notice naming a sp
 })
 
 test('a lane name resolves at haplotype depth before sample depth', () => {
-  const name = { sample: 'HG002', haplotype: 2, contig: 'chr1', fragment: 0 }
+  const name = 'HG002#2'
   expect(laneAssemblyName({}, name)).toBe('HG002#2')
   expect(laneAssemblyName({ HG002: 'hg002' }, name)).toBe('hg002')
   expect(laneAssemblyName({ HG002: 'hg002', 'HG002#2': 'hg002_p' }, name)).toBe(
@@ -510,7 +510,7 @@ test('getSubgraph refuses a window on a haplotype lane with a message naming the
 function cigarSpans(cigar: string) {
   let feature = 0
   let mate = 0
-  for (const [, n, op] of cigar.matchAll(/(\d+)([MIDX=])/g)) {
+  for (const [, n = '0', op] of cigar.matchAll(/(\d+)([MIDX=])/g)) {
     feature += op === 'I' ? 0 : +n
     mate += op === 'D' ? 0 : +n
   }
@@ -570,7 +570,7 @@ test.each(['HG02145#2', 'HG00673#1', 'HG00438#1'])(
       const mate = mateOf(f)
       expect(mate.assemblyName).toBe(lower)
       expect(f.get('CIGAR')).toMatch(/^(\d+[=ID])+$/)
-      expect(cigarSpans(f.get('CIGAR'))).toEqual({
+      expect(cigarSpans(cigarOf(f))).toEqual({
         feature: f.get('end') - f.get('start'),
         mate: mate.end - mate.start,
       })
@@ -610,7 +610,7 @@ test('a reverse-strand pair writes its CIGAR along the query lane', async () => 
   const forward = await pairWith('HG01928#2')
   expect(reverse.get('strand')).toBe(-1)
   expect(forward.get('strand')).toBe(1)
-  expect(largestGap(forward.get('CIGAR'))).toBeGreaterThan(0)
+  expect(largestGap(cigarOf(forward))).toBeGreaterThan(0)
   expect(reverse.get('CIGAR')).toBe(forward.get('CIGAR'))
 })
 
@@ -674,7 +674,7 @@ test('the pair with an indel between its lanes writes it', async () => {
     queryAssemblyName: 'HG01361#2',
     targetAssemblyName: 'HG00673#1',
   })
-  expect(records.some(f => largestGap(f.get('CIGAR')) > 0)).toBe(true)
+  expect(records.some(f => largestGap(cigarOf(f)) > 0)).toBe(true)
 })
 
 test('sequence both lanes carry and GRCh38 lacks aligns inside the pair record', async () => {
@@ -683,11 +683,11 @@ test('sequence both lanes carry and GRCh38 lacks aligns inside the pair record',
     targetAssemblyName: 'HG01361#2',
   })
   expect(
-    Math.max(...againstReference.map(f => largestGap(f.get('CIGAR')))),
+    Math.max(...againstReference.map(f => largestGap(cigarOf(f)))),
   ).toBeGreaterThan(150)
   const records = await feats(adapter, insertionWindow, pair)
   for (const f of records) {
-    expect(largestGap(f.get('CIGAR'))).toBeLessThan(50)
+    expect(largestGap(cigarOf(f))).toBeLessThan(50)
   }
   const aligned = records.reduce(
     (sum, f) => sum + f.get('end') - f.get('start'),
@@ -702,24 +702,22 @@ test('a lane pair walks only its two lanes', async () => {
   const adapter = anchoredAdapter()
   const { db } = await (
     adapter as unknown as {
-      graph: () => Promise<{ db: { getSubgraphs: unknown } }>
+      graph: () => Promise<{ db: GBZBase }>
     }
   ).graph()
   const cut = vi.spyOn(db, 'getSubgraphs')
   await feats(adapter, insertionWindow, pair)
-  const { keep } = cut.mock.calls.at(-1)![0] as {
-    keep: (name: { sample: string; haplotype: number }) => boolean
-  }
+  const { keep } = cut.mock.calls.at(-1)![0]
   const named = (sample: string, haplotype: number) => ({
     sample,
     haplotype,
     contig: '',
     fragment: 0,
   })
-  expect(keep(named('HG01361', 2))).toBe(true)
-  expect(keep(named('HG02145', 2))).toBe(true)
-  expect(keep(named('HG01361', 1))).toBe(false)
-  expect(keep(named('HG00438', 1))).toBe(false)
+  expect(keep?.(named('HG01361', 2))).toBe(true)
+  expect(keep?.(named('HG02145', 2))).toBe(true)
+  expect(keep?.(named('HG01361', 1))).toBe(false)
+  expect(keep?.(named('HG00438', 1))).toBe(false)
   cut.mockRestore()
 })
 
@@ -737,7 +735,7 @@ test('a batch of lane pairs answers each pair what it answers alone, from one cu
   )
   const { db } = await (
     adapter as unknown as {
-      graph: () => Promise<{ db: { getSubgraphs: unknown } }>
+      graph: () => Promise<{ db: GBZBase }>
     }
   ).graph()
   const cut = vi.spyOn(db, 'getSubgraphs')
@@ -927,7 +925,7 @@ test('a lane pair across a reference gap is cut once per fragment', async () => 
   const adapter = fragmented(1000)
   const { db } = await (
     adapter as unknown as {
-      graph: () => Promise<{ db: { getSubgraphs: unknown } }>
+      graph: () => Promise<{ db: GBZBase }>
     }
   ).graph()
   const cut = vi.spyOn(db, 'getSubgraphs')
@@ -935,9 +933,7 @@ test('a lane pair across a reference gap is cut once per fragment', async () => 
     queryAssemblyName: 'HG003#1',
     targetAssemblyName: 'HG002#1',
   })
-  const subgraphs = (await cut.mock.results.at(-1)!.value) as {
-    referenceInterval?: { name: { fragment: number } }
-  }[]
+  const subgraphs: Subgraph[] = await cut.mock.results.at(-1)!.value
   expect(subgraphs.map(s => s.referenceInterval?.name.fragment)).toEqual([
     0, 6000,
   ])
@@ -1061,19 +1057,23 @@ test('a bgzipped reads shorthand takes the .tbi beside it', () => {
     reads: 'reads.gaf.gz',
     assemblyNames: ['hg38'],
   })
-  expect(readConfObject(config, 'readsLocation').uri).toBe('reads.gaf.gz')
-  expect(readConfObject(config, ['readsIndex', 'location']).uri).toBe(
-    'reads.gaf.gz.tbi',
-  )
+  expect(readConfObject(config, 'readsLocation')).toMatchObject({
+    uri: 'reads.gaf.gz',
+  })
+  expect(readConfObject(config, ['readsIndex', 'location'])).toMatchObject({
+    uri: 'reads.gaf.gz.tbi',
+  })
   const signed = configSchema.create({
     reads: 'reads.gaf.gz?sig=abc',
     assemblyNames: [],
   })
-  expect(readConfObject(signed, ['readsIndex', 'location']).uri).toBe(
-    'reads.gaf.gz.tbi?sig=abc',
-  )
+  expect(readConfObject(signed, ['readsIndex', 'location'])).toMatchObject({
+    uri: 'reads.gaf.gz.tbi?sig=abc',
+  })
   const plain = configSchema.create({ reads: 'reads.gaf', assemblyNames: [] })
-  expect(readConfObject(plain, ['readsIndex', 'location']).uri).toBe('')
+  expect(readConfObject(plain, ['readsIndex', 'location'])).toMatchObject({
+    uri: '',
+  })
 })
 
 // One cut's typed arrays become the tables with no GFA in between; across a

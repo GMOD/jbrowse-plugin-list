@@ -7,6 +7,8 @@ import {
 import { wheelZoomFactor } from '@jbrowse/bandage-core/util/wheelZoom'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 
+import { chipReadoutAt } from './LabelLayer'
+
 import type { GraphPaneModel } from '../model'
 
 // wheel events need passive:false to call preventDefault — React registers
@@ -74,6 +76,8 @@ export function usePaneGestures(model: GraphPaneModel) {
   const [contextNode, setContextNode] = useState<
     { nodeId: string; top: number; left: number } | undefined
   >(undefined)
+  const [hoveredChip, setHoveredChip] =
+    useState<ReturnType<typeof chipReadoutAt>>(undefined)
   const [contextRow, setContextRow] = useState<
     { row: number; top: number; left: number } | undefined
   >(undefined)
@@ -164,6 +168,16 @@ export function usePaneGestures(model: GraphPaneModel) {
         model.translateY + pending.pan.dy,
       )
       pending.pan = null
+    }
+    if (pending.hover) {
+      const chip = model.facetPanels
+        ? undefined
+        : chipReadoutAt(model.overlayLabels, pending.hover.x, pending.hover.y)
+      setHoveredChip(was =>
+        was?.label === chip?.label && was?.readout === chip?.readout
+          ? was
+          : chip,
+      )
     }
     const bars = model.walkRowBars
     if (pending.hover && bars) {
@@ -264,6 +278,7 @@ export function usePaneGestures(model: GraphPaneModel) {
   // view closing it has destroyed the model
   function onPointerLeave() {
     dropPending()
+    setHoveredChip(undefined)
     if (!isAlive(model)) {
       return
     }
@@ -305,8 +320,6 @@ export function usePaneGestures(model: GraphPaneModel) {
       model.setSelectedNode(node)
       if (node) {
         model.showNodeDetails(node)
-      } else {
-        model.closeBubbles()
       }
     }
   }
@@ -325,6 +338,7 @@ export function usePaneGestures(model: GraphPaneModel) {
     },
     contextNode,
     contextRow,
+    hoveredChip,
     closeContextMenu: () => {
       setContextNode(undefined)
       setContextRow(undefined)

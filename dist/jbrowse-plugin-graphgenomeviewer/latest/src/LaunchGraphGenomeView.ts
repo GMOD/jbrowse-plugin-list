@@ -3,24 +3,8 @@ import type PluginManager from '@jbrowse/core/PluginManager'
 import type { AbstractSessionModel } from '@jbrowse/core/util'
 import type { SnapshotIn } from '@jbrowse/mobx-state-tree'
 
-// GraphGenomeView has no assembly/track resolution — every field is a plain
-// persisted view prop, so the launch spec forwards straight onto the view
-// snapshot. `afterAttach` loads `gfaLocation`, or cuts the
-// `loadedTrackId`/`loadedRegion` pair once, when the view is created.
-//
-// **Taken off the model rather than listed by hand**, which is the whole point.
-// This named four props (`gfaLocation`, `colorScheme`, `linearLayout`,
-// `drawPaths`) while the extension point spreads whatever it is handed — so the
-// runtime accepted every prop and the DECLARED contract accepted a third of
-// them. The docs' own figure specs launch with thirteen: `loadedTrackId`,
-// `loadedRegion`, `layoutMode`, `colorDomain`, `paneHeight`, `referencePath`,
-// `layoutQuality`, `maxRegionBp` and `bubbleSpread` among them, none of which
-// this said were allowed. It carries a `#extensionPoint` tag, so the published
-// API docs said so too.
-//
-// Derived, so adding a view prop widens the launch with it. `type` is the
-// dispatch key rather than a setting — loadSessionSpec strips it before calling
-// this — and is the one field a caller may not supply.
+// Every view prop, taken off the model so a new prop widens the launch with
+// it; `type` is the dispatch key, not a setting.
 export type LaunchGraphGenomeViewArgs = Partial<
   Omit<SnapshotIn<ReturnType<typeof modelFactory>>, 'type'>
 > & {

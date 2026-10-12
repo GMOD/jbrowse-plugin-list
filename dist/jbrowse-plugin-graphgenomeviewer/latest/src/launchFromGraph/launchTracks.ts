@@ -1,6 +1,6 @@
 import { readConfObject } from '@jbrowse/core/configuration'
 
-import { canonicalAssemblyName } from './launchFromGraph'
+import { canonicalAssemblyName, trackAssemblies } from './launchFromGraph'
 
 import type { TrackScanSession } from './launchFromGraph'
 
@@ -35,19 +35,12 @@ export function launchTracks({
   const wanted = canonicalAssemblyName(session, assemblyName)
   const found: string[] = []
   for (const track of session.tracks) {
-    const type: unknown = readConfObject(track, 'type')
-    const assemblyNames: unknown = readConfObject(track, 'assemblyNames')
     const trackId: unknown = readConfObject(track, 'trackId')
     if (
-      type === ANNOTATION_TRACK_TYPE &&
-      Array.isArray(assemblyNames) &&
-      assemblyNames.some(
-        name =>
-          typeof name === 'string' &&
-          canonicalAssemblyName(session, name) === wanted,
-      ) &&
+      readConfObject(track, 'type') === ANNOTATION_TRACK_TYPE &&
       typeof trackId === 'string' &&
-      trackId !== first
+      trackId !== first &&
+      trackAssemblies(session, track).includes(wanted)
     ) {
       found.push(trackId)
     }

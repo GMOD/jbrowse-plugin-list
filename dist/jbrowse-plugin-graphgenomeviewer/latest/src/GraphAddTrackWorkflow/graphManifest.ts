@@ -1,6 +1,11 @@
 import { openLocation } from '@jbrowse/core/util/io'
 
-import { locationName, readsSiblings, renamed } from '../locationName'
+import {
+  SEGMENTS_SUFFIX,
+  locationName,
+  readsSiblings,
+  renamed,
+} from '../locationName'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { FileLocation } from '@jbrowse/core/util'
@@ -12,7 +17,6 @@ export interface GraphManifest {
   tier?: { prefix: string; foldBelowBp: number }
 }
 
-const SEGMENTS_SUFFIX = '.segs.bed.gz'
 const FETCH_TIMEOUT_MS = 5000
 
 // A bare file name beside the manifest: no directory, scheme or leading dot
@@ -24,13 +28,13 @@ function isAbsent(value: unknown) {
   return value === undefined || value === null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isTier(tier: unknown): tier is NonNullable<GraphManifest['tier']> {
   return (
-    isRecord(tier) &&
+    isPlainRecord(tier) &&
     isSiblingName(tier.prefix) &&
     typeof tier.foldBelowBp === 'number' &&
     Number.isFinite(tier.foldBelowBp) &&
@@ -45,7 +49,7 @@ export function parseGraphManifest(text: string): GraphManifest | undefined {
   } catch {
     return undefined
   }
-  if (!isRecord(json) || json.schema !== 1) {
+  if (!isPlainRecord(json) || json.schema !== 1) {
     return undefined
   }
   const { reference, tier, index, contig, bubbles, alleles } = json

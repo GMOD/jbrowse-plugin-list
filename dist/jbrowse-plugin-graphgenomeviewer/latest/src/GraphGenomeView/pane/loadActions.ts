@@ -58,17 +58,22 @@ export const withLoadActions = withSettingActions.actions(self => {
   let loadController: AbortController | undefined
   // the samples TSV location the table was read from, or is being read from
   let sampleTableKey: string | undefined
+  // The engine run the live layout waits on, which alone writes the status
+  // line, and each run by the promise the force cache hands every request
+  // that shares it
+  let awaitedRun: object | undefined
+  const runOf = new WeakMap<Promise<unknown>, object>()
 
-  function callEngine(request: EngineRequest) {
+  // A StatusCallback takes an RpcStatus, which `statusMessageText` reads
+  function callEngine(request: EngineRequest, run: object) {
     const { rpcManager } = getSession(self)
     return rpcManager.call(getRpcSessionId(self), 'GraphComputeLayout', {
       ...request,
       signal: loadController?.signal,
-      // A StatusCallback takes an RpcStatus, not a string — it may be a
-      // bare label, a phase, or a phase that threw. `statusMessageText` is
-      // core's reader for the human-facing line.
       statusCallback: status => {
-        self.setStatusMessage(statusMessageText(status) ?? '')
+        if (run === awaitedRun) {
+          self.setStatusMessage(statusMessageText(status) ?? '')
+        }
       },
     }) as Promise<{ result: LayoutResult; duration: number }>
   }
@@ -134,17 +139,29 @@ export const withLoadActions = withSettingActions.actions(self => {
               }),
             )
           : whole
-      return { result, duration: performance.now() - start }
+      return {
+        result,
+        duration: performance.now() - start,
+        mode: self.chosenLayoutMode,
+      }
     }
     const settings = engineSettings()
     const hit = forceLayouts.ready(graph, settings)
     if (hit) {
-      return { result: hit, duration: performance.now() - start }
+      return {
+        result: hit,
+        duration: performance.now() - start,
+        mode: 'force' as const,
+      }
     }
-    return (yield forceLayouts.layout(graph, settings, callEngine)) as {
-      result: LayoutResult
-      duration: number
-    }
+    const run = {}
+    const pending = forceLayouts.layout(graph, settings, r =>
+      callEngine(r, run),
+    )
+    awaitedRun = runOf.get(pending) ?? run
+    runOf.set(pending, awaitedRun)
+    const forced = (yield pending) as { result: LayoutResult; duration: number }
+    return { ...forced, mode: 'force' as const }
   }
 
   // Which layout request is the live one. A layout is async and nothing in
@@ -172,6 +189,7 @@ export const withLoadActions = withSettingActions.actions(self => {
   // flight; the stale result must not land.
   function* layoutInto(graph: Graph) {
     const request = ++liveRequest
+    awaitedRun = undefined
     const isLive = () => self.graph === graph && request === liveRequest
     const signal = loadController?.signal
     let computed
@@ -210,6 +228,7 @@ export const withLoadActions = withSettingActions.actions(self => {
       }
       laidOutGraph = graph
       self.layoutResult = computed.result
+      self.drawnLayoutMode = computed.mode
       self.setLayoutMs(computed.duration)
       self.followNewLayout(previous)
       self.morphFrom(previous, before)
@@ -291,28 +310,27 @@ export const withLoadActions = withSettingActions.actions(self => {
       region && folded !== anchored
         ? clipToWindow(folded, region, foldBelowBp)
         : folded
-    self.foldedBelowBp = folded === anchored ? undefined : foldBelowBp
+    let readsShown: { shown: number; total: number } | undefined
     if (readsOf) {
       self.setStatusMessage('Reading alignments')
       try {
         const { records, total } = (yield readsOf(graph)) as GafReads
         graph.reads = records
-        self.readsShown = { shown: records.length, total }
+        readsShown = { shown: records.length, total }
       } catch (e) {
         if (signal?.aborted) {
           return
         }
         console.warn('[GraphGenomeView] no reads for this graph', e)
-        self.readsShown = undefined
       }
       if (signal?.aborted) {
         return
       }
-    } else {
-      self.readsShown = undefined
     }
     const selected = keepSelection ? self.selectedNode : null
     self.graph = graph
+    self.foldedBelowBp = folded === anchored ? undefined : foldBelowBp
+    self.readsShown = readsShown
     self.walkCut = walkCut
     self.graphRegion = region
     self.loadedReferencePath = loaded
@@ -467,39 +485,52 @@ export const withLoadActions = withSettingActions.actions(self => {
     }
   }
 
-  // The gene track's features over the cut, which `geneFeatures` makes genes
-  // of for the backbone to carry.
-  function* loadGenes(
+  // The annotation tracks read over the cut: genes, which `geneFeatures`
+  // makes genes of for the backbone to carry, and tandem repeat arrays, for
+  // the walk rows to measure between and tile by
+  const annotations = {
+    genes: {
+      trackId: () => self.geneTrack?.trackId,
+      set: (features: Feature[] | undefined) => {
+        self.geneTrackFeatures = features
+      },
+    },
+    repeats: {
+      trackId: () => self.repeatTrack?.trackId,
+      set: (features: Feature[] | undefined) => {
+        self.repeatArrays = features && repeatArraysFrom(features)
+      },
+    },
+  }
+  type Annotation = keyof typeof annotations
+
+  function* loadAnnotation(
+    kind: Annotation,
     region: SubgraphRegion,
     isLive: () => boolean,
     signal?: AbortSignal,
   ) {
-    const features = yield* trackFeatures(
-      self.geneTrack?.trackId,
-      region,
-      'genes',
-      signal,
-    )
+    const { trackId, set } = annotations[kind]
+    const features = yield* trackFeatures(trackId(), region, kind, signal)
     if (features && isLive()) {
-      self.geneTrackFeatures = features
+      set(features)
     }
   }
 
-  // The tandem repeat arrays over the cut, from the session's repeat
-  // track, for the walk rows to measure between and tile by.
-  function* loadRepeats(
-    region: SubgraphRegion,
-    isLive: () => boolean,
-    signal?: AbortSignal,
-  ) {
-    const features = yield* trackFeatures(
-      self.repeatTrack?.trackId,
-      region,
-      'repeats',
-      signal,
-    )
-    if (features && isLive()) {
-      self.repeatArrays = repeatArraysFrom(features)
+  // One annotation read again alone, for a track change. Live only while
+  // the track it read is still the one chosen, so a slow read cannot land
+  // over the pick that followed it.
+  function* reloadAnnotation(kind: Annotation) {
+    const { trackId, set } = annotations[kind]
+    const region = self.graphRegion
+    const track = trackId()
+    if (region) {
+      set(undefined)
+      yield* loadAnnotation(
+        kind,
+        region,
+        () => self.graphRegion === region && trackId() === track,
+      )
     }
   }
 
@@ -540,10 +571,9 @@ export const withLoadActions = withSettingActions.actions(self => {
     loadInFlight = undefined
     liveLoad++
     liveRequest++
+    awaitedRun = undefined
   }
 
-  // The graph and everything derived from it, dropped; any load in
-  // flight ends too, or it would land its graph afterwards
   // The graph a layout of the current mode draws: a walk-rows cut's
   // stepless walks parsed whole once a layout that draws nodes needs them
   function wholeGraph() {
@@ -558,6 +588,8 @@ export const withLoadActions = withSettingActions.actions(self => {
     return whole
   }
 
+  // Drops the graph and all it derived, and ends any load in flight, which
+  // would otherwise land its graph afterwards
   function dropGraph() {
     abortLoad()
     self.graph = undefined
@@ -565,12 +597,15 @@ export const withLoadActions = withSettingActions.actions(self => {
     self.graphRegion = undefined
     self.loadedReferencePath = undefined
     self.layoutResult = undefined
+    self.drawnLayoutMode = undefined
     self.indexBubbles = undefined
     self.foldedBelowBp = undefined
     self.geneTrackFeatures = undefined
     self.walkGeneFeatures = undefined
     walkGeneCache.clear()
     self.repeatArrays = undefined
+    self.walkRowSampleTable = undefined
+    sampleTableKey = undefined
     self.readsShown = undefined
     self.openBubbles = []
     self.error = undefined
@@ -604,6 +639,7 @@ export const withLoadActions = withSettingActions.actions(self => {
       // a graph that landed ahead of its layout has nothing of its own drawn
       if (self.graph !== laidOutGraph) {
         self.layoutResult = undefined
+        self.drawnLayoutMode = undefined
       }
       self.isLoading = false
       self.statusMessage = ''
@@ -628,8 +664,8 @@ export const withLoadActions = withSettingActions.actions(self => {
       if (region && live && self.graph) {
         const isLive = () => self.graphRegion === region
         yield Promise.all([
-          flow(loadGenes)(region, isLive),
-          flow(loadRepeats)(region, isLive),
+          flow(loadAnnotation)('genes', region, isLive),
+          flow(loadAnnotation)('repeats', region, isLive),
         ])
       }
     }),
@@ -698,8 +734,8 @@ export const withLoadActions = withSettingActions.actions(self => {
                 signal,
                 self.foldedBelowBp,
               ),
-          flow(loadGenes)(region, isLive, signal),
-          flow(loadRepeats)(region, isLive, signal),
+          flow(loadAnnotation)('genes', region, isLive, signal),
+          flow(loadAnnotation)('repeats', region, isLive, signal),
         ])
       } catch (e) {
         if (isLive()) {
@@ -712,25 +748,18 @@ export const withLoadActions = withSettingActions.actions(self => {
         }
       }
     }),
-    // Re-read one annotation track alone, for a track change. The graph,
-    // its layout and any open bubble stay as they are. Live only while the
-    // track it read is still the one chosen, so a slow read cannot land
-    // over the pick that followed it.
+    // A track change re-reads that annotation alone. The graph, its layout
+    // and any open bubble stay as they are.
     reloadRepeats: flow(function* () {
-      const region = self.graphRegion
-      const trackId = self.repeatTrack?.trackId
-      if (region) {
-        self.repeatArrays = undefined
-        yield* loadRepeats(
-          region,
-          () =>
-            self.graphRegion === region &&
-            self.repeatTrack?.trackId === trackId,
-        )
-      }
+      yield* reloadAnnotation('repeats')
+    }),
+    reloadGenes: flow(function* () {
+      walkGeneCache.clear()
+      yield* reloadAnnotation('genes')
     }),
     // The source track's samples TSV, read once per location, for walk
-    // rows to group by. A failed read leaves the rows ungrouped and says so.
+    // rows to group by. A failed read leaves the rows ungrouped, says so,
+    // and is tried again on the next call.
     loadWalkRowSampleTable: flow(function* () {
       const location = self.walkRowSamplesTsv
       const key = location ? JSON.stringify(location) : undefined
@@ -749,6 +778,7 @@ export const withLoadActions = withSettingActions.actions(self => {
         }
       } catch (e) {
         if (isAlive(self) && key === sampleTableKey) {
+          sampleTableKey = undefined
           getSession(self).notify(
             `Walk rows cannot be grouped: the samples table did not load (${String(e)})`,
             'warning',
@@ -794,19 +824,6 @@ export const withLoadActions = withSettingActions.actions(self => {
         JSON.stringify(self.walkGeneReads?.reads ?? []) === key
       ) {
         self.walkGeneFeatures = reads.length ? fetched : undefined
-      }
-    }),
-    reloadGenes: flow(function* () {
-      walkGeneCache.clear()
-      const region = self.graphRegion
-      const trackId = self.geneTrack?.trackId
-      if (region) {
-        self.geneTrackFeatures = undefined
-        yield* loadGenes(
-          region,
-          () =>
-            self.graphRegion === region && self.geneTrack?.trackId === trackId,
-        )
       }
     }),
     // Open a bubble in place: it keeps its colour, the rest of the drawing

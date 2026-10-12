@@ -295,16 +295,18 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
             <Caption>How far the layout opens a bubble</Caption>
           </div>
 
-          <SettingSwitch
-            label="Linear layout"
-            checked={model.linearLayout}
-            onChange={linear => {
-              model.setLinearLayout(linear)
-              void model.recomputeLayout()
-            }}
-          >
-            <Caption>Keeps a chain of nodes on one line where it can</Caption>
-          </SettingSwitch>
+          {model.layoutEngine === 'stress' ? null : (
+            <SettingSwitch
+              label="Linear layout"
+              checked={model.linearLayout}
+              onChange={linear => {
+                model.setLinearLayout(linear)
+                void model.recomputeLayout()
+              }}
+            >
+              <Caption>Keeps a chain of nodes on one line where it can</Caption>
+            </SettingSwitch>
+          )}
         </Group>
       </DialogContent>
 

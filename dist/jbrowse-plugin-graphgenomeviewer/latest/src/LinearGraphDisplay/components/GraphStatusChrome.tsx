@@ -48,14 +48,16 @@ export default function GraphStatusChrome({
   const { TooLarge, ErrorBar, Loading, BackgroundProgress } =
     useChromeOverlayOverride() ?? muiOverlays
   const [corner, setCorner] = useState<HTMLDivElement | null>(null)
-  const { displayId } = model.configuration
+  const attributes = {
+    ...dataProps,
+    'data-testid': testid,
+    'data-display-id': model.configuration.displayId,
+    'data-display-drawn': drawn,
+    'data-display-phase': phase,
+  }
   if (phase === 'tooLarge') {
     return (
-      <div
-        style={{ display: 'contents' }}
-        data-display-id={displayId}
-        data-display-phase={phase}
-      >
+      <div style={{ display: 'contents' }} {...attributes}>
         <TrackOverlayPortal>
           <div style={{ pointerEvents: 'auto' }}>
             <TooLarge model={model} />
@@ -66,12 +68,8 @@ export default function GraphStatusChrome({
   }
   return (
     <div
-      {...dataProps}
       style={{ position: 'relative', height: model.height, ...style }}
-      data-testid={testid}
-      data-display-id={displayId}
-      data-display-drawn={drawn}
-      data-display-phase={phase}
+      {...attributes}
     >
       <BottomRightCornerContext value={corner}>
         {children}
