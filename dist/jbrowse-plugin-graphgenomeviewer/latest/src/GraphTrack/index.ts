@@ -8,8 +8,8 @@ import {
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type DisplayType from '@jbrowse/core/pluggableElementTypes/DisplayType'
 
-// core's synteny displays, copied to ask for headerLanes so only gbz-base
-// offers lanes or opens in a synteny, dotplot or circular view
+// core's synteny displays, copied to ask for headerLanes so only the gbz-base
+// and walk-tabix adapters open in a synteny, dotplot or circular view
 export const SYNTENY_DISPLAYS = [
   'MultiWaySyntenyDisplay',
   'LinearSyntenyDisplay',

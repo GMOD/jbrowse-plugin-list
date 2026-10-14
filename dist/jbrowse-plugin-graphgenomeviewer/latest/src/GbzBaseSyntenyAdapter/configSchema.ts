@@ -22,8 +22,8 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * haplotype a walk belongs to.
  *
  * Only the fine tier exists: a whole-chromosome view stays on a PIF's coarse
- * tier. A query on a haplotype lane answers nothing, so the multi-way display
- * composes its lane-to-lane links through the reference.
+ * tier. A window of the anchor answers any two lanes' alignment, so the
+ * multi-way display fetches each adjacent lane pair directly.
  *
  * #example
  * ```js

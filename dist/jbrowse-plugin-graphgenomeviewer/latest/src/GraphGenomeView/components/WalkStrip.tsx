@@ -16,7 +16,7 @@ import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
 import ElTree, { useSvgId } from './ElTree'
-import { LegendSwatchView } from './Legend'
+import { LegendSwatchView } from './LegendSwatch'
 import PaneContextMenu from './PaneContextMenu'
 import { legendRowStyle } from './legendStyles'
 import { walkRowSwatch } from '../legendSections'

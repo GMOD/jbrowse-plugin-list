@@ -1,2 +1,0 @@
-function e(o){return o instanceof Error&&(o.name==="NodeLimitError"||o.regionTooLarge===!0||/reads more than nodeLimit|^Subgraph size limit of \d+ nodes exceeded/.test(o.message))}function a(o,t){if(o?.refName!==t.refName||o.assemblyName!==t.assemblyName)return!1;let r=o.end-o.start;return t.end-t.start>=r&&t.end>o.start-r&&t.start<o.end+r}export{e as a,a as b};
-//# sourceMappingURL=chunk-WCGVUZWP.js.map

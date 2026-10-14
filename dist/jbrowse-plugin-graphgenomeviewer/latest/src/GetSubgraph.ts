@@ -65,7 +65,7 @@ declare module '@jbrowse/core/rpc/RpcRegistry' {
 }
 
 // Adapters that can cut a local subgraph out of a graph file implement this:
-// RgfaTabixAdapter and GbzBaseSyntenyAdapter today.
+// RgfaTabixAdapter, WalkTabixSyntenyAdapter and GbzBaseSyntenyAdapter.
 interface SubgraphAdapter {
   getSubgraph(
     region: Region,
