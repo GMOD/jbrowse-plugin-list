@@ -22,7 +22,7 @@ import type { SyntenyMate } from '@jbrowse/synteny-core'
 //   W HG002   2 chr1 >1>2>3>4>8>6   8 (20 bp) replaces 5
 //   W HG00097 1 chr1 >1>2>3>4>5>6
 const prefix = require
-  .resolve('../RgfaTabixAdapter/test_data/walks_header.walks.bed.gz')
+  .resolve('../RgfaTabixAdapter/test_data/walks2_header.GRCh38.walks.bed.gz')
   .replace(/\.walks\.bed\.gz$/, '')
 
 function makeAdapter(slots: Record<string, unknown> = {}) {
@@ -35,10 +35,6 @@ function makeAdapter(slots: Record<string, unknown> = {}) {
     configSchema.create({
       walksLocation: local(file('walks')),
       walksIndex: { location: local(`${file('walks')}.tbi`) },
-      nodesLocation: local(file('nodes')),
-      nodesIndex: { location: local(`${file('nodes')}.tbi`) },
-      linksLocation: local(file('links')),
-      linksIndex: { location: local(`${file('links')}.tbi`) },
       assemblyNames: ['hg38'],
       assemblyNameToPanSN: { hg38: 'GRCh38' },
       ...slots,
@@ -222,13 +218,13 @@ test('a window past the step budget fails as a zoom-in notice for lanes', async 
   })
 })
 
-test('walksUri names the three files', () => {
+test('walksUri names the walk file and its index', () => {
   const config = configSchema.create({
     walksUri: 'hprc.GRCh38',
     baseUri: 'https://example.com/',
   })
-  expect(readConfObject(config, 'nodesLocation')).toMatchObject({
-    uri: 'hprc.GRCh38.nodes.bed.gz',
+  expect(readConfObject(config, 'walksLocation')).toMatchObject({
+    uri: 'hprc.GRCh38.walks.bed.gz',
   })
   expect(readConfObject(config, ['walksIndex', 'location'])).toMatchObject({
     uri: 'hprc.GRCh38.walks.bed.gz.tbi',

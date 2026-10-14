@@ -21,15 +21,13 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * a linear view cuts it (`aboveBpPerPx`) or the size it was folded at
  * (`foldBelowBp`), from which the plugin derives that zoom.
  *
- * `walksUri` takes the prefix of a walk-indexed file set in place of `uri`, and
- * resolves `<walksUri>.walks.bed.gz`, `<walksUri>.nodes.bed.gz`,
- * `<walksUri>.links.bed.gz` and their `.tbi` indexes. `gfa-to-tabix --walks -o
- * <prefix>` writes a set per reference sample from 0.5.0, so a track names one
- * as `<prefix>.<sample>`; a set from 0.4.0 holds every reference, and the track
- * names `<prefix>`. A format-2 set (`format:i:2` in the walk file's header) is
- * the walk file alone, and the adapter reads no other. Such a graph's cut
- * carries the haplotypes' walks, and `defaultHaplotypes` names the ones it is
- * cut for until the user picks others.
+ * `walksUri` takes the prefix of a walk file in place of `uri`, and resolves
+ * `<walksUri>.walks.bed.gz` and its `.tbi`. `gfa-to-tabix --walks -o <prefix>`
+ * writes one per reference sample, so a track names one as
+ * `<prefix>.<sample>`. The adapter reads walk format 2, which gfa-to-tabix
+ * writes from 1.0, through @jbrowse/graph-walks. Such a graph's cut carries
+ * the haplotypes' walks, and `defaultHaplotypes` names the ones it is cut for
+ * until the user picks others.
  *
  * #example
  * ```js
@@ -44,7 +42,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```js
  * {
  *   type: 'RgfaTabixAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38.GRCh38',
+ *   walksUri: 'https://example.org/hprc-v2.1-mc-grch38.GRCh38',
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  *   defaultHaplotypes: ['HG002', 'HG00733', 'HG02257', 'NA19240'],
  * }
@@ -74,10 +72,6 @@ function walksLocations(snap: Record<string, unknown>) {
     ...snap,
     walksLocation: { uri: file('walks'), baseUri },
     walksIndex: tbiBeside(file('walks'), baseUri, csi),
-    segmentsLocation: { uri: file('nodes'), baseUri },
-    segmentsIndex: tbiBeside(file('nodes'), baseUri, csi),
-    linksLocation: { uri: file('links'), baseUri },
-    linksIndex: tbiBeside(file('links'), baseUri, csi),
   }
 }
 
@@ -189,9 +183,9 @@ const RgfaTabixAdapter = ConfigurationSchema(
     ),
     /**
      * #slot
-     * one row per haplotype path per reference chunk, its steps through that
-     * chunk, written beside node and link files filed under the same chunks.
-     * Unset means the graph has no walks.
+     * a `gfa-to-tabix --walks` file in walk format 2: per reference chunk,
+     * the reference's path, the ways haplotypes leave it and each haplotype's
+     * piece. Unset means the graph has no walks.
      */
     walksLocation: {
       type: 'fileLocation',
@@ -201,15 +195,6 @@ const RgfaTabixAdapter = ConfigurationSchema(
      * #slot
      */
     walksIndex: tabixIndexSchema('RgfaWalksIndex'),
-    /**
-     * #slot
-     * the reference chunk the walk file's rows are filed under, in bp, when
-     * its header has no `chunk:i:` line to say so
-     */
-    walkChunk: {
-      type: 'integer',
-      defaultValue: 65536,
-    },
     /**
      * #slot
      * the most haplotype steps a cut keeps; a window whose walks hold more
@@ -225,12 +210,9 @@ const RgfaTabixAdapter = ConfigurationSchema(
     /**
      * #slot
      * the most compressed bytes a cut of a walk-indexed graph fetches from its
-     * three files, as their Tabix indexes estimate it before any row is read;
-     * a window over it shows a zoom-in notice instead. On HPRC v2.1 chr22 a 1
-     * Mb window fetches about 3 to 5 MB, and the dense 64 kb chunks at 11.80 to
-     * 12.06 Mb on GRCh38 fetch 15 MB or more for a 10 kb window. The budget
-     * covers every haplotype, since node and link rows are filed for all of
-     * them.
+     * walk file, as its Tabix index estimates it before any row is read; a
+     * window over it shows a zoom-in notice instead. The budget covers every
+     * haplotype, since a chunk's rows are filed for all of them.
      */
     walkByteBudget: {
       type: 'integer',

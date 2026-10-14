@@ -3072,6 +3072,29 @@ describe('walk rows', () => {
     expect(model.hoveredWalkRowText).toBeUndefined()
   })
 
+  test('the Layout menu lists force-directed once per engine', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'force',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    const layoutItems = () =>
+      (
+        model.graphMenuItems()[0] as {
+          subMenu: (MenuItem & { onClick: () => void })[]
+        }
+      ).subMenu.filter(item => item.label?.startsWith('Force-directed'))
+    expect(layoutItems().map(item => item.label)).toEqual([
+      'Force-directed (FMMM)',
+      'Force-directed (stress)',
+    ])
+    expect(layoutItems().map(item => item.checked)).toEqual([true, false])
+    layoutItems()[1]!.onClick()
+    expect(model.layoutEngine).toBe('stress')
+    expect(layoutItems().map(item => item.checked)).toEqual([false, true])
+  })
+
   test("walk rows' Samples menu shows every sample or a chosen few", async () => {
     rpcRespond()
     const model = stateModelFactory().create({

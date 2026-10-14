@@ -12,22 +12,22 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) `--walks` filed under
  * chunks of a reference, as haplotype-versus-reference alignments, the shape
  * `MultiWaySyntenyDisplay` draws as one lane per haplotype, and as the graph
- * display's cut. A window on the reference reads the walks and nodes filed
- * under it, and each haplotype is aligned to the reference, or to another
+ * display's cut. A window on the reference reads the walk rows filed under
+ * it, and each haplotype is aligned to the reference, or to another
  * haplotype, on the nodes both walks visit. No base is compared, so a short
  * bubble with equal bases on both sides is written as mismatches and any other
  * as an insertion and a deletion.
  *
- * `walksUri` takes the prefix of one reference's file set, `<prefix>.<sample>`
- * from gfa-to-tabix 0.5.0, and resolves `<walksUri>.walks.bed.gz`,
- * `<walksUri>.nodes.bed.gz`, `<walksUri>.links.bed.gz` and their `.tbi`
- * indexes. Only a window on the anchor is answered.
+ * `walksUri` takes the prefix of one reference's walk file, `<prefix>.<sample>`,
+ * and resolves `<walksUri>.walks.bed.gz` and its `.tbi`. The adapter reads walk
+ * format 2, which gfa-to-tabix writes from 1.0, through @jbrowse/graph-walks.
+ * Only a window on the anchor is answered.
  *
  * #example
  * ```js
  * {
  *   type: 'WalkTabixSyntenyAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38.GRCh38',
+ *   walksUri: 'https://example.org/hprc-v2.1-mc-grch38.GRCh38',
  *   assemblyNames: ['hg38'],
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  * }
@@ -44,10 +44,6 @@ export function normalizeSnapshot(snap: Record<string, unknown>) {
     ...snap,
     walksLocation: { uri: file('walks'), baseUri },
     walksIndex: tbiBeside(file('walks'), baseUri, csi),
-    nodesLocation: { uri: file('nodes'), baseUri },
-    nodesIndex: tbiBeside(file('nodes'), baseUri, csi),
-    linksLocation: { uri: file('links'), baseUri },
-    linksIndex: tbiBeside(file('links'), baseUri, csi),
   }
 }
 
@@ -61,7 +57,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
   {
     /**
      * #slot
-     * The first entry is the anchor: the JBrowse assembly the file set's
+     * The first entry is the anchor: the JBrowse assembly the walk file's
      * reference sample is loaded as. A haplotype needs no entry: its lane
      * draws on the session assembly `assemblyNameToPanSN` maps to it, at
      * haplotype (`HG002#1`) or sample (`HG002`) depth, and a haplotype with no
@@ -73,43 +69,13 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * one row per haplotype path per reference chunk, its steps through that
-     * chunk
+     * a `gfa-to-tabix --walks` file in walk format 2
      */
     walksLocation: location('/path/to/graph.walks.bed.gz'),
     /**
      * #slot
      */
     walksIndex: tabixIndexSchema('WalkTabixWalksIndex'),
-    /**
-     * #slot
-     * one row per node a chunk's walks visit, with its length and its place
-     * on the reference
-     */
-    nodesLocation: location('/path/to/graph.nodes.bed.gz'),
-    /**
-     * #slot
-     */
-    nodesIndex: tabixIndexSchema('WalkTabixNodesIndex'),
-    /**
-     * #slot
-     * one row per link between consecutive steps of a chunk's walks, which
-     * only the graph display's cut reads
-     */
-    linksLocation: location('/path/to/graph.links.bed.gz'),
-    /**
-     * #slot
-     */
-    linksIndex: tabixIndexSchema('WalkTabixLinksIndex'),
-    /**
-     * #slot
-     * the reference chunk the rows are filed under, in bp, when the walk
-     * file's header has no `chunk:i:` line to say so
-     */
-    walkChunk: {
-      type: 'integer',
-      defaultValue: 65536,
-    },
     /**
      * #slot
      * the most haplotype steps one window keeps; a window whose walks hold
@@ -123,10 +89,9 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * the most compressed bytes one window fetches, as the Tabix indexes
-     * estimate it before any row is read; a window over it shows a zoom-in
-     * notice instead. Lanes read the walk and node files, the graph display's
-     * cut the link file too.
+     * the most compressed bytes one window fetches from the walk file, as its
+     * Tabix index estimates it before any row is read; a window over it shows
+     * a zoom-in notice instead.
      */
     walkByteBudget: {
       type: 'integer',

@@ -9,14 +9,11 @@ import { EXON_COLOR } from './GenePins'
 import LabelChip, { inChip } from './LabelChip'
 
 import type { GraphPaneModel } from '../model'
-import type {
-  BubbleHalo,
-  RouteLabel,
-} from '@jbrowse/bandage-core/bubbles/bubbleHalos'
+import type { BubbleHalo } from '@jbrowse/bandage-core/bubbles/bubbleHalos'
 import type { LabelLayout } from '@jbrowse/bandage-core/labelLayout'
 
-// Every chip drawn over the graph, above all of its ink: bubble names, gene
-// names on their pins, and the routes' walkers. `overlayLabels` has placed
+// Every chip drawn over the graph, above all of its ink: bubble names and gene
+// names on their pins. `overlayLabels` has placed
 // them against each other and against the row labels already.
 
 const svgStyle = {
@@ -32,30 +29,23 @@ const GENE_INK = '#1c1c22'
 const TICK_PX = 9
 const TICK_WIDTH = 3
 
-// What the gene or route chip under a point reads out, for the hover tooltip:
-// those chips leave the pointer to the canvas, so a drag can start on one
+// What the gene chip under a point reads out, for the hover tooltip: those
+// chips leave the pointer to the canvas, so a drag can start on one
 export function chipReadoutAt(
-  { genes, routes }: Pick<LabelLayout, 'genes' | 'routes'>,
+  { genes }: Pick<LabelLayout, 'genes'>,
   px: number,
   py: number,
 ) {
   const pin = genes.find(chip => inChip(chip, px, py))?.item
-  if (pin) {
-    const { gene } = pin
-    const note = geneCoverageNote(pin)
-    return {
-      label: gene.name,
-      readout: `${gene.refName}:${gene.start.toLocaleString()}-${gene.end.toLocaleString()}${note ? `, ${note} in the cut` : ''}`,
-    }
+  if (!pin) {
+    return undefined
   }
-  const walks = routes.find(chip => inChip(chip, px, py))?.item.route.route
-    .walks
-  return walks
-    ? {
-        label: `${walks.length} walk${walks.length === 1 ? '' : 's'}`,
-        readout: walks.join(', '),
-      }
-    : undefined
+  const { gene } = pin
+  const note = geneCoverageNote(pin)
+  return {
+    label: gene.name,
+    readout: `${gene.refName}:${gene.start.toLocaleString()}-${gene.end.toLocaleString()}${note ? `, ${note} in the cut` : ''}`,
+  }
 }
 
 const LabelLayer = observer(function LabelLayer({
@@ -63,11 +53,11 @@ const LabelLayer = observer(function LabelLayer({
 }: {
   model: GraphPaneModel
 }) {
-  const { bubbles, genes, routes, ticks } = model.overlayLabels
-  if (bubbles.length + genes.length + routes.length + ticks.length === 0) {
+  const { bubbles, genes, ticks } = model.overlayLabels
+  if (bubbles.length + genes.length + ticks.length === 0) {
     return null
   }
-  const { walkLift, scaleY, translateY, contigThickness, hoveredBubble } = model
+  const { scaleY, translateY, contigThickness, hoveredBubble } = model
   const hoveredTick = hoveredBubble
     ? ticks.find(t => sameBubble(t.item.bubble, hoveredBubble))
     : undefined
@@ -75,9 +65,6 @@ const LabelLayer = observer(function LabelLayer({
     ticks[Number((target as Element).getAttribute('data-tick'))]
   const dimmedBubble = (h: BubbleHalo) => model.bubbleFaded(h)
   const isOpen = (h: BubbleHalo) => model.bubbleIsOpen(h.bubble)
-  // lifted walks dim the routes none of them takes
-  const dimmedRoute = (r: RouteLabel) =>
-    walkLift !== undefined && !r.route.walks.some(w => walkLift.names.has(w))
 
   return (
     <svg
@@ -149,19 +136,6 @@ const LabelLayer = observer(function LabelLayer({
           </g>
         )
       })}
-      {routes.map(({ item: { halo: h, route }, x, y, w, text }) => (
-        <LabelChip
-          key={`${bubbleKey(h.bubble)}-${route.route.steps.join(',')}`}
-          x={x}
-          y={y}
-          w={w}
-          text={text}
-          color={BUBBLE_KIND_COLORS[h.kind]}
-          small
-          dimmed={dimmedRoute(route)}
-          testId="graph-route-label"
-        />
-      ))}
       {bubbles.map(({ item: h, x, y, w, text }) => (
         <LabelChip
           key={bubbleKey(h.bubble)}

@@ -56,7 +56,7 @@ test('the canvas reads out the gene chip under the pointer, since the chip leave
     isPanning: false,
     draggingNode: null,
     walkRowBars: undefined,
-    overlayLabels: { genes: [{ item: pin, x: 100, y: 30, w: 40 }], routes: [] },
+    overlayLabels: { genes: [{ item: pin, x: 100, y: 30, w: 40 }] },
   })
   const { result } = renderHook(() =>
     usePaneGestures(model as unknown as GraphPaneModel),

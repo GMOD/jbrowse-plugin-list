@@ -11,10 +11,11 @@ import gbzSchema from '../GbzBaseSyntenyAdapter/configSchema.ts'
 import type { Feature } from '@jbrowse/core/util'
 import type { SyntenyMate } from '@jbrowse/synteny-core'
 
-// chr22 of HPRC v2.1 as a gbz-base database and as gfa-to-tabix 0.5.0's
-// GRCh38 walk files, built 2026-10-08. Skipped where the files are absent.
+// chr22 of HPRC v2.1 as a gbz-base database and as gfa-to-tabix's GRCh38
+// walk file in walk format 2, built 2026-10-08 and 2026-10-12. Skipped where
+// the files are absent.
 const dir = '/home/cdiesh/work/scratch/walks-20261008'
-const walkPrefix = `${dir}/per-sample/after/chr22.GRCh38`
+const walkPrefix = `${dir}/f2/chr22.GRCh38`
 const present =
   existsSync(`${walkPrefix}.walks.bed.gz`) && existsSync(`${dir}/chr22.gbz.db`)
 
@@ -69,10 +70,6 @@ test.skipIf(!present)(
       walkSchema.create({
         walksLocation: local(file('walks')),
         walksIndex: { location: local(`${file('walks')}.tbi`) },
-        nodesLocation: local(file('nodes')),
-        nodesIndex: { location: local(`${file('nodes')}.tbi`) },
-        linksLocation: local(file('links')),
-        linksIndex: { location: local(`${file('links')}.tbi`) },
         assemblyNames: ['hg38'],
         assemblyNameToPanSN: { hg38: 'GRCh38' },
       }),

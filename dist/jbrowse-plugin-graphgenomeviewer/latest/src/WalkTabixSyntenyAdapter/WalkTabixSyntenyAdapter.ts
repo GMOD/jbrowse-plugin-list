@@ -1,4 +1,3 @@
-import { NodeLimitError } from '@jbrowse/bandage-core/gbzWindow'
 import {
   assemblyByPanSNPrefix,
   panSNContig,
@@ -9,23 +8,24 @@ import {
 } from '@jbrowse/bandage-core/pansn'
 import { updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
+import { WalkReader, walkNameFilter } from '@jbrowse/graph-walks'
 
 import { chainFeature, referenceAligner, walkAligner } from './walkLanes.ts'
-import { WalkReader, walkSubgraph } from '../RgfaTabixAdapter/walkReader.ts'
-import { walkNameFilter } from '../RgfaTabixAdapter/walkRows.ts'
+import { isNodeLimitError } from '../LinearGraphDisplay/denseWindow.ts'
+import { BUDGET_SLOTS, walkSubgraph } from '../RgfaTabixAdapter/walkReader.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { ComparativeAdapterBase } from '../synteny/ComparativeAdapterBase.ts'
 import { laneAssemblyName, requestedPairs } from '../synteny/lanePairs.ts'
 
 import type { WalkTabixSyntenyAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
-import type { WalkFragment } from '../RgfaTabixAdapter/walkRows.ts'
 import type { LaneFeatureOptions, LanePair } from '../synteny/lanePairs.ts'
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { getSubAdapterType } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
+import type { WalkFragment } from '@jbrowse/graph-walks'
 
 const haplotypeOf = (fragment: WalkFragment) =>
   panSNHaplotype(fragment.name) ?? fragment.name
@@ -41,16 +41,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
   ) {
     super(config, getSubAdapter, pluginManager)
     const walks = openTabixSlot(this, ['walksLocation'], ['walksIndex'])
-    this.reader = new WalkReader(
-      {
-        walks,
-        nodes: openTabixSlot(this, ['nodesLocation'], ['nodesIndex']),
-        links: openTabixSlot(this, ['linksLocation'], ['linksIndex']),
-      },
-      this.getConf('walkChunk'),
-    )
-    // the walk file names the sequences in either format; format 2 has no
-    // node file
+    this.reader = new WalkReader(walks)
     this.refNames = new PanSNRefNames(walks, this)
   }
 
@@ -113,6 +104,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     return {
       stepBudget: this.getConf('walkStepBudget'),
       byteBudget: this.getConf('walkByteBudget'),
+      budgetNames: BUDGET_SLOTS,
     }
   }
 
@@ -155,7 +147,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
           links: false,
         })
         .catch((error: unknown) => {
-          if (error instanceof NodeLimitError) {
+          if (isNodeLimitError(error) && error instanceof Error) {
             error.message = error.message.replace(
               'to see the graph',
               'to see lanes',

@@ -4,8 +4,8 @@ import { panSNContig } from '@jbrowse/bandage-core/pansn'
 
 import SyntenyFeature from '../synteny/SyntenyFeature.ts'
 
-import type { WalkFragment, WalkNode } from '../RgfaTabixAdapter/walkRows.ts'
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
+import type { WalkFragment, WalkNode } from '@jbrowse/graph-walks'
 
 // The longest bubble with equal bases on both sides that is written as
 // mismatches; a longer one stays an insertion and a deletion

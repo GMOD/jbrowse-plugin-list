@@ -931,13 +931,7 @@ export const withGraphViews = paneBase
       if (!self.showBubbles || !this.drawsNodes || !self.graph || !positions) {
         return []
       }
-      return bubbleHalos(
-        self.graph,
-        self.bubbles,
-        positions,
-        name => self.walkLabel(name),
-        self.repeatArrays,
-      )
+      return bubbleHalos(self.graph, self.bubbles, positions, self.repeatArrays)
     },
     // Every node's midpoint on the reference plus the interval the hue ramps
     // over — what `reference-position` paints from, and undefined under every

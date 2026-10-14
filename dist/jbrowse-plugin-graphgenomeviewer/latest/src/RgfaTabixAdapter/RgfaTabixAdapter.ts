@@ -2,6 +2,7 @@ import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
+import { WalkReader, referenceNodes } from '@jbrowse/graph-walks'
 
 import { locationIsSet } from '../locationName.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
@@ -16,8 +17,7 @@ import {
   parseSegmentRow,
   segmentSamples,
 } from './rgfaBed.ts'
-import { referenceNodes } from './walkFormat2.ts'
-import { WalkReader, walkSubgraph } from './walkReader.ts'
+import { walkSubgraph } from './walkReader.ts'
 
 import type { RgfaTabixAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions, SubgraphTier } from '../GetSubgraph.ts'
@@ -92,7 +92,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
   // refNames off the SEGMENT index: it is the one that names every stable
   // sequence the graph is anchored to, where the link index only names those a
   // link touches. A walk-indexed graph's walk file names the same sequences,
-  // and format 2 has no segment file.
+  // and it has no segment file.
   private openIndex(under: string[]): GraphIndex {
     const segments = openTabixSlot(
       this,
@@ -113,12 +113,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       segments,
       links,
       walkFile,
-      walks: walkFile
-        ? new WalkReader(
-            { walks: walkFile, nodes: segments, links },
-            this.getConf('walkChunk'),
-          )
-        : undefined,
+      walks: walkFile ? new WalkReader(walkFile) : undefined,
       refNames: new PanSNRefNames(walkFile ?? segments, this),
     }
   }
@@ -159,8 +154,9 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
         const start = walks
           ? await walks.queryStart(query.start, opts)
           : query.start
-        if (walkFile && (await walks?.header(opts))?.format === 2) {
-          // a format-2 graph's reference nodes are its ref rows' steps
+        if (walkFile && walks) {
+          // a walk-indexed graph's reference nodes are its ref rows' steps
+          await walks.header(opts)
           const refRows: string[][] = []
           await updateStatus('Downloading walks', statusCallback, () =>
             getLines(walkFile, tabixRefName, start, query.end, {
@@ -173,8 +169,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
               },
             }),
           )
-          // as format 1's node rows do, every node of the chunks read that
-          // ends past the window's start
+          // every node of the chunks read that ends past the window's start
           const seen = new Set<number>()
           for (const node of referenceNodes(refRows)) {
             if (

@@ -37,7 +37,13 @@ import { TUBE_MAP_PANELS, tubeMapPanelGroups } from '../tubeMapPanels'
 import type { GraphLocation } from '../../launchFromGraph/contributors'
 import type { TubeMapPanelSplit } from '../tubeMapPanels'
 import type { ColorScheme } from '@jbrowse/bandage-core/colorSchemes'
+import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { MenuItem } from '@jbrowse/core/ui'
+
+const ENGINE_NAMES: readonly (readonly [LayoutEngineKind, string])[] = [
+  ['fmmm', 'FMMM'],
+  ['stress', 'stress'],
+]
 
 const layoutMenuLabel = (mode: { label: string }) =>
   mode.label.replace(/ layout$/, '')
@@ -462,21 +468,44 @@ export const withLaunchActions = withRenderingActions
     },
     graphMenuItems(): MenuItem[] {
       const options = this.layoutOptionMenuItems()
+      const mode = layoutModeByValue(self.chosenLayoutMode)
+      const engine = ENGINE_NAMES.find(([e]) => e === self.layoutEngine)![1]
       return [
         {
-          label: `Layout: ${layoutMenuLabel(layoutModeByValue(self.chosenLayoutMode))}`,
+          label: `Layout: ${layoutMenuLabel(mode)}${mode.value === 'force' ? ` (${engine})` : ''}`,
           icon: HubIcon,
           subMenu: [
-            ...LAYOUT_MODES.map(mode => ({
-              type: 'radio' as const,
-              label: layoutMenuLabel(mode),
-              checked: self.chosenLayoutMode === mode.value,
-              disabled: self.graph ? !mode.available(self.graph) : false,
-              disabledHelpText: mode.description,
-              onClick: () => {
-                void self.switchLayout(mode.value)
-              },
-            })),
+            ...LAYOUT_MODES.flatMap(mode => {
+              const item = {
+                type: 'radio' as const,
+                disabled: self.graph ? !mode.available(self.graph) : false,
+                disabledHelpText: mode.description,
+              }
+              return mode.value === 'force'
+                ? ENGINE_NAMES.map(([engine, name]) => ({
+                    ...item,
+                    label: `${layoutMenuLabel(mode)} (${name})`,
+                    checked:
+                      self.chosenLayoutMode === mode.value &&
+                      self.layoutEngine === engine,
+                    onClick: () => {
+                      self.setLayoutEngine(engine)
+                      void (self.chosenLayoutMode === mode.value
+                        ? self.recomputeLayout()
+                        : self.switchLayout(mode.value))
+                    },
+                  }))
+                : [
+                    {
+                      ...item,
+                      label: layoutMenuLabel(mode),
+                      checked: self.chosenLayoutMode === mode.value,
+                      onClick: () => {
+                        void self.switchLayout(mode.value)
+                      },
+                    },
+                  ]
+            }),
             ...(options.length > 0
               ? [{ type: 'divider' as const }, ...options]
               : []),
