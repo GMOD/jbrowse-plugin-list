@@ -99,11 +99,10 @@ class RunWriter {
  * `walkRows(graphFromTables(tables), region)` for a cut whose first walk is
  * the reference, which every walk-file and GBZ cut is, in as many pieces as
  * the cut breaks it into; a step is a node index. A gap between two pieces of
- * one haplotype is a step of `-bp`. Two differences: a walk reaching only one of the region's flanks measures from
- * that flank, where walkRows takes the whole walk the cut holds, so its length
- * is a lower bound that no longer grows with the cut's context; and a row
- * keeps its walk's name whole, where graphFromTables reads a two-part name
- * (`chm13#chr1`) as a haplotype `chr1` with no contig.
+ * one haplotype is a step of `-bp`. One difference: a walk reaching only one
+ * of the region's flanks measures from that flank, where walkRows takes the
+ * whole walk the cut holds, so its length is a lower bound that no longer
+ * grows with the cut's context.
  */
 export function walkRowRuns(
   { nodes: n, walks: w }: GraphTables,

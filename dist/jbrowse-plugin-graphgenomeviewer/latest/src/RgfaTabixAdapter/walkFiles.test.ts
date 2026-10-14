@@ -1,7 +1,10 @@
 import { existsSync } from 'node:fs'
 
 import { TabixIndexedFile } from '@gmod/tabix'
-import { graphTablesGFA } from '@jbrowse/bandage-core/gfa/graphTables'
+import {
+  graphFromTables,
+  graphTablesGFA,
+} from '@jbrowse/bandage-core/gfa/graphTables'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
@@ -203,6 +206,11 @@ test('a cut for some haplotypes keeps a reference walk named without a haplotype
     haplotypes: ['HG002#1'],
   })) as GraphTables
   expect(cut.walks.names).toEqual(['GRCh38#chr1', 'HG002#1#chr1'])
+  // the full parse names the walks as the walk rows do
+  expect(graphFromTables(cut).paths?.map(p => p.name)).toEqual([
+    'GRCh38#chr1',
+    'HG002#1#chr1',
+  ])
 })
 
 test('a format 1 walk file is refused, with what to rebuild it with', async () => {
