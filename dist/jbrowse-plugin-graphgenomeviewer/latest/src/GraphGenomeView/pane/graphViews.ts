@@ -305,6 +305,11 @@ export const withGraphViews = paneBase
     get pathCount() {
       return self.graph?.paths?.length ?? 0
     },
+    // No hover is changing the legend, so its size is the one to fit the
+    // drawing around
+    get legendAtRest() {
+      return self.hoveredNode === null && self.hoveredRowWalks.length === 0
+    },
     get hasGraph() {
       return self.graph !== undefined
     },
@@ -601,6 +606,11 @@ export const withGraphViews = paneBase
         }
       })
       return { walks: [], nodeIds, edgeIndexes, names: new Set() }
+    },
+    // What the drawing keeps in colour while the rest greys, on screen and
+    // in the SVG export alike
+    get drawnHighlight(): WalkLift | undefined {
+      return self.walkLift ?? this.openBubbleFocus
     },
     bubbleIsOpen(bubble: MinigraphBubble) {
       return self.openBubbles.some(o => sameBubble(o, bubble))

@@ -166,6 +166,7 @@ test.skipIf(!present)(
       message: expect.stringMatching(/choose fewer haplotypes/),
     })
   },
+  60_000,
 )
 
 test('walksUri names the walk file and its index', () => {

@@ -25,7 +25,12 @@ import { recordingCanvas } from '@jbrowse/bandage-core/renderer/recordingCanvas'
 import { walkHighlight } from '@jbrowse/bandage-core/walkHighlight'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { LAUNCH_LABEL, resolveSubMenu } from '@jbrowse/core/ui'
-import { applySnapshot, getSnapshot, types } from '@jbrowse/mobx-state-tree'
+import {
+  applyPatch,
+  applySnapshot,
+  getSnapshot,
+  types,
+} from '@jbrowse/mobx-state-tree'
 import { autorun } from 'mobx'
 
 import { facetKeyRows } from './legendSections'
@@ -626,7 +631,7 @@ describe('performance instrumentation', () => {
     consoleSpy.mockRestore()
   })
 
-  test('a stop before a new graph is laid out draws nothing of the last one', async () => {
+  test('a stop before a new graph is laid out draws nothing of the last one, and stops loading', async () => {
     const { answers, layouts, holdLayouts } = heldCuts()
     const model = createModel()
     const first = model.cutSubgraph({ type: 'RgfaTabixAdapter' }, TEST_REGION)
@@ -642,10 +647,13 @@ describe('performance instrumentation', () => {
     })
     model.stopLoad()
     expect(model.layoutResult).toBeUndefined()
+    expect(model.graph).toBeUndefined()
     expect(model.loadCanceled).toBe(true)
+    expect(model.showLoading).toBe(false)
     layouts[0]!()
     await second
     expect(model.layoutResult).toBeUndefined()
+    expect(model.showLoading).toBe(false)
   })
 })
 
@@ -1616,7 +1624,7 @@ describe('canvas height follows the drawing', () => {
     await model.loadGFA(SIMPLE_GFA, 'square')
     expect(model.canvasHeight).toBe(600)
 
-    model.setPaneHeight(420)
+    applyPatch(model, { op: 'replace', path: '/paneHeight', value: 420 })
     expect(model.canvasHeight).toBe(420)
     model.zoomToFit()
     expect(extent(model).h * model.scale).toBeLessThanOrEqual(420 - 80 + 1e-6)
@@ -1682,7 +1690,7 @@ describe('canvas height follows the drawing', () => {
     const model = createModel()
     await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
 
-    model.setPaneHeight(40)
+    applyPatch(model, { op: 'replace', path: '/paneHeight', value: 40 })
     expect(model.canvasHeight).toBe(160)
   })
 
@@ -1695,7 +1703,7 @@ describe('canvas height follows the drawing', () => {
     await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
     const fitted = model.canvasHeight
 
-    model.setPaneHeight(900)
+    applyPatch(model, { op: 'replace', path: '/paneHeight', value: 900 })
     expect(model.canvasHeight).toBe(fitted)
   })
 })

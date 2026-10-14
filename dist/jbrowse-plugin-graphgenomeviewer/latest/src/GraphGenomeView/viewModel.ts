@@ -10,6 +10,7 @@ import { reaction } from 'mobx'
 import { HOVER_HIGHLIGHT_VALUES } from './hoverHighlight'
 import { lenientMaybeEnum } from './lenientEnum'
 import { GraphPane, fileName, formatSpanBp } from './model'
+import { canonicalRegion } from '../launchFromGraph/launchFromGraph'
 
 import type { GraphLayers } from './graphLayers'
 import type { NodeColor } from './nodeColor'
@@ -117,6 +118,39 @@ export default function stateModelFactory() {
     }))
     .actions(self => {
       const clearPane = self.clearGraph
+      function loadRegion(region: SubgraphRegion | undefined) {
+        if (self.gfaLocation) {
+          // a whole file has no assembly to name the view by
+          if (!self.displayName) {
+            self.setDisplayName(fileName(self.gfaLocation))
+          }
+          return self.loadGFAFromLocation(self.gfaLocation, region)
+        }
+        if (!self.loadedTrackId || !region) {
+          return undefined
+        }
+        const adapter = self.sourceAdapter
+        const span = region.end - region.start
+        const problem = self.offReference(region)
+        if (!adapter) {
+          self.setError(
+            new Error(
+              `The track this graph was cut from, "${self.loadedTrackId}", is not in this session`,
+            ),
+          )
+        } else if (problem) {
+          self.setError(new Error(problem))
+        } else if (span > self.maxRegionBp) {
+          self.setError(
+            new Error(
+              `Region too large (${formatSpanBp(span)}) — zoom in to view graph (max ${formatSpanBp(self.maxRegionBp)})`,
+            ),
+          )
+        } else {
+          return self.cutSubgraph(adapter, region, self.cutOptions)
+        }
+        return undefined
+      }
       return {
         // the stated source goes too, or a reloaded session would load the
         // dismissed graph again
@@ -126,39 +160,27 @@ export default function stateModelFactory() {
           self.loadedRegion = undefined
           self.loadedTrackId = ''
         },
-        load() {
-          const region = self.loadedRegion
-          if (self.gfaLocation) {
-            // a whole file has no assembly to name the view by
-            if (!self.displayName) {
-              self.setDisplayName(fileName(self.gfaLocation))
-            }
-            return self.loadGFAFromLocation(self.gfaLocation, region)
-          }
-          if (!self.loadedTrackId || !region) {
-            return
-          }
-          const adapter = self.sourceAdapter
-          const span = region.end - region.start
-          const problem = self.offReference(region)
-          if (!adapter) {
-            self.setError(
-              new Error(
-                `The track this graph was cut from, "${self.loadedTrackId}", is not in this session`,
-              ),
-            )
-          } else if (problem) {
-            self.setError(new Error(problem))
-          } else if (span > self.maxRegionBp) {
-            self.setError(
-              new Error(
-                `Region too large (${formatSpanBp(span)}) — zoom in to view graph (max ${formatSpanBp(self.maxRegionBp)})`,
-              ),
-            )
-          } else {
-            return self.cutSubgraph(adapter, region, self.cutOptions)
-          }
-          return undefined
+        // The graph keeps the region by the session's names, which hover sync
+        // and launches compare with, so a stated alias resolves first, once
+        // its assembly's refName aliases have loaded.
+        load(): Promise<void> | undefined {
+          const stated = self.loadedRegion
+          const session = getSession(self)
+          const { assemblyManager } = session
+          const assembly =
+            stated && assemblyManager.has(stated.assemblyName)
+              ? assemblyManager.get(stated.assemblyName)
+              : undefined
+          return stated && assembly?.initialized === false
+            ? assemblyManager
+                .waitForAssembly(stated.assemblyName)
+                .catch(() => undefined)
+                .then(() =>
+                  self.loadedRegion === stated
+                    ? loadRegion(canonicalRegion(session, stated))
+                    : undefined,
+                )
+            : loadRegion(stated && canonicalRegion(session, stated))
         },
       }
     })

@@ -343,14 +343,13 @@ test('highlighting marks the view beside the graph and moves nothing', () => {
   const view = linearView('lgv1', ['K12'])
   const { session, added } = testSession([view])
 
-  const marked = highlightInLinearView({
+  highlightInLinearView({
     session,
     location: K12_LOCATION,
     assembly: 'K12',
     connectedViewId: undefined,
   })
 
-  expect(marked).toBe(true)
   expect(session.addHighlight).toHaveBeenCalledWith({
     refName: 'chr',
     start: 1000,
@@ -366,14 +365,12 @@ test('highlighting marks the view beside the graph and moves nothing', () => {
 test('highlighting with no linear view on the assembly does nothing', () => {
   const { session, added } = testSession([linearView('lgv1', ['Sakai'])])
 
-  expect(
-    highlightInLinearView({
-      session,
-      location: K12_LOCATION,
-      assembly: 'K12',
-      connectedViewId: undefined,
-    }),
-  ).toBe(false)
+  highlightInLinearView({
+    session,
+    location: K12_LOCATION,
+    assembly: 'K12',
+    connectedViewId: undefined,
+  })
   expect(session.addHighlight).not.toHaveBeenCalled()
   expect(added).toEqual([])
 })

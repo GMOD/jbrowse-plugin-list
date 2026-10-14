@@ -1,9 +1,16 @@
 import { abgrAlpha, packAbgr } from '@jbrowse/bandage-core/renderer/colorBits'
 import { expect, test } from 'vitest'
 
-import { blendInto, fadeEntering, morphStarts, routeStarts } from './morph'
+import {
+  blendInto,
+  canMorph,
+  fadeEntering,
+  morphStarts,
+  routeStarts,
+} from './morph'
 
 import type { RenderBatch } from '@jbrowse/bandage-core/renderer/types'
+import type { LayoutResult } from '@jbrowse/bandage-core/types'
 
 const identity = { scaleX: 1, scaleY: 1, translateX: 0, translateY: 0 }
 
@@ -214,4 +221,30 @@ test('a node a morph brings in fades with every link touching it', () => {
   expect(alphas(batch.nodeStrokes)).toEqual([255, 128, 128])
   expect(alphas(batch.edgeCurves)).toEqual([128, 255])
   expect(alphas(batch.arrows)).toEqual([128])
+})
+
+const free: LayoutResult = { nodePositions: {} }
+
+test('a change between two free-placed layouts morphs', () => {
+  expect(canMorph(free, free, 100, false)).toBe(true)
+})
+
+test('a layout placed by rule on either side snaps', () => {
+  const ruled: LayoutResult[] = [
+    { ...free, referenceAxis: true },
+    { ...free, pixelRows: true },
+  ]
+  for (const r of ruled) {
+    expect(canMorph(r, free, 100, false)).toBe(false)
+    expect(canMorph(free, r, 100, false)).toBe(false)
+  }
+  expect(canMorph(free, { ...free, tubeMap: {} as never }, 100, false)).toBe(
+    false,
+  )
+  expect(canMorph(free, free, 100, true)).toBe(false)
+})
+
+test('a graph past the frame budget snaps', () => {
+  expect(canMorph(free, free, 3000, false)).toBe(true)
+  expect(canMorph(free, free, 3001, false)).toBe(false)
 })

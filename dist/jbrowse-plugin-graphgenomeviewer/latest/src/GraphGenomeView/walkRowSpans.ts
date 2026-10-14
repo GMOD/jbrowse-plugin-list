@@ -3,6 +3,7 @@ import {
   coalesceRuns,
   runPaint,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
+import { hslToRgb } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { packAbgr } from '@jbrowse/bandage-core/renderer/colorBits'
 import { spanMark } from '@jbrowse/render-core/marks'
 
@@ -10,15 +11,6 @@ import type { WalkRow, WalkRun } from '@jbrowse/bandage-core/layout/walkRows'
 import type { MarkContext2D, SpanChannels } from '@jbrowse/render-core/marks'
 
 type Rgb = [number, number, number]
-
-function hslRgb(h: number, s: number, l: number): Rgb {
-  const a = s * Math.min(l, 1 - l)
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    return 255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))
-  }
-  return [f(0), f(8), f(4)]
-}
 
 // The colours runPaint writes: `#rrggbb`, `rgb(r, g, b)` and
 // `hsl(h, s%, l%)`
@@ -28,7 +20,9 @@ export function cssRgb(css: string): Rgb {
     return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff]
   }
   const [a = 0, b = 0, c = 0] = css.match(/[\d.]+/g)!.map(Number)
-  return css.startsWith('hsl') ? hslRgb(a, b / 100, c / 100) : [a, b, c]
+  return css.startsWith('hsl')
+    ? (hslToRgb(a, b / 100, c / 100).map(v => v * 255) as Rgb)
+    : [a, b, c]
 }
 
 const abgr = ([r, g, b]: Rgb) =>

@@ -13,11 +13,16 @@ import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
 import PanSNAliasesF from './index'
-import { withPanSNAliases } from './trackAdapterConfig'
+import {
+  withCanonicalAssemblyNames,
+  withPanSNAliases,
+} from './trackAdapterConfig'
 import Adapter from '../GbzBaseSyntenyAdapter/GbzBaseSyntenyAdapter'
 import configSchema from '../GbzBaseSyntenyAdapter/configSchema'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
 import GraphTrackF from '../GraphTrack/index'
+import WalkAdapter from '../WalkTabixSyntenyAdapter/WalkTabixSyntenyAdapter'
+import walkConfigSchema from '../WalkTabixSyntenyAdapter/configSchema'
 import WalkTabixSyntenyAdapterF from '../WalkTabixSyntenyAdapter/index'
 
 import type { AssemblyAliases } from './trackAdapterConfig'
@@ -26,6 +31,13 @@ import type { SyntenyMate } from '@jbrowse/synteny-core'
 const GBZ = { type: 'GbzBaseSyntenyAdapter', assemblyNames: ['hg38'] }
 
 const HG00621_1 = { name: 'HG00621.1', aliases: ['HG00621#1'] }
+
+const HG38 = { name: 'hg38', aliases: ['GRCh38'] }
+
+const local = (path: string) => ({
+  localPath: require.resolve(path),
+  locationType: 'LocalPathLocation' as const,
+})
 
 describe('the map a track sends', () => {
   test('an assembly aliased by its PanSN haplotype name maps to it', () => {
@@ -65,6 +77,115 @@ describe('the map a track sends', () => {
     expect(withPanSNAliases(config, [{ name: 'HG00621.1', aliases: [] }])).toBe(
       config,
     )
+  })
+})
+
+describe('the assembly names a track sends', () => {
+  test('an alias becomes the canonical name and stays its PanSN prefix', () => {
+    expect(
+      withCanonicalAssemblyNames({ ...GBZ, assemblyNames: ['GRCh38'] }, [
+        HG38,
+        HG00621_1,
+      ]),
+    ).toEqual({
+      ...GBZ,
+      assemblyNames: ['hg38'],
+      assemblyNameToPanSN: { hg38: 'GRCh38' },
+    })
+  })
+
+  test("a map entry under an alias moves to the canonical name, and the canonical name's own entry wins", () => {
+    const named = (assemblyNameToPanSN: Record<string, string>) =>
+      withCanonicalAssemblyNames(
+        { ...GBZ, assemblyNames: ['GRCh38', 'HG00621#1'], assemblyNameToPanSN },
+        [HG38, HG00621_1],
+      )
+    expect(named({ GRCh38: 'GRCh38#0' })).toEqual({
+      ...GBZ,
+      assemblyNames: ['hg38', 'HG00621.1'],
+      assemblyNameToPanSN: { hg38: 'GRCh38#0', 'HG00621.1': 'HG00621#1' },
+    })
+    expect(
+      named({ GRCh38: 'GRCh38#1', hg38: 'GRCh38#0' }).assemblyNameToPanSN,
+    ).toEqual({ hg38: 'GRCh38#0', 'HG00621.1': 'HG00621#1' })
+  })
+
+  test('canonical names leave the config as it was', () => {
+    expect(withCanonicalAssemblyNames(GBZ, [HG38, HG00621_1])).toBe(GBZ)
+  })
+})
+
+describe("a lanes track anchored on an alias of the window's assembly", () => {
+  test('the walk adapter lists, cuts and reads the window', async () => {
+    const adapter = new WalkAdapter(
+      walkConfigSchema.create(
+        withCanonicalAssemblyNames(
+          {
+            type: 'WalkTabixSyntenyAdapter',
+            walksLocation: local(
+              '../RgfaTabixAdapter/test_data/walks2_header.GRCh38.walks.bed.gz',
+            ),
+            walksIndex: {
+              location: local(
+                '../RgfaTabixAdapter/test_data/walks2_header.GRCh38.walks.bed.gz.tbi',
+              ),
+            },
+            assemblyNames: ['GRCh38'],
+          },
+          [HG38],
+        ),
+      ),
+    )
+    const window = {
+      refName: 'chr1',
+      assemblyName: 'hg38',
+      start: 0,
+      end: 3600,
+    }
+    expect(await adapter.getRefNames({ assemblyName: 'hg38' })).toContain(
+      'chr1',
+    )
+    expect(await adapter.getSubgraph(window)).toBeTruthy()
+    const features = await firstValueFrom(
+      adapter.getFeatures(window).pipe(toArray()),
+    )
+    expect(features.length).toBeGreaterThan(0)
+  })
+
+  test('the gbz adapter lists, cuts and reads the window', async () => {
+    const adapter = new Adapter(
+      configSchema.create(
+        withCanonicalAssemblyNames(
+          {
+            ...GBZ,
+            gbzDbLocation: local(
+              '../GbzBaseSyntenyAdapter/test_data/micb-kir3dl1.gbz.db',
+            ),
+            haplotypeIndexLocation: local(
+              '../GbzBaseSyntenyAdapter/test_data/micb-kir3dl1.sampled.haplotype-index.db',
+            ),
+            assemblyNames: ['GRCh38'],
+            assemblyNameToPanSN: { GRCh38: 'GRCh38#0' },
+            context: 0,
+          },
+          [HG38],
+        ),
+      ),
+    )
+    const window = {
+      refName: 'chr6',
+      start: 31500000,
+      end: 31501000,
+      assemblyName: 'hg38',
+    }
+    expect(await adapter.getRefNames({ assemblyName: 'hg38' })).toContain(
+      'chr6',
+    )
+    expect(await adapter.getSubgraph(window)).toBeTruthy()
+    const features = await firstValueFrom(
+      adapter.getFeatures(window).pipe(toArray()),
+    )
+    expect(features.length).toBeGreaterThan(0)
   })
 })
 
@@ -149,7 +270,7 @@ describe('the lanes the adapter reads with that map', () => {
 // Core's display stood in for by BaseDisplay, which is where its
 // `adapterConfig` comes from
 test.each(['GbzBaseSyntenyAdapter', 'WalkTabixSyntenyAdapter'])(
-  "a core synteny display under a %s lanes track hands its requests the session's aliases",
+  "a core synteny display under a %s lanes track hands its requests the session's names and aliases",
   type => {
     const pluginManager = new PluginManager()
     GbzBaseSyntenyAdapterF(pluginManager)
@@ -195,7 +316,11 @@ test.each(['GbzBaseSyntenyAdapter', 'WalkTabixSyntenyAdapter'])(
         trackId: 'lanes',
         name: 'lanes',
         assemblyNames: ['hg38', 'HG00621.1'],
-        adapter: { ...GBZ, type, assemblyNameToPanSN: { hg38: 'GRCh38#0' } },
+        adapter: {
+          type,
+          assemblyNames: ['GRCh38'],
+          assemblyNameToPanSN: { hg38: 'GRCh38#0' },
+        },
         displays: [
           { type: 'MultiWaySyntenyDisplay', displayId: 'lanes-multiway' },
         ],
@@ -239,6 +364,7 @@ test.each(['GbzBaseSyntenyAdapter', 'WalkTabixSyntenyAdapter'])(
     session.view.showTrack('lanes')
     const display = session.view.tracks[0]!.displays[0]!
     expect(display.type).toBe('MultiWaySyntenyDisplay')
+    expect(display.adapterConfig.assemblyNames).toEqual(['hg38'])
     expect(display.adapterConfig.assemblyNameToPanSN).toEqual({
       'HG00621.1': 'HG00621#1',
       hg38: 'GRCh38#0',

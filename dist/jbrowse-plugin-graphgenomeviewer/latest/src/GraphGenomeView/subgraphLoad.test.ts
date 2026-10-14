@@ -1,6 +1,14 @@
 import stateModelFactory from './viewModel'
+import { hoverInRegion } from '../hoverSync/lgvHover'
 
 import type { readConfObject } from '@jbrowse/core/configuration'
+
+interface MockAssembly {
+  name: string
+  aliases?: string[]
+  initialized?: boolean
+  getCanonicalRefName2?: (refName: string) => string
+}
 
 const mockRpcCall = vi.fn()
 const mockSession = {
@@ -8,7 +16,9 @@ const mockSession = {
   rpcManager: { call: mockRpcCall },
   assemblyManager: {
     has: (_name: string) => false,
-    get: (_name: string) => undefined as { name: string } | undefined,
+    get: (_name: string) => undefined as MockAssembly | undefined,
+    waitForAssembly: undefined as
+      ((name: string) => Promise<MockAssembly | undefined>) | undefined,
     assemblyList: [] as { name: string; aliases: string[] }[],
   },
 }
@@ -106,6 +116,7 @@ beforeEach(() => {
   mockSession.tracks = [TRACK]
   mockSession.assemblyManager.has = () => false
   mockSession.assemblyManager.get = () => undefined
+  mockSession.assemblyManager.waitForAssembly = undefined
   mockSession.assemblyManager.assemblyList = []
 })
 
@@ -133,6 +144,50 @@ test("a track naming its reference by an alias of the region's assembly cuts it"
   const model = await cut(ON_HG38)
   expect(model.error).toBeUndefined()
   expect(model.nodeCount).toBe(3)
+})
+
+describe('a region named by aliases', () => {
+  const ALIASED = { ...ON_HG38, assemblyName: 'GRCh38', refName: '6' }
+
+  function sessionKnowsHg38(initialized = true) {
+    const hg38: MockAssembly = {
+      name: 'hg38',
+      aliases: ['GRCh38'],
+      initialized,
+      getCanonicalRefName2: refName =>
+        hg38.initialized && refName === '6' ? 'chr6' : refName,
+    }
+    const known = (name: string) => name === 'hg38' || name === 'GRCh38'
+    mockSession.assemblyManager.has = known
+    mockSession.assemblyManager.get = name => (known(name) ? hg38 : undefined)
+    return hg38
+  }
+
+  function cutRegion() {
+    return (mockRpcCall.mock.calls[0]![2] as { region: unknown }).region
+  }
+
+  test('is cut and kept by canonical names, so hover sync and pairing match', async () => {
+    sessionKnowsHg38()
+    const model = await cut(ALIASED)
+    expect(model.error).toBeUndefined()
+    expect(cutRegion()).toEqual(ON_HG38)
+    expect(model.graphRegion).toEqual(ON_HG38)
+    const hover = { refName: 'chr6', assemblyName: 'hg38', coord: 32_000_500 }
+    expect(hoverInRegion(hover, model.graphRegion!)).toBe(true)
+    expect(model.nodeLaunchTargets('s1+').reference?.assembly).toBe('hg38')
+  })
+
+  test('waits for its assembly to load before resolving the refName', async () => {
+    const hg38 = sessionKnowsHg38(false)
+    mockSession.assemblyManager.waitForAssembly = async () => {
+      hg38.initialized = true
+      return hg38
+    }
+    const model = await cut(ALIASED)
+    expect(cutRegion()).toEqual(ON_HG38)
+    expect(model.graphRegion).toEqual(ON_HG38)
+  })
 })
 
 test('a cut that finds no segments is an error, not an empty graph', async () => {

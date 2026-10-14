@@ -3,7 +3,11 @@ import { strandSides } from '@jbrowse/bandage-core/util/geometry'
 
 import type { ScreenTransform } from './keepInView'
 import type { RenderBatch, Run } from '@jbrowse/bandage-core/renderer/types'
-import type { Graph, NodeSegment } from '@jbrowse/bandage-core/types'
+import type {
+  Graph,
+  LayoutResult,
+  NodeSegment,
+} from '@jbrowse/bandage-core/types'
 import type { EdgeSides } from '@jbrowse/bandage-core/util/geometry'
 
 type Positions = Record<string, NodeSegment[]>
@@ -17,11 +21,11 @@ interface Attachment {
 
 // Morphs above this many nodes snap instead: each frame rebuilds the
 // geometry, which past it no longer fits a frame (GRAPH_SCALE_AND_LOD.md)
-export const MORPH_MAX_NODES = 3000
-export const MORPH_MS = 350
+const MORPH_MAX_NODES = 3000
+const MORPH_MS = 350
 // the most of the morph one frame may take, so a busy main thread delays
 // the motion rather than skipping it
-export const MORPH_MAX_STEP_MS = 34
+const MORPH_MAX_STEP_MS = 34
 
 function arcPrefix(line: NodeSegment[]) {
   const arc = [0]
@@ -275,8 +279,73 @@ export function fadeEntering(
   })
 }
 
-export function easeInOut(t: number) {
+function easeInOut(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
+}
+
+// A layout change slides only between two free-placed drawings: a reference
+// axis, walk rows, a tube map or a facet grid places nodes by rule, and past
+// MORPH_MAX_NODES a frame's geometry rebuild no longer fits in a frame
+export function canMorph(
+  previous: LayoutResult,
+  next: LayoutResult,
+  nodeCount: number,
+  faceted: boolean,
+) {
+  return !(
+    previous.referenceAxis ||
+    next.referenceAxis ||
+    previous.pixelRows ||
+    next.pixelRows ||
+    next.tubeMap ||
+    faceted ||
+    nodeCount > MORPH_MAX_NODES
+  )
+}
+
+export function motionAllowed() {
+  return (
+    typeof requestAnimationFrame !== 'undefined' &&
+    !(
+      'matchMedia' in window &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
+  )
+}
+
+// Calls `blend` with the eased progress once a frame for MORPH_MS while
+// `isLive` holds, then `onEnd`. `finish` jumps to the last frame.
+export function runMorph(
+  blend: (t: number) => void,
+  isLive: () => boolean,
+  onEnd: () => void,
+) {
+  const run = {
+    frame: 0,
+    finish: () => {
+      blend(1)
+    },
+  }
+  let elapsed = 0
+  let last = performance.now()
+  const step = () => {
+    if (!isLive()) {
+      onEnd()
+      return
+    }
+    const now = performance.now()
+    elapsed += Math.min(now - last, MORPH_MAX_STEP_MS)
+    last = now
+    const t = Math.min(1, elapsed / MORPH_MS)
+    blend(easeInOut(t))
+    if (t < 1) {
+      run.frame = requestAnimationFrame(step)
+    } else {
+      onEnd()
+    }
+  }
+  run.frame = requestAnimationFrame(step)
+  return run
 }
 
 // Writes the blend of `starts` and `ends` at `t` into `into` IN PLACE, the

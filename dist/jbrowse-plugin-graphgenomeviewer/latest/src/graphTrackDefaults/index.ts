@@ -1,6 +1,7 @@
 import { buildAdapterConfig } from '../GraphAddTrackWorkflow/buildTrackConfig'
 import { isSegmentsLocation } from '../GraphAddTrackWorkflow/graphManifest'
 import { locationName } from '../locationName'
+import { LANE_ADAPTERS } from '../panSNAliases/trackAdapterConfig'
 
 import type { GraphFileChoice } from '../GraphAddTrackWorkflow/buildTrackConfig'
 import type PluginManager from '@jbrowse/core/PluginManager'
@@ -18,12 +19,13 @@ export function isGbzLocation(loc: FileLocation) {
   return locationName(loc).toLowerCase().endsWith('.gbz.db')
 }
 
-// A gbz-base adapter cuts on the first assembly it names. A track added
-// through Add track names that assembly on the track alone.
-export function withGbzAnchor(snap: TrackConfigSnapshot) {
+// A lanes adapter cuts on the first assembly it names. A track added through
+// Add track names that assembly on the track alone.
+export function withLaneAnchor(snap: TrackConfigSnapshot) {
   const adapter = snap.adapter as
     { type?: string; assemblyNames?: unknown[] } | undefined
-  return adapter?.type === 'GbzBaseSyntenyAdapter' &&
+  return adapter?.type !== undefined &&
+    LANE_ADAPTERS.has(adapter.type) &&
     !adapter.assemblyNames?.length &&
     Array.isArray(snap.assemblyNames) &&
     snap.assemblyNames.length > 0
@@ -60,7 +62,10 @@ export function guessGraphAdapter(
 }
 
 export default function GraphTrackDefaultsF(pluginManager: PluginManager) {
-  pluginManager.addToExtensionPoint('Core-preProcessTrackConfig', withGbzAnchor)
+  pluginManager.addToExtensionPoint(
+    'Core-preProcessTrackConfig',
+    withLaneAnchor,
+  )
   pluginManager.addToExtensionPoint(
     'Core-guessAdapterForLocation',
     (next: AdapterGuesser): AdapterGuesser =>

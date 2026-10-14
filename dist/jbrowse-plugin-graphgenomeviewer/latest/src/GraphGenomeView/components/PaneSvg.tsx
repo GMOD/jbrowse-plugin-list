@@ -355,7 +355,7 @@ export default function PaneSvg({
       ) : (
         <Body
           model={model}
-          lift={model.walkLift}
+          lift={model.drawnHighlight}
           drawPaths={model.effectiveDrawPaths}
           width={width}
           height={height}

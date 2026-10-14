@@ -687,10 +687,14 @@ export const withLoadActions = withEngineSettings.actions(self => {
         self.loadCanceled = true
       }
     },
-    // The user's stop, leaving whatever is drawn under it
+    // The user's stop, leaving whatever is drawn under it, and dropping a
+    // swapped-in graph whose layout never landed
     stopLoad() {
       abortLoad()
       dropLayoutOfReplacedGraph()
+      if (!self.layoutResult) {
+        resetCut()
+      }
       self.isLoading = false
       self.statusMessage = ''
       self.loadCanceled = true

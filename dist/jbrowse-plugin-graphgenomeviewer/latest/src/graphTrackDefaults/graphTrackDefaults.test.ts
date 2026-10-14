@@ -1,6 +1,6 @@
 import PluginManager from '@jbrowse/core/PluginManager'
 
-import GraphTrackDefaultsF, { withGbzAnchor } from './index'
+import GraphTrackDefaultsF, { withLaneAnchor } from './index'
 
 const uri = (u: string) => ({ uri: u, locationType: 'UriLocation' as const })
 
@@ -96,7 +96,7 @@ test("a gbz adapter naming no assemblies takes the track's", () => {
     assemblyNames: ['hg38'],
     adapter: { type: 'GbzBaseSyntenyAdapter' },
   }
-  expect(withGbzAnchor(track).adapter).toEqual({
+  expect(withLaneAnchor(track).adapter).toEqual({
     type: 'GbzBaseSyntenyAdapter',
     assemblyNames: ['hg38'],
   })
@@ -104,5 +104,17 @@ test("a gbz adapter naming no assemblies takes the track's", () => {
     ...track,
     adapter: { type: 'GbzBaseSyntenyAdapter', assemblyNames: ['hs1'] },
   }
-  expect(withGbzAnchor(named)).toBe(named)
+  expect(withLaneAnchor(named)).toBe(named)
+})
+
+test("a walk lanes adapter naming no assemblies takes the track's", () => {
+  const track = {
+    type: 'GraphTrack',
+    assemblyNames: ['hg38', 'HG002.1'],
+    adapter: { type: 'WalkTabixSyntenyAdapter' },
+  }
+  expect(withLaneAnchor(track).adapter).toEqual({
+    type: 'WalkTabixSyntenyAdapter',
+    assemblyNames: ['hg38', 'HG002.1'],
+  })
 })

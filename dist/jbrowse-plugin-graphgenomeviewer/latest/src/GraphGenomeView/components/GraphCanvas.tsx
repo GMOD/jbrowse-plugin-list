@@ -152,30 +152,33 @@ const deletionLabelStyle = {
 // Measures itself for the model, so no label is placed under a legend and
 // none gives way to one that is not drawn.
 //
-// At rest only: the walk keys' hover readout would otherwise refit the view,
-// and the refit clears the hover that grew it
-const Legends = observer(function Legends({
+// At rest only, and again on returning to rest: a hover's walk keys would
+// otherwise refit the view, and the refit clears the hover that grew them
+export const Legends = observer(function Legends({
   model,
 }: {
   model: GraphPaneModel
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const atRest = model.legendAtRest
   useEffect(() => {
     const el = ref.current
-    if (!el) {
+    if (!el || !atRest) {
       return
     }
     // the last callback can land after the track is closed
-    const observer = new ResizeObserver(() => {
-      if (isAlive(model) && model.hoveredNode === null) {
+    const measure = () => {
+      if (isAlive(model) && model.legendAtRest) {
         model.setLegendSize({ width: el.offsetWidth, height: el.offsetHeight })
       }
-    })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
     observer.observe(el)
     return () => {
       observer.disconnect()
     }
-  }, [model])
+  }, [model, atRest])
   return (
     <div
       ref={ref}

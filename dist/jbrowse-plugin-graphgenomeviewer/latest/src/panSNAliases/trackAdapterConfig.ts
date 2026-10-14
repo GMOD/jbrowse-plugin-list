@@ -44,15 +44,55 @@ export function withPanSNAliases(
       }
 }
 
+// The config's `assemblyNames` and `assemblyNameToPanSN` keys by each
+// assembly's canonical name, the name a window arrives with. An alias renamed
+// here still resolves to itself as a PanSN prefix. Unchanged when every name is
+// canonical.
+export function withCanonicalAssemblyNames(
+  adapterConfig: Record<string, unknown>,
+  assemblies: AssemblyAliases[],
+) {
+  const canonical = (name: string) =>
+    assemblies.find(a => a.name === name || a.aliases.includes(name))?.name ??
+    name
+  const names = (adapterConfig.assemblyNames ?? []) as string[]
+  const explicit = (adapterConfig.assemblyNameToPanSN ?? {}) as Record<
+    string,
+    string
+  >
+  if ([...names, ...Object.keys(explicit)].every(n => canonical(n) === n)) {
+    return adapterConfig
+  }
+  const map = new Map<string, string>()
+  for (const [name, prefix] of Object.entries(explicit)) {
+    const to = canonical(name)
+    if (to === name || !map.has(to)) {
+      map.set(to, prefix)
+    }
+  }
+  for (const name of names) {
+    const to = canonical(name)
+    if (to !== name && !map.has(to)) {
+      map.set(to, name)
+    }
+  }
+  return {
+    ...adapterConfig,
+    assemblyNames: names.map(canonical),
+    assemblyNameToPanSN: Object.fromEntries(map),
+  }
+}
+
 // The adapters that declare `headerLanes`, whose lanes are PanSN haplotypes
-const LANE_ADAPTERS = new Set([
+export const LANE_ADAPTERS = new Set([
   'GbzBaseSyntenyAdapter',
   'WalkTabixSyntenyAdapter',
 ])
 
 /**
  * A track's adapter config as its requests carry it. A worker has no assembly
- * manager, so a lane track learns the session's PanSN aliases here.
+ * manager, so a lane track learns the session's assembly names and PanSN
+ * aliases here.
  */
 export function trackAdapterConfig(
   node: IAnyStateTreeNode,
@@ -62,13 +102,17 @@ export function trackAdapterConfig(
     string,
     unknown
   >
-  return LANE_ADAPTERS.has(adapterConfig.type as string)
-    ? withPanSNAliases(
-        adapterConfig,
-        getSession(node).assemblyManager.assemblyList.map(conf => ({
-          name: readConfObject(conf, 'name') as string,
-          aliases: (readConfObject(conf, 'aliases') ?? []) as string[],
-        })),
-      )
-    : adapterConfig
+  if (!LANE_ADAPTERS.has(adapterConfig.type as string)) {
+    return adapterConfig
+  }
+  const assemblies = getSession(node).assemblyManager.assemblyList.map(
+    conf => ({
+      name: readConfObject(conf, 'name') as string,
+      aliases: (readConfObject(conf, 'aliases') ?? []) as string[],
+    }),
+  )
+  return withPanSNAliases(
+    withCanonicalAssemblyNames(adapterConfig, assemblies),
+    assemblies,
+  )
 }
