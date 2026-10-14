@@ -1,8 +1,7 @@
+import { regionLabel } from '@jbrowse/bandage-core/hoverText'
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
 import HighlightAltIcon from '@mui/icons-material/HighlightAlt'
 import LineStyleIcon from '@mui/icons-material/LineStyle'
-
-import { locLabel } from './contributors'
 
 import type { Contributor, GraphLocation } from './contributors'
 import type { LaunchableSyntenyTrack } from './syntenyTracks'
@@ -101,7 +100,7 @@ export function graphLaunchMenuItems({
       label: LINEAR_LABEL,
       icon: LineStyleIcon,
       entries: contributors,
-      entryLabel: c => `${c.sample} ${locLabel(c)}`,
+      entryLabel: c => `${c.sample} ${regionLabel(c)}`,
       onSelect: c => () => {
         onShowLinear({ location: c, assembly: c.sample })
       },
@@ -169,7 +168,7 @@ export function nodeLaunchMenuItems({
   const entries = [
     own
       ? {
-          label: `Open in ${own.assembly} — ${locLabel(own.location)}`,
+          label: `Open in ${own.assembly} — ${regionLabel(own.location)}`,
           target: own,
         }
       : undefined,

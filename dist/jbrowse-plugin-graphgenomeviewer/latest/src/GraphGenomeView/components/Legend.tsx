@@ -9,7 +9,7 @@ import { legendBoxStyle, legendNoteStyle, legendRowStyle } from './legendStyles'
 import type { LegendRow, LegendSwatch, Stop } from '../legendSections'
 import type { GraphPaneModel } from '../model'
 
-export function stopsCss(stops: readonly Stop[]) {
+function stopsCss(stops: readonly Stop[]) {
   return stops.length === 1
     ? stops[0]!.color
     : `linear-gradient(to right, ${stops.map(s => `${s.color} ${s.offset * 100}%`).join(', ')})`
@@ -140,33 +140,24 @@ export function LegendRowView({
   hint?: string
   after?: ReactNode
 }) {
-  if (!row.swatch) {
-    return <div style={legendNoteStyle}>{row.label}</div>
-  }
-  const line = (
-    <div style={legendRowStyle}>
-      <LegendSwatchView swatch={row.swatch} />
-      <span>
-        {row.strong ? <strong>{row.strong}</strong> : null}
-        {row.label}
-      </span>
-      {after}
-    </div>
-  )
-  const title = [row.title, hint].filter(Boolean).join(' · ') || undefined
-  return at || row.under ? (
-    <div title={title}>
-      {line}
+  return row.swatch ? (
+    <div title={[row.title, hint].filter(Boolean).join(' · ') || undefined}>
+      <div style={legendRowStyle}>
+        <LegendSwatchView swatch={row.swatch} />
+        <span>
+          {row.strong ? <strong>{row.strong}</strong> : null}
+          {row.label}
+        </span>
+        {after}
+      </div>
       {at ? (
         <div data-testid="graph-walk-at">{at}</div>
-      ) : (
+      ) : row.under ? (
         <div>{row.under}</div>
-      )}
+      ) : null}
     </div>
-  ) : title ? (
-    <div title={title}>{line}</div>
   ) : (
-    line
+    <div style={legendNoteStyle}>{row.label}</div>
   )
 }
 

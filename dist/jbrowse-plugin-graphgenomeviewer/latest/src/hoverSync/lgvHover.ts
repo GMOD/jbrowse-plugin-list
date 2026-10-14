@@ -2,6 +2,7 @@ import { isBackbone } from '@jbrowse/bandage-core/anchoredNodes'
 
 import { isRecord } from '../isRecord'
 
+import type { SubgraphRegion } from '../GetSubgraph'
 import type { GraphNode } from '@jbrowse/bandage-core/types'
 
 // What a LinearGenomeView writes to `session.hovered` on every mousemove (see
@@ -86,10 +87,7 @@ export function readLgvHover(hovered: unknown): LgvHover | undefined {
 // coordinate alone every row of the stack matched and the graph highlighted a
 // K12 node at Sakai's offset. A hover that names no assembly still passes,
 // which is what a hand-written channel writer and the older LGVs get.
-export function hoverInRegion(
-  hover: LgvHover,
-  region: { refName: string; assemblyName: string; start: number; end: number },
-) {
+export function hoverInRegion(hover: LgvHover, region: SubgraphRegion) {
   return (
     (hover.assemblyName === undefined ||
       hover.assemblyName === region.assemblyName) &&

@@ -1,4 +1,3 @@
-import { cutsWholeWalks as wholeWalksRule } from '@jbrowse/bandage-core/layout/walkStrip'
 import {
   LAYOUT_MODE_VALUES,
   layoutModeByValue,
@@ -8,20 +7,9 @@ import { getSession } from '@jbrowse/core/util'
 import { addDisposer, types } from '@jbrowse/mobx-state-tree'
 import { reaction } from 'mobx'
 
-import {
-  GraphPaneMixin,
-  MAX_GRAPH_REGION_BP,
-  fileName,
-  formatSpanBp,
-} from './model'
-import {
-  configHaplotypes,
-  graphReferenceAssembly,
-  offReferenceProblem,
-} from '../graphTrackConfig'
 import { HOVER_HIGHLIGHT_VALUES } from './hoverHighlight'
 import { lenientMaybeEnum } from './lenientEnum'
-import { trackAdapterConfig } from '../panSNAliases/trackAdapterConfig'
+import { GraphPane, fileName, formatSpanBp } from './model'
 
 import type { GraphLayers } from './graphLayers'
 import type { NodeColor } from './nodeColor'
@@ -39,7 +27,7 @@ export default function stateModelFactory() {
     .compose(
       'GraphGenomeView',
       BaseViewModel,
-      GraphPaneMixin(),
+      GraphPane,
       types.model({
         type: types.literal('GraphGenomeView'),
         // a whole GFA the view loads on attach, kept so the source round-trips
@@ -51,9 +39,6 @@ export default function stateModelFactory() {
         // sessions and the docs' figure specs state it. Following the linear
         // view is the track's job (LinearGraphDisplay).
         loadedTrackId: types.optional(types.string, ''),
-        subgraphContext: types.optional(types.number, 1),
-        subgraphHaplotypes: types.maybe(types.frozen<string[]>()),
-        maxRegionBp: types.optional(types.number, MAX_GRAPH_REGION_BP),
         // unset is force
         layoutMode: lenientMaybeEnum(LAYOUT_MODE_VALUES),
         color: types.maybe(types.frozen<NodeColor>()),
@@ -107,16 +92,6 @@ export default function stateModelFactory() {
       get paneMeasured() {
         return self.widthMeasured
       },
-      // the set stated, else the source track's defaultHaplotypes
-      get cutHaplotypes() {
-        const track = this.sourceTrack
-        return (
-          self.subgraphHaplotypes ??
-          (track
-            ? configHaplotypes(trackAdapterConfig(self, track))
-            : undefined)
-        )
-      },
       get sourceGfaLocation() {
         return self.gfaLocation
       },
@@ -163,15 +138,10 @@ export default function stateModelFactory() {
           if (!self.loadedTrackId || !region) {
             return
           }
-          const track = self.sourceTrack
+          const adapter = self.sourceAdapter
           const span = region.end - region.start
-          const problem = track
-            ? offReferenceProblem(
-                graphReferenceAssembly(track),
-                region.assemblyName,
-              )
-            : undefined
-          if (!track) {
+          const problem = self.offReference(region)
+          if (!adapter) {
             self.setError(
               new Error(
                 `The track this graph was cut from, "${self.loadedTrackId}", is not in this session`,
@@ -186,16 +156,7 @@ export default function stateModelFactory() {
               ),
             )
           } else {
-            return self.cutSubgraph(trackAdapterConfig(self, track), region, {
-              hops: self.subgraphContext,
-              haplotypes: self.cutHaplotypes,
-              ...(self.chosenLayoutMode === 'walkrows'
-                ? { walkRows: true }
-                : {}),
-              ...(self.cutsWholeWalks
-                ? { snarls: 'overlapping' as const }
-                : {}),
-            })
+            return self.cutSubgraph(adapter, region, self.cutOptions)
           }
           return undefined
         },
@@ -205,18 +166,9 @@ export default function stateModelFactory() {
       retryLoad() {
         void self.load()
       },
-      // walk rows, and the strip of them under a node layout, measure whole
-      // walks, which a GBZ cut only follows when asked, so a change in whether
-      // the drawing needs them cuts the track again; the strip's toggle does
-      // the same (afterAttach)
+      // the strip's toggle cuts the track again too (afterAttach)
       relayoutFrom(from: LayoutModeValue) {
-        const before = wholeWalksRule(layoutModeByValue(from), {
-          walkStrip: self.walkStrip,
-          host: !!self.host,
-        })
-        return self.loadedTrackId &&
-          (self.cutsWholeWalks !== before ||
-            (from === 'walkrows') !== (self.chosenLayoutMode === 'walkrows'))
+        return self.loadedTrackId && self.cutChangedFrom(from)
           ? self.load()
           : self.recomputeLayout()
       },

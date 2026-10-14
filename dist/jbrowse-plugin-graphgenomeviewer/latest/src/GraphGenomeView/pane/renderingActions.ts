@@ -17,6 +17,7 @@ import {
 } from '../../hoverSync/lgvHover'
 import { walksForRow } from '../../hoverSync/rowWalks'
 
+import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 
@@ -191,12 +192,7 @@ export const withRenderingActions = withLoadActions
           reaction(
             () => `${self.scale}-${self.translateX}-${self.translateY}`,
             () => {
-              self.setHoveredNode(null)
-              self.setHoveredTube(null)
-              self.setHoveredWalkRow(null)
-              self.setHoveredPanel(null)
-              self.setHoveredBubble(null)
-              self.setHoveredEdge(null)
+              self.clearHover()
             },
             { name: 'GraphClearHoverOnViewportChange' },
           ),
@@ -312,11 +308,6 @@ export const withRenderingActions = withLoadActions
       self.setLayoutMode(mode)
       return self.relayout(from)
     },
-    // Deletion edges shape a force layout, so it is laid out again without them
-    toggleDeletionEdges() {
-      self.setShowDeletionEdges(!self.showDeletionEdges)
-      return self.usesLayoutEngine ? self.recomputeLayout() : undefined
-    },
     // loads the source again, for a host that has one
     retryLoad() {},
     afterAttach() {
@@ -324,6 +315,29 @@ export const withRenderingActions = withLoadActions
       // the user's own view — mark it so the fit autorun leaves it alone.
       if (!self.isDefaultViewport) {
         self.viewportOwner = 'user'
+      }
+      // A gene or repeat track change over the same cut re-reads that
+      // annotation alone, whatever made it: the settings dialog, a track
+      // added to the session, undo or a session delta. A new cut reads its
+      // own.
+      for (const [trackOf, reload] of [
+        [() => self.geneTrack?.trackId, () => self.reloadGenes()],
+        [() => self.repeatTrack?.trackId, () => self.reloadRepeats()],
+      ] as const) {
+        addDisposer(
+          self,
+          reaction(
+            () => ({ track: trackOf(), region: self.graphRegion }),
+            (now, was) => {
+              if (now.region && now.region === was.region) {
+                void reload()
+              }
+            },
+            {
+              equals: (a, b) => a.track === b.track && a.region === b.region,
+            },
+          ),
+        )
       }
       // The layout set by anything but the menu: the config editor, Reset
       // track settings, undo, a session delta
@@ -335,6 +349,36 @@ export const withRenderingActions = withLoadActions
             if (to !== self.handledLayoutMode) {
               void self.relayout(from)
             }
+          },
+        ),
+      )
+      // An engine setting or the node cap lays the graph out again whatever
+      // changed it: the settings dialog, the menu, the config editor, Reset
+      // track settings, undo or a session delta. A change of layout mode lays
+      // the graph out through relayout, so this reaction skips it.
+      addDisposer(
+        self,
+        reaction(
+          () => ({
+            mode: self.chosenLayoutMode,
+            engine: JSON.stringify(self.engineSettings),
+            maxNodes: self.maxGraphNodes,
+          }),
+          (now, was) => {
+            if (
+              self.graph &&
+              now.mode === was.mode &&
+              ((now.engine !== was.engine && self.usesLayoutEngine) ||
+                (now.maxNodes !== was.maxNodes && self.modeDrawsNodes))
+            ) {
+              void self.recomputeLayout()
+            }
+          },
+          {
+            equals: (a, b) =>
+              a.mode === b.mode &&
+              a.engine === b.engine &&
+              a.maxNodes === b.maxNodes,
           },
         ),
       )
@@ -364,5 +408,15 @@ export const withRenderingActions = withLoadActions
           },
         ),
       )
+    },
+  }))
+  .actions(self => ({
+    // Sets the engine and the mode in one action, so the engine reaction
+    // sees the mode change and leaves the relayout to switchLayout
+    switchForceEngine(engine: LayoutEngineKind) {
+      self.setLayoutEngine(engine)
+      return self.chosenLayoutMode === 'force'
+        ? undefined
+        : self.switchLayout('force')
     },
   }))

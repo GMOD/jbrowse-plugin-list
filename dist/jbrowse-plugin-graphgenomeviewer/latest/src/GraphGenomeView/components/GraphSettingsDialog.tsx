@@ -93,11 +93,20 @@ function SettingSwitch({
   )
 }
 
-// one dropdown setting, at the dialog's width
-function SettingSelect<T extends string>(
-  props: Omit<Parameters<typeof LabelledSelect<T>>[0], 'size' | 'sx'>,
-) {
-  return <LabelledSelect sx={{ minWidth: 200 }} {...props} />
+// one dropdown setting, at the dialog's width, and its caption
+function SettingSelect<T extends string>({
+  children,
+  ...props
+}: Omit<Parameters<typeof LabelledSelect<T>>[0], 'size' | 'sx'> & {
+  children?: ReactNode
+}) {
+  const { classes } = useStyles()
+  return (
+    <div className={classes.section}>
+      <LabelledSelect sx={{ minWidth: 200 }} {...props} />
+      {children}
+    </div>
+  )
 }
 
 const NODE_LIMITS = [5000, 20_000, 50_000, 100_000]
@@ -128,65 +137,61 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
       <DialogContent>
         <Group title="Subgraph">
           {children}
-          <div className={classes.section}>
-            <SettingSelect
-              label="Node limit"
-              value={String(model.maxGraphNodes)}
-              options={nodeLimitOptions(model.maxGraphNodes)}
-              testId="graph-node-limit-select"
-              onChange={limit => {
-                model.setMaxGraphNodes(Number(limit))
-                void model.recomputeLayout()
-              }}
-            />
+          <SettingSelect
+            label="Node limit"
+            value={String(model.maxGraphNodes)}
+            options={nodeLimitOptions(model.maxGraphNodes)}
+            testId="graph-node-limit-select"
+            onChange={limit => {
+              model.setMaxGraphNodes(Number(limit))
+            }}
+          >
             <Caption>
               The most nodes a layout draws; past it the graph is declined. Walk
               rows take no limit.
             </Caption>
-          </div>
+          </SettingSelect>
         </Group>
 
         <Group title="Drawing">
           {model.anchorPaths.length > 1 ? (
-            <div className={classes.section}>
-              <SettingSelect
-                label="Reference path"
-                value={model.activeReferencePath ?? ''}
-                options={model.anchorPaths.map(({ name }) => ({
-                  value: name,
-                  label: name,
-                }))}
-                testId="graph-reference-path-select"
-                onChange={name => {
-                  model.setReferencePath(name)
-                  void model.recomputeLayout()
-                }}
-              />
+            <SettingSelect
+              label="Reference path"
+              value={model.activeReferencePath ?? ''}
+              options={model.anchorPaths.map(({ name }) => ({
+                value: name,
+                label: name,
+              }))}
+              testId="graph-reference-path-select"
+              onChange={name => {
+                model.setReferencePath(name)
+                void model.recomputeLayout()
+              }}
+            >
               <Caption>The path the anchored layouts place x along</Caption>
-            </div>
+            </SettingSelect>
           ) : null}
 
-          <div className={classes.section}>
-            <SettingSelect
-              label="Node width"
-              value={model.nodeWidth}
-              options={NODE_WIDTHS}
-              testId="graph-node-width-select"
-              onChange={width => {
-                model.setNodeWidth(width)
-              }}
-            />
+          <SettingSelect
+            label="Node width"
+            value={model.nodeWidth}
+            options={NODE_WIDTHS}
+            testId="graph-node-width-select"
+            onChange={width => {
+              model.setNodeWidth(width)
+            }}
+          >
             <Caption>
               Depth as width. In a cut with walks, depth is how many haplotypes
               carry the node.
             </Caption>
-          </div>
+          </SettingSelect>
 
           <SettingSwitch
             label="Draw paths"
             checked={model.drawPaths}
             onChange={draw => {
-              model.setDrawPaths(draw)
+              model.setLayer('paths', draw)
             }}
           >
             <Caption>
@@ -202,37 +207,33 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
           </SettingSwitch>
 
           {model.geneTrackChoices.length > 1 ? (
-            <div className={classes.section}>
-              <SettingSelect
-                label="Gene track"
-                value={model.geneTrack?.trackId ?? ''}
-                options={trackOptions(model.geneTrackChoices)}
-                testId="graph-gene-track-select"
-                onChange={trackId => {
-                  model.setGeneTrackId(trackId)
-                  void model.reloadGenes()
-                }}
-              />
+            <SettingSelect
+              label="Gene track"
+              value={model.geneTrack?.trackId ?? ''}
+              options={trackOptions(model.geneTrackChoices)}
+              testId="graph-gene-track-select"
+              onChange={trackId => {
+                model.setGeneTrackId(trackId)
+              }}
+            >
               <Caption>Where genes on the backbone come from</Caption>
-            </div>
+            </SettingSelect>
           ) : null}
 
           {model.repeatTrackChoices.length > 1 ? (
-            <div className={classes.section}>
-              <SettingSelect
-                label="Repeat track"
-                value={model.repeatTrack?.trackId ?? ''}
-                options={trackOptions(model.repeatTrackChoices)}
-                testId="graph-repeat-track-select"
-                onChange={trackId => {
-                  model.setRepeatTrackId(trackId)
-                  void model.reloadRepeats()
-                }}
-              />
+            <SettingSelect
+              label="Repeat track"
+              value={model.repeatTrack?.trackId ?? ''}
+              options={trackOptions(model.repeatTrackChoices)}
+              testId="graph-repeat-track-select"
+              onChange={trackId => {
+                model.setRepeatTrackId(trackId)
+              }}
+            >
               <Caption>
                 The tandem repeat annotation walk rows measure and tile by
               </Caption>
-            </div>
+            </SettingSelect>
           ) : null}
         </Group>
 
@@ -245,55 +246,49 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
             </div>
           ) : null}
 
-          <div className={classes.section}>
-            <SettingSelect
-              label="Engine"
-              value={model.layoutEngine}
-              options={LAYOUT_ENGINES}
-              testId="graph-layout-engine-select"
-              onChange={engine => {
-                model.setLayoutEngine(engine)
-                void model.recomputeLayout()
-              }}
-            />
+          <SettingSelect
+            label="Engine"
+            value={model.layoutEngine}
+            options={LAYOUT_ENGINES}
+            testId="graph-layout-engine-select"
+            onChange={engine => {
+              model.setLayoutEngine(engine)
+            }}
+          >
             <Caption>
               Stress keeps the reference straight, so a zoom keeps the picture;
               FMMM lets the whole graph settle.
             </Caption>
-          </div>
+          </SettingSelect>
 
-          <div className={classes.section}>
-            <SettingSelect
-              label="Layout quality"
-              value={String(model.layoutQuality)}
-              options={LAYOUT_QUALITIES.map(q => ({
-                value: String(q.value),
-                label: q.label,
-              }))}
-              testId="graph-layout-quality-select"
-              onChange={quality => {
-                model.setLayoutQuality(Number(quality))
-                void model.recomputeLayout()
-              }}
-            />
+          <SettingSelect
+            label="Layout quality"
+            value={String(model.layoutQuality)}
+            options={LAYOUT_QUALITIES.map(q => ({
+              value: String(q.value),
+              label: q.label,
+            }))}
+            testId="graph-layout-quality-select"
+            onChange={quality => {
+              model.setLayoutQuality(Number(quality))
+            }}
+          >
             <Caption>
               The engine&apos;s iteration budget; higher is slower
             </Caption>
-          </div>
+          </SettingSelect>
 
-          <div className={classes.section}>
-            <SettingSelect
-              label="Bubble spread"
-              value={model.bubbleSpread}
-              options={BUBBLE_SPREADS}
-              testId="graph-bubble-spread-select"
-              onChange={spread => {
-                model.setBubbleSpread(spread)
-                void model.recomputeLayout()
-              }}
-            />
+          <SettingSelect
+            label="Bubble spread"
+            value={model.bubbleSpread}
+            options={BUBBLE_SPREADS}
+            testId="graph-bubble-spread-select"
+            onChange={spread => {
+              model.setBubbleSpread(spread)
+            }}
+          >
             <Caption>How far the layout opens a bubble</Caption>
-          </div>
+          </SettingSelect>
 
           {model.layoutEngine === 'stress' ? null : (
             <SettingSwitch
@@ -301,7 +296,6 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
               checked={model.linearLayout}
               onChange={linear => {
                 model.setLinearLayout(linear)
-                void model.recomputeLayout()
               }}
             >
               <Caption>Keeps a chain of nodes on one line where it can</Caption>

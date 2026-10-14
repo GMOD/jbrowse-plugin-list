@@ -34,7 +34,6 @@ function testSession(views: unknown[] = [], tracks = [] as never[]) {
   const session = {
     tracks,
     assemblies: [],
-    assemblyNames: ['K12', 'Sakai'],
     views,
     addView: (type: string, snapshot?: Record<string, unknown>) => {
       added.push([type, snapshot])

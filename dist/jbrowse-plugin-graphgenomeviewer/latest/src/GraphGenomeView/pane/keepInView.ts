@@ -1,6 +1,6 @@
 // How much of the drawing a pan or zoom leaves on screen in each axis, or
 // all of it when it is smaller
-export const KEEP_IN_VIEW_PX = 48
+const KEEP_IN_VIEW_PX = 48
 
 // The shift that brings a span starting at `lo`, `size` px long, back to
 // overlapping [0, extent] by `margin` px
@@ -16,7 +16,8 @@ interface DrawingBox {
   h: number
 }
 
-interface Placement {
+// layout units to pane px, per axis
+export interface ScreenTransform {
   scaleX: number
   scaleY: number
   translateX: number
@@ -25,7 +26,7 @@ interface Placement {
 
 export function keepInView(
   bounds: DrawingBox,
-  t: Placement,
+  t: ScreenTransform,
   view: { width: number; height: number },
 ) {
   return {
@@ -48,7 +49,7 @@ export function keepInView(
 
 export function onScreen(
   bounds: DrawingBox,
-  t: Placement,
+  t: ScreenTransform,
   view: { width: number; height: number },
 ) {
   const left = bounds.minX * t.scaleX + t.translateX

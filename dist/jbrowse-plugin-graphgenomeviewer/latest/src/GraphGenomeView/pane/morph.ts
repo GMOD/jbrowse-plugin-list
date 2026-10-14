@@ -1,6 +1,7 @@
 import { fadeAbgr } from '@jbrowse/bandage-core/renderer/colorBits'
 import { strandSides } from '@jbrowse/bandage-core/util/geometry'
 
+import type { ScreenTransform } from './keepInView'
 import type { RenderBatch, Run } from '@jbrowse/bandage-core/renderer/types'
 import type { Graph, NodeSegment } from '@jbrowse/bandage-core/types'
 import type { EdgeSides } from '@jbrowse/bandage-core/util/geometry'
@@ -12,13 +13,6 @@ type Positions = Record<string, NodeSegment[]>
 interface Attachment {
   id: string
   side: EdgeSides['from']
-}
-
-export interface PaneTransform {
-  scaleX: number
-  scaleY: number
-  translateX: number
-  translateY: number
 }
 
 // Morphs above this many nodes snap instead: each frame rebuilds the
@@ -84,9 +78,9 @@ const RELAX_TOLERANCE_PX = 0.1
 // end's point count, so a frame is a pointwise blend.
 export function morphStarts(
   prev: Positions,
-  prevTransform: PaneTransform,
+  prevTransform: ScreenTransform,
   next: Positions,
-  nextTransform: PaneTransform,
+  nextTransform: ScreenTransform,
   edges: Graph['edges'],
 ): Positions {
   const toNext = (p: NodeSegment) => ({

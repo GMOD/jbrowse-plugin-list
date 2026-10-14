@@ -3,7 +3,7 @@ import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { types } from '@jbrowse/mobx-state-tree'
 
 import { splitUri } from '../locationName'
-import { tabixIndexSchema } from '../panSNTabix.ts'
+import { fileLocationSlot, tabixIndexSchema } from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -57,13 +57,7 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
      * The `.gbz.db` written by `gbz-base construct`; read by HTTP range
      * requests, so it can be large.
      */
-    gbzDbLocation: {
-      type: 'fileLocation',
-      defaultValue: {
-        uri: '/path/to/graph.gbz.db',
-        locationType: 'UriLocation',
-      },
-    },
+    gbzDbLocation: fileLocationSlot('/path/to/graph.gbz.db'),
     /**
      * #slot
      * The haplotype index `gbz-haplotype-index` writes beside the graph
@@ -72,13 +66,7 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
      * haplotypes. Empty means `graph.haplotype-index.db` beside
      * `graph.gbz.db` if there is one; otherwise the walks go unnamed.
      */
-    haplotypeIndexLocation: {
-      type: 'fileLocation',
-      defaultValue: {
-        uri: '',
-        locationType: 'UriLocation',
-      },
-    },
+    haplotypeIndexLocation: fileLocationSlot(''),
     /**
      * #slot
      * Reads aligned to the graph as GAF, which the tube map layouts draw under
@@ -86,13 +74,7 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
      * or `vg giraffe --named-coordinates` on a graph whose segments were
      * renamed or chopped. Empty means no reads.
      */
-    readsLocation: {
-      type: 'fileLocation',
-      defaultValue: {
-        uri: '',
-        locationType: 'UriLocation',
-      },
-    },
+    readsLocation: fileLocationSlot(''),
     /**
      * #slot
      * The `tabix -p gaf` index of a bgzipped `readsLocation`, which fetches the
@@ -107,13 +89,7 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
      * walk's sample (`HG00097`) or haplotype (`HG00097#1`). Empty means no
      * grouping.
      */
-    samplesTsvLocation: {
-      type: 'fileLocation',
-      defaultValue: {
-        uri: '',
-        locationType: 'UriLocation',
-      },
-    },
+    samplesTsvLocation: fileLocationSlot(''),
     /**
      * #slot
      * How the graph view's subgraph is extended past the nodes the reference

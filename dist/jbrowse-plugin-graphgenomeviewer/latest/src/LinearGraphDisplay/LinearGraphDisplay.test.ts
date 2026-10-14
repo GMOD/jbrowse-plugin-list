@@ -24,6 +24,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import LinearGraphDisplayF from './index'
 import { FOLD_PX, coarseHandover } from './model'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
+import { paneBase } from '../GraphGenomeView/pane/paneBase'
 import graphGenomeViewModel from '../GraphGenomeView/viewModel'
 import GraphTrackF from '../GraphTrack/index'
 import RgfaTabixAdapterF from '../RgfaTabixAdapter/index'
@@ -295,11 +296,28 @@ function createEnvironment({
     },
     { pluginManager },
   )
+  const aliasTrackConfig = trackSchema.create(
+    {
+      type: 'GraphTrack',
+      trackId: 'graph-on-alias',
+      name: 'graph on an alias of its reference',
+      assemblyNames: ['GRCh38'],
+      adapter: { type: 'RgfaTabixAdapter', uri: 'graph' },
+      displays: [
+        {
+          type: 'LinearGraphDisplay',
+          displayId: 'graph-on-alias-LinearGraphDisplay',
+        },
+      ],
+    },
+    { pluginManager },
+  )
   const trackConfigs = [
     trackConfig,
     gbzTrackConfig,
     walkIndexedTrackConfig,
     featureTrackConfig,
+    aliasTrackConfig,
   ]
   if (geneLaneFilter) {
     trackConfigs.push(
@@ -436,8 +454,11 @@ function createEnvironment({
           { name: 'HG1.1', aliases: ['HG1#1'] },
           { name: 'HG2.1', aliases: ['HG2#1'] },
         ],
-        get: (name: string) => (name === ASM ? assembly : undefined),
-        has: (name: string) => name === ASM,
+        get: (name: string) =>
+          name === ASM || assembly.aliases.includes(name)
+            ? assembly
+            : undefined,
+        has: (name: string) => name === ASM || assembly.aliases.includes(name),
         waitForAssembly: () => Promise.resolve(assembly),
         isValidRefName: () => true,
       },
@@ -556,6 +577,14 @@ test('a pan inside the cut moves x and fetches nothing; one past it re-cuts once
   expect(cuts).toHaveLength(2)
   expect(pane.recuts).toBe(2)
   expect(graphX(pane, 2_030_000)).toBeCloseTo(lgvX(view, 2_030_000), 6)
+})
+
+test('under a twentieth of a bp per pixel, where the fold rounds to 0 bp, a pan inside the cut fetches nothing', async () => {
+  const { view, cuts } = await shownGraph({ windowBp: 30 })
+  expect(view.bpPerPx).toBeLessThan(0.05)
+  view.horizontalScroll(100)
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(1)
 })
 
 test('zooming out past the handover cuts the coarse tier, and back in the fine one', async () => {
@@ -859,7 +888,9 @@ test('a launch in the force layout cuts the window alone', async () => {
   expect(cuts[0]!.region).toMatchObject({ start: 1_000_000, end: 1_060_000 })
 })
 
-test('a force track lays out with the stress engine by default, and switching asks for FMMM', async () => {
+// Reset track settings, undo and the config editor write the deletions
+// layer to the config, as setSlot does here
+test('a force track lays out with the stress engine by default, and an engine setting from anywhere lays it out again', async () => {
   const { view, rpcCall } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
@@ -881,8 +912,14 @@ test('a force track lays out with the stress engine by default, and switching as
   expect(engines()).toEqual(['stress'])
 
   display.setLayoutEngine('fmmm')
-  await display.recomputeLayout()
-  expect(engines()).toEqual(['stress', 'fmmm'])
+  await vi.waitFor(() => {
+    expect(engines()).toEqual(['stress', 'fmmm'])
+  })
+
+  display.configuration.setSlot('layers', { deletions: false })
+  await vi.waitFor(() => {
+    expect(engines()).toEqual(['stress', 'fmmm', 'fmmm'])
+  })
 })
 
 test('the drawing is the track height, and resizing the track resizes it', async () => {
@@ -966,7 +1003,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setLayoutMode('ordered')
   display.setColorScheme('depth')
   display.setNodeWidth('uniform')
-  display.setShowBubbles(true)
+  display.setLayer('bubbles', true)
   display.setFacet('walk')
   display.setWalkRowSamples(['HG1'])
   display.setHover('off')
@@ -1050,6 +1087,18 @@ test('a 4.0 FeatureTrack config still opens as the graph', async () => {
   expect(display.hasGraph).toBe(true)
 })
 
+test("a track naming its reference by an alias of the view's assembly cuts the window", async () => {
+  const { view, cuts } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('graph-on-alias')
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(display.error).toBeUndefined()
+  expect(cuts).toHaveLength(1)
+})
+
 test('a GBZ track cuts for the lanes it names', async () => {
   const { view } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
@@ -1060,20 +1109,23 @@ test('a GBZ track cuts for the lanes it names', async () => {
   expect(display.cutHaplotypes).toEqual(['HG1.1', 'HG2.1'])
 })
 
+function haplotypesMenu(display: LinearGraphDisplayModel) {
+  return (
+    display
+      .trackMenuItems()
+      .find(item => 'label' in item && item.label === 'Haplotypes') as {
+      subMenu: { label: string; checked?: boolean; onClick: () => void }[]
+    }
+  ).subMenu
+}
+
 test("a GBZ track's Haplotypes menu cuts for every haplotype, the track's lanes, or a list", () => {
   const { view } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
   view.showTrack('walks')
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
-  const menu = () =>
-    (
-      display
-        .trackMenuItems()
-        .find(item => 'label' in item && item.label === 'Haplotypes') as {
-        subMenu: { label: string; checked?: boolean; onClick: () => void }[]
-      }
-    ).subMenu
+  const menu = () => haplotypesMenu(display)
   const checked = () => menu().find(item => item.checked)?.label
   expect(menu().map(item => item.label)).toEqual([
     'Load',
@@ -1101,14 +1153,7 @@ function walkIndexedDisplay(names?: string[] | null) {
   view.scrollTo(1_000_000 / view.bpPerPx)
   view.showTrack('walk-indexed')
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
-  const menu = () =>
-    (
-      display
-        .trackMenuItems()
-        .find(item => 'label' in item && item.label === 'Haplotypes') as {
-        subMenu: { label: string; checked?: boolean; onClick: () => void }[]
-      }
-    ).subMenu
+  const menu = () => haplotypesMenu(display)
   return { ...env, display, menu }
 }
 
@@ -1147,10 +1192,21 @@ test('haplotype names read for an adapter config the track has since changed are
   const { display } = walkIndexedDisplay()
   await wait(0)
   display.setHaplotypeNames(undefined)
-  await display.fetchHaplotypeNames({ ...display.adapterConfig })
+  await display.fetchHaplotypeNames({ ...display.sourceAdapter })
   expect(display.haplotypeNames).toBeUndefined()
-  await display.fetchHaplotypeNames(display.adapterConfig)
+  await display.fetchHaplotypeNames(display.sourceAdapter!)
   expect(display.haplotypeNames).toEqual(['HG1#1', 'HG1#2', 'HG2#1'])
+})
+
+test('removing a walk-indexed track aborts its read of the haplotype names', () => {
+  const { view, rpcCall } = walkIndexedDisplay()
+  const read = rpcCall.mock.calls.find(
+    ([, method]) => method === 'GetGraphHaplotypes',
+  )
+  const signal = read?.[2].signal
+  expect(signal?.aborted).toBe(false)
+  view.hideTrack('walk-indexed')
+  expect(signal?.aborted).toBe(true)
 })
 
 test('a walk-indexed graph whose header names no haplotype counts none', async () => {
@@ -1271,6 +1327,30 @@ test('a cut refused while the window moved stands for the moved window too, and 
   expect(display.error).toMatchObject({ regionTooLarge: true })
 })
 
+test('an outrun cut that lands after the newer one was refused leaves the refused window as it was', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const env = createEnvironment()
+  env.setDenseAbove(1_000_000)
+  const answers = env.holdCuts()
+  const { view } = env
+  view.zoomTo(100_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('walks')
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  view.zoomTo(1_000_000 / WIDTH_PX)
+  await wait(SETTLE_MS)
+  expect(env.cuts).toHaveLength(2)
+  answers[1]!()
+  await vi.waitFor(() => {
+    expect(display.dense).toBeDefined()
+  })
+  answers[0]!()
+  await wait(0)
+  expect(display.dense!.end - display.dense!.start).toBe(1_000_000)
+})
+
 test('editing the haplotypes forgets a refused cut, since the next cut is for other walks', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   const { display } = await shownWalks(1_000_000, env => {
@@ -1281,6 +1361,44 @@ test('editing the haplotypes forgets a refused cut, since the next cut is for ot
   })
   display.setSubgraphHaplotypes(['HG1.1'])
   expect(display.dense).toBeUndefined()
+})
+
+test('after a refused cut, a haplotype choice from the menu cuts the window again', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const env = await shownWalks(1_000_000, e => {
+    e.setDenseAbove(1_500_000)
+  })
+  const { display, cuts } = env
+  await vi.waitFor(() => {
+    expect(display.dense).toBeDefined()
+  })
+  env.setDenseAbove(Infinity)
+  haplotypesMenu(display)
+    .find(item => item.label === 'Every haplotype in the graph')!
+    .onClick()
+  expect(cuts).toHaveLength(2)
+  await vi.waitFor(() => {
+    expect(display.hasGraph).toBe(true)
+  })
+  expect(display.error).toBeUndefined()
+})
+
+test('after a refused cut, a context change cuts the window again', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const env = await shownWalks(1_000_000, e => {
+    e.setDenseAbove(1_500_000)
+  })
+  const { display, cuts } = env
+  await vi.waitFor(() => {
+    expect(display.dense).toBeDefined()
+  })
+  env.setDenseAbove(Infinity)
+  display.setSubgraphContext(0)
+  display.recut()
+  expect(cuts).toHaveLength(2)
+  await vi.waitFor(() => {
+    expect(display.hasGraph).toBe(true)
+  })
 })
 
 test('an rGFA track past the cap is too large, with no notice of a refused cut', async () => {
@@ -1363,6 +1481,35 @@ test('the track menu opens the window on screen in a graph genome view, drawn as
   ).not.toThrow()
 })
 
+test('the graph genome view a track opens takes every pane setting but where its viewport sits', async () => {
+  const { display } = await shownGraph()
+  display.setTubeMapFold(50)
+  display.setTubeMapRoutes('bundled')
+  display.setTubeMapColorBy('population')
+  display.setRepeatTrackId('repeats')
+  display.setRepeatKey('chr1:1-10')
+  display.setPaneHeight(300)
+  const spec = display.graphViewSpec!
+  expect(spec).toMatchObject({
+    tubeMapFold: 50,
+    tubeMapRoutes: 'bundled',
+    tubeMapColorBy: 'population',
+    repeatTrackId: 'repeats',
+    repeatKey: 'chr1:1-10',
+    paneHeight: 300,
+    connectorThickness: display.connectorThickness,
+  })
+  const viewport = ['scale', 'translateX', 'translateY']
+  expect(Object.keys(spec)).toEqual(
+    expect.arrayContaining(
+      Object.keys(paneBase.properties).filter(key => !viewport.includes(key)),
+    ),
+  )
+  for (const key of viewport) {
+    expect(spec).not.toHaveProperty(key)
+  }
+})
+
 test('after a cut refused over its node limit, the graph genome view launch is disabled', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = await shownWalks(60_000)
@@ -1434,13 +1581,13 @@ test("the gene chips name what the gene lane draws, and never the molecule's sou
 
 test("the linear view's SVG export draws the graph through the screen's transform", async () => {
   const { pane } = await shownGraph()
-  pane.setShowGenes(false)
+  pane.setLayer('genes', false)
   const markup = renderToStaticMarkup(
     (await pane.renderSvg()) as React.ReactElement,
   )
   expect(markup).toContain('data-testid="graph-pane-svg"')
   expect(markup).toMatch(/<path d="M/)
-  pane.setShowReferenceStrip(false)
+  pane.setLayer('referenceStrip', false)
   await pane.switchLayout('tubemapref')
   await wait(SETTLE_MS)
   expect(

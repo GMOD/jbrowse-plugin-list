@@ -1,5 +1,6 @@
-import { getAdapter } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes'
+
+import { adapterImplementing } from './adapterImplementing'
 
 import type { RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry'
 
@@ -26,25 +27,15 @@ interface HaplotypeNamesAdapter {
   }): Promise<string[] | undefined>
 }
 
-function namesHaplotypes(adapter: object): adapter is HaplotypeNamesAdapter {
-  return (
-    'getHaplotypeNames' in adapter &&
-    typeof (adapter as HaplotypeNamesAdapter).getHaplotypeNames === 'function'
-  )
-}
-
 export default class GetGraphHaplotypes extends RpcMethodType<'GetGraphHaplotypes'> {
   name = 'GetGraphHaplotypes' as const
 
   async execute(args: RpcExecuteArgs<'GetGraphHaplotypes'>) {
-    const { adapterConfig, sessionId, signal } = args
-    const { dataAdapter } = await getAdapter(
+    const { adapter } = await adapterImplementing<HaplotypeNamesAdapter>(
       this.pluginManager,
-      sessionId,
-      adapterConfig,
+      args,
+      'getHaplotypeNames',
     )
-    return namesHaplotypes(dataAdapter)
-      ? dataAdapter.getHaplotypeNames({ signal })
-      : undefined
+    return adapter?.getHaplotypeNames({ signal: args.signal })
   }
 }

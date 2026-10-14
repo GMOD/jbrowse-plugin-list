@@ -1,6 +1,6 @@
 import { makeIndexType } from '@jbrowse/core/util/tracks'
 
-import { besideSegments } from './graphManifest'
+import { besideSegments, segmentsSibling } from './graphManifest'
 import {
   SEGMENTS_SUFFIX,
   locationName,
@@ -41,21 +41,13 @@ function sibling(loc: FileLocation, suffix: string) {
   return renamed(loc, name => name + suffix)
 }
 
-// A segments BED the links BED can be found beside
-export function isSegmentsLocation(loc: FileLocation) {
-  return readsSiblings(loc) && locationName(loc).endsWith(SEGMENTS_SUFFIX)
-}
-
 function linksLocation(loc: FileLocation) {
   if (!locationName(loc).endsWith(SEGMENTS_SUFFIX)) {
     throw new Error(
       `Expected a segments BED ending in ${SEGMENTS_SUFFIX}, got ${locationName(loc)}`,
     )
   }
-  return renamed(
-    loc,
-    name => `${name.slice(0, -SEGMENTS_SUFFIX.length)}.links.bed.gz`,
-  )
+  return segmentsSibling(loc, '.links.bed.gz')
 }
 
 function tabixIndex(loc: FileLocation, indexLoc: FileLocation | undefined) {
@@ -149,7 +141,6 @@ export function buildAdapterConfig({
       type: 'GbzBaseSyntenyAdapter',
       gbzDbLocation: loc,
       ...(indexLoc ? { haplotypeIndexLocation: indexLoc } : {}),
-      assemblyNames: [assembly],
       ...readsConfig(readsLoc),
       ...panSN(assembly, sample),
     }

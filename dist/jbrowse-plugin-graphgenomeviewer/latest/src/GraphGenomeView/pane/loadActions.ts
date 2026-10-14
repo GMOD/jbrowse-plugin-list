@@ -1,6 +1,7 @@
 import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { bubbleSegmentIds } from '@jbrowse/bandage-core/bubbles/classifyBubble'
 import { foldVariants } from '@jbrowse/bandage-core/foldVariants'
+import { regionLabel } from '@jbrowse/bandage-core/hoverText'
 import {
   clipToWindow,
   trimToWindow,
@@ -32,7 +33,6 @@ import {
 import { withSettingActions } from './settingActions'
 import { namesReads } from '../../GetGraphReads'
 import { walkRowsOf } from '../../RgfaTabixAdapter/walkRowRuns.ts'
-import { locLabel } from '../../launchFromGraph/contributors'
 import { geneModelsFrom } from '../genes/geneFeatures'
 import { repeatArraysFrom } from '../repeats/repeatFeatures'
 import {
@@ -54,7 +54,19 @@ import type { Graph, LayoutResult } from '@jbrowse/bandage-core/types'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation } from '@jbrowse/core/util/types'
 
-export const withLoadActions = withSettingActions.actions(self => {
+const withEngineSettings = withSettingActions.views(self => ({
+  get engineSettings() {
+    return engineSettingsOf({
+      engine: self.layoutEngine,
+      quality: self.layoutQuality,
+      linearLayout: self.linearLayout,
+      bubbleSpread: self.bubbleSpread,
+      showDeletionEdges: self.showDeletionEdges,
+    })
+  },
+}))
+
+export const withLoadActions = withEngineSettings.actions(self => {
   let loadController: AbortController | undefined
   // the samples TSV location the table was read from, or is being read from
   let sampleTableKey: string | undefined
@@ -76,16 +88,6 @@ export const withLoadActions = withSettingActions.actions(self => {
         }
       },
     }) as Promise<{ result: LayoutResult; duration: number }>
-  }
-
-  function engineSettings() {
-    return engineSettingsOf({
-      engine: self.layoutEngine,
-      quality: self.layoutQuality,
-      linearLayout: self.linearLayout,
-      bubbleSpread: self.bubbleSpread,
-      showDeletionEdges: self.showDeletionEdges,
-    })
   }
 
   // Single dispatch point for every layout mode. A mode that returns a
@@ -145,7 +147,7 @@ export const withLoadActions = withSettingActions.actions(self => {
         mode: self.chosenLayoutMode,
       }
     }
-    const settings = engineSettings()
+    const settings = self.engineSettings
     const hit = forceLayouts.ready(graph, settings)
     if (hit) {
       return {
@@ -165,9 +167,9 @@ export const withLoadActions = withSettingActions.actions(self => {
   }
 
   // Which layout request is the live one. A layout is async and nothing in
-  // the UI waits for it, so several are routinely in flight: every control
-  // in the settings dialog fires `recomputeLayout` on change, and a force
-  // layout takes seconds where an anchored one is instant.
+  // the UI waits for it, so several are routinely in flight: every engine
+  // setting lays the graph out again on change, and a force layout takes
+  // seconds where an anchored one is instant.
   //
   // The graph identity below is not enough to order them, because the
   // competing requests are usually layouts of the SAME graph. Left to
@@ -177,6 +179,7 @@ export const withLoadActions = withSettingActions.actions(self => {
   // one over the top of the chosen one seconds later, with the dropdown
   // still naming the choice that was discarded.
   let liveRequest = 0
+  let liveRequestPending = false
   // the error the last failed layout raised, which the next one to land clears
   let layoutError: unknown
   // the graph the layout on screen was computed for
@@ -184,11 +187,20 @@ export const withLoadActions = withSettingActions.actions(self => {
   // a haplotype's genes by track and contig span
   const walkGeneCache = new Map<string, GeneModel[]>()
 
+  function dropLayoutOfReplacedGraph() {
+    if (self.graph !== laidOutGraph) {
+      laidOutGraph = undefined
+      self.layoutResult = undefined
+      self.drawnLayoutMode = undefined
+    }
+  }
+
   // Applied under a guard because a layout is async and the user can load a
   // different graph, or ask for a different layout of it, while one is in
   // flight; the stale result must not land.
   function* layoutInto(graph: Graph) {
     const request = ++liveRequest
+    liveRequestPending = true
     awaitedRun = undefined
     const isLive = () => self.graph === graph && request === liveRequest
     const signal = loadController?.signal
@@ -211,7 +223,13 @@ export const withLoadActions = withSettingActions.actions(self => {
         return false
       }
       layoutError = e
+      dropLayoutOfReplacedGraph()
       throw e
+    } finally {
+      if (request === liveRequest) {
+        liveRequestPending = false
+        settle()
+      }
     }
     const live = isLive()
     if (live) {
@@ -220,12 +238,7 @@ export const withLoadActions = withSettingActions.actions(self => {
       }
       layoutError = undefined
       const previous = self.layoutResult
-      const before = {
-        scaleX: self.scaleX,
-        scaleY: self.scaleY,
-        translateX: self.translateX,
-        translateY: self.translateY,
-      }
+      const before = self.screenTransform
       laidOutGraph = graph
       self.layoutResult = computed.result
       self.drawnLayoutMode = computed.mode
@@ -276,6 +289,33 @@ export const withLoadActions = withSettingActions.actions(self => {
     return parsed
   }
 
+  // Replaces the graph on screen and the cut it came from, and drops the
+  // annotations read beside the last graph. It drops the hover and the
+  // selection too, because hoveredEdge is an index into graph.edges and
+  // hoveredNode/selectedNode are ids, which would point the tooltip and the
+  // highlight at whatever sits there in the new graph.
+  function resetCut(cut?: {
+    graph: Graph
+    walkCut: WalkCut | undefined
+    region: SubgraphRegion | undefined
+    loadedReferencePath: string | undefined
+    foldedBelowBp: number | undefined
+    readsShown: { shown: number; total: number } | undefined
+  }) {
+    self.graph = cut?.graph
+    self.walkCut = cut?.walkCut
+    self.graphRegion = cut?.region
+    self.loadedReferencePath = cut?.loadedReferencePath
+    self.foldedBelowBp = cut?.foldedBelowBp
+    self.readsShown = cut?.readsShown
+    self.indexBubbles = undefined
+    self.geneTrackFeatures = undefined
+    self.walkGeneFeatures = undefined
+    walkGeneCache.clear()
+    self.repeatArrays = undefined
+    self.clearInteractionState()
+  }
+
   // `keepSelection` for a re-cut of the same source: node ids survive one
   // where edge indexes do not, so the selection is found again by id.
   // `readsOf` fetches the reads over the parsed graph before its one
@@ -291,7 +331,6 @@ export const withLoadActions = withSettingActions.actions(self => {
     foldBelowBp = 0,
   ) {
     const signal = loadController?.signal
-    self.setStatusMessage('Parsing GFA')
     const walkCut =
       typeof source !== 'string' && source.walkRowRuns ? source : undefined
     const parsed = parseCut(source, name, region)
@@ -328,27 +367,19 @@ export const withLoadActions = withSettingActions.actions(self => {
       }
     }
     const selected = keepSelection ? self.selectedNode : null
-    self.graph = graph
-    self.foldedBelowBp = folded === anchored ? undefined : foldBelowBp
-    self.readsShown = readsShown
-    self.walkCut = walkCut
-    self.graphRegion = region
-    self.loadedReferencePath = loaded
-    self.indexBubbles = undefined
-    self.geneTrackFeatures = undefined
-    self.walkGeneFeatures = undefined
-    walkGeneCache.clear()
-    self.repeatArrays = undefined
+    resetCut({
+      graph,
+      walkCut,
+      region,
+      loadedReferencePath: loaded,
+      foldedBelowBp: folded === anchored ? undefined : foldBelowBp,
+      readsShown,
+    })
     // a re-cut keeps the bubbles still in it open
     const names = new Set(graph.nodes.map(n => n.name))
     self.openBubbles = self.openBubbles.filter(b =>
       bubbleSegmentIds(b).some(id => names.has(id)),
     )
-    // hoveredEdge is an index into graph.edges and hoveredNode/selectedNode
-    // are ids, so all three address the graph being replaced here. Carrying
-    // them over points the tooltip and the highlight at whatever now happens
-    // to sit at that index.
-    self.clearInteractionState()
     // against the new graph's own nodes: nodeById reads through the layout,
     // which is still the last graph's
     if (selected !== null && graph.nodes.some(n => n.id === selected)) {
@@ -378,14 +409,64 @@ export const withLoadActions = withSettingActions.actions(self => {
     }
   }
 
-  function endLoad() {
-    loadInFlight = undefined
-    self.finishLoading()
+  // The spinner stays up while a load or the layout last asked for is in
+  // flight. Clearing it sooner reports "done" while the layout the user
+  // asked for is still computing, the common case when a cheap choice
+  // follows an expensive one.
+  function settle() {
+    if (loadInFlight === undefined && !liveRequestPending) {
+      self.finishLoading()
+    }
   }
 
-  function layoutSettled() {
-    if (loadInFlight === undefined) {
-      self.finishLoading()
+  function endLoad() {
+    loadInFlight = undefined
+    settle()
+  }
+
+  // Runs `body` as a load. It raises the spinner and clears the error first,
+  // and while it is the live load it reports a failure and ends the spinner.
+  function* runLoad(
+    label: string,
+    body: (load: {
+      isLive: () => boolean
+      signal: AbortSignal
+    }) => Generator<PromiseLike<unknown>, void, unknown>,
+  ) {
+    const load = beginLoad()
+    self.isLoading = true
+    self.error = undefined
+    try {
+      yield* body(load)
+    } catch (e) {
+      if (load.isLive()) {
+        console.error(`[GraphGenomeView.${label}]`, e)
+        self.error = e
+      }
+    } finally {
+      if (load.isLive()) {
+        endLoad()
+      }
+    }
+  }
+
+  // Features over the cut. A failed read warns and returns undefined, so an
+  // annotation never fails the load.
+  function* readFeatures(
+    adapterConfig: Record<string, unknown>,
+    region: SubgraphRegion,
+    what: string,
+    signal?: AbortSignal,
+  ) {
+    try {
+      return (yield getSession(self).rpcManager.call(
+        getRpcSessionId(self),
+        'CoreGetFeatures',
+        { adapterConfig, regions: [region], signal },
+      )) as Feature[]
+    } catch (e) {
+      console.warn(`[GraphGenomeView] no ${what} for this graph`, e)
+      return undefined
     }
   }
 
@@ -408,81 +489,63 @@ export const withLoadActions = withSettingActions.actions(self => {
     if (adapterConfig.type !== 'RgfaTabixAdapter' || prefix === undefined) {
       return
     }
-    try {
-      const features = (yield getSession(self).rpcManager.call(
-        getRpcSessionId(self),
-        'CoreGetFeatures',
-        {
-          adapterConfig: {
-            type: 'MinigraphBubbleAdapter',
-            uri: `${prefix}.bubbles.bed.gz`,
-            baseUri: adapterConfig.baseUri,
-            assemblyNameToPanSN: adapterConfig.assemblyNameToPanSN,
-          },
-          regions: [region],
-          signal,
-        },
-      )) as Feature[]
-      if (isLive()) {
-        const bubbles = features.flatMap(f => {
-          const start = f.get('start')
-          const end = f.get('end')
-          const longestAlleleLength = f.get('longestAlleleLength') as number
-          return Math.max(end - start, longestAlleleLength) < foldBelowBp
-            ? []
-            : [
-                {
-                  refName: region.refName,
-                  start,
-                  end,
-                  segmentCount: f.get('segmentCount') as number,
-                  pathCount: (f.get('pathCount') as number | undefined) ?? 0,
-                  inversion: f.get('inversion') as boolean,
-                  shortestAlleleLength: f.get('shortestAlleleLength') as number,
-                  longestAlleleLength,
-                  segments: f.get('segments') as string,
-                  shortestAllele: undefined,
-                  longestAllele: undefined,
-                },
-              ]
-        })
-        self.indexBubbles = bubbles
-      }
-    } catch (e) {
-      console.warn('[GraphGenomeView] no bubble index for this graph', e)
+    const features = yield* readFeatures(
+      {
+        type: 'MinigraphBubbleAdapter',
+        uri: `${prefix}.bubbles.bed.gz`,
+        baseUri: adapterConfig.baseUri,
+        assemblyNameToPanSN: adapterConfig.assemblyNameToPanSN,
+      },
+      region,
+      'bubble index',
+      signal,
+    )
+    if (features && isLive()) {
+      self.indexBubbles = features.flatMap(f => {
+        const start = f.get('start')
+        const end = f.get('end')
+        const longestAlleleLength = f.get('longestAlleleLength') as number
+        return Math.max(end - start, longestAlleleLength) < foldBelowBp
+          ? []
+          : [
+              {
+                refName: region.refName,
+                start,
+                end,
+                segmentCount: f.get('segmentCount') as number,
+                pathCount: (f.get('pathCount') as number | undefined) ?? 0,
+                inversion: f.get('inversion') as boolean,
+                shortestAlleleLength: f.get('shortestAlleleLength') as number,
+                longestAlleleLength,
+                segments: f.get('segments') as string,
+                shortestAllele: undefined,
+                longestAllele: undefined,
+              },
+            ]
+      })
     }
   }
 
-  // A session track's features over the cut. Undefined when the session
-  // has no such track or the read fails: an annotation is never the
-  // graph's problem.
+  // A session track's features over the cut, undefined when the session has
+  // no such track
   function* trackFeatures(
     trackId: string | undefined,
     region: SubgraphRegion,
     what: string,
     signal?: AbortSignal,
   ) {
-    const session = getSession(self)
     const config = trackId
-      ? session.tracks.find(t => t.trackId === trackId)
+      ? getSession(self).tracks.find(t => t.trackId === trackId)
       : undefined
     if (!config) {
       return undefined
     }
-    try {
-      return (yield session.rpcManager.call(
-        getRpcSessionId(self),
-        'CoreGetFeatures',
-        {
-          adapterConfig: readConfObject(config, 'adapter'),
-          regions: [region],
-          signal,
-        },
-      )) as Feature[]
-    } catch (e) {
-      console.warn(`[GraphGenomeView] no ${what} for this graph`, e)
-      return undefined
-    }
+    return yield* readFeatures(
+      readConfObject(config, 'adapter'),
+      region,
+      what,
+      signal,
+    )
   }
 
   // The annotation tracks read over the cut: genes, which `geneFeatures`
@@ -504,6 +567,8 @@ export const withLoadActions = withSettingActions.actions(self => {
   }
   type Annotation = keyof typeof annotations
 
+  // Lands only while the track it read is still the one chosen, so a slow
+  // read cannot land over the pick that followed it
   function* loadAnnotation(
     kind: Annotation,
     region: SubgraphRegion,
@@ -511,58 +576,55 @@ export const withLoadActions = withSettingActions.actions(self => {
     signal?: AbortSignal,
   ) {
     const { trackId, set } = annotations[kind]
-    const features = yield* trackFeatures(trackId(), region, kind, signal)
-    if (features && isLive()) {
+    const track = trackId()
+    const features = yield* trackFeatures(track, region, kind, signal)
+    if (features && isLive() && trackId() === track) {
       set(features)
     }
   }
 
-  // One annotation read again alone, for a track change. Live only while
-  // the track it read is still the one chosen, so a slow read cannot land
-  // over the pick that followed it.
+  // The annotation reads over a cut, each landing as it arrives
+  function annotationReads(
+    region: SubgraphRegion,
+    isLive: () => boolean,
+    signal: AbortSignal,
+  ) {
+    return (['genes', 'repeats'] as const).map(kind =>
+      flow(loadAnnotation)(kind, region, isLive, signal),
+    )
+  }
+
+  // One annotation read again alone, for a track change
   function* reloadAnnotation(kind: Annotation) {
-    const { trackId, set } = annotations[kind]
     const region = self.graphRegion
-    const track = trackId()
     if (region) {
-      set(undefined)
-      yield* loadAnnotation(
-        kind,
-        region,
-        () => self.graphRegion === region && trackId() === track,
-      )
+      annotations[kind].set(undefined)
+      yield* loadAnnotation(kind, region, () => self.graphRegion === region)
     }
   }
 
   // Raises `isLoading` before any fetch, so a view waiting on a remote file
   // shows its loading state instead of the import form. Text already in
   // hand is parsed without yielding first. `region` is the window a
-  // declared file was stated beside, which the parse anchors on.
+  // declared file was stated beside, which the parse anchors on and the
+  // annotations are read over.
   function* loadWholeGFA(
     name: string,
     source: string | ((signal: AbortSignal) => Promise<string>),
     region?: SubgraphRegion,
   ) {
-    const { isLive, signal } = beginLoad()
-    self.isLoading = true
-    self.error = undefined
-    try {
+    yield* runLoad('loadWholeGFA', function* ({ isLive, signal }) {
       const text =
         typeof source === 'string' ? source : ((yield source(signal)) as string)
-      if (isLive()) {
-        yield* parseAndLayout(text, name, region)
+      if (!isLive()) {
+        return
       }
-    } catch (e) {
-      if (isLive()) {
-        console.error('[GraphGenomeView.loadWholeGFA]', e)
-        self.error = e
+      yield* parseAndLayout(text, name, region)
+      if (region && isLive()) {
+        self.setStatusMessage('Reading annotations')
+        yield Promise.all(annotationReads(region, isLive, signal))
       }
-    } finally {
-      if (isLive()) {
-        endLoad()
-      }
-    }
-    return isLive()
+    })
   }
 
   function abortLoad() {
@@ -571,6 +633,7 @@ export const withLoadActions = withSettingActions.actions(self => {
     loadInFlight = undefined
     liveLoad++
     liveRequest++
+    liveRequestPending = false
     awaitedRun = undefined
   }
 
@@ -592,27 +655,18 @@ export const withLoadActions = withSettingActions.actions(self => {
   // would otherwise land its graph afterwards
   function dropGraph() {
     abortLoad()
-    self.graph = undefined
-    self.walkCut = undefined
-    self.graphRegion = undefined
-    self.loadedReferencePath = undefined
+    resetCut()
+    laidOutGraph = undefined
+    layoutError = undefined
     self.layoutResult = undefined
     self.drawnLayoutMode = undefined
-    self.indexBubbles = undefined
-    self.foldedBelowBp = undefined
-    self.geneTrackFeatures = undefined
-    self.walkGeneFeatures = undefined
-    walkGeneCache.clear()
-    self.repeatArrays = undefined
     self.walkRowSampleTable = undefined
     sampleTableKey = undefined
-    self.readsShown = undefined
     self.openBubbles = []
     self.error = undefined
     self.isLoading = false
     self.loadCanceled = false
     self.statusMessage = ''
-    self.clearInteractionState()
     self.clearPerfMetrics()
     // the next graph has nothing to do with where the user left this one
     if (self.viewportOwner === 'user') {
@@ -636,11 +690,7 @@ export const withLoadActions = withSettingActions.actions(self => {
     // The user's stop, leaving whatever is drawn under it
     stopLoad() {
       abortLoad()
-      // a graph that landed ahead of its layout has nothing of its own drawn
-      if (self.graph !== laidOutGraph) {
-        self.layoutResult = undefined
-        self.drawnLayoutMode = undefined
-      }
+      dropLayoutOfReplacedGraph()
       self.isLoading = false
       self.statusMessage = ''
       self.loadCanceled = true
@@ -656,18 +706,11 @@ export const withLoadActions = withSettingActions.actions(self => {
       region?: SubgraphRegion,
     ) {
       self.setStatusMessage('Fetching GFA')
-      const live = yield* loadWholeGFA(
+      yield* loadWholeGFA(
         fileName(location) || 'GFA',
         signal => openLocation(location).readFile({ encoding: 'utf8', signal }),
         region,
       )
-      if (region && live && self.graph) {
-        const isLive = () => self.graphRegion === region
-        yield Promise.all([
-          flow(loadAnnotation)('genes', region, isLive),
-          flow(loadAnnotation)('repeats', region, isLive),
-        ])
-      }
     }),
     // One cut of a region, laid out with the annotations over it. Whether
     // the region may be cut is the caller's call; overlapping cuts are
@@ -678,11 +721,8 @@ export const withLoadActions = withSettingActions.actions(self => {
       opts: SubgraphCutOptions = {},
       foldBelowBp = 0,
     ) {
-      const { isLive, signal } = beginLoad()
-      self.isLoading = true
-      self.error = undefined
-      self.setStatusMessage('Fetching subgraph')
-      try {
+      yield* runLoad('cutSubgraph', function* ({ isLive, signal }) {
+        self.setStatusMessage('Fetching subgraph')
         const fetchStart = performance.now()
         const cut = (yield getSession(self).rpcManager.call(
           getRpcSessionId(self),
@@ -700,7 +740,7 @@ export const withLoadActions = withSettingActions.actions(self => {
         }
         yield* parseAndLayout(
           cut,
-          locLabel(region),
+          regionLabel(region),
           region,
           true,
           namesReads(adapterConfig)
@@ -734,19 +774,9 @@ export const withLoadActions = withSettingActions.actions(self => {
                 signal,
                 self.foldedBelowBp,
               ),
-          flow(loadAnnotation)('genes', region, isLive, signal),
-          flow(loadAnnotation)('repeats', region, isLive, signal),
+          ...annotationReads(region, isLive, signal),
         ])
-      } catch (e) {
-        if (isLive()) {
-          console.error('[GraphGenomeView.cutSubgraph]', e)
-          self.error = e
-        }
-      } finally {
-        if (isLive()) {
-          endLoad()
-        }
-      }
+      })
     }),
     // A track change re-reads that annotation alone. The graph, its layout
     // and any open bubble stay as they are.
@@ -754,7 +784,6 @@ export const withLoadActions = withSettingActions.actions(self => {
       yield* reloadAnnotation('repeats')
     }),
     reloadGenes: flow(function* () {
-      walkGeneCache.clear()
       yield* reloadAnnotation('genes')
     }),
     // The source track's samples TSV, read once per location, for walk
@@ -866,19 +895,11 @@ export const withLoadActions = withSettingActions.actions(self => {
       }
       self.isLoading = true
       self.setStatusMessage('Computing layout')
-
       try {
-        // A superseded request leaves the spinner to the request that
-        // replaced it: clearing it here reports "done" while the layout the
-        // user actually asked for is still being computed, which is the
-        // common case when a cheap choice follows an expensive one.
-        if (yield* layoutInto(graph)) {
-          layoutSettled()
-        }
+        yield* layoutInto(graph)
       } catch (e) {
         console.error('[GraphGenomeView.recomputeLayout]', e)
         self.error = e
-        layoutSettled()
       }
     }),
   }

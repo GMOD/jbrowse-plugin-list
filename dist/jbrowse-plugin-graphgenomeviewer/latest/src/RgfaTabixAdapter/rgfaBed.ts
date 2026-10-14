@@ -120,6 +120,25 @@ export function linkKey(link: RgfaLink) {
   return `${link.source}${link.sourceStrand}${link.target}${link.targetStrand}`
 }
 
+// gfa-to-tabix writes both endpoints of a link into every row and files the
+// link under each endpoint's stable sequence, so a read covering both returns
+// it twice; linkKey dedupes it. Returns the endpoints the cut lacked.
+export function addLink(
+  segments: Map<string, RgfaSegment>,
+  links: Map<string, RgfaLink>,
+  link: RgfaLink,
+) {
+  links.set(linkKey(link), link)
+  const added: RgfaSegment[] = []
+  for (const segment of [link.sourceSegment, link.targetSegment]) {
+    if (!segments.has(segment.id)) {
+      segments.set(segment.id, segment)
+      added.push(segment)
+    }
+  }
+  return added
+}
+
 // The cut an anchored index gives: `under` is what the segment file returned
 // for the window, every segment of every bubble under it, and `found` is what
 // the link file returned. gfa-to-tabix files a link widely enough that `found`
@@ -148,12 +167,7 @@ export function anchoredCut(
       under.has(link.target) ||
       side(link.sourceSegment) * side(link.targetSegment) === -1
     ) {
-      links.set(linkKey(link), link)
-      for (const segment of [link.sourceSegment, link.targetSegment]) {
-        if (!segments.has(segment.id)) {
-          segments.set(segment.id, segment)
-        }
-      }
+      addLink(segments, links, link)
     }
   }
   for (const link of found) {
@@ -163,10 +177,6 @@ export function anchoredCut(
   }
   return { segments, links }
 }
-
-// Both endpoints of a link are written into every row, so the same link is
-// indexed under each endpoint's stable sequence and arrives twice for a region
-// covering both. Callers dedupe on linkKey.
 
 export interface StableSpan {
   refName: string
@@ -195,12 +205,12 @@ export function closingSpans(
   return [
     ...mergedSpans(
       held.filter(segment => segment.rank > 0),
-      unread,
+      segment => unread.has(segment.id),
       window.end - window.start,
     ),
     ...mergedSpans(
       held.filter(segment => segment.rank === 0 && outside(segment)),
-      new Set(held.map(segment => segment.id)),
+      () => true,
       0,
     ),
   ]
@@ -208,7 +218,7 @@ export function closingSpans(
 
 function mergedSpans(
   segments: RgfaSegment[],
-  unread: Set<string>,
+  isUnread: (segment: RgfaSegment) => boolean,
   maxGap: number,
 ) {
   const sorted = [...segments].sort(
@@ -221,14 +231,14 @@ function mergedSpans(
       span?.refName === segment.refName &&
       segment.start - span.end <= maxGap
     ) {
-      span.needed ||= segment.start > span.end || unread.has(segment.id)
+      span.needed ||= segment.start > span.end || isUnread(segment)
       span.end = Math.max(span.end, segment.end)
     } else {
       spans.push({
         refName: segment.refName,
         start: segment.start,
         end: segment.end,
-        needed: unread.has(segment.id),
+        needed: isUnread(segment),
       })
     }
   }

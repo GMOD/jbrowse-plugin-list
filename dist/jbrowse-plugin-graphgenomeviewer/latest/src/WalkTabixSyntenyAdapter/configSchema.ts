@@ -1,6 +1,11 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
+import { WALK_BUDGETS } from '@jbrowse/graph-walks'
 
-import { tabixIndexSchema, tbiBeside } from '../panSNTabix.ts'
+import {
+  fileLocationSlot,
+  tabixIndexSchema,
+  walksLocations,
+} from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -34,24 +39,6 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```
  */
 
-export function normalizeSnapshot(snap: Record<string, unknown>) {
-  const { walksUri, baseUri, csi } = snap
-  if (typeof walksUri !== 'string') {
-    return snap
-  }
-  const file = (kind: string) => `${walksUri}.${kind}.bed.gz`
-  return {
-    ...snap,
-    walksLocation: { uri: file('walks'), baseUri },
-    walksIndex: tbiBeside(file('walks'), baseUri, csi),
-  }
-}
-
-const location = (uri: string) => ({
-  type: 'fileLocation' as const,
-  defaultValue: { uri, locationType: 'UriLocation' },
-})
-
 const WalkTabixSyntenyAdapter = ConfigurationSchema(
   'WalkTabixSyntenyAdapter',
   {
@@ -71,7 +58,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      * #slot
      * a `gfa-to-tabix --walks` file in walk format 2
      */
-    walksLocation: location('/path/to/graph.walks.bed.gz'),
+    walksLocation: fileLocationSlot('/path/to/graph.walks.bed.gz'),
     /**
      * #slot
      */
@@ -85,7 +72,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      */
     walkStepBudget: {
       type: 'integer',
-      defaultValue: 4_000_000,
+      defaultValue: WALK_BUDGETS.stepBudget,
     },
     /**
      * #slot
@@ -95,7 +82,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      */
     walkByteBudget: {
       type: 'integer',
-      defaultValue: 8_000_000,
+      defaultValue: WALK_BUDGETS.byteBudget,
     },
     /**
      * #slot
@@ -115,7 +102,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      * column is the walk's sample (`HG00097`) or haplotype (`HG00097#1`).
      * Empty means no grouping.
      */
-    samplesTsvLocation: location(''),
+    samplesTsvLocation: fileLocationSlot(''),
     /**
      * #slot
      * Maps a JBrowse assembly name to its PanSN prefix in the graph, sample or
@@ -143,7 +130,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      * }
      * ```
      */
-    preProcessSnapshot: normalizeSnapshot,
+    preProcessSnapshot: walksLocations,
   },
 )
 

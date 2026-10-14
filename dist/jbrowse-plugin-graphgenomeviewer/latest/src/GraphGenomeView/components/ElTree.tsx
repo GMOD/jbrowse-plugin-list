@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { createElement, useId } from 'react'
 import type { ReactNode } from 'react'
 
 import type { El } from '@jbrowse/bandage-core/el'
@@ -25,6 +25,11 @@ function toReact(node: El | string, key: number): ReactNode {
     }
   }
   return createElement(node.tag, props, ...node.children.map(toReact))
+}
+
+// A useId fit for an SVG id and for url(#…)
+export function useSvgId() {
+  return useId().replaceAll(/[^\w-]/g, '')
 }
 
 // A core element tree as React elements

@@ -3,9 +3,13 @@ import {
   backbonePositions,
   overlapsWindow,
 } from '@jbrowse/bandage-core/anchoredNodes'
-import { ROW_HEIGHT_PX } from '@jbrowse/bandage-core/layout/rowSpacing'
-import { walkRowsExtent } from '@jbrowse/bandage-core/layout/walkRowLayout'
+import {
+  walkRowLabels,
+  walkRowsExtent,
+} from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
+
+import { walkPath } from '../RgfaTabixAdapter/walkRowRuns.ts'
 
 import type { WalkCut } from '../RgfaTabixAdapter/walkRowRuns.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
@@ -49,17 +53,7 @@ export function walkRowsGraph(
     if (w.offsets[i + 2]! <= w.offsets[i + 1]!) {
       return []
     }
-    const [sample = '', haplotype = '', ...contig] = walk.split('#')
-    return [
-      {
-        name: `${sample}#${+haplotype}#${contig.join('#')}`,
-        nodeIds: [],
-        start: w.starts[i + 1]!,
-        sample,
-        haplotype: +haplotype,
-        contig: contig.join('#'),
-      },
-    ]
+    return [{ ...walkPath(walk), nodeIds: [], start: w.starts[i + 1]! }]
   })
   graph.paths = [...(graph.paths ?? []), ...stubs]
   return graph
@@ -82,10 +76,7 @@ export function walkRowLayoutOf(
     nodePositions: backbonePositions(
       overWindow.length > 0 ? overWindow : backbone,
     ),
-    rowLabels: [walks.reference, ...walks.rows].map((row, i) => ({
-      label: row.label,
-      y: i * ROW_HEIGHT_PX,
-    })),
+    rowLabels: walkRowLabels(walks),
     referenceAxis: true,
     pixelRows: true,
     extent: walkRowsExtent(walks),

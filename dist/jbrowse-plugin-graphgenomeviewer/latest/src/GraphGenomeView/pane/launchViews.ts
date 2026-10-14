@@ -2,8 +2,7 @@ import {
   backboneNodes,
   backboneSpan,
 } from '@jbrowse/bandage-core/anchoredNodes'
-import { readConfObject } from '@jbrowse/core/configuration'
-import { getContainingView, getSession } from '@jbrowse/core/util'
+import { getSession } from '@jbrowse/core/util'
 
 import { withGraphViews } from './graphViews'
 import {
@@ -13,7 +12,6 @@ import {
   resolveLocationAssembly,
 } from '../../launchFromGraph/contributors'
 import {
-  canonicalAssemblyName,
   paddedLocation,
   withReferenceRegion,
 } from '../../launchFromGraph/launchFromGraph'
@@ -29,12 +27,7 @@ export const withLaunchViews = withGraphViews
     // that view's window and the cut is re-made when the window leaves it.
     // A pane that is a view of its own has none.
     get host(): LinearHost | undefined {
-      let view: unknown
-      try {
-        view = getContainingView(self)
-      } catch {
-        return undefined
-      }
+      const view = self.containingView
       return isLinearHost(view) ? view : undefined
     },
   }))
@@ -93,24 +86,12 @@ export const withLaunchViews = withGraphViews
     // backbone's is, so a walk row can read its haplotype's own annotation.
     // One pass over the tracks, not one per row.
     get geneTracksByAssembly() {
-      const byAssembly = new Map<
-        string,
-        { trackId: string; name: string; adapterType: string }[]
-      >()
-      for (const t of getSession(self).tracks) {
-        const adapterType = (readConfObject(t, 'adapter') as { type: string })
-          .type
-        if (!GENE_ADAPTER_TYPES.has(adapterType)) {
-          continue
-        }
-        const track = {
-          trackId: t.trackId as string,
-          name: readConfObject(t, 'name') as string,
-          adapterType,
-        }
-        for (const name of readConfObject(t, 'assemblyNames') as string[]) {
-          const asm = canonicalAssemblyName(getSession(self), name)
-          byAssembly.set(asm, [...(byAssembly.get(asm) ?? []), track])
+      const byAssembly = new Map<string, typeof self.sessionTracks>()
+      for (const track of self.sessionTracks) {
+        if (GENE_ADAPTER_TYPES.has(track.adapterType)) {
+          for (const asm of track.assemblies) {
+            byAssembly.set(asm, [...(byAssembly.get(asm) ?? []), track])
+          }
         }
       }
       return new Map(

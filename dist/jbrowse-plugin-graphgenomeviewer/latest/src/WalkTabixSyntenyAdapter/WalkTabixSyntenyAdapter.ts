@@ -8,21 +8,23 @@ import {
 } from '@jbrowse/bandage-core/pansn'
 import { updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
-import { WalkReader, walkNameFilter } from '@jbrowse/graph-walks'
+import { walksKept } from '@jbrowse/graph-walks'
 
 import { chainFeature, referenceAligner, walkAligner } from './walkLanes.ts'
 import { isNodeLimitError } from '../LinearGraphDisplay/denseWindow.ts'
-import { BUDGET_SLOTS, walkSubgraph } from '../RgfaTabixAdapter/walkReader.ts'
+import { WalkIndex } from '../RgfaTabixAdapter/walkReader.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { ComparativeAdapterBase } from '../synteny/ComparativeAdapterBase.ts'
-import { laneAssemblyName, requestedPairs } from '../synteny/lanePairs.ts'
+import {
+  laneAssemblyName,
+  lanePairsStatus,
+  requestedPairs,
+} from '../synteny/lanePairs.ts'
 
 import type { WalkTabixSyntenyAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
 import type { LaneFeatureOptions, LanePair } from '../synteny/lanePairs.ts'
-import type PluginManager from '@jbrowse/core/PluginManager'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
-import type { getSubAdapterType } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
 import type { WalkFragment } from '@jbrowse/graph-walks'
@@ -31,19 +33,14 @@ const haplotypeOf = (fragment: WalkFragment) =>
   panSNHaplotype(fragment.name) ?? fragment.name
 
 export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<WalkTabixSyntenyAdapterConfig> {
-  private readonly reader
-  private readonly refNames
-
-  public constructor(
-    config: WalkTabixSyntenyAdapterConfig,
-    getSubAdapter?: getSubAdapterType,
-    pluginManager?: PluginManager,
-  ) {
-    super(config, getSubAdapter, pluginManager)
-    const walks = openTabixSlot(this, ['walksLocation'], ['walksIndex'])
-    this.reader = new WalkReader(walks)
-    this.refNames = new PanSNRefNames(walks, this)
-  }
+  private readonly walks: WalkIndex = new WalkIndex(
+    openTabixSlot(this, ['walksLocation'], ['walksIndex']),
+    this,
+  )
+  private readonly refNames: PanSNRefNames = new PanSNRefNames(
+    this.walks.file,
+    this,
+  )
 
   private get anchor() {
     const anchor = this.getConf('assemblyNames')[0]
@@ -60,8 +57,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
    * order, or undefined when it names none
    */
   async getHaplotypeNames(opts: BaseOptions = {}) {
-    const { haplotypes } = await this.reader.header(opts)
-    return haplotypes.length > 0 ? haplotypes : undefined
+    return this.walks.haplotypeNames(opts)
   }
 
   /**
@@ -70,14 +66,13 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
    * before a fetch has placed any of them
    */
   async getHeader(opts: BaseOptions = {}) {
-    const { haplotypes, references } = await this.reader.header(opts)
+    const { haplotypes } = await this.walks.reader.header(opts)
     const { anchor } = this
     const anchorPrefix = resolvePanSNPrefix(this, anchor)
     const asmByPrefix = assemblyByPanSNPrefix(this)
     return {
       hasCoarseTier: false,
       anchorAssemblyName: anchor,
-      referenceSamples: references,
       lanes: haplotypes
         .filter(
           prefix =>
@@ -100,33 +95,19 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       : []
   }
 
-  private budgets() {
-    return {
-      stepBudget: this.getConf('walkStepBudget'),
-      byteBudget: this.getConf('walkByteBudget'),
-      budgetNames: BUDGET_SLOTS,
-    }
-  }
-
   /**
    * The graph display's cut of the window, as RgfaTabixAdapter cuts a
    * walk-indexed graph: the reference walk first, then the walks `haplotypes`
    * asks for, and the nodes and links they visit
    */
   async getSubgraph(region: Region, opts: SubgraphAdapterOptions = {}) {
-    const { signal, haplotypes, walkRows } = opts
-    const refName = await this.refNames.resolve(region, { signal })
+    const refName = await this.refNames.resolve(region, { signal: opts.signal })
     if (refName === undefined) {
       throw new Error(
         `${region.assemblyName} ${region.refName} is not in this graph's index; the graph is cut on ${this.anchor}, mapped to its PanSN prefix in assemblyNameToPanSN`,
       )
     }
-    return walkSubgraph(this.reader, refName, region, {
-      ...this.budgets(),
-      signal,
-      prefixes: haplotypes?.map(lane => resolvePanSNPrefix(this, lane)),
-      walkRows,
-    })
+    return this.walks.subgraph(refName, region, opts)
   }
 
   // The window's walks for the haplotypes named and the reference, with no
@@ -139,11 +120,11 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     status: string,
   ) {
     return updateStatus(status, opts.statusCallback, () =>
-      this.reader
+      this.walks.reader
         .cut(refName, region, {
-          ...this.budgets(),
+          ...this.walks.budgets(),
           signal: opts.signal,
-          keep: walkNameFilter(prefixes, panSNHaplotype(refName)),
+          keep: walksKept(prefixes, refName),
           links: false,
         })
         .catch((error: unknown) => {
@@ -235,7 +216,6 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     pairs: LanePair[],
     opts: LaneFeatureOptions,
   ) {
-    const [first] = pairs
     const sides = pairs.map(pair => ({
       pair,
       featurePrefix: resolvePanSNPrefix(this, pair.queryAssemblyName),
@@ -246,9 +226,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       region,
       sides.flatMap(side => [side.featurePrefix, side.matePrefix]),
       opts,
-      pairs.length === 1 && first
-        ? `Reading ${first.queryAssemblyName} against ${first.targetAssemblyName}`
-        : `Reading ${pairs.length} lane pairs`,
+      lanePairsStatus(pairs),
     )
     const align = walkAligner(graph.nodes)
     const walksOf = (prefix: string) =>

@@ -1,4 +1,11 @@
+import { walkRowsTree } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { groupKeyComparator } from '@jbrowse/core/util/groupKeys'
+
+import type { El } from '@jbrowse/bandage-core/el'
+import type {
+  WalkRowsFrame,
+  WalkRowsWithCalls,
+} from '@jbrowse/bandage-core/layout/walkRowDraw'
 
 // Walk rows stacked into one section per value of a sample table's column,
 // as jbrowse-plugin-tandem-repeat's "Group by…" stacks its alleles. Placement
@@ -71,46 +78,71 @@ export function groupByOf(value: unknown): WalkRowGroupBy | undefined {
     : { field }
 }
 
-function haplotypes(rows: { label: string }[]) {
-  const n = new Set(rows.map(r => r.label)).size
-  return `${n} haplotype${n === 1 ? '' : 's'}`
+export function plural(n: number, noun: string) {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`
 }
 
-// The rows reordered section by section, each keeping the order it came in.
-// A row's value is its table row's, looked up by haplotype (`HG00097#1`)
-// and then by sample (`HG00097`); rows with none stack last.
+// A walk's value in a column: its haplotype's row (`HG00097#1`), else its
+// sample's (`HG00097`), else ''
+export function columnValueOf(field: string, table: SampleRow[]) {
+  const valueOf = new Map(table.map(row => [row.name, row[field] ?? '']))
+  return (haplotype: string, sample: string) =>
+    valueOf.get(haplotype) || valueOf.get(sample) || ''
+}
+
+// Items grouped by their value in a column, each group in the order its items
+// came in, the groups in the order a JBrowse Group by sorts them, and each
+// titled with its value and how many distinct `noun`s its items are
+export function groupsByColumn<T>(
+  items: readonly T[],
+  valueOf: (item: T) => string,
+  { field, domain }: { field: string; domain?: readonly string[] },
+  noun: string,
+  nounOf: (item: T) => string,
+) {
+  const groups = new Map<string, T[]>()
+  for (const item of items) {
+    const key = valueOf(item)
+    const group = groups.get(key)
+    if (group) {
+      group.push(item)
+    } else {
+      groups.set(key, [item])
+    }
+  }
+  return [...groups.keys()].sort(groupKeyComparator(domain)).map(key => {
+    const members = groups.get(key)!
+    const n = new Set(members.map(nounOf)).size
+    return {
+      key,
+      members,
+      title: `${key || `${field}: none`} · ${plural(n, noun)}`,
+    }
+  })
+}
+
+// The rows reordered section by section; rows with no value stack last
 export function groupWalkRows<R extends { sample: string; label: string }>(
   rows: R[],
   table: SampleRow[],
-  { field, domain }: WalkRowGroupBy,
+  groupBy: WalkRowGroupBy,
 ) {
-  const valueOf = new Map(table.map(row => [row.name, row[field] ?? '']))
-  const groups = new Map<string, R[]>()
-  for (const row of rows) {
-    const key = valueOf.get(row.label) || valueOf.get(row.sample) || ''
-    const group = groups.get(key)
-    if (group) {
-      group.push(row)
-    } else {
-      groups.set(key, [row])
-    }
-  }
+  const valueOf = columnValueOf(groupBy.field, table)
+  const groups = groupsByColumn(
+    rows,
+    row => valueOf(row.label, row.sample),
+    groupBy,
+    'haplotype',
+    row => row.label,
+  )
   let first = 1
-  const sections: WalkRowSection[] = [...groups.keys()]
-    .sort(groupKeyComparator(domain))
-    .map(key => {
-      const members = groups.get(key)!
-      const section = {
-        key,
-        title: `${key || `${field}: none`} · ${haplotypes(members)}`,
-        first,
-        count: members.length,
-      }
-      first += members.length
-      return section
-    })
+  const sections: WalkRowSection[] = groups.map(({ key, members, title }) => {
+    const section = { key, title, first, count: members.length }
+    first += members.length
+    return section
+  })
   return {
-    rows: sections.flatMap(s => groups.get(s.key)!),
+    rows: groups.flatMap(g => g.members),
     sections,
   }
 }
@@ -155,4 +187,46 @@ export function sectionPlacement(sections: WalkRowSection[], rowPx: number) {
       return best
     },
   }
+}
+
+// The rows' trees, a section at a time while grouped. walkRowsTree puts its
+// i-th row at i * rowPx below its reference row and draws that row too, so
+// each section is drawn shifted down to its place with its reference row
+// dropped.
+export function walkRowTrees(
+  bars: WalkRowsWithCalls,
+  sections: WalkRowSection[],
+  rowY: (i: number) => number,
+  frame: WalkRowsFrame & { rowPx: number },
+  o: Parameters<typeof walkRowsTree>[2] & { idPrefix: string },
+): El[] {
+  if (sections.length === 0) {
+    return [walkRowsTree(bars, frame, o)]
+  }
+  return [
+    walkRowsTree({ ...bars, rows: [] }, frame, o),
+    ...sections.flatMap((section, k) => {
+      const tree = walkRowsTree(
+        {
+          ...bars,
+          rows: bars.rows.slice(
+            section.first - 1,
+            section.first - 1 + section.count,
+          ),
+        },
+        {
+          ...frame,
+          translateY:
+            frame.translateY +
+            (rowY(section.first) - frame.rowPx) * frame.scaleY,
+        },
+        { ...o, idPrefix: `${o.idPrefix}-s${k}` },
+      )
+      return tree.children.filter(
+        (c): c is El =>
+          typeof c !== 'string' &&
+          c.attrs['data-testid'] !== 'graph-walk-reference',
+      )
+    }),
+  ]
 }

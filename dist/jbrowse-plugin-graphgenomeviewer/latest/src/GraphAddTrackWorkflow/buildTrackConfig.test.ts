@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildTrackConfig } from './buildTrackConfig'
+import { withGbzAnchor } from '../graphTrackDefaults/index'
 
 const segs = {
   uri: 'https://example.com/hprc.segs.bed.gz',
@@ -208,7 +209,7 @@ describe('buildTrackConfig', () => {
     })
   })
 
-  it('builds a GBZ graph track anchored on the assembly, with its reads', () => {
+  it('builds a GBZ graph track, with its reads, that loads anchored on the assembly', () => {
     const uri = (name: string) => ({
       uri: `https://example.com/${name}`,
       locationType: 'UriLocation' as const,
@@ -224,7 +225,7 @@ describe('buildTrackConfig', () => {
       name: 'HPRC graph',
     })
     expect(conf.type).toBe('GraphTrack')
-    expect(conf.adapter).toEqual({
+    expect(withGbzAnchor(conf).adapter).toEqual({
       type: 'GbzBaseSyntenyAdapter',
       gbzDbLocation: uri('hprc.gbz.db'),
       assemblyNames: ['hg38'],

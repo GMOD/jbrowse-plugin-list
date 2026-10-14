@@ -1,3 +1,9 @@
+import {
+  panSNContig,
+  panSNHaplotype,
+  panSNSample,
+} from '@jbrowse/bandage-core/pansn'
+
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 import type {
   WalkAxis,
@@ -44,16 +50,23 @@ export interface WalkRowRuns {
   flags: Uint8Array
 }
 
-function walkFields(panSN: string) {
-  const [sample = '', haplotype = '', ...contig] = panSN.split('#')
-  return { sample, haplotype: +haplotype, contig: contig.join('#') }
+/**
+ * A walk's PanSN fields: `HG002#1#chr1`, or a pggb P-line's `chm13#chr1`,
+ * which has no haplotype
+ */
+export function walkPath(name: string) {
+  const sample = panSNSample(name)
+  const haplotype = panSNHaplotype(name)
+  return {
+    name,
+    sample,
+    haplotype:
+      haplotype === undefined ? undefined : +haplotype.slice(sample.length + 1),
+    contig: panSNContig(name),
+  }
 }
 
-interface Path {
-  name: string
-  sample: string
-  haplotype: number
-  contig: string
+type Path = ReturnType<typeof walkPath> & {
   start: number
   from: number
   to: number
@@ -84,11 +97,13 @@ class RunWriter {
 
 /**
  * `walkRows(graphFromTables(tables), region)` for a cut whose first walk is
- * the reference, which every walk-file and GBZ cut is; a step is a node index. A gap between two pieces of one haplotype is a
- * step of `-bp`. One difference: a walk reaching only one of the region's
- * flanks measures from that flank, where walkRows takes the whole walk the
- * cut holds, so its length is a lower bound that no longer grows with the
- * cut's context.
+ * the reference, which every walk-file and GBZ cut is, in as many pieces as
+ * the cut breaks it into; a step is a node index. A gap between two pieces of
+ * one haplotype is a step of `-bp`. Two differences: a walk reaching only one of the region's flanks measures from
+ * that flank, where walkRows takes the whole walk the cut holds, so its length
+ * is a lower bound that no longer grows with the cut's context; and a row
+ * keeps its walk's name whole, where graphFromTables reads a two-part name
+ * (`chm13#chr1`) as a haplotype `chr1` with no contig.
  */
 export function walkRowRuns(
   { nodes: n, walks: w }: GraphTables,
@@ -99,19 +114,19 @@ export function walkRowRuns(
   const paths: Path[] = []
   for (let p = 0; p < w.names.length; p++) {
     if (w.offsets[p + 1]! > w.offsets[p]!) {
-      const { sample, haplotype, contig } = walkFields(w.names[p]!)
       paths.push({
-        name: `${sample}#${haplotype}#${contig}`,
-        sample,
-        haplotype,
-        contig,
+        ...walkPath(w.names[p]!),
         start: w.starts[p]!,
         from: w.offsets[p]!,
         to: w.offsets[p + 1]!,
       })
     }
   }
-  const [first, ...others] = paths
+  const referencePieces = paths
+    .filter(p => p.name === paths[0]?.name)
+    .sort((a, b) => a.start - b.start)
+  const first = referencePieces[0]
+  const others = paths.filter(p => p.name !== first?.name)
   if (!first || others.length === 0) {
     return undefined
   }
@@ -130,9 +145,9 @@ export function walkRowRuns(
   let flankedBefore = false
   let flankedAfter = false
   const cut = region && region.end > region.start ? region : undefined
-  {
-    let pos = first.start
-    for (let s = first.from; s < first.to; s++) {
+  for (const piece of referencePieces) {
+    let pos = piece.start
+    for (let s = piece.from; s < piece.to; s++) {
       const node = w.steps[s]!
       const len = lengthOf(node)
       if (Number.isNaN(spanStart[node]!)) {
@@ -345,7 +360,10 @@ export function walkRowRuns(
     out.endRow()
     return {
       name: path.name,
-      label: `${path.sample}#${path.haplotype}`,
+      label:
+        path.haplotype === undefined
+          ? path.sample
+          : `${path.sample}#${path.haplotype}`,
       sample: path.sample,
       haplotype: path.haplotype,
       bp,
@@ -357,7 +375,7 @@ export function walkRowRuns(
     }
   }
 
-  const reference = rowOf([first])
+  const reference = rowOf(referencePieces)
   const rowList = [...walks.values()].map(pieces => ({
     meta: rowOf(pieces),
     row: out.offsets.length - 2,

@@ -6,7 +6,7 @@ import {
 } from '@jbrowse/bandage-core/facetGrid'
 import { figureSvg } from '@jbrowse/bandage-core/figure'
 import { figureSpecSettings } from '@jbrowse/bandage-core/figureSettings'
-import { formatBp, rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
+import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
 import {
   LEGEND_INSET_PX,
   layoutLabels,
@@ -21,43 +21,18 @@ import {
   walkRowsExtent,
 } from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
-import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
-import { pathColorsLegible } from '@jbrowse/bandage-core/pathColors'
 import {
   FIT_PADDING,
   drawingBounds,
   fitTransform,
 } from '@jbrowse/bandage-core/pipeline'
-import {
-  LIFT_BACKDROP_CSS,
-  buildGeometry,
-} from '@jbrowse/bandage-core/renderer/GeometryBuilder'
+import { buildGeometry } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { getDpr } from '@jbrowse/bandage-core/renderer/canvas'
 import { layoutGeometryInputs } from '@jbrowse/bandage-core/renderer/geometryInputs'
-import { referenceBoxes, rulerBoxes } from '@jbrowse/bandage-core/tubeMap/axis'
-import {
-  connectorAt,
-  drawLitConnector,
-  tubeMapConnectors,
-} from '@jbrowse/bandage-core/tubeMap/connectors'
-import { deviationMarks } from '@jbrowse/bandage-core/tubeMap/deviations'
-import {
-  drawTubeMapHighlight,
-  mismatchOnScreen,
-  mismatchesLegible,
-  tubeMapMismatchAt,
-  tubeMapPicture,
-  tubeMapTrackAt,
-} from '@jbrowse/bandage-core/tubeMap/draw'
-import {
-  tubeMapFrame,
-  tubeMapNodeAt,
-} from '@jbrowse/bandage-core/tubeMap/frame'
 import {
   GENE_ROW_PX,
   tubeMapGeneRows,
 } from '@jbrowse/bandage-core/tubeMap/genes'
-import { tubeMapNodeColors } from '@jbrowse/bandage-core/tubeMap/nodeColors'
 import { padded } from '@jbrowse/bandage-core/viewport'
 import { walkPosition } from '@jbrowse/bandage-core/walkKey'
 import {
@@ -65,30 +40,16 @@ import {
   readConfObject,
 } from '@jbrowse/core/configuration'
 import { getSession } from '@jbrowse/core/util'
-import { computed, untracked } from 'mobx'
+import { untracked } from 'mobx'
 
-import {
-  NO_VALUE_TUBE,
-  PANEL_GAP,
-  PANEL_TUBE,
-  TINTED_TUBES,
-  boxOf,
-  memberAt,
-  paintPanelHover,
-  roleTubeColors,
-  valueTubeColors,
-  walksThrough,
-} from '../tubeMapPanels'
 import { SECTION_HEADER_PX, sectionPlacement } from '../walkRowGroups'
 import { withHostViews } from './hostViews'
 import { fadeEntering } from './morph'
 import {
-  HOVER_BRIGHTEN,
   MAX_CANVAS_HEIGHT,
   MIN_CANVAS_HEIGHT,
   MIN_FIT_TUBE_PX,
-  PAPER_DARK,
-  PAPER_LIGHT,
+  PAPER,
   SELECT_BRIGHTEN,
   VIEWPORT_PANES_BUILT,
   dependOn,
@@ -96,76 +57,21 @@ import {
   uriOf,
 } from './paneBase'
 
-import type { HoveredTube } from './paneBase'
 import type { FacetGrid, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type {
   GeneGaps,
   RowPitch,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
-import type { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
-import type {
-  RenderBatch,
-  Renderer,
-} from '@jbrowse/bandage-core/renderer/types'
-import type { TubeMapPicture } from '@jbrowse/bandage-core/tubeMap/draw'
-import type { TubeMapTransform } from '@jbrowse/bandage-core/tubeMap/frame'
-import type { TubeMapMismatch } from '@jbrowse/bandage-core/tubeMap/mismatches'
-import type { Graph } from '@jbrowse/bandage-core/types'
+import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 import type { LiftedWalk, WalkLift } from '@jbrowse/bandage-core/walkHighlight'
 import type { FileLocation } from '@jbrowse/core/util/types'
 
-const MAX_SHOWN_BASES = 20
 export const TOOLTIP_INSET_PX = 8
 export const FACET_KEY_ROW_PX = 19
 // the facet key line and the grid gap above it
 export const FACET_KEY_PX = FACET_GAP_PX + FACET_KEY_ROW_PX
 // a two-line tooltip and its inset
 const TOOLTIP_ROOM_PX = 48
-// a squeezed stack of panels thins no further, as one tube map does
-const MIN_PANEL_Y_SCALE = 0.05
-
-const MAX_LISTED = 6
-
-function listed(names: string[]) {
-  const more = names.length - MAX_LISTED
-  return more > 0
-    ? `${names.slice(0, MAX_LISTED).join(', ')} and ${more} more`
-    : names.join(', ')
-}
-
-function mismatchText(m: TubeMapMismatch) {
-  if (m.kind === 'deletion') {
-    return `deletion of ${formatBp(m.length)}`
-  }
-  if (m.kind === 'substitution') {
-    return `substitution ${m.seq}`
-  }
-  const seq = m.seq ?? ''
-  const shown =
-    seq.length > MAX_SHOWN_BASES ? `${seq.slice(0, MAX_SHOWN_BASES)}…` : seq
-  return `insertion of ${formatBp(seq.length)} ${shown}`.trim()
-}
-
-// Which kinds of read mark are on screen, stopping once all three are found
-function mismatchKindsShown(
-  picture: TubeMapPicture | undefined,
-  frame: TubeMapTransform | undefined,
-  width: number,
-) {
-  const kinds = { substitution: false, insertion: false, deletion: false }
-  if (picture && frame && mismatchesLegible(frame.yScale)) {
-    let missing = 3
-    for (const m of picture.mismatches) {
-      if (!kinds[m.kind] && mismatchOnScreen(m, { x: frame.x, width })) {
-        kinds[m.kind] = true
-        if (--missing === 0) {
-          break
-        }
-      }
-    }
-  }
-  return kinds
-}
 
 export function walkRowGeneKey(
   pitch: RowPitch | undefined,
@@ -237,6 +143,15 @@ export const withFitViews = withHostViews
       return self.walkRowBars && place
         ? labels.map((l, i) => ({ ...l, y: place.rowY(i) }))
         : labels
+    },
+    // The row labels on the canvas, each at its pane px `top`. A row scrolled
+    // out is dropped rather than clamped to the edge, so a label never points
+    // at a row that is not there.
+    get visibleRowLabels() {
+      return this.drawnRowLabels.flatMap(({ label, y }) => {
+        const top = self.toScreen({ x: 0, y }).y
+        return top >= 0 && top <= this.canvasHeight ? [{ label, y, top }] : []
+      })
     },
     // The row labels are pinned to the pane's left edge, so the fit starts
     // the drawing past the widest one.
@@ -461,7 +376,6 @@ export const withFitViews = withHostViews
     // without feeding back into it.
     get canvasHeight(): number {
       const bounds = this.layoutBounds
-      const usableWidth = self.paneWidth - FIT_PADDING - this.fitPadRight
       const ceiling = this.paneCeiling
       if (!bounds) {
         return ceiling
@@ -477,20 +391,19 @@ export const withFitViews = withHostViews
           2 * LEGEND_INSET_PX +
           self.referenceStripZonePx,
       )
+      const pads = this.fitPads
+      const padsY = pads.top + pads.bottom
       if (self.pixelRows) {
-        return Math.min(
-          ceiling,
-          Math.max(floor, bounds.h + this.fitPadTop + FIT_PADDING),
-        )
+        return Math.min(ceiling, Math.max(floor, bounds.h + padsY))
       }
+      const usableWidth = self.paneWidth - pads.left - pads.right
       return bounds.w > 0 && usableWidth > 0
         ? Math.min(
             ceiling,
             Math.max(
               floor,
               bounds.h * Math.max(usableWidth / bounds.w, this.minFitScale) +
-                this.fitPadTop +
-                FIT_PADDING,
+                padsY,
             ),
           )
         : ceiling
@@ -503,32 +416,44 @@ export const withFitViews = withHostViews
         ? { width: grid.width, height: grid.height }
         : { width: self.paneWidth, height: this.canvasHeight }
     },
+    // The fit's margins: a facet panel's all round, else room for the row
+    // labels, the genes and strip above, and the legend where legendRoom
+    // puts it
+    get fitPads() {
+      return this.facetGrid
+        ? {
+            left: FACET_PAD_PX,
+            top: FACET_PAD_PX,
+            right: FACET_PAD_PX,
+            bottom: FACET_PAD_PX,
+          }
+        : {
+            left: this.fitPadLeft,
+            top: this.fitPadTop,
+            right: this.fitPadRight,
+            bottom: FIT_PADDING,
+          }
+    },
+    // the view box's height inside the fit's margins
+    get usableHeight() {
+      const { top, bottom } = this.fitPads
+      return this.viewBox.height - top - bottom
+    },
     // Where the fit puts the drawing, or undefined until there is a layout
     // and a measured canvas to fit it into
     get fittedTransform() {
       const bounds = this.layoutBounds
-      const grid = this.facetGrid
-      return !bounds
-        ? undefined
-        : grid
-          ? fitTransform(bounds, grid.width, grid.height, self.pixelRows, {
-              padLeft: FACET_PAD_PX,
-              padTop: FACET_PAD_PX,
-              padRight: FACET_PAD_PX,
-              padBottom: FACET_PAD_PX,
-            })
-          : fitTransform(
-              bounds,
-              self.paneWidth,
-              this.canvasHeight,
-              self.pixelRows,
-              {
-                minScale: this.minFitScale,
-                padLeft: this.fitPadLeft,
-                padTop: this.fitPadTop,
-                padRight: this.fitPadRight,
-              },
-            )
+      const { width, height } = this.viewBox
+      const pads = this.fitPads
+      return bounds
+        ? fitTransform(bounds, width, height, self.pixelRows, {
+            minScale: this.facetGrid ? 0 : this.minFitScale,
+            padLeft: pads.left,
+            padTop: pads.top,
+            padRight: pads.right,
+            padBottom: pads.bottom,
+          })
+        : undefined
     },
   }))
   .views(self => ({
@@ -576,13 +501,7 @@ export const withFitViews = withHostViews
       b.updateTransform(self.paintTransform)
       // Clear under a reference strip: GraphCanvas lays the paper below the
       // strip, so the linear view's gridlines show through between its blocks
-      b.render(
-        self.referenceStripShown
-          ? [0, 0, 0, 0]
-          : self.darkMode
-            ? PAPER_DARK
-            : PAPER_LIGHT,
-      )
+      b.render(self.referenceStripShown ? [0, 0, 0, 0] : PAPER)
     },
   }))
   .views(self => ({
@@ -618,7 +537,7 @@ export const withFitViews = withHostViews
         linearLayout: self.linearLayout,
         viewportBounds,
         // Held against the graph rather than derived here, the same way the
-        // deletion drawing is and for the same reason — see `referenceRamp`.
+        // deletion drawing is and for the same reason — see `drawnReferenceRamp`.
         referenceRamp: self.referenceRamp,
         // passed so the shared edge-curve cache can tell a drag from a pan
         version: self.positionsVersion,
@@ -779,385 +698,9 @@ export const withFitViews = withHostViews
               rowGeneGaps: self.walkRowGeneGaps,
             },
             // the SVG carries the spec only where the spec draws this same
-            // picture
-            spec: this.figureSpecUnavailable ? undefined : this.figureSpec(),
+            // picture: one of nodes (figureSpecUnavailable)
+            spec: self.drawsNodes ? this.figureSpec() : undefined,
           })
         : undefined
-    },
-    get tubeMapFrame() {
-      const drawing = self.layoutResult?.tubeMap
-      return drawing
-        ? tubeMapFrame(drawing, {
-            scaleX: self.scaleX,
-            translateX: self.translateX,
-            scaleY: self.scaleY,
-            translateY: self.translateY,
-            usableHeight: self.canvasHeight - self.fitPadTop - FIT_PADDING,
-          })
-        : undefined
-    },
-  }))
-  .views(self => ({
-    // the reference ruler under the tubes, unless the linear view's ruler
-    // is already the axis
-    get tubeMapRulerBoxes() {
-      const reference = self.tubeMapReference
-      return reference && !self.hostPlacesX && !self.layoutResult?.tubeMapPanels
-        ? rulerBoxes(reference)
-        : undefined
-    },
-    // Split on the reference axis, the panels share x, so one ruler under
-    // the last reads for them all; on the own axis each panel has its own
-    get tubeMapPanelRulerBoxes() {
-      const { layoutResult } = self
-      const last = layoutResult?.tubeMapPanels?.at(-1)
-      return last && layoutResult?.referenceAxis && !self.hostPlacesX
-        ? rulerBoxes(referenceBoxes(last.result.tubeMap))
-        : undefined
-    },
-    // The connectors run from the top of the pane down to the tubes' top
-    get connectorZoneBottom() {
-      const picture = self.tubeMapPicture
-      const frame = self.tubeMapFrame
-      return picture && frame ? frame.y(picture.bounds.minY) - 2 : 0
-    },
-    // The bands' tops follow every frame of a pan in the linear view and
-    // their bottoms every pan of the tubes
-    get tubeMapConnectors() {
-      const boxes = self.tubeMapConnectedBoxes
-      const frame = self.tubeMapFrame
-      const bp = boxes && frame ? self.hostBpFrame : undefined
-      return boxes && frame && bp
-        ? tubeMapConnectors(
-            boxes,
-            b => b * bp.scale + bp.translateX,
-            frame.x,
-            self.paneWidth,
-          )
-        : []
-    },
-    // What each panel of a split tube map draws, which no pan changes: its
-    // picture, its tubes, its boxes' tints and its folded variants. A
-    // panel's title names its walks, so its tubes take their roles' colours
-    // and leave the routes to read: how many take a box, how many go round.
-    get tubeMapPanelPictures() {
-      const panels = self.layoutResult?.tubeMapPanels
-      if (!panels) {
-        return undefined
-      }
-      const hovered = new Set(self.hoveredRowWalks)
-      const coloring = self.tubeMapColoring
-      const tubeColors = (graph: Graph) => {
-        const paths = graph.paths ?? []
-        const base = coloring
-          ? valueTubeColors(
-              paths,
-              graph.referencePath,
-              coloring.valueOf,
-              coloring.palette,
-            )
-          : roleTubeColors(paths, graph.referencePath)
-        return base.map((color, i) => {
-          const name = paths[i]!.name
-          return hovered.size > 0 &&
-            !hovered.has(name) &&
-            pathOrigin(name).name !== graph.referencePath
-            ? LIFT_BACKDROP_CSS
-            : color
-        })
-      }
-      const { field } = self.facetSetting
-      return panels.map(panel => {
-        const drawing = panel.result.tubeMap
-        const { graph, coarse } = drawing
-        return {
-          panel,
-          label:
-            panel.label ??
-            (field === 'walk' ? self.walkLabel(panel.paths[0]!) : panel.key),
-          picture: tubeMapPicture(drawing),
-          tubeColors: tubeColors(graph),
-          nodeColors: self.tubeMapNodeColors
-            ? tubeMapNodeColors(
-                graph,
-                self.effectiveColorScheme,
-                self.referenceRamp,
-              )
-            : undefined,
-          deviations: coarse ? deviationMarks(drawing, coarse.deviations) : [],
-        }
-      })
-    },
-  }))
-  .views(self => ({
-    // The node the pointer is on: inside a merged run, the member at the
-    // pointer's bp, so a run spanning the window counts what is under it
-    get hoveredMember() {
-      const id = self.hoveredNode
-      const members =
-        id === null ? undefined : self.hoverDrawing?.members.get(id)
-      if (!members) {
-        return id
-      }
-      const at = self.hoveredAt
-      const i = self.hoveredPanel
-      const under = i === null ? undefined : this.tubeMapPanelViews?.[i]
-      // sparse, so forEach, which skips its holes, as tubeMapNodeAt does
-      let box: { x: number; pixelWidth: number } | undefined
-      under?.panel.result.tubeMap.layout.nodes.forEach(n => {
-        if (n.name === id) {
-          box = n
-        }
-      })
-      const member =
-        at && under && box
-          ? memberAt(
-              members,
-              m => self.nodeSpan(m),
-              under.frame.x(box.x),
-              under.frame.x(box.x + box.pixelWidth),
-              at.x,
-            )
-          : undefined
-      return member ?? members[0]
-    },
-    // For the hovered box, the box each panel draws it in and how many of
-    // that panel's haplotypes pass through it: a frequency per group
-    get tubeMapPanelHover() {
-      const id = self.hoveredNode
-      const pictures = self.tubeMapPanelPictures
-      if (id === null || !pictures) {
-        return undefined
-      }
-      const node = this.hoveredMember ?? id
-      return pictures.map(({ panel }) => {
-        const drawing = panel.result.tubeMap
-        const box = boxOf(drawing, node)
-        return box ? { box, ...walksThrough(drawing.graph, box) } : undefined
-      })
-    },
-    // Each panel through the pane's transform at its place down the stack.
-    // On the reference axis the stack squeezes into the pane as one map does.
-    get tubeMapPanelViews() {
-      const pictures = self.tubeMapPanelPictures
-      const layout = self.layoutResult
-      if (!pictures || !layout) {
-        return undefined
-      }
-      // the titles keep their px and the drawings squeeze into the rest
-      const titles = pictures.length * PANEL_GAP
-      const drawings = pictures.reduce((h, p) => h + p.panel.height, 0)
-      const usable = self.canvasHeight - self.fitPadTop - FIT_PADDING - titles
-      const yScale =
-        self.scaleY *
-        (layout.referenceAxis && drawings > 0
-          ? Math.max(MIN_PANEL_Y_SCALE, Math.min(1, usable / drawings))
-          : 1)
-      let y = self.translateY
-      return pictures.map(p => {
-        const { panel } = p
-        const minY = panel.result.extent?.minY ?? 0
-        const titleTop = y
-        const top = titleTop + PANEL_GAP
-        y = top + panel.height * yScale
-        return {
-          ...p,
-          frame: tubeMapFrame(panel.result.tubeMap, {
-            scaleX: self.scaleX,
-            translateX: self.translateX,
-            scaleY: yScale,
-            translateY: top - minY * yScale,
-            usableHeight: Infinity,
-          }),
-          titleTop,
-          top,
-          bottom: y,
-        }
-      })
-    },
-  }))
-  .views(self => ({
-    // the panel a pane y falls in, its title's gap included
-    tubeMapPanelAt(sy: number) {
-      const i =
-        self.tubeMapPanelViews?.findIndex(
-          v => v.titleTop <= sy && sy <= v.bottom,
-        ) ?? -1
-      return i < 0 ? null : i
-    },
-  }))
-  .views(self => ({
-    // The hover alone, onto a transparent canvas over the drawing, so a
-    // pointer move repaints what it lights rather than every stroke under
-    // it. `batch` is what the canvas below holds.
-    paintHover(r: Canvas2DRenderer, batch: RenderBatch) {
-      const picture = self.tubeMapPicture
-      const frame = self.tubeMapFrame
-      const node = self.hoverLayerNode
-      if (picture && frame) {
-        const { ctx, canvas } = r
-        const dpr = getDpr()
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        const panels = self.tubeMapPanelViews
-        if (panels) {
-          paintPanelHover(ctx, panels, self.tubeMapPanelHover, {
-            width: self.paneWidth,
-            lit: node !== null,
-          })
-        } else {
-          drawTubeMapHighlight(ctx, picture, {
-            ...frame,
-            width: self.paneWidth,
-            highlightNode: node,
-          })
-        }
-        drawLitConnector(
-          ctx,
-          self.tubeMapConnectors,
-          self.connectorZoneBottom,
-          node,
-        )
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-      } else {
-        r.uploadGeometry(batch)
-        r.setNodeHighlights(
-          node === null ? new Map() : new Map([[node, HOVER_BRIGHTEN]]),
-        )
-        r.setEdgeHighlight(self.hoveredEdge, HOVER_BRIGHTEN)
-        r.updateTransform(self.paintTransform)
-        r.renderHighlights()
-      }
-    },
-  }))
-  .views(self => {
-    // Compared by value: the marks in view are read off the transform, and
-    // the legend should redraw when a kind comes or goes, not every pan frame
-    const keys = computed(
-      () => {
-        const layout = self.layoutResult
-        const split = layout?.tubeMapPanels !== undefined
-        const reads = split ? [] : (layout?.tubeMap?.layout.reads ?? [])
-        const paths = self.drawnGraph?.paths ?? []
-        const coloring = self.tubeMapColoring
-        return {
-          // tubes coloured reference and haplotype rather than per walk
-          bundled: paths.some(p => p.members),
-          // tubes in a column's hues, keyed value by value
-          values:
-            coloring && reads.length === 0
-              ? [
-                  ...[...coloring.palette].map(([value, color]) => ({
-                    value,
-                    color,
-                  })),
-                  ...(coloring.unvalued
-                    ? [
-                        {
-                          value: `${coloring.field}: none`,
-                          color: NO_VALUE_TUBE,
-                        },
-                      ]
-                    : []),
-                ]
-              : undefined,
-          roles:
-            !(coloring && reads.length === 0) &&
-            (split ||
-              (layout?.tubeMap !== undefined &&
-                (!!self.tubeMapNodeColors ||
-                  (reads.length === 0 &&
-                    (!pathColorsLegible(paths.length) ||
-                      paths.some(p => p.members)))))),
-          haplotypeTube:
-            !split && self.tubeMapNodeColors ? TINTED_TUBES[0]! : PANEL_TUBE,
-          logWidths: layout?.tubeMap !== undefined && !layout.referenceAxis,
-          foldBp:
-            self.tubeMapDeviations.length > 0 ? self.tubeMapFold : undefined,
-          forwardReads: reads.some(r => !r.is_reverse),
-          reverseReads: reads.some(r => r.is_reverse),
-          ...mismatchKindsShown(
-            split ? undefined : self.tubeMapPicture,
-            self.tubeMapFrame,
-            self.paneWidth,
-          ),
-        }
-      },
-      { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
-    )
-    return {
-      // What the tube map's legend has to explain: that on the own axis a
-      // box is as wide as the log of its length, the fold its walks' ticks
-      // stand for, the reads' strands, and the marks on the reads in view
-      get tubeMapKeys() {
-        return keys.get()
-      },
-    }
-  })
-  .views(self => ({
-    // The drawing under a pane y: its panel's while the map is split
-    tubeMapUnder(sy: number) {
-      const views = self.tubeMapPanelViews
-      if (views) {
-        const i = self.tubeMapPanelAt(sy)
-        const v = i === null ? undefined : views[i]
-        return v && { drawing: v.panel.result.tubeMap, ...v }
-      }
-      const drawing = self.layoutResult?.tubeMap
-      const picture = self.tubeMapPicture
-      const frame = self.tubeMapFrame
-      return drawing && picture && frame
-        ? { drawing, picture, frame }
-        : undefined
-    },
-  }))
-  .views(self => ({
-    tubeMapNodeAt(sx: number, sy: number) {
-      const under = self.tubeMapUnder(sy)
-      return (
-        (under ? tubeMapNodeAt(under.drawing, under.frame, sx, sy) : null) ??
-        connectorAt(self.tubeMapConnectors, self.connectorZoneBottom, sx, sy) ??
-        null
-      )
-    },
-    // The tube under a pane point, and the mismatch mark on it if any
-    tubeAt(sx: number, sy: number): HoveredTube | null {
-      const under = self.tubeMapUnder(sy)
-      if (!under) {
-        return null
-      }
-      const { picture, frame } = under
-      const mismatch = tubeMapMismatchAt(picture, frame, sx, sy)
-      const track = mismatch?.readId ?? tubeMapTrackAt(picture, frame, sx, sy)
-      return track === undefined ? null : { track, mismatch }
-    },
-    // A tube names its haplotype; a read its MAPQ and strand, and the
-    // mismatch under the pointer
-    get hoveredTubeText() {
-      const tube = self.hoveredTube
-      const layout = self.layoutResult?.tubeMap?.layout
-      const read = tube && layout?.reads.find(r => r.id === tube.track)
-      if (tube && read) {
-        const mapq = read.mapping_quality
-        return {
-          label: read.name ?? 'read',
-          readout: [
-            `MAPQ ${mapq ?? 'unknown'}`,
-            `${read.is_reverse ? 'reverse' : 'forward'} strand`,
-            ...(tube.mismatch ? [mismatchText(tube.mismatch)] : []),
-          ].join(', '),
-        }
-      }
-      const path = tube ? self.hoverGraph?.paths?.[tube.track] : undefined
-      const members = path?.members
-      return members
-        ? {
-            label: `${members.length} haplotypes`,
-            readout: `one route: ${listed(members.map(m => self.walkLabel(m)))}`,
-          }
-        : path
-          ? { label: self.walkLabel(path.name), readout: 'haplotype' }
-          : undefined
     },
   }))

@@ -1,3 +1,4 @@
+import type { SubgraphRegion } from '../GetSubgraph'
 import type { HostWindow } from '../GraphGenomeView/host'
 
 // A cut refused for its node count: the GBZ adapter's own error, marked
@@ -14,17 +15,13 @@ export function isNodeLimitError(error: unknown) {
   )
 }
 
-// Where a cut came back over its node limit. The graph is as dense as that
-// only near it, so it stands for windows as wide or wider on the same contig
-// within one window-width of it.
-export interface DenseWindow {
-  refName: string
-  assemblyName: string
-  start: number
-  end: number
-}
-
-export function denseCovers(dense: DenseWindow | undefined, seen: HostWindow) {
+// Whether `seen` is near where a cut came back over its node limit. The graph
+// is as dense as that only near it, so the refusal stands for windows as wide
+// or wider on the same contig within one window-width of it.
+export function denseCovers(
+  dense: SubgraphRegion | undefined,
+  seen: HostWindow,
+) {
   if (
     dense?.refName !== seen.refName ||
     dense.assemblyName !== seen.assemblyName

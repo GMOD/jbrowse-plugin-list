@@ -225,7 +225,7 @@ async function pathModel(count: number) {
   )
   const model = stateModelFactory().create({ type: 'GraphGenomeView' })
   await model.loadGFA(pathGFA(count), 'paths')
-  model.setDrawPaths(true)
+  model.setLayer('paths', true)
   return model
 }
 

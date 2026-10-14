@@ -6,11 +6,11 @@ import type { LinearGraphCutModel } from '../model'
 
 function model(haplotypeNames?: string[]) {
   return {
-    adapterConfig: { type: 'RgfaTabixAdapter', walksUri: 'chr22' },
+    sourceAdapter: { type: 'RgfaTabixAdapter', walksUri: 'chr22' },
     cutHaplotypes: ['HG002'],
     haplotypeNames,
     setSubgraphHaplotypes: vi.fn(),
-    cut: vi.fn(),
+    recut: vi.fn(),
   } as unknown as LinearGraphCutModel
 }
 
@@ -25,7 +25,7 @@ test("the field offers the haplotypes a walk file's header names", () => {
     key: 'Escape',
   })
   expect(m.setSubgraphHaplotypes).toHaveBeenCalledWith(['HG002', 'HG00097#1'])
-  expect(m.cut).toHaveBeenCalled()
+  expect(m.recut).toHaveBeenCalled()
 })
 
 test('without names the field takes typed ones', () => {

@@ -1,6 +1,6 @@
-import { getAdapter } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes'
 
+import { adapterImplementing } from './adapterImplementing'
 import { snapshotNamesFile } from './locationName.ts'
 
 import type { GafReads } from './gaf/gafFile'
@@ -31,13 +31,6 @@ interface ReadsAdapter {
   ): Promise<GafReads>
 }
 
-function isReadsAdapter(adapter: object): adapter is ReadsAdapter {
-  return (
-    'getReads' in adapter &&
-    typeof (adapter as ReadsAdapter).getReads === 'function'
-  )
-}
-
 // Whether an adapter config as written names reads, so a graph without them
 // makes no round trip to ask
 export function namesReads(adapterConfig: Record<string, unknown>) {
@@ -51,14 +44,14 @@ export default class GetGraphReads extends RpcMethodType<'GetGraphReads'> {
   name = 'GetGraphReads' as const
 
   async execute(args: RpcExecuteArgs<'GetGraphReads'>) {
-    const { adapterConfig, nodeNames, sessionId, signal } = args
-    const { dataAdapter } = await getAdapter(
+    const { nodeNames, signal } = args
+    const { adapter } = await adapterImplementing<ReadsAdapter>(
       this.pluginManager,
-      sessionId,
-      adapterConfig,
+      args,
+      'getReads',
     )
-    return isReadsAdapter(dataAdapter)
-      ? dataAdapter.getReads(nodeNames, { signal })
+    return adapter
+      ? adapter.getReads(nodeNames, { signal })
       : { records: [], total: 0 }
   }
 }

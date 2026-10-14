@@ -121,3 +121,9 @@ test('a solid run under the ramp is one piece in its own hue', () => {
   const off = bars.rows[0]!.runs[1]!
   expect(runPieces(off, ramp, frame.scaleX)).toHaveLength(1)
 })
+
+test('the spans state how far the longest row reaches', () => {
+  const all = [bars.reference, ...bars.rows]
+  expect(walkRowSpans(all, frame.scaleX).longest).toBe(3500)
+  expect(walkRowSpans([], frame.scaleX).longest).toBe(1)
+})

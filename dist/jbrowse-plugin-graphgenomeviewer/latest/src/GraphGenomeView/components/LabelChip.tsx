@@ -1,7 +1,7 @@
 import { LABEL_PAD, LABEL_PX } from '@jbrowse/bandage-core/overlayLabels'
 
 // A chip's box, its text's baseline at y and centred on x
-export function chipBox(x: number, y: number, w: number) {
+function chipBox(x: number, y: number, w: number) {
   return {
     x: x - w / 2,
     y: y - LABEL_PX - LABEL_PAD + 2,
@@ -36,7 +36,6 @@ export default function LabelChip({
   color,
   edge = color,
   italic,
-  small,
   dimmed,
   title,
   testId,
@@ -51,7 +50,6 @@ export default function LabelChip({
   color: string
   edge?: string
   italic?: boolean
-  small?: boolean
   dimmed?: boolean
   title?: string
   testId?: string
@@ -80,12 +78,12 @@ export default function LabelChip({
         rx={3}
         fill="rgba(255,255,255,0.85)"
         stroke={edge}
-        strokeWidth={small ? 0.6 : 1}
+        strokeWidth={1}
       />
       <text
         x={x}
         y={y}
-        fontSize={small ? LABEL_PX - 1 : LABEL_PX}
+        fontSize={LABEL_PX}
         fontFamily="sans-serif"
         fontStyle={italic ? 'italic' : undefined}
         fontWeight={italic ? 600 : undefined}

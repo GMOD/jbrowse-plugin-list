@@ -16,22 +16,25 @@ import { ROW_HEIGHT_PX } from '@jbrowse/bandage-core/layout/rowSpacing'
 import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
-import { buildGeometry } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
+import {
+  LIFT_BACKDROP_CSS,
+  buildGeometry,
+} from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { abgrAlpha } from '@jbrowse/bandage-core/renderer/colorBits'
 import { recordingCanvas } from '@jbrowse/bandage-core/renderer/recordingCanvas'
 import { walkHighlight } from '@jbrowse/bandage-core/walkHighlight'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { LAUNCH_LABEL, resolveSubMenu } from '@jbrowse/core/ui'
 import { applySnapshot, getSnapshot, types } from '@jbrowse/mobx-state-tree'
+import { autorun } from 'mobx'
 
-import { walkRowTrees } from './components/WalkRowsOverlay'
 import { facetKeyRows } from './legendSections'
 import { MAX_GRAPH_REGION_BP, formatSpanBp } from './model'
 import { walkRowGeneKey } from './pane/fitViews'
 import { EMPTY_BATCH, SELECT_BRIGHTEN } from './pane/paneBase'
 import { PANEL_REFERENCE_TUBE, PANEL_TUBES } from './tubeMapPanels'
 import stateModelFactory from './viewModel'
-import { SECTION_HEADER_PX } from './walkRowGroups'
+import { SECTION_HEADER_PX, walkRowTrees } from './walkRowGroups'
 import { walkCutFor } from '../RgfaTabixAdapter/walkRowRuns.ts'
 
 import type { GraphLayers } from './graphLayers'
@@ -193,6 +196,28 @@ function createAnchoredModel(props: { layers?: GraphLayers } = {}) {
     layoutMode: 'auto',
     ...props,
   })
+}
+
+// A view attached to a tree, so afterAttach installs its reactions. A root
+// model never attaches.
+function attachedModel(props: { layoutMode?: LayoutModeValue } = {}) {
+  return types
+    .model({ view: stateModelFactory() })
+    .create({ view: { type: 'GraphGenomeView', ...props } }).view
+}
+
+// waits until every layout a reaction asked for has finished
+function layoutsSettled(model: { isLoading: boolean }) {
+  return vi.waitFor(() => {
+    expect(model.isLoading).toBe(false)
+  })
+}
+
+// The menu's deletions toggle, then the relayout the engine reaction runs on
+// an attached view. A root model installs no reactions.
+async function toggleDeletionEdges(model: ReturnType<typeof createModel>) {
+  model.setLayer('deletions', !model.showDeletionEdges)
+  await model.recomputeLayout()
 }
 
 const TEST_REGION = {
@@ -554,6 +579,51 @@ describe('performance instrumentation', () => {
     answers[1]!(SIMPLE_GFA)
     await second
     expect(model.isLoading).toBe(false)
+  })
+
+  test('a load whose layout was replaced leaves the spinner to the replacement', async () => {
+    const { answers, layouts, holdLayouts } = heldCuts()
+    holdLayouts()
+    const model = createModel()
+    const load = model.cutSubgraph({ type: 'RgfaTabixAdapter' }, TEST_REGION)
+    answers[0]!(SIMPLE_GFA)
+    await vi.waitFor(() => {
+      expect(layouts).toHaveLength(1)
+    })
+    model.setLayoutQuality(4)
+    const relayout = model.recomputeLayout()
+    await vi.waitFor(() => {
+      expect(layouts).toHaveLength(2)
+    })
+
+    layouts[0]!()
+    await load
+    expect(model.isLoading).toBe(true)
+
+    layouts[1]!()
+    await relayout
+    expect(model.isLoading).toBe(false)
+  })
+
+  test('a load that fails while an outrun one is laying out ends with that layout', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { answers, layouts, holdLayouts } = heldCuts()
+    holdLayouts()
+    const model = createModel()
+    const first = model.cutSubgraph({ type: 'RgfaTabixAdapter' }, TEST_REGION)
+    answers[0]!(SIMPLE_GFA)
+    await vi.waitFor(() => {
+      expect(layouts).toHaveLength(1)
+    })
+    const second = model.cutSubgraph({ type: 'RgfaTabixAdapter' }, TEST_REGION)
+    answers[1]!('')
+    await second
+    expect(String(model.error)).toMatch(/no GFA/)
+
+    layouts[0]!()
+    await first
+    expect(model.isLoading).toBe(false)
+    consoleSpy.mockRestore()
   })
 
   test('a stop before a new graph is laid out draws nothing of the last one', async () => {
@@ -925,18 +995,96 @@ describe('layoutMode', () => {
   // drawing never lets it do
   test('toggling deletion edges lays only a force layout out again', async () => {
     rpcRespond()
-    const model = createModel()
+    const model = attachedModel()
     await model.loadGFA(RGFA, 'rgfa')
     expect(layoutCalls()).toHaveLength(1)
 
-    await model.toggleDeletionEdges()
-    expect(model.showDeletionEdges).toBe(false)
+    model.setLayer('deletions', false)
+    await layoutsSettled(model)
     expect(layoutCalls()).toHaveLength(2)
 
-    model.setLayoutMode('auto')
-    await model.recomputeLayout()
-    await model.toggleDeletionEdges()
+    await model.switchLayout('auto')
+    model.setLayer('deletions', true)
+    await layoutsSettled(model)
     expect(layoutCalls()).toHaveLength(2)
+  })
+
+  // the config editor, Reset track settings, undo and a session delta write
+  // the layers without the menu
+  test('a deletions layer written from outside the menu lays a force layout out again', async () => {
+    rpcRespond()
+    const model = attachedModel()
+    await model.loadGFA(RGFA, 'rgfa')
+    expect(layoutCalls()).toHaveLength(1)
+
+    model.writeGrammar({ layers: { deletions: false } })
+    await layoutsSettled(model)
+
+    expect(model.showDeletionEdges).toBe(false)
+    expect(layoutCalls()).toHaveLength(2)
+  })
+
+  test('an engine setting leaves a layout the engine did not draw alone', async () => {
+    rpcRespond()
+    const model = attachedModel({ layoutMode: 'auto' })
+    await model.loadGFA(RGFA, 'rgfa')
+    const drawn = model.layoutResult
+
+    model.setLayoutQuality(4)
+    model.setLayer('deletions', false)
+    await layoutsSettled(model)
+
+    expect(model.layoutResult).toBe(drawn)
+    expect(layoutCalls()).toHaveLength(0)
+  })
+
+  test('a force engine picked from the menu lays out once', async () => {
+    rpcRespond()
+    const model = attachedModel({ layoutMode: 'auto' })
+    await model.loadGFA(SIMPLE_GFA, 'plain')
+    expect(model.usesLayoutEngine).toBe(true)
+    expect(layoutCalls()).toHaveLength(1)
+    const pick = (label: string) => {
+      ;(
+        model.graphMenuItems()[0] as {
+          subMenu: (MenuItem & { onClick: () => void })[]
+        }
+      ).subMenu
+        .find(item => item.label === label)!
+        .onClick()
+    }
+
+    const fmmm = model.layoutResult
+
+    pick('Force-directed (stress)')
+    await layoutsSettled(model)
+    expect(model.chosenLayoutMode).toBe('force')
+    expect(layoutArgs(1).options.engine).toBe('stress')
+    expect(layoutCalls()).toHaveLength(2)
+
+    pick('Force-directed (FMMM)')
+    await layoutsSettled(model)
+    expect(layoutCalls()).toHaveLength(2)
+    expect(model.layoutResult).toBe(fmmm)
+  })
+
+  test('the node cap lays out again only a layout that draws nodes', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    rpcRespond()
+    const model = attachedModel()
+    await model.loadGFA(SIMPLE_GFA, 'plain')
+
+    model.setMaxGraphNodes(1)
+    await layoutsSettled(model)
+    expect(String(model.error)).toMatch(/too large to draw/i)
+
+    await model.switchLayout('walkrows')
+    expect(model.error).toBeUndefined()
+    const drawn = model.layoutResult
+    model.setMaxGraphNodes(5000)
+    await layoutsSettled(model)
+    expect(model.layoutResult).toBe(drawn)
+    consoleSpy.mockRestore()
   })
 
   // Comparing the two drawings is the workflow the README leads with, and the
@@ -1231,6 +1379,25 @@ describe('node budget', () => {
     consoleSpy.mockRestore()
   })
 
+  test('a declined graph does not keep the last graph drawn under it', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    rpcRespond()
+    const model = withLimit(2)
+    await model.loadGFA(SIMPLE_GFA, 'two nodes')
+    expect(model.layoutResult).toBeDefined()
+
+    await model.loadGFA(
+      'H\tVN:Z:1.0\nS\t1\tACGT\nS\t2\tGGCC\nS\t3\tTT\nL\t1\t+\t2\t+\t0M\nL\t2\t+\t3\t+\t0M\n',
+      'three nodes',
+    )
+
+    expect(String(model.error)).toMatch(/too large to draw/i)
+    expect(model.graph!.nodes).toHaveLength(3)
+    expect(model.layoutResult).toBeUndefined()
+    expect(model.drawnLayoutMode).toBeUndefined()
+    consoleSpy.mockRestore()
+  })
+
   test('walk rows draw a graph over the budget, since they draw no nodes', async () => {
     rpcRespond()
     const model = withLimit(1)
@@ -1467,7 +1634,7 @@ describe('canvas height follows the drawing', () => {
     await model.loadGFA(manyRankGfa(40), '41 rows')
     model.zoomToFit()
 
-    const rows = model.rowLabels
+    const rows = model.drawnRowLabels
     expect(rows).toHaveLength(41)
     // the drawing genuinely does not fit, or this asserts nothing
     expect(model.layoutBounds!.h).toBeGreaterThan(model.canvasHeight)
@@ -1484,6 +1651,28 @@ describe('canvas height follows the drawing', () => {
 
     const h = extent(model).h * model.scaleY
     expect(model.translateY).toBeCloseTo((model.canvasHeight - h) / 2, 5)
+  })
+
+  test('an isotropic pane is as tall as its drawing at the fit, past its row labels', async () => {
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GraphComputeLayout'
+        ? Promise.resolve({
+            result: {
+              ...MOCK_LAYOUT,
+              rowLabels: [{ label: 'a label wider than the padding', y: 0 }],
+            },
+            duration: 5,
+          })
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const model = createModel()
+    await model.loadGFA(SIMPLE_GFA, 'labelled')
+    model.zoomToFit()
+    expect(model.fitPadLeft).toBeGreaterThan(40)
+    expect(model.canvasHeight).toBeCloseTo(
+      model.layoutBounds!.h * model.scale + model.fitPadTop + 40,
+      6,
+    )
   })
 
   // The floor is the reason a pane has a minimum at all: below it there is no
@@ -2349,7 +2538,7 @@ describe('layoutBounds on a reference axis', () => {
   test('rows are spaced against the region, not the stretched backbone', async () => {
     const model = createAnchoredModel()
     await model.cutSubgraph({ type: 'RgfaTabixAdapter' }, FAR_REGION)
-    const rowYs = [...new Set(model.rowLabels.map(r => r.y))].sort(
+    const rowYs = [...new Set(model.drawnRowLabels.map(r => r.y))].sort(
       (a, b) => a - b,
     )
     expect(rowYs.length).toBeGreaterThan(1)
@@ -2488,7 +2677,7 @@ describe('a row layout draws y in pixels', () => {
   test('zooming x leaves the rows where they are', async () => {
     const model = await anchored(5)
     const rowsAt = () =>
-      model.rowLabels.map(r => r.y * model.scaleY + model.translateY)
+      model.drawnRowLabels.map(r => r.y * model.scaleY + model.translateY)
     const before = rowsAt()
     const scaleBefore = model.scaleX
 
@@ -2582,7 +2771,7 @@ describe('what the row axis draws, in pixels', () => {
     expect(points.length).toBeGreaterThan(0)
     // the node tubes, which is what a row pitch is about: the arc reaches above
     // them by design, so it is measured on its own below
-    const rowYs = model.rowLabels.map(
+    const rowYs = model.drawnRowLabels.map(
       r => r.y * model.scaleY + model.translateY,
     )
 
@@ -2626,7 +2815,7 @@ describe('what the row axis draws, in pixels', () => {
 
     expect(render(hidden).length).toBeLessThan(render(shown).length)
 
-    hidden.setShowDeletionEdges(true)
+    hidden.setLayer('deletions', true)
     expect(hidden.hiddenEdgeIndexes!.size).toBe(0)
   })
 
@@ -2658,7 +2847,7 @@ describe('what the row axis draws, in pixels', () => {
     // the ROWS, not every drawn point: the deletion arc's bow is sized in x
     // units, so it grows with the zoom by design and would mask this
     const rowYs = () =>
-      model.rowLabels.map(r => r.y * model.scaleY + model.translateY)
+      model.drawnRowLabels.map(r => r.y * model.scaleY + model.translateY)
     const rowsBefore = rowYs()
     const before = render(model)
 
@@ -2874,7 +3063,7 @@ describe('opening a bubble', () => {
     await model.loadGFA(RGFA_BUBBLE, 'rgfa')
     // off by default
     expect(model.bubbleHalos).toEqual([])
-    model.setShowBubbles(true)
+    model.setLayer('bubbles', true)
     expect(
       model.bubbleHalos.map(h => [
         h.label,
@@ -2883,7 +3072,7 @@ describe('opening a bubble', () => {
         h.tick,
       ]),
     ).toEqual([['≤4 bp ins', 1, true, true]])
-    model.setShowBubbles(false)
+    model.setLayer('bubbles', false)
     expect(model.bubbleHalos).toEqual([])
   })
 
@@ -3181,7 +3370,7 @@ describe('walk rows', () => {
     })
     await model.load()
     expect(model.figureSpec()).not.toHaveProperty('showDeletionEdges')
-    model.setShowDeletionEdges(false)
+    model.setLayer('deletions', false)
     expect(model.figureSpec()?.showDeletionEdges).toBe(false)
   })
 
@@ -3522,6 +3711,30 @@ describe('walk rows', () => {
     expect(model.layoutResult?.tubeMapPanels).toBeUndefined()
   })
 
+  // the pictures are a layout's worth of work per panel
+  test("a hovered lane row fades a split tube map's tubes and redraws no panel", async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'tubemap',
+      facet: 'sample',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    const drawn: unknown[] = []
+    const stop = autorun(() => drawn.push(model.tubeMapPanelPictures))
+    model.setHoveredRowWalks(['A#1#ctg'])
+    expect(drawn).toHaveLength(1)
+    stop()
+    const [b, a] = model.tubeMapPanelViews!
+    expect(b!.tubeColors).toEqual([PANEL_REFERENCE_TUBE, LIFT_BACKDROP_CSS])
+    // A#2 comes first in the file
+    expect(a!.tubeColors).toEqual([
+      PANEL_REFERENCE_TUBE,
+      LIFT_BACKDROP_CSS,
+      PANEL_TUBES[1],
+    ])
+  })
+
   test('a lane reads the reference ramp only when it is coloured by it', async () => {
     rpcRespond()
     const model = stateModelFactory().create({
@@ -3533,6 +3746,22 @@ describe('walk rows', () => {
     expect(model.walkRamp).toBeUndefined()
     model.setWalkColor('B#1#ctg', { field: 'reference' })
     expect(model.walkLift!.referenceDomain).toBeDefined()
+  })
+
+  test("a lane coloured by reference position shares the nodes' ramp", async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'auto',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    model.setColorScheme('reference-position')
+    model.liftWalks(['B#1#ctg'])
+    model.setWalkColor('B#1#ctg', { field: 'reference' })
+    const stop = autorun(() => [model.walkRamp, model.referenceRamp])
+    expect(model.referenceRamp).toBeDefined()
+    expect(model.walkRamp).toBe(model.referenceRamp)
+    stop()
   })
 
   test('a session naming the one walk the old field lifted opens with none', () => {
@@ -3655,7 +3884,7 @@ describe('annotation reads beside a cut', () => {
   }
 
   test('the bubble, gene and repeat reads go out together', async () => {
-    const model = createModel()
+    const model = attachedModel()
     const loaded = cut(model)
     // in turn, only one would ever be outstanding
     await vi.waitFor(() => {
@@ -3679,33 +3908,94 @@ describe('annotation reads beside a cut', () => {
   })
 
   test('picking another gene track reads it and leaves the graph alone', async () => {
-    const model = createModel()
+    const model = attachedModel()
     await cutAndSettle(model)
     const { graph, layoutResult } = model
 
     model.setGeneTrackId('genes-b')
-    const reread = model.reloadGenes()
+    await vi.waitFor(() => {
+      expect(reads.map(r => r.tag)).toContain('genes-b')
+    })
     readOf('genes-b').settle([gene('XYZ2')])
-    await reread
-
-    expect(model.geneFeatures?.map(g => g.name)).toEqual(['XYZ2'])
+    await vi.waitFor(() => {
+      expect(model.geneFeatures?.map(g => g.name)).toEqual(['XYZ2'])
+    })
     expect(subgraphCuts()).toBe(1)
     expect(model.graph).toBe(graph)
     expect(model.layoutResult).toBe(layoutResult)
   })
 
+  test("a track configured on an alias of the cut's assembly is offered", async () => {
+    mockSession.assemblyNames = ['hg38']
+    mockSession.assemblyAliases = { GRCh38: 'hg38' }
+    mockSession.tracks[1]!.assemblyNames = ['GRCh38']
+    const model = attachedModel()
+    await cutAndSettle(model)
+    expect(model.geneTrackChoices.map(t => t.trackId)).toContain('genes-a')
+    mockSession.assemblyNames = []
+    mockSession.assemblyAliases = {}
+  })
+
+  test('a file stated beside a region reads its annotations inside its load', async () => {
+    mockReadFile.mockResolvedValue(SIMPLE_GFA)
+    const model = attachedModel()
+    const loaded = model.loadGFAFromLocation(
+      { uri: 'https://example.com/g.gfa', locationType: 'UriLocation' },
+      TEST_REGION,
+    )
+    await vi.waitFor(() => {
+      expect(reads.map(r => r.tag)).toEqual(['genes-a', 'trgt'])
+    })
+    expect(model.isLoading).toBe(true)
+    const featureReads = mockRpcCall.mock.calls.filter(
+      c => c[1] === 'CoreGetFeatures',
+    )
+    expect(featureReads.map(c => c[2].signal)).toEqual([
+      expect.any(AbortSignal),
+      expect.any(AbortSignal),
+    ])
+
+    readOf('genes-a').settle([gene('ABC1')])
+    readOf('trgt').settle([])
+    await loaded
+    expect(model.isLoading).toBe(false)
+    expect(model.geneFeatures?.map(g => g.name)).toEqual(['ABC1'])
+  })
+
   test('a slow gene read does not land over the pick that followed it', async () => {
-    const model = createModel()
+    const model = attachedModel()
     await cutAndSettle(model)
 
-    model.setGeneTrackId('genes-a')
-    const slow = model.reloadGenes()
     model.setGeneTrackId('genes-b')
-    const fast = model.reloadGenes()
-    readOf('genes-b').settle([gene('XYZ2')])
-    await fast
+    model.setGeneTrackId('genes-a')
+    await vi.waitFor(() => {
+      expect(reads.filter(r => r.tag === 'genes-a')).toHaveLength(2)
+    })
     readOf('genes-a').settle([gene('ABC1')])
-    await slow
+    await vi.waitFor(() => {
+      expect(model.geneFeatures?.map(g => g.name)).toEqual(['ABC1'])
+    })
+    readOf('genes-b').settle([gene('XYZ2')])
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(model.geneFeatures?.map(g => g.name)).toEqual(['ABC1'])
+  })
+
+  test("a cut's gene read does not land over a track picked during it", async () => {
+    const model = attachedModel()
+    const loaded = cut(model)
+    await vi.waitFor(() => {
+      expect(reads).toHaveLength(3)
+    })
+    model.setGeneTrackId('genes-b')
+    await vi.waitFor(() => {
+      expect(reads.map(r => r.tag)).toContain('genes-b')
+    })
+    readOf('genes-b').settle([gene('XYZ2')])
+    readOf('genes-a').settle([gene('ABC1')])
+    readOf('MinigraphBubbleAdapter').settle([])
+    readOf('trgt').settle([])
+    await loaded
 
     expect(model.geneFeatures?.map(g => g.name)).toEqual(['XYZ2'])
   })
@@ -4273,6 +4563,52 @@ describe('walk rows grouped by a sample column', () => {
     expect(model.figureUnavailable).toBeUndefined()
   })
 
+  test('a tube colour column keys nothing outside a tube map', async () => {
+    const model = await groupedModel({ tubeMapColorBy: 'superpopulation' })
+    expect(model.tubeMapColoring?.field).toBe('superpopulation')
+    expect(model.tubeMapKeys.values).toBeUndefined()
+  })
+
+  test("a walk row opens and reads genes on its haplotype's own contig", async () => {
+    const was = vi.mocked(readConfObject).getMockImplementation()
+    vi.mocked(readConfObject).mockImplementation(
+      (obj: Record<string, unknown>, key?: unknown) => obj[String(key)],
+    )
+    mockSession.assemblyNames = ['B.1']
+    mockSession.assemblyAliases = { 'B#1': 'B.1' }
+    mockSession.tracks = [
+      { ...SAMPLES_TRACK, assemblyNames: [] },
+      {
+        trackId: 'b-genes',
+        name: 'B genes',
+        assemblyNames: ['B#1'],
+        adapter: { type: 'Gff3TabixAdapter' },
+      },
+    ]
+    try {
+      const model = await groupedModel()
+      const b = model.walkRowBars!.rows.findIndex(r => r.sample === 'B') + 1
+      const target = model.walkRowLaunchTarget(b)!
+      expect(target).toMatchObject({
+        assembly: 'B.1',
+        location: { sample: 'B', haplotype: 'B#1', refName: 'ctg' },
+      })
+      const { start, end } = target.location
+      expect(model.walkGeneReads!.reads).toEqual([
+        {
+          row: model.walkRowBars!.rows[b - 1]!.name,
+          trackId: 'b-genes',
+          region: { assemblyName: 'B.1', refName: 'ctg', start, end },
+        },
+      ])
+      expect(model.walkRowLaunchTarget(0)?.location.sample).toBe('GRCh38')
+    } finally {
+      vi.mocked(readConfObject).mockImplementation(was!)
+      mockSession.assemblyNames = []
+      mockSession.assemblyAliases = {}
+    }
+  })
+
   test('no samples table, no Group by...', async () => {
     mockSession.tracks = []
     const model = await groupedModel()
@@ -4343,7 +4679,7 @@ describe('keeping the drawing on screen', () => {
         ? Promise.resolve({ result: shifted, duration: 5 })
         : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
     )
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
 
     expect(model.viewportOwner).toBe('fit')
     expect(model.scale).toBeCloseTo(model.fittedTransform!.scale, 10)
@@ -4553,20 +4889,20 @@ describe('a morph cut short', () => {
     await model.loadGFA(BUBBLE, 'g')
     const a = model.layoutResult!
     const aEnds = structuredClone(a.nodePositions)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     const b = model.layoutResult!
     runFrames(1000)
     const bEnds = structuredClone(b.nodePositions)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     runFrames(1000)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     expect(model.layoutResult).toBe(b)
     runFrames(100)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     expect(model.layoutResult).toBe(a)
     runFrames(1000)
     expect(a.nodePositions).toEqual(aEnds)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     expect(model.layoutResult).toBe(b)
     runFrames(1000)
     expect(b.nodePositions).toEqual(bEnds)
@@ -4596,16 +4932,14 @@ describe('a morph cut short', () => {
   test('runs on when the cache hands back the layout on screen', async () => {
     const model = createModel()
     await model.loadGFA(BUBBLE, 'g')
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     const b = model.layoutResult!
     runFrames(1000)
     const bEnds = structuredClone(b.nodePositions)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     runFrames(1000)
-    await model.toggleDeletionEdges()
+    await toggleDeletionEdges(model)
     runFrames(100)
-    // what the node-limit select does
-    model.setMaxGraphNodes(model.maxGraphNodes)
     await model.recomputeLayout()
     expect(model.layoutResult).toBe(b)
     runFrames(1000)

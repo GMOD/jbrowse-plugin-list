@@ -21,16 +21,20 @@ import type { SyntenyMate } from '@jbrowse/synteny-core'
 //   W HG002   1 chr1 >1>2>7>4>5>6   7 (550 bp) replaces 3
 //   W HG002   2 chr1 >1>2>3>4>8>6   8 (20 bp) replaces 5
 //   W HG00097 1 chr1 >1>2>3>4>5>6
-const prefix = require
-  .resolve('../RgfaTabixAdapter/test_data/walks2_header.GRCh38.walks.bed.gz')
-  .replace(/\.walks\.bed\.gz$/, '')
+const fixture = (name: string) =>
+  require
+    .resolve(`../RgfaTabixAdapter/test_data/${name}.GRCh38.walks.bed.gz`)
+    .replace(/\.walks\.bed\.gz$/, '')
 
-function makeAdapter(slots: Record<string, unknown> = {}) {
+function makeAdapter(
+  slots: Record<string, unknown> = {},
+  name = 'walks2_header',
+) {
   const local = (path: string) => ({
     localPath: path,
     locationType: 'LocalPathLocation',
   })
-  const file = (kind: string) => `${prefix}.${kind}.bed.gz`
+  const file = (kind: string) => `${fixture(name)}.${kind}.bed.gz`
   return new Adapter(
     configSchema.create({
       walksLocation: local(file('walks')),
@@ -97,6 +101,22 @@ test('a fetch for some haplotypes answers those lanes in the order asked, named 
   expect(found.map(f => mateOf(f).assemblyName)).toEqual([
     'HG002.2',
     'HG00097#1',
+  ])
+})
+
+test('a fetch for some haplotypes reads them against a reference walk named without a haplotype', async () => {
+  const found = await feats(makeAdapter({}, 'walks2_twopart'), {
+    haplotypes: ['HG002#1'],
+  })
+  expect(found.map(summary)).toEqual([
+    {
+      lane: 'HG002#1',
+      refName: 'chr1',
+      start: 0,
+      end: 3600,
+      mate: 'chr1:0-3550',
+      cigar: '1200=550I600D1800=',
+    },
   ])
 })
 
@@ -183,7 +203,6 @@ test('the header declares every haplotype but the anchor as a lane', async () =>
   expect(header).toMatchObject({
     hasCoarseTier: false,
     anchorAssemblyName: 'hg38',
-    referenceSamples: ['GRCh38'],
   })
   expect(header.lanes).toEqual([
     { name: 'HG00097#1', label: 'HG00097#1', group: 'HG00097' },
@@ -228,6 +247,18 @@ test('walksUri names the walk file and its index', () => {
   })
   expect(readConfObject(config, ['walksIndex', 'location'])).toMatchObject({
     uri: 'hprc.GRCh38.walks.bed.gz.tbi',
+  })
+})
+
+test("the adapter type expands walksUri with the schema's preprocessor", () => {
+  const pluginManager = new PluginManager()
+  WalkTabixSyntenyAdapterF(pluginManager)
+  pluginManager.createPluggableElements()
+  const { normalizeSnapshot } = pluginManager.getAdapterType(
+    'WalkTabixSyntenyAdapter',
+  )
+  expect(normalizeSnapshot?.({ walksUri: 'hprc.GRCh38' })).toMatchObject({
+    walksLocation: { uri: 'hprc.GRCh38.walks.bed.gz' },
   })
 })
 

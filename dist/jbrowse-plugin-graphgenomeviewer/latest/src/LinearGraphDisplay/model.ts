@@ -26,25 +26,18 @@ import { reaction } from 'mobx'
 import { denseCovers, isNodeLimitError } from './denseWindow'
 import { cutHolds, hostCut, hostWindow } from '../GraphGenomeView/host'
 import { lenientOptionalEnum } from '../GraphGenomeView/lenientEnum'
-import {
-  GraphPaneMixin,
-  MAX_GRAPH_REGION_BP,
-  formatSpanBp,
-} from '../GraphGenomeView/model'
+import { GraphPane, formatSpanBp } from '../GraphGenomeView/model'
 import { FACET_KEY_PX } from '../GraphGenomeView/pane/fitViews'
+import { paneBase } from '../GraphGenomeView/pane/paneBase'
 import {
   configHaplotypes,
   cutsByHaplotype,
-  graphReferenceAssembly,
-  offReferenceProblem,
   trackLanes,
   walkIndexed,
 } from '../graphTrackConfig'
 import { pushLaunchItem } from '../launchFromGraph/pushLaunchItem'
-import { trackAdapterConfig } from '../panSNAliases/trackAdapterConfig'
 
 import type { LinearGraphDisplayConfigModel } from './configSchema'
-import type { DenseWindow } from './denseWindow'
 import type { SubgraphRegion, SubgraphTier } from '../GetSubgraph'
 import type { GraphLayers } from '../GraphGenomeView/graphLayers'
 import type { HostWindow } from '../GraphGenomeView/host'
@@ -53,10 +46,26 @@ import type { LaunchGraphGenomeViewArgs } from '../LaunchGraphGenomeView'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { MenuItem } from '@jbrowse/core/ui'
 import type { ExportSvgDisplayOptions } from '@jbrowse/display-kit/types'
-import type { Instance } from '@jbrowse/mobx-state-tree'
+import type { Instance, SnapshotOut } from '@jbrowse/mobx-state-tree'
 import type { DisplayStatusPhase } from '@jbrowse/render-core/displayPhase'
 
 type GraphViewSpec = Omit<LaunchGraphGenomeViewArgs, 'session'>
+
+// the pane's viewport, which a new graph view fits to its drawing
+const VIEWPORT_PROPS = new Set(['scale', 'translateX', 'translateY'])
+
+type PaneSettings = Omit<
+  SnapshotOut<typeof paneBase>,
+  'scale' | 'translateX' | 'translateY'
+>
+
+function paneSettings(pane: Instance<typeof paneBase>) {
+  return Object.fromEntries(
+    Object.keys(paneBase.properties)
+      .filter(key => !VIEWPORT_PROPS.has(key))
+      .map(key => [key, pane[key as keyof typeof pane]]),
+  ) as PaneSettings
+}
 
 // A variant under this many of the linear view's pixels folds into the
 // reference before layout, so the drawing gains detail as the view zooms in.
@@ -89,7 +98,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       'LinearGraphDisplay',
       BaseDisplay,
       TrackHeightMixin(),
-      GraphPaneMixin(),
+      GraphPane,
       types.model({
         type: types.literal('LinearGraphDisplay'),
         configuration: ConfigurationReference(configSchema),
@@ -102,35 +111,20 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         // whether that cut came from the track's coarse pair
         // (RgfaTabixAdapter), on which no bp cap applies
         coarseCut: types.optional(types.boolean, false),
-        // The bp ceiling on a fine cut, a proxy for node count that only
-        // holds at fine granularity; `maxGraphNodes` counts what came back.
-        maxRegionBp: types.optional(types.number, MAX_GRAPH_REGION_BP),
-        // How far the cut follows links past the region's own segments. At
-        // 0 a detour that leaves the backbone before the window and rejoins
-        // after it arrives as a fragment, since its interior is indexed only
-        // under its own sequence, so one bubble draws as two unrelated
-        // insertions. A hop follows alleles only, so it never walks the
-        // backbone out of the window.
-        subgraphContext: types.optional(types.number, 1),
-        // the haplotypes a GBZ or walk-indexed cut is for; unset is the
-        // config's defaultHaplotypes, else the lanes the track names
-        subgraphHaplotypes: types.maybe(types.frozen<string[]>()),
       }),
     )
     .volatile(() => ({
       recuts: 0,
       // the host window the settle clock last woke on
       settledWindow: undefined as HostWindow | undefined,
-      dense: undefined as DenseWindow | undefined,
+      // where a cut came back over its node limit (denseCovers)
+      dense: undefined as SubgraphRegion | undefined,
       // the haplotypes a walk-indexed graph's header names, once read
       haplotypeNames: undefined as string[] | undefined,
       // the fold the latest cut asked for
       cutFoldBp: 0,
     }))
     .views(self => ({
-      get adapterConfig() {
-        return trackAdapterConfig(self, self.parentTrack.configuration)
-      },
       get grammar(): GraphGrammar {
         return {
           layoutMode: getConf(self, 'layoutMode'),
@@ -152,17 +146,18 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       get canRetryLoad() {
         return self.cutRegion !== undefined
       },
-      get cutHaplotypes() {
+      // the config's defaultHaplotypes, else the lanes the track names
+      get trackHaplotypes() {
+        const adapter = self.sourceAdapter
+        const track = self.sourceTrack
         return (
-          self.subgraphHaplotypes ??
-          configHaplotypes(this.adapterConfig) ??
-          trackLanes(self.parentTrack.configuration)
+          (adapter && configHaplotypes(adapter)) ?? (track && trackLanes(track))
         )
       },
       // the linear view's zoom past which the track's coarse pair is cut, or
       // undefined for a track with none
       get coarseAboveBpPerPx() {
-        return coarseHandover(self.adapterConfig.coarse)
+        return coarseHandover(self.sourceAdapter?.coarse)
       },
     }))
     .views(self => ({
@@ -175,13 +170,13 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
       // Whether a zoom has moved far enough from the one the drawing was
       // folded for that folding again would show or hide more. A graph with
-      // walks is never folded.
+      // walks is never folded, and a fold rounded to 0 bp counts as 1 bp.
       foldDrifted(bpPerPx: number) {
         const want = FOLD_PX * bpPerPx
         const had = self.cutFoldBp
         return (
           !self.graph?.paths?.length &&
-          (want >= 2 * had ||
+          (want >= 2 * Math.max(had, 1) ||
             (self.foldedBelowBp !== undefined && want <= had / 2))
         )
       },
@@ -267,15 +262,16 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           setConf(self, slot as keyof GraphGrammar, value)
         }
       },
-      // The setters describe the next cut; the caller re-cuts.
+      // The setters describe the next cut, which recut makes
       setSubgraphContext(hops: number) {
         self.subgraphContext = hops
+        self.dense = undefined
       },
       setSubgraphHaplotypes(haplotypes: string[] | undefined) {
         self.subgraphHaplotypes = haplotypes
         self.dense = undefined
       },
-      setDense(window: DenseWindow | undefined) {
+      setDense(window: SubgraphRegion | undefined) {
         self.dense = window
       },
       setHaplotypeNames(names: string[] | undefined) {
@@ -288,13 +284,11 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       // a fine one does, since a tier is the same graph folded.
       cut() {
         const region = self.cutRegion
-        if (!region) {
+        const adapterConfig = self.sourceAdapter
+        if (!region || !adapterConfig) {
           return
         }
-        const problem = offReferenceProblem(
-          graphReferenceAssembly(self.parentTrack.configuration),
-          region.assemblyName,
-        )
+        const problem = self.offReference(region)
         if (problem) {
           self.clearGraph()
           self.setError(new Error(problem))
@@ -305,17 +299,9 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           FOLD_PX * (self.settledWindow?.bpPerPx ?? self.host?.bpPerPx ?? 0),
         )
         return self.cutSubgraph(
-          self.adapterConfig,
+          adapterConfig,
           region,
-          {
-            hops: self.subgraphContext,
-            haplotypes: self.cutHaplotypes,
-            tier: coarse ? 'coarse' : undefined,
-            ...(self.chosenLayoutMode === 'walkrows' ? { walkRows: true } : {}),
-            ...(layoutModeByValue(self.chosenLayoutMode).wholeWalks
-              ? { snarls: 'overlapping' as const }
-              : {}),
-          },
+          { ...self.cutOptions, tier: coarse ? 'coarse' : undefined },
           self.cutFoldBp,
         )
       },
@@ -353,10 +339,16 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         ) {
           return false
         }
-        // The error is the latest cut's, since a cut clears it as it
-        // starts and an outrun cut sets nothing
-        void Promise.resolve(self.recutAt(seen)).then(() => {
-          if (isAlive(self) && isNodeLimitError(self.error)) {
+        // An outrun cut resolves without touching the error, so the error
+        // is this cut's only while no later one has started
+        const cut = self.recutAt(seen)
+        const recut = self.recuts
+        void Promise.resolve(cut).then(() => {
+          if (
+            isAlive(self) &&
+            self.recuts === recut &&
+            isNodeLimitError(self.error)
+          ) {
             this.refuseDenseCut(seen)
           }
         })
@@ -369,16 +361,23 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         self.cutRegion = undefined
         this.settleOn(self.settledWindow ?? seen)
       },
-      relayoutFrom(fromMode: LayoutModeValue) {
-        const from = layoutModeByValue(fromMode)
-        const to = layoutModeByValue(self.chosenLayoutMode)
+      // Cut the region again with the current options, or the window on
+      // screen where a refused cut left no region
+      recut() {
+        if (self.cutRegion) {
+          void self.cut()
+        } else if (self.settledWindow) {
+          this.settleOn(self.settledWindow)
+        }
+      },
+      relayoutFrom(from: LayoutModeValue) {
         const seen = self.host ? hostWindow(self.host) : undefined
         if (
           seen &&
           !self.regionTooLarge &&
-          (to.cutMargins !== from.cutMargins ||
-            to.wholeWalks !== from.wholeWalks ||
-            (from.value === 'walkrows') !== (to.value === 'walkrows'))
+          (self.cutChangedFrom(from) ||
+            layoutModeByValue(from).cutMargins !==
+              layoutModeByValue(self.chosenLayoutMode).cutMargins)
         ) {
           return self.recutAt(seen)
         }
@@ -396,18 +395,23 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
     }))
     .actions(self => ({
       // A failed read leaves the picker taking typed names
-      async fetchHaplotypeNames(adapterConfig: Record<string, unknown>) {
+      async fetchHaplotypeNames(
+        adapterConfig: Record<string, unknown>,
+        signal?: AbortSignal,
+      ) {
         try {
           const names = await getSession(self).rpcManager.call(
             getRpcSessionId(self),
             'GetGraphHaplotypes',
-            { adapterConfig },
+            { adapterConfig, signal },
           )
-          if (isAlive(self) && self.adapterConfig === adapterConfig) {
+          if (isAlive(self) && self.sourceAdapter === adapterConfig) {
             self.setHaplotypeNames(names)
           }
         } catch (e) {
-          console.warn('[LinearGraphDisplay] no haplotype names', e)
+          if (!signal?.aborted) {
+            console.warn('[LinearGraphDisplay] no haplotype names', e)
+          }
         }
       },
     }))
@@ -456,15 +460,24 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         if (self.cutRegion && !self.graph) {
           void self.cut()
         }
+        let namesRead: AbortController | undefined
+        addDisposer(self, () => {
+          namesRead?.abort()
+        })
         addDisposer(
           self,
           reaction(
-            () =>
-              walkIndexed(self.adapterConfig) ? self.adapterConfig : undefined,
+            () => {
+              const adapter = self.sourceAdapter
+              return adapter && walkIndexed(adapter) ? adapter : undefined
+            },
             adapterConfig => {
+              namesRead?.abort()
+              namesRead = undefined
               self.setHaplotypeNames(undefined)
               if (adapterConfig) {
-                void self.fetchHaplotypeNames(adapterConfig)
+                namesRead = new AbortController()
+                void self.fetchHaplotypeNames(adapterConfig, namesRead.signal)
               }
             },
             { fireImmediately: true, name: 'GraphHaplotypeNames' },
@@ -579,6 +592,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         const start = Math.floor(seen.start)
         const end = Math.ceil(seen.end)
         return {
+          ...paneSettings(self),
           loadedTrackId: trackId,
           loadedRegion: {
             refName: seen.refName,
@@ -586,19 +600,10 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             start,
             end,
           },
-          subgraphContext: self.subgraphContext,
           subgraphHaplotypes: self.cutHaplotypes,
           maxRegionBp: Math.max(self.maxRegionBp, end - start),
           ...self.grammar,
           layoutMode: self.chosenLayoutMode,
-          referencePath: self.referencePath,
-          geneTrackId: self.geneTrackId,
-          walkLayers: self.walkLayers,
-          layoutEngine: self.layoutEngine,
-          layoutQuality: self.layoutQuality,
-          bubbleSpread: self.bubbleSpread,
-          linearLayout: self.linearLayout,
-          maxGraphNodes: self.maxGraphNodes,
           connectedViewId: self.host?.id,
         } satisfies GraphViewSpec
       },
@@ -616,16 +621,18 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       // graph, the config's default set or the assemblies the track names,
       // or a list chosen in Graph settings
       cutMenuItems(): MenuItem[] {
-        if (!cutsByHaplotype(self.adapterConfig)) {
+        const adapter = self.sourceAdapter
+        const track = self.sourceTrack
+        if (!adapter || !track || !cutsByHaplotype(adapter)) {
           return []
         }
-        const defaults = configHaplotypes(self.adapterConfig)
-        const lanes = trackLanes(self.parentTrack.configuration)
+        const defaults = configHaplotypes(adapter)
+        const lanes = trackLanes(track)
         const names = self.haplotypeNames
         const chosen = self.subgraphHaplotypes
         const recut = (haplotypes: string[] | undefined) => {
           self.setSubgraphHaplotypes(haplotypes)
-          void self.cut()
+          self.recut()
         }
         return [
           { type: 'subHeader', label: 'Load' },

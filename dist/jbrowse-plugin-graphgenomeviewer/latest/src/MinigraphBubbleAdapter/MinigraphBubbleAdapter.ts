@@ -11,34 +11,26 @@ import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
 
 import type { MinigraphBubbleAdapterConfig } from './configSchema.ts'
-import type PluginManager from '@jbrowse/core/PluginManager'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
-import type { getSubAdapterType } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
 
 export default class MinigraphBubbleAdapter extends BaseFeatureDataAdapter<MinigraphBubbleAdapterConfig> {
   public static capabilities = ['getFeatures', 'getRefNames']
 
-  private readonly bubbles
+  private readonly bubbles = openTabixSlot(this, ['bubblesLocation'], ['index'])
   // `gfatools bubble` names each row after the graph's stable sequence, so a
   // Minigraph-Cactus graph produces PanSN rows (`GRCh38#0#chr6`) where a plain
   // minigraph graph produces bare ones (`chr6`). Same resolution the segment
   // adapter does, through the same `assemblyNameToPanSN` slot.
-  private readonly refNames
-
-  public constructor(
-    config: MinigraphBubbleAdapterConfig,
-    getSubAdapter?: getSubAdapterType,
-    pluginManager?: PluginManager,
-  ) {
-    super(config, getSubAdapter, pluginManager)
-    this.bubbles = openTabixSlot(this, ['bubblesLocation'], ['index'])
-    this.refNames = new PanSNRefNames(this.bubbles, this)
-  }
+  private readonly refNames = new PanSNRefNames(this.bubbles, this)
 
   async getRefNames(opts: BaseOptions = {}) {
     return this.refNames.assemblyRefNames(opts)
+  }
+
+  async getRegionByteSize(regions: Region[], opts: BaseOptions = {}) {
+    return this.refNames.regionBytes(regions, opts)
   }
 
   public async hasDataForRefName() {

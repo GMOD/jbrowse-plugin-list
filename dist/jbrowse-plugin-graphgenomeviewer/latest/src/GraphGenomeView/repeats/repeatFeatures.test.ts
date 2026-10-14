@@ -68,6 +68,18 @@ test('vamos motifs and an unnamed array fall back to a motif or locus name', () 
   )
 })
 
+test("an unnamed array's locus name reads the same in every locale", () => {
+  const format = Number.prototype.toLocaleString
+  const german = vi
+    .spyOn(Number.prototype, 'toLocaleString')
+    .mockImplementation(function (this: number, locales, options) {
+      return format.call(this, locales ?? 'de-DE', options)
+    })
+  const [array] = repeatArraysFrom([{ ...base, period: 5548 }])
+  german.mockRestore()
+  expect(array!.name).toBe('chr6:160,616,003-160,646,753')
+})
+
 test('a feature stating no unit is left out, and rows sort by start', () => {
   const arrays = repeatArraysFrom([
     { ...base, start: 5000, end: 6000, period: 2 },
@@ -148,6 +160,17 @@ test("VCF 4.5 <CNV:TR>: each allele's length is its runs' RB", () => {
     GRCh38: [{ bp: 30751 }],
     HG00099: [{ bp: 40 }, { bp: 49 }],
   })
+})
+
+// a haploid chrX genotype is written '.', and a sample may have no GT at all
+test('a missing genotype calls no allele', () => {
+  const [array] = repeatArraysFrom([
+    {
+      ...tandem,
+      samples: { HG00097: { GT: ['.'] }, HG00099: {}, HG00128: { GT: ['1'] } },
+    },
+  ])
+  expect(array!.calls).toEqual({ HG00128: [{ bp: 49 }] })
 })
 
 test('a run stating only RUL and RUC is their product, and a summary record states no calls', () => {

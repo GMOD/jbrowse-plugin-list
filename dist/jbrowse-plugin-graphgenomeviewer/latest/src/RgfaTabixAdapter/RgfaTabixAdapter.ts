@@ -1,93 +1,34 @@
-import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
-import { WalkReader, referenceNodes } from '@jbrowse/graph-walks'
 
 import { locationIsSet } from '../locationName.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
-import {
-  anchoredCut,
-  closingLinks,
-  closingSpans,
-  formatSubgraph,
-  linkKey,
-  parseLinkLine,
-  parseSegmentRow,
-  segmentSamples,
-} from './rgfaBed.ts'
-import { walkSubgraph } from './walkReader.ts'
+import { parseSegmentRow, segmentSamples } from './rgfaBed.ts'
+import { rgfaCut } from './rgfaCut.ts'
+import { WalkIndex } from './walkReader.ts'
 
 import type { RgfaTabixAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions, SubgraphTier } from '../GetSubgraph.ts'
-import type { RgfaLink, RgfaSegment } from './rgfaBed.ts'
 import type { WalkCut } from './walkRowRuns.ts'
 import type { TabixIndexedFile } from '@gmod/tabix'
-import type PluginManager from '@jbrowse/core/PluginManager'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
-import type { getSubAdapterType } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation, Region } from '@jbrowse/core/util/types'
-
-// What a hop follows: alleles, never the backbone. A rank-0 segment reached
-// through a link is flanking backbone, usually outside the window, so querying
-// its links walks the reference away from the region, brings back more backbone,
-// and closes nothing. Every segment that closes a bubble is an allele interior,
-// and an allele interior is rank > 0 in both index formats (rGFA's SR tag, and
-// pggb's rank 0-or-1 against the anchor path). Reached backbone still becomes a
-// node and its edge still draws; it is only not walked through.
-//
-// This is gfabase's rule, arrived at from the other end. `gfabase sub` expands
-// from a seed either to the whole connected component (`--connected`, which its
-// own README calls overkill) or with `--cutpoints 1`, which takes the biconnected
-// component by *stopping at cutpoints*, the segments every end-to-end walk of
-// the chromosome must traverse. In a reference-anchored pangenome the cutpoints
-// are the backbone, and rank is what the index already states about it, so
-// `rank > 0` is that stopping rule without a connectivity index to build. The
-// third tool is the same shape again: `gfatools view -R` maps the region onto its
-// precomputed bubble decomposition and returns whole overlapping bubbles
-// (gfa_query_by_reg), which is complete for the same reason. Bandage's own
-// `--distance` is a node-step radius, but Bandage holds the entire graph in
-// memory, so its scope is a drawing filter rather than a fetch strategy.
-//
-// Measured with this rule: the E. coli paa window converges at one hop (17
-// segments at 1 and at 2), so the cut closes and stays closed. HPRC's amylase
-// window keeps growing (63 at 0, 78 at 1, 92 at 2) because its alleles have
-// alleles, and wall-clock is flat across all three, since a hop's queries go out
-// together and the remote index dominates.
-//
-// The exact version, when a graph ships a bubble index beside its segments:
-// gfatools' bubble rows carry the member segment ids of every bubble, so the
-// bubbles overlapping the region state which segments a complete cut must
-// contain. That turns the hop count into a termination condition rather than a
-// setting, and MinigraphBubbleAdapter already parses those rows.
-function offReference(segments: RgfaSegment[]) {
-  return segments.filter(segment => segment.rank > 0)
-}
 
 interface GraphIndex {
   segments: TabixIndexedFile
   links: TabixIndexedFile
-  walks?: WalkReader
-  walkFile?: TabixIndexedFile
+  walks?: WalkIndex
   refNames: PanSNRefNames
 }
 
 export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAdapterConfig> {
   public static capabilities = ['getFeatures', 'getRefNames']
 
-  private readonly fine
+  private readonly fine = this.openIndex([])
   private coarse: GraphIndex | undefined
-
-  public constructor(
-    config: RgfaTabixAdapterConfig,
-    getSubAdapter?: getSubAdapterType,
-    pluginManager?: PluginManager,
-  ) {
-    super(config, getSubAdapter, pluginManager)
-    this.fine = this.openIndex([])
-  }
 
   // refNames off the SEGMENT index: it is the one that names every stable
   // sequence the graph is anchored to, where the link index only names those a
@@ -99,22 +40,24 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       [...under, 'segmentsLocation'],
       [...under, 'segmentsIndex'],
     )
-    const walksLocation: FileLocation = this.getConf('walksLocation')
-    const hasWalks = under.length === 0 && locationIsSet(walksLocation)
     const links = openTabixSlot(
       this,
       [...under, 'linksLocation'],
       [...under, 'linksIndex'],
     )
-    const walkFile = hasWalks
-      ? openTabixSlot(this, ['walksLocation'], ['walksIndex'])
-      : undefined
+    const walksLocation: FileLocation = this.getConf('walksLocation')
+    const walks =
+      under.length === 0 && locationIsSet(walksLocation)
+        ? new WalkIndex(
+            openTabixSlot(this, ['walksLocation'], ['walksIndex']),
+            this,
+          )
+        : undefined
     return {
       segments,
       links,
-      walkFile,
-      walks: walkFile ? new WalkReader(walkFile) : undefined,
-      refNames: new PanSNRefNames(walkFile ?? segments, this),
+      walks,
+      refNames: new PanSNRefNames(walks?.file ?? segments, this),
     }
   }
 
@@ -123,8 +66,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
    * in byte order, or undefined when it names none
    */
   async getHaplotypeNames(opts: BaseOptions = {}) {
-    const header = await this.fine.walks?.header(opts)
-    return header?.haplotypes.length ? header.haplotypes : undefined
+    return this.fine.walks?.haplotypeNames(opts)
   }
 
   private index(tier: SubgraphTier = 'fine') {
@@ -139,234 +81,127 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     return this.fine.refNames.assemblyRefNames(opts)
   }
 
+  // getFeatures reads a walk file from the chunk before the window
+  async getRegionByteSize(regions: Region[], opts: BaseOptions = {}) {
+    const { walks, refNames } = this.fine
+    return refNames.regionBytes(
+      regions,
+      opts,
+      walks && (start => walks.reader.queryStart(start, opts)),
+    )
+  }
+
   public async hasDataForRefName() {
     return true
   }
 
   getFeatures(query: Region, opts: BaseOptions = {}) {
-    const { signal, statusCallback } = opts
     return ObservableCreate<Feature>(async observer => {
       const tabixRefName = await this.fine.refNames.resolve(query, opts)
       if (tabixRefName !== undefined) {
-        // a walk-indexed node row names only its chunk's first base, and a
-        // node crossing in from a chunk before is filed there
-        const { walks, walkFile } = this.fine
-        const start = walks
-          ? await walks.queryStart(query.start, opts)
-          : query.start
-        if (walkFile && walks) {
-          // a walk-indexed graph's reference nodes are its ref rows' steps
-          await walks.header(opts)
-          const refRows: string[][] = []
-          await updateStatus('Downloading walks', statusCallback, () =>
-            getLines(walkFile, tabixRefName, start, query.end, {
-              signal,
-              lineCallback: line => {
-                const cols = line.split('\t')
-                if (cols[3] === 'ref') {
-                  refRows.push(cols)
-                }
-              },
-            }),
-          )
-          // every node of the chunks read that ends past the window's start
-          const seen = new Set<number>()
-          for (const node of referenceNodes(refRows)) {
-            if (
-              node.refName === tabixRefName &&
-              node.end > query.start &&
-              !seen.has(node.id)
-            ) {
-              seen.add(node.id)
-              const id = String(node.id)
-              observer.next(
-                new SimpleFeature({
-                  uniqueId: id,
-                  refName: query.refName,
-                  start: node.start,
-                  end: node.end,
-                  name: id,
-                  type: 'segment',
-                  rank: 0,
-                  stableName: node.refName,
-                }),
-              )
-            }
-          }
-          observer.complete()
-          return
+        const { walks } = this.fine
+        const emit = (feature: Feature) => {
+          observer.next(feature)
         }
-        await updateStatus('Downloading segments', statusCallback, () =>
-          getLines(this.fine.segments, tabixRefName, start, query.end, {
-            signal,
-            lineCallback: line => {
-              const { segment, anchored } = parseSegmentRow(line)
-              // An anchored index also returns the alleles under the region,
-              // which lie on other stable sequences and have no place on this
-              // one; a lookback chunk returns nodes ending before it
-              if (
-                (anchored && segment.refName !== tabixRefName) ||
-                segment.end <= query.start
-              ) {
-                return
-              }
-              // `samples` lists the haplotypes whose paths visit the segment and
-              // `sampleCount` counts them. A lane's color reads the count, and
-              // a count in jexl would otherwise rely on `.length` resolving
-              // through a member access on an array.
-              const samples = segmentSamples(segment)
-              observer.next(
-                new SimpleFeature({
-                  uniqueId: segment.id,
-                  refName: query.refName,
-                  start: segment.start,
-                  end: segment.end,
-                  name: segment.id,
-                  type: 'segment',
-                  rank: segment.rank,
-                  stableName: segment.refName,
-                  ...(samples && { samples, sampleCount: samples.length }),
-                }),
-              )
-            },
-          }),
-        )
+        await (walks
+          ? this.walkFeatures(walks, tabixRefName, query, opts, emit)
+          : this.segmentFeatures(tabixRefName, query, opts, emit))
       }
       observer.complete()
-    }, signal)
+    }, opts.signal)
   }
 
-  // Extract the graph around a region for GraphGenomeView: GFA text, or a
-  // walk-indexed graph's tables (walkSubgraph). The
-  // region's own segments come from segs.bed.gz; links.bed.gz supplies the edges
-  // incident to them *and* the coordinates of the segments on the other end,
-  // which typically sit on a different stable sequence (a rank>0 bubble) and so
-  // are not reachable by any coordinate query on this region.
-  //
-  // `hops` is extra rounds of link-following past the region's own segments
-  // and their immediate neighbours, each costing one tabix query per
-  // off-reference segment newly reached. After the last round, one more read
-  // per stretch of stable sequence the cut holds closes it (closingSpans), so
-  // an allele reached from both ends draws whole. The view asks for one hop; a
-  // hopless cut stays as cheap as it was. `signal` goes to every one of those
-  // queries, so a cut the view has replaced stops.
-  // `tier: 'coarse'` reads the `coarse` pair instead, the same way.
+  // A walk-indexed graph's reference nodes are its ref rows' steps
+  private async walkFeatures(
+    walks: WalkIndex,
+    tabixRefName: string,
+    query: Region,
+    opts: BaseOptions,
+    emit: (feature: Feature) => void,
+  ) {
+    const nodes = await updateStatus(
+      'Downloading walks',
+      opts.statusCallback,
+      () => walks.referenceNodes(tabixRefName, query, opts),
+    )
+    for (const node of nodes) {
+      const id = String(node.id)
+      emit(
+        new SimpleFeature({
+          uniqueId: id,
+          refName: query.refName,
+          start: node.start,
+          end: node.end,
+          name: id,
+          type: 'segment',
+          rank: 0,
+          stableName: node.refName,
+        }),
+      )
+    }
+  }
+
+  private async segmentFeatures(
+    tabixRefName: string,
+    query: Region,
+    opts: BaseOptions,
+    emit: (feature: Feature) => void,
+  ) {
+    await updateStatus('Downloading segments', opts.statusCallback, () =>
+      getLines(this.fine.segments, tabixRefName, query.start, query.end, {
+        signal: opts.signal,
+        lineCallback: line => {
+          const { segment, anchored } = parseSegmentRow(line)
+          // An anchored index also returns the alleles under the region,
+          // which lie on other stable sequences and have no place on this one
+          if (anchored && segment.refName !== tabixRefName) {
+            return
+          }
+          // `samples` lists the haplotypes whose paths visit the segment and
+          // `sampleCount` counts them. A lane's color reads the count, and
+          // a count in jexl would otherwise rely on `.length` resolving
+          // through a member access on an array.
+          const samples = segmentSamples(segment)
+          emit(
+            new SimpleFeature({
+              uniqueId: segment.id,
+              refName: query.refName,
+              start: segment.start,
+              end: segment.end,
+              name: segment.id,
+              type: 'segment',
+              rank: segment.rank,
+              stableName: segment.refName,
+              ...(samples && { samples, sampleCount: samples.length }),
+            }),
+          )
+        },
+      }),
+    )
+  }
+
+  // The graph around a region for GraphGenomeView: GFA text (rgfaCut), or a
+  // walk-indexed graph's tables (WalkIndex.subgraph). `tier: 'coarse'` reads
+  // the `coarse` pair instead, the same way.
   async getSubgraph(
     region: Region,
     opts: SubgraphAdapterOptions = {},
   ): Promise<string | WalkCut> {
-    const { hops = 0, signal, tier } = opts
+    const { hops, signal, tier } = opts
     const index = this.index(tier)
-    const segments = new Map<string, RgfaSegment>()
-    const links = new Map<string, RgfaLink>()
     const tabixRefName = await index.refNames.resolve(region, { signal })
-
-    const addLinksOver = async (
-      refName: string,
-      start: number,
-      end: number,
-    ) => {
-      const reached: RgfaSegment[] = []
-      await getLines(index.links, refName, start, end, {
-        signal,
-        lineCallback: line => {
-          const link = parseLinkLine(line)
-          links.set(linkKey(link), link)
-          for (const segment of [link.sourceSegment, link.targetSegment]) {
-            if (!segments.has(segment.id)) {
-              segments.set(segment.id, segment)
-              reached.push(segment)
-            }
-          }
-        },
-      })
-      return reached
-    }
-
     if (tabixRefName === undefined) {
       throw new Error(
         `${region.assemblyName} ${region.refName} is not in this graph's index; a graph with PanSN names (GRCh38#0#chr1) needs ${region.assemblyName} mapped to its prefix in assemblyNameToPanSN`,
       )
     }
     if (index.walks) {
-      return walkSubgraph(index.walks, tabixRefName, region, {
-        signal,
-        prefixes: opts.haplotypes?.map(lane => resolvePanSNPrefix(this, lane)),
-        walkRows: opts.walkRows,
-        stepBudget: this.getConf('walkStepBudget'),
-        byteBudget: this.getConf('walkByteBudget'),
-      })
+      return index.walks.subgraph(tabixRefName, region, opts)
     }
-    const layout = { anchored: false }
-    await getLines(index.segments, tabixRefName, region.start, region.end, {
-      signal,
-      lineCallback: line => {
-        const row = parseSegmentRow(line)
-        layout.anchored ||= row.anchored
-        segments.set(row.segment.id, row.segment)
-      },
-    })
-    // An anchored index files every allele and every link under the reference
-    // interval its bubble hangs from, so one read of each file holds the whole
-    // graph under the region and there is nothing to hop to or close.
-    if (layout.anchored) {
-      const found: RgfaLink[] = []
-      await getLines(index.links, tabixRefName, region.start, region.end, {
-        signal,
-        lineCallback: line => {
-          found.push(parseLinkLine(line))
-        },
-      })
-      const cut = anchoredCut(segments, found, {
-        refName: tabixRefName,
-        start: region.start,
-        end: region.end,
-      })
-      return formatSubgraph(cut.segments, cut.links)
-    }
-    let frontier = offReference(
-      await addLinksOver(tabixRefName, region.start, region.end),
+    return rgfaCut(
+      index,
+      { refName: tabixRefName, start: region.start, end: region.end },
+      { hops, signal },
     )
-    for (let hop = 0; hop < hops; hop++) {
-      // One hop's queries are independent of each other, so they go out
-      // together rather than one round-trip at a time. Their callbacks share
-      // the segment and link maps, which is safe because only one of them runs
-      // at a time, and the output is sorted at the end regardless of the order
-      // they arrive in.
-      const reached = await Promise.all(
-        frontier.map(segment =>
-          addLinksOver(segment.refName, segment.start, segment.end),
-        ),
-      )
-      frontier = offReference(reached.flat())
-    }
-    if (hops > 0) {
-      const spans = closingSpans(
-        [...segments.values()],
-        new Set(frontier.map(segment => segment.id)),
-        { refName: tabixRefName, start: region.start, end: region.end },
-      )
-      const found: RgfaLink[] = []
-      await Promise.all(
-        spans.map(span =>
-          getLines(index.links, span.refName, span.start, span.end, {
-            signal,
-            lineCallback: line => {
-              found.push(parseLinkLine(line))
-            },
-          }),
-        ),
-      )
-      for (const link of closingLinks(found, segments, spans)) {
-        links.set(linkKey(link), link)
-        for (const segment of [link.sourceSegment, link.targetSegment]) {
-          if (!segments.has(segment.id)) {
-            segments.set(segment.id, segment)
-          }
-        }
-      }
-    }
-
-    return formatSubgraph(segments, links)
   }
 }

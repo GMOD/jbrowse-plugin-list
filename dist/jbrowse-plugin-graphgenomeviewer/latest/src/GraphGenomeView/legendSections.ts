@@ -38,10 +38,10 @@ import type { LiftedWalk } from '@jbrowse/bandage-core/walkHighlight'
 // draw the same rows from one place
 
 export const SWATCH_PX = 18
-export const BAR_PX = 48
+const BAR_PX = 48
 
 // getNodeColor's grey for a node the ramp cannot place
-export const UNPLACED_SWATCH = 'rgb(160, 160, 160)'
+const UNPLACED_SWATCH = 'rgb(160, 160, 160)'
 // LIFT_BACKDROP_CSS reads paler alone than faded strokes do where they
 // overlap, so the key samples it darker
 const FADED_SWATCH = 'rgba(160, 160, 160, 0.45)'
@@ -93,7 +93,7 @@ export interface LegendRow {
   closesBubble?: true
 }
 
-export interface LegendSection {
+interface LegendSection {
   testid: string
   rows: LegendRow[]
 }
@@ -119,27 +119,6 @@ function bandStops(colors: readonly string[]) {
     { offset: i / colors.length, color },
     { offset: (i + 1) / colors.length, color },
   ])
-}
-
-// One key entry per halo colour drawn, naming the kinds it stands for
-export function haloKeyEntries(model: GraphPaneModel) {
-  const kindsByColor = new Map<string, Set<string>>()
-  for (const h of model.bubbleHalos) {
-    if (!h.whole) {
-      const color = BUBBLE_KIND_COLORS[h.kind]
-      const kinds = kindsByColor.get(color) ?? new Set<string>()
-      kinds.add(BUBBLE_KIND_NAMES[h.kind])
-      kindsByColor.set(color, kinds)
-    }
-  }
-  return [...kindsByColor].map(([color, kinds]) => {
-    const names = [...kinds].join(' or ')
-    return {
-      color,
-      label:
-        names === BUBBLE_KIND_NAMES.superbubble ? names : `${names} bubble`,
-    }
-  })
 }
 
 function openBubbleRows(model: GraphPaneModel): LegendRow[] {
@@ -173,7 +152,7 @@ function rampRows(model: GraphPaneModel): LegendRow[] {
   return [
     {
       key: 'ramp',
-      label: `${start.toLocaleString()}-${end.toLocaleString()} (${formatBp(end - start)})`,
+      label: `${start.toLocaleString('en-US')}-${end.toLocaleString('en-US')} (${formatBp(end - start)})`,
       swatch: { kind: 'fill', stops: RAMP_GRADIENT_STOPS, width: BAR_PX },
     },
     ...(offReference
@@ -247,12 +226,26 @@ function stripRows(model: GraphPaneModel): LegendRow[] {
   ]
 }
 
+// One row per halo colour drawn, naming the kinds it stands for
 function haloRows(model: GraphPaneModel): LegendRow[] {
-  return haloKeyEntries(model).map(({ color, label }) => ({
-    key: `halo-${color}`,
-    label,
-    swatch: { kind: 'halo', color },
-  }))
+  const kindsByColor = new Map<string, Set<string>>()
+  for (const h of model.bubbleHalos) {
+    if (!h.whole) {
+      const color = BUBBLE_KIND_COLORS[h.kind]
+      const kinds = kindsByColor.get(color) ?? new Set<string>()
+      kinds.add(BUBBLE_KIND_NAMES[h.kind])
+      kindsByColor.set(color, kinds)
+    }
+  }
+  return [...kindsByColor].map(([color, kinds]) => {
+    const names = [...kinds].join(' or ')
+    return {
+      key: `halo-${color}`,
+      label:
+        names === BUBBLE_KIND_NAMES.superbubble ? names : `${names} bubble`,
+      swatch: { kind: 'halo', color },
+    }
+  })
 }
 
 function geneRows(model: GraphPaneModel): LegendRow[] {
@@ -286,16 +279,11 @@ function pathRows(model: GraphPaneModel): LegendRow[] {
   }))
 }
 
-function tubeRow(key: string, color: string, label: string): LegendRow {
+function tubeRow(key: string, stops: Stop[], label: string): LegendRow {
   return {
     key,
     label,
-    swatch: {
-      kind: 'fill',
-      stops: flat(color),
-      height: TUBE_SWATCH_PX,
-      square: true,
-    },
+    swatch: { kind: 'fill', stops, height: TUBE_SWATCH_PX, square: true },
   }
 }
 
@@ -319,37 +307,39 @@ export function tubeMapRows(model: GraphPaneModel): LegendRow[] {
   const rows: LegendRow[] = []
   if (values) {
     rows.push(
-      tubeRow('value-reference', PANEL_REFERENCE_TUBE, 'reference'),
+      tubeRow('value-reference', flat(PANEL_REFERENCE_TUBE), 'reference'),
       ...values.map(({ value, color }) =>
-        tubeRow(`value-${value}`, color, value),
+        tubeRow(`value-${value}`, flat(color), value),
       ),
     )
   }
   if (roles) {
     rows.push(
-      tubeRow('ref', PANEL_REFERENCE_TUBE, 'reference'),
+      tubeRow('ref', flat(PANEL_REFERENCE_TUBE), 'reference'),
       tubeRow(
         'hap',
-        haplotypeTube,
+        flat(haplotypeTube),
         bundled ? 'shared route, ×n haplotypes' : 'haplotype',
       ),
     )
   }
-  const readRow = (key: string, colors: readonly string[], label: string) => ({
-    key,
-    label,
-    swatch: {
-      kind: 'fill',
-      stops: bandStops(colors),
-      height: TUBE_SWATCH_PX,
-      square: true,
-    } as const,
-  })
   if (forwardReads) {
-    rows.push(readRow('fwd', FORWARD_READ_COLORS, 'read on the forward strand'))
+    rows.push(
+      tubeRow(
+        'fwd',
+        bandStops(FORWARD_READ_COLORS),
+        'read on the forward strand',
+      ),
+    )
   }
   if (reverseReads) {
-    rows.push(readRow('rev', REVERSE_READ_COLORS, 'read on the reverse strand'))
+    rows.push(
+      tubeRow(
+        'rev',
+        bandStops(REVERSE_READ_COLORS),
+        'read on the reverse strand',
+      ),
+    )
   }
   if (reads && reads.shown < reads.total) {
     rows.push({
@@ -373,7 +363,7 @@ export function tubeMapRows(model: GraphPaneModel): LegendRow[] {
     })
   }
   if (deletion) {
-    rows.push(tubeRow('del', 'grey', 'read deletion'))
+    rows.push(tubeRow('del', flat('grey'), 'read deletion'))
   }
   if (foldBp !== undefined) {
     rows.push({
@@ -475,6 +465,28 @@ export function walkKeyRow(model: GraphPaneModel, walk: LiftedWalk): LegendRow {
   }
 }
 
+// The off-reference colour, where the lift paints it, and the faded rest.
+// rampRows draws no key while walks are lifted, so these rows name both.
+function fadedRows(
+  model: GraphPaneModel,
+  faded: string,
+  width = SWATCH_PX,
+): LegendRow[] {
+  return [
+    ...(model.liftPaintsOffReference
+      ? [
+          fillRow(
+            'lift-off',
+            REFERENCE_RAMP_ALT_CSS,
+            'off the reference',
+            width,
+          ),
+        ]
+      : []),
+    fillRow('faded', FADED_SWATCH, faded, width),
+  ]
+}
+
 // Each lifted walk's key, then what the faded rest is; the colours under a
 // shaded walk's bar are bars of its width
 function walkReadoutRows(model: GraphPaneModel): LegendRow[] {
@@ -488,32 +500,14 @@ function walkReadoutRows(model: GraphPaneModel): LegendRow[] {
     : SWATCH_PX
   return [
     ...rows,
-    // the ramp's own key, which names this, is off while walks are lifted
-    ...(model.liftPaintsOffReference
-      ? [
-          fillRow(
-            'lift-off',
-            REFERENCE_RAMP_ALT_CSS,
-            'off the reference',
-            width,
-          ),
-        ]
-      : []),
-    fillRow('faded', FADED_SWATCH, `not on ${model.liftedWalksLabel}`, width),
+    ...fadedRows(model, `not on ${model.liftedWalksLabel}`, width),
   ]
 }
 
 // The faceted pane's one key line under its panels: each panel's title keys
 // its walk, so this keys only what every panel greys
 export function facetKeyRows(model: GraphPaneModel): LegendRow[] {
-  return model.facetPanels
-    ? [
-        ...(model.liftPaintsOffReference
-          ? [fillRow('lift-off', REFERENCE_RAMP_ALT_CSS, 'off the reference')]
-          : []),
-        fillRow('faded', FADED_SWATCH, "not on the panel's walk"),
-      ]
-    : []
+  return model.facetPanels ? fadedRows(model, "not on the panel's walk") : []
 }
 
 // The keys in the order the panel stacks them, top first

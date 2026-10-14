@@ -199,11 +199,7 @@ export function resolveContributors(
 }
 
 // 1-based inclusive, which is what a locstring means. Unformatted digits: this
-// is parsed, not read. locLabel is the one people read.
+// is parsed, not read. bandage-core's regionLabel is the one people read.
 export function locString(loc: GraphLocation) {
   return `${loc.refName}:${loc.start + 1}-${loc.end}`
-}
-
-export function locLabel(loc: { refName: string; start: number; end: number }) {
-  return `${loc.refName}:${(loc.start + 1).toLocaleString()}-${loc.end.toLocaleString()}`
 }

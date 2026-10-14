@@ -7,7 +7,8 @@ const mockSession = {
   tracks: [] as Record<string, unknown>[],
   rpcManager: { call: mockRpcCall },
   assemblyManager: {
-    has: () => false,
+    has: (_name: string) => false,
+    get: (_name: string) => undefined as { name: string } | undefined,
     assemblyList: [] as { name: string; aliases: string[] }[],
   },
 }
@@ -39,6 +40,11 @@ vi.mock(import('@jbrowse/core/configuration'), async importOriginal => ({
     .mockImplementation(
       (obj: Record<string, unknown>, key?: unknown) => obj[String(key)],
     ),
+}))
+
+const mockReadFile = vi.hoisted(() => vi.fn())
+vi.mock('@jbrowse/core/util/io', () => ({
+  openLocation: () => ({ readFile: mockReadFile }),
 }))
 
 // pangenome_hprc's segments track once NA20809 haplotype 2 is loaded
@@ -98,6 +104,8 @@ async function cut(region: typeof ON_HG38, gfa = GFA) {
 beforeEach(() => {
   mockRpcCall.mockReset()
   mockSession.tracks = [TRACK]
+  mockSession.assemblyManager.has = () => false
+  mockSession.assemblyManager.get = () => undefined
   mockSession.assemblyManager.assemblyList = []
 })
 
@@ -114,6 +122,17 @@ test('a cut on another assembly the track names is refused, naming the reference
   expect(String(model.error)).toMatch(/cut on its reference, hg38/)
   expect(model.hasGraph).toBe(false)
   expect(mockRpcCall).not.toHaveBeenCalled()
+})
+
+test("a track naming its reference by an alias of the region's assembly cuts it", async () => {
+  mockSession.tracks = [{ ...TRACK, assemblyNames: ['GRCh38', 'NA20809.2'] }]
+  const hg38 = { name: 'hg38', aliases: ['GRCh38'] }
+  const known = (name: string) => name === 'hg38' || name === 'GRCh38'
+  mockSession.assemblyManager.has = known
+  mockSession.assemblyManager.get = name => (known(name) ? hg38 : undefined)
+  const model = await cut(ON_HG38)
+  expect(model.error).toBeUndefined()
+  expect(model.nodeCount).toBe(3)
 })
 
 test('a cut that finds no segments is an error, not an empty graph', async () => {
@@ -300,11 +319,11 @@ describe('reads', () => {
     secondary: false,
   }
 
-  async function cutWithReads(reads: () => Promise<unknown>) {
+  async function cutWithReads(reads: () => Promise<unknown>, gfa = PATHS) {
     mockSession.tracks = [READS_TRACK]
     mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
       method === 'GetSubgraph'
-        ? Promise.resolve(PATHS)
+        ? Promise.resolve(gfa)
         : method === 'GetGraphReads'
           ? reads()
           : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
@@ -341,6 +360,51 @@ describe('reads', () => {
     expect(model.effectiveColorScheme).toBe('uniform')
     expect(model.tubeMapNodeColors).toBeUndefined()
     expect(model.colorSchemeLock?.value).toBe('By strand')
+  })
+
+  // the panels draw no reads, so the boxes take the scheme picked
+  test('a tube map split into panels colours its boxes beside reads', async () => {
+    const model = await cutWithReads(
+      () => Promise.resolve({ records: [READ], total: 1 }),
+      PATHS.replace('P\talt', 'P\tA#1#c').concat('\nP\tB#1#c\t1+,2+,4+\t*'),
+    )
+    expect(model.tubeMapReads).toBe(true)
+    model.setFacet('sample')
+    await model.recomputeLayout()
+    model.setColorScheme('reference-position')
+    expect(model.layoutResult?.tubeMapPanels).toHaveLength(2)
+    expect(model.tubeMapReads).toBe(false)
+    expect(model.colorSchemeLock).toBeUndefined()
+    expect(model.effectiveColorScheme).toBe('reference-position')
+  })
+
+  // the reads take the reds and blues, so the tubes keep their greys, which
+  // the key names walk by walk
+  test('beside reads a tube colour column leaves the key naming each walk', async () => {
+    const model = await cutWithReads(() =>
+      Promise.resolve({ records: [READ], total: 1 }),
+    )
+    mockSession.tracks = [
+      {
+        ...READS_TRACK,
+        adapter: {
+          ...READS_TRACK.adapter,
+          samplesTsvLocation: {
+            uri: 'samples.tsv',
+            locationType: 'UriLocation',
+          },
+        },
+      },
+    ]
+    mockReadFile.mockResolvedValue('name\tpopulation\nalt\tYRI\n')
+    await model.loadWalkRowSampleTable()
+    model.setTubeMapColorBy('population')
+    expect(model.tubeMapColoring?.field).toBe('population')
+    expect(model.tubeMapKeys.values).toBeUndefined()
+    expect(model.pathLegend.map(e => [e.name, e.color])).toEqual([
+      ['hg38', model.tubeMapTubeColors![0]],
+      ['alt', model.tubeMapTubeColors![1]],
+    ])
   })
 
   // A tube map draws the window alone, so its ramp key speaks for its boxes:

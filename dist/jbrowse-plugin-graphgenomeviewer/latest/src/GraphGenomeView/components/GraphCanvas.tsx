@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react'
 
-import { edgeHoverText } from '@jbrowse/bandage-core/hoverText'
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
-import { ErrorBanner, LoadingOverlay, Menu } from '@jbrowse/core/ui'
+import { ErrorBanner, LoadingOverlay } from '@jbrowse/core/ui'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { useRenderingBackend } from '@jbrowse/render-core/useRenderingBackend'
-import InfoIcon from '@mui/icons-material/Info'
 import { observer } from 'mobx-react'
 
 import BubbleHalos from './BubbleHalos'
@@ -13,38 +11,21 @@ import FacetPanels from './FacetPanels'
 import GenePins from './GenePins'
 import GraphToolbar from './GraphToolbar'
 import HoverLayer from './HoverLayer'
+import HoverTooltip from './HoverTooltip'
 import LabelLayer from './LabelLayer'
 import { LegendPanel } from './Legend'
+import PaneContextMenu from './PaneContextMenu'
+import { PaneSvgLayer } from './PaneLayer'
 import ReferenceStripOverlay from './ReferenceStripOverlay'
 import TubeMapOverlay from './TubeMapOverlay'
-import { WalkRowContextMenu } from './WalkRowContextMenu'
 import WalkRowsOverlay from './WalkRowsOverlay'
 import WalkStrip from './WalkStrip'
 import WalkStripLocator from './WalkStripLocator'
 import { usePaneGestures, useWheelZoom } from './usePaneGestures'
-import { locLabel, nodeOwnLocation } from '../../launchFromGraph/contributors'
-import { nodeLaunchMenuItems } from '../../launchFromGraph/graphMenuItems'
-import { TOOLTIP_INSET_PX } from '../pane/fitViews'
+import { PAPER_CSS } from '../pane/paneBase'
 import { createGraphRenderer } from '../renderer/GraphRenderer'
 
-import type { chipReadoutAt } from './LabelLayer'
 import type { GraphPaneModel } from '../model'
-
-// Bottom right of the canvas, clear of the row labels on the left edge and of
-// a walk strip under the canvas. Where the legend reaches down to it, it moves
-// left of the legend.
-const tooltipStyle = {
-  position: 'absolute' as const,
-  bottom: TOOLTIP_INSET_PX,
-  lineHeight: 'normal',
-  background: 'rgba(0,0,0,0.75)',
-  color: 'white',
-  padding: '4px 8px',
-  borderRadius: 4,
-  fontSize: 12,
-  pointerEvents: 'none' as const,
-  zIndex: 6,
-}
 
 const wrapperStyle = { position: 'relative' as const }
 
@@ -106,35 +87,29 @@ const rowLabelStyle = {
 // own positioning context (canvasAreaStyle) — against the wrapper it picks up
 // the toolbar's height and names the wrong row. Pinned to the left edge rather
 // than to the row's own x, because a row's leftmost node is wherever its first
-// allele happens to branch. Rows scrolled out of the canvas are dropped rather
-// than clamped to the edge, so a label never points at a row that is not
-// there.
+// allele happens to branch.
+//
+// Keyed on the row, not on the label: two rows can have the same words. The
+// sample-row layout names row 0 for the assembly the backbone comes from and
+// the rows below it for the samples contributing alleles, and a diploid
+// reference is in both lists — one haplotype is the reference path, the other
+// walks alleles of its own, and `parsePanSN` reduces both to one sample name.
 const RowLabels = observer(function RowLabels({
   model,
 }: {
   model: GraphPaneModel
 }) {
-  const rowLabels = model.drawnRowLabels
   return (
     <>
-      {rowLabels.map(({ label, y }) => {
-        const screenY = y * model.scaleY + model.translateY
-        return screenY >= 0 && screenY <= model.canvasHeight ? (
-          // Keyed on the row, not on the label: two rows can carry the same
-          // words. The sample-row layout names row 0 for the assembly the
-          // backbone comes from and the rows below it for the samples
-          // contributing alleles, and a diploid reference is in both lists —
-          // one haplotype is the reference path, the other walks alleles of its
-          // own, and `parsePanSN` reduces both to one sample name.
-          <div
-            key={y}
-            data-testid="graph-row-label"
-            style={{ ...rowLabelStyle, top: screenY }}
-          >
-            {label}
-          </div>
-        ) : null
-      })}
+      {model.visibleRowLabels.map(({ label, y, top }) => (
+        <div
+          key={y}
+          data-testid="graph-row-label"
+          style={{ ...rowLabelStyle, top }}
+        >
+          {label}
+        </div>
+      ))}
     </>
   )
 })
@@ -172,18 +147,6 @@ const deletionLabelStyle = {
   ...nodeLabelStyle,
   color: '#18181c',
   fontWeight: 600,
-}
-
-// Under the labels (z 3) and over the canvas, so a leader runs beneath the text
-// it points from rather than across it. `overflow: visible` because a label
-// displaced past the canvas edge is culled by the placement, not clipped here.
-const leaderStyle = {
-  position: 'absolute' as const,
-  left: 0,
-  top: 0,
-  pointerEvents: 'none' as const,
-  overflow: 'visible' as const,
-  zIndex: 2,
 }
 
 // Measures itself for the model, so no label is placed under a legend and
@@ -245,12 +208,11 @@ const GraphSizeLabels = observer(function GraphSizeLabels({
   )
   return (
     <>
+      {/* under the labels (z 3), so a leader runs beneath the text it points
+          from; the placement culls a label past the canvas edge, so the
+          layer leaves overflow visible */}
       {leaders.length > 0 ? (
-        <svg
-          style={leaderStyle}
-          width={model.paneWidth}
-          height={model.canvasHeight}
-        >
+        <PaneSvgLayer model={model} zIndex={2} overflow="visible">
           {leaders.map(({ key, arcX, arcY, labelX, labelY }) => (
             <line
               key={key}
@@ -263,7 +225,7 @@ const GraphSizeLabels = observer(function GraphSizeLabels({
               strokeWidth={1}
             />
           ))}
-        </svg>
+        </PaneSvgLayer>
       ) : null}
       {labels.map(({ key, text, x, y, kind }) => (
         <div
@@ -279,149 +241,6 @@ const GraphSizeLabels = observer(function GraphSizeLabels({
         </div>
       ))}
     </>
-  )
-})
-
-const HoverTooltips = observer(function HoverTooltips({
-  model,
-  chip,
-}: {
-  model: GraphPaneModel
-  chip: ReturnType<typeof chipReadoutAt>
-}) {
-  const hoveredNodeData = model.hoveredNode
-    ? model.hoverNodeById?.get(model.hoveredNode)
-    : null
-  const merged = model.hoveredNode
-    ? model.hoverDrawing?.members.get(model.hoveredNode)
-    : undefined
-
-  const hoveredEdgeData =
-    model.hoveredEdge !== null && model.graph
-      ? model.graph.edges[model.hoveredEdge]
-      : null
-
-  const ownLocation = hoveredNodeData
-    ? nodeOwnLocation(hoveredNodeData)
-    : undefined
-
-  const hoveredEdgeText = hoveredEdgeData
-    ? edgeHoverText(
-        hoveredEdgeData,
-        model.deletions.find(d => d.edgeIndex === model.hoveredEdge),
-        id => model.nodeById?.get(id)?.name ?? id,
-      )
-    : undefined
-
-  const walkRow = model.hoveredWalkRowText
-  const tube = model.hoveredTubeText
-  const tipStyle = { ...tooltipStyle, right: model.tooltipRightPx }
-
-  return chip ? (
-    <div style={tipStyle} data-testid="graph-chip-tooltip">
-      <strong>{chip.label}</strong> — {chip.readout}
-    </div>
-  ) : (
-    <>
-      {tube && !hoveredNodeData ? (
-        <div style={tipStyle} data-testid="graph-tube-tooltip">
-          <strong>{tube.label}</strong> — {tube.readout}
-        </div>
-      ) : null}
-      {walkRow && !hoveredNodeData ? (
-        <div style={tipStyle} data-testid="graph-walk-row-tooltip">
-          <strong>{walkRow.label}</strong> — {walkRow.readout}
-        </div>
-      ) : null}
-      {hoveredNodeData ? (
-        <div style={tipStyle}>
-          <strong>{hoveredNodeData.name}</strong>
-          {merged ? ` and ${merged.length - 1} more` : ''} —{' '}
-          {hoveredNodeData.length.toLocaleString()} bp, depth{' '}
-          {hoveredNodeData.depth.toFixed(1)}
-          {/* Which assembly contributed this segment, and where it sits on it.
-              rGFA states both, and until now neither reached the screen: the
-              node was a bare id in a picture. */}
-          {ownLocation ? (
-            <>
-              <br />
-              {ownLocation.sample} {locLabel(ownLocation)} (rank{' '}
-              {hoveredNodeData.stable?.rank})
-            </>
-          ) : null}
-        </div>
-      ) : null}
-      {hoveredEdgeText ? (
-        <div style={tipStyle}>
-          {/* A deletion edge is the one link that means something on its own —
-              the backbone it skips is sequence some haplotype does not carry —
-              so it says how much rather than just naming its endpoints. */}
-          {hoveredEdgeText.deletion ? (
-            <>
-              <strong>Deletion</strong> {hoveredEdgeText.deletion.bp}
-              <br />
-              {hoveredEdgeText.deletion.where}
-            </>
-          ) : (
-            <>Edge: {hoveredEdgeText.ends}</>
-          )}
-        </div>
-      ) : null}
-    </>
-  )
-})
-
-// Flat rather than under a "Launch view" submenu: this menu is two or three
-// items long and every one of them is contextual to the node just clicked. The
-// submenu grouping earns its keep in the long view and track menus.
-const NodeContextMenu = observer(function NodeContextMenu({
-  model,
-  nodeId,
-  top,
-  left,
-  onClose,
-}: {
-  model: GraphPaneModel
-  nodeId: string
-  top: number
-  left: number
-  onClose: () => void
-}) {
-  const { own, reference, highlight } = model.nodeLaunchTargets(nodeId)
-  return (
-    <Menu
-      open
-      anchorReference="anchorPosition"
-      anchorPosition={{ top, left }}
-      onClose={() => {
-        onClose()
-      }}
-      onMenuItemClick={callback => {
-        callback()
-      }}
-      menuItems={[
-        {
-          label: 'Node details',
-          icon: InfoIcon,
-          onClick: () => {
-            model.showNodeDetails(nodeId)
-          },
-        },
-        ...nodeLaunchMenuItems({
-          own,
-          reference,
-          highlight,
-          onShowLinear: target => {
-            model.showInLinearView(target)
-          },
-          onHighlight: model.canHighlightInLinearView
-            ? target => {
-                model.highlightInLinearView(target)
-              }
-            : undefined,
-        }),
-      ]}
-    />
   )
 })
 
@@ -442,7 +261,7 @@ const GraphCanvas = observer(function GraphCanvas({
     error: renderError,
     retry: retryRender,
   } = useRenderingBackend(createGraphRenderer, model)
-  const { handlers, contextNode, contextRow, closeContextMenu, hoveredChip } =
+  const { handlers, canvasStyle, contextMenu, closeContextMenu, hoveredChip } =
     usePaneGestures(model)
   useWheelZoom(canvas, model)
   const faceted = model.facetPanels !== undefined
@@ -467,7 +286,7 @@ const GraphCanvas = observer(function GraphCanvas({
             style={{
               ...paperStyle,
               top: model.referenceStripZonePx,
-              background: model.paperCss,
+              background: PAPER_CSS,
             }}
           />
         ) : null}
@@ -475,12 +294,9 @@ const GraphCanvas = observer(function GraphCanvas({
           ref={canvasRef}
           data-testid="graph-genome-canvas"
           style={{
+            ...canvasStyle,
             width: model.paneWidth,
             height: model.canvasHeight,
-            cursor: model.isPanning || model.draggingNode ? 'grabbing' : 'grab',
-            // a pane the linear view drags leaves a finger its scroll
-            touchAction: model.hostPlacesX ? 'auto' : 'none',
-            overscrollBehavior: 'contain',
             display: 'block',
             position: 'relative',
             zIndex: 1,
@@ -489,7 +305,11 @@ const GraphCanvas = observer(function GraphCanvas({
         />
 
         {faceted ? (
-          <FacetPanels model={model} handlers={handlers} />
+          <FacetPanels
+            model={model}
+            handlers={handlers}
+            canvasStyle={canvasStyle}
+          />
         ) : (
           <>
             <TubeMapOverlay model={model} />
@@ -523,30 +343,16 @@ const GraphCanvas = observer(function GraphCanvas({
           </div>
         ) : null}
 
-        <HoverTooltips model={model} chip={hoveredChip} />
+        <HoverTooltip model={model} chip={hoveredChip} />
       </div>
 
       {model.walkStripShown ? <WalkStrip model={model} /> : null}
 
-      {contextNode ? (
-        <NodeContextMenu
-          model={model}
-          nodeId={contextNode.nodeId}
-          top={contextNode.top}
-          left={contextNode.left}
-          onClose={closeContextMenu}
-        />
-      ) : null}
-
-      {contextRow ? (
-        <WalkRowContextMenu
-          model={model}
-          row={contextRow.row}
-          top={contextRow.top}
-          left={contextRow.left}
-          onClose={closeContextMenu}
-        />
-      ) : null}
+      <PaneContextMenu
+        model={model}
+        at={contextMenu}
+        onClose={closeContextMenu}
+      />
 
       {renderError ? (
         <ErrorBanner error={renderError} onReset={retryRender} />

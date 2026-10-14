@@ -35,13 +35,11 @@ export const MAX_CANVAS_HEIGHT = 600
 // Floor, so a window holding only backbone — one row, no height at all — still
 // leaves room to hover a node and read its tooltip.
 export const MIN_CANVAS_HEIGHT = 160
-// the pane's background, as the renderer clears to it and as CSS
-export const PAPER_LIGHT: [number, number, number, number] = [1, 1, 1, 1]
-export const PAPER_DARK: [number, number, number, number] = [
-  0.12, 0.12, 0.12, 1,
-]
-export const paperCss = ([r, g, b]: number[]) =>
-  `rgb(${[r, g, b].map(v => Math.round(v! * 255)).join(', ')})`
+// The pane's background, as the renderer clears to it and as CSS. It stays
+// white under a dark theme, because Bandage's deletion edges, the deletion
+// labels and the gene ink are near-black.
+export const PAPER: [number, number, number, number] = [1, 1, 1, 1]
+export const PAPER_CSS = 'rgb(255, 255, 255)'
 // The thinnest a fit draws a tube map's tubes
 export const MIN_FIT_TUBE_PX = 5
 
@@ -168,7 +166,6 @@ export function formatSpanBp(bp: number) {
 // escape hatch strangepg gives with `-T N`.
 export const DEFAULT_MAX_GRAPH_NODES = 20_000
 
-// A url bandage-figure can read again, or undefined for a local file
 // the last segment of a file's path, its query dropped, or a blob's own name
 export function fileName(location: FileLocation) {
   const path =
@@ -182,6 +179,7 @@ export function fileName(location: FileLocation) {
   return path.split(/[\\/]/).at(-1) ?? ''
 }
 
+// A url bandage-figure can read again, or undefined for a local file
 export function uriOf(location: FileLocation | undefined) {
   return location && 'uri' in location && location.uri
     ? new URL(location.uri, location.baseUri ?? window.location.href).href
@@ -230,9 +228,9 @@ export function paneViewportOf(model: {
 // Worth keeping because a session revisits the same layout. The two drawings
 // answer different questions and the README's own figure is one subgraph in
 // both, so Anchored <-> Force is a round trip a reader makes repeatedly — and
-// every control in the settings dialog calls `recomputeLayout` on change
-// whether or not the current mode reads what it changed, which made picking a
-// reference path in force mode a multi-second re-run of an identical layout.
+// picking a reference path calls `recomputeLayout` whether or not the current
+// mode reads it, which in force mode was a multi-second re-run of an identical
+// layout.
 // Both are hits. The cache itself is core's, which BandageJS keeps too.
 export const forceLayouts = createForceLayoutCache()
 
@@ -328,6 +326,19 @@ export const paneBase = types
       maxGraphNodes: types.optional(types.number, DEFAULT_MAX_GRAPH_NODES),
       // the linear view a graph of its own is paired with for the hover sync
       connectedViewId: types.maybe(types.string),
+      // The bp ceiling on a fine cut, a proxy for node count that only
+      // holds at fine granularity; `maxGraphNodes` counts what came back.
+      maxRegionBp: types.optional(types.number, MAX_GRAPH_REGION_BP),
+      // How far the cut follows links past the region's own segments. At
+      // 0 a detour that leaves the backbone before the window and rejoins
+      // after it arrives as a fragment, since its interior is indexed only
+      // under its own sequence, so one bubble draws as two unrelated
+      // insertions. A hop follows alleles only, so it never walks the
+      // backbone out of the window.
+      subgraphContext: types.optional(types.number, 1),
+      // the haplotypes a GBZ or walk-indexed cut is for; unset is
+      // trackHaplotypes
+      subgraphHaplotypes: types.maybe(types.frozen<string[]>()),
     }),
   )
   .volatile(() => ({

@@ -143,3 +143,21 @@ test('a phased allele pairs with its own haplotype, not by length', () => {
   })
   expect(lone[0]!.call).toBeUndefined()
 })
+
+// A haplotype's walk broken across two contigs makes two rows of one
+// haplotype, and its phased allele goes to the one walk across the array.
+test("a phased allele goes to one of its haplotype's walks", () => {
+  const piece = (bp: number, complete: boolean) => ({
+    ...walk('HG1', bp, complete),
+    haplotype: 1,
+  })
+  const call = { bp: 3100, spanningReads: 4, haplotype: 1 }
+  const rows = withCalls([piece(900, false), piece(3161, true)], {
+    HG1: calls(call),
+  })
+  expect(rows.map(r => r.call?.bp)).toEqual([undefined, 3100])
+  const both = withCalls([piece(400, true), piece(3161, true)], {
+    HG1: calls(call),
+  })
+  expect(both.map(r => r.call?.agrees)).toEqual([undefined, true])
+})

@@ -1,19 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 
 import { drawReferenceStrip } from '@jbrowse/bandage-core/referenceStrip'
-import { getDpr } from '@jbrowse/bandage-core/renderer/canvas'
-import { autorun } from 'mobx'
 import { observer } from 'mobx-react'
 
-import type { GraphPaneModel } from '../model'
+import { PaneOverlayCanvas } from './PaneLayer'
 
-const canvasStyle = {
-  position: 'absolute' as const,
-  left: 0,
-  top: 0,
-  pointerEvents: 'none' as const,
-  zIndex: 5,
-}
+import type { GraphPaneModel } from '../model'
 
 // Each reference segment at its bp in the linear view, onto the pane's
 // canvas or the linear view's SVG export
@@ -30,7 +22,6 @@ export function paintReferenceStrip(
     drawReferenceStrip(ctx, model.referenceStripBlocks, frame, {
       width: model.paneWidth,
       lit,
-      darkMode: model.darkMode,
       dpr,
     })
   }
@@ -44,39 +35,19 @@ const ReferenceStripOverlay = observer(function ReferenceStripOverlay({
 }: {
   model: GraphPaneModel
 }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  const { referenceStripShown, paneWidth, canvasHeight } = model
-  useEffect(
-    () =>
-      autorun(() => {
-        const canvas = ref.current
-        const ctx = canvas?.getContext('2d')
-        if (canvas && ctx && model.referenceStripShown) {
-          const dpr = getDpr()
-          const width = model.paneWidth
-          const height = model.canvasHeight
-          canvas.width = Math.round(width * dpr)
-          canvas.height = Math.round(height * dpr)
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-          ctx.clearRect(0, 0, width, height)
-          paintReferenceStrip(ctx, model, {
-            lit: model.referenceStripLit,
-            dpr,
-          })
-        }
-      }),
+  const paint = useCallback(
+    (ctx: CanvasRenderingContext2D, dpr: number) => {
+      paintReferenceStrip(ctx, model, { lit: model.referenceStripLit, dpr })
+    },
     [model],
   )
   return (
-    <canvas
-      ref={ref}
-      data-testid={referenceStripShown ? 'graph-reference-strip' : undefined}
-      style={{
-        ...canvasStyle,
-        width: paneWidth,
-        height: canvasHeight,
-        display: referenceStripShown ? 'block' : 'none',
-      }}
+    <PaneOverlayCanvas
+      model={model}
+      zIndex={5}
+      shown={model.referenceStripShown}
+      testId="graph-reference-strip"
+      paint={paint}
     />
   )
 })

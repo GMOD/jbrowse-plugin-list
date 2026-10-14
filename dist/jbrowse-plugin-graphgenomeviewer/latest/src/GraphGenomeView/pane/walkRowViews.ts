@@ -17,6 +17,7 @@ import { WALK_GENE_ROWS } from './paneBase'
 import { resolveLocationAssembly } from '../../launchFromGraph/contributors'
 
 import type { SubgraphRegion } from '../../GetSubgraph'
+import type { WalkAxis, WalkRow } from '@jbrowse/bandage-core/layout/walkRows'
 
 export const withWalkRowViews = withLaunchViews
   .views(self => ({
@@ -63,16 +64,29 @@ export const withWalkRowViews = withLaunchViews
         ? stripMarks(self.graph, [bars.reference, ...bars.rows], node)
         : []
     },
+    // Where a row's bar lies on its contig, and the session assembly its
+    // haplotype (`HG00097#1`) or else its sample names
+    rowLocation(row: WalkRow, axis: WalkAxis) {
+      const named = {
+        sample: row.sample,
+        haplotype:
+          row.haplotype === undefined
+            ? undefined
+            : `${row.sample}#${row.haplotype}`,
+      }
+      return {
+        ...named,
+        assembly: resolveLocationAssembly(self.assemblyResolver, named),
+        span: { refName: axis.contig, ...rowSpan(axis, row.bp) },
+      }
+    },
     // Where the drawing has the node a strip point lights, for the ring
     // that finds it in a hairball
     get walkStripLocator() {
       const id = self.stripHover ? self.hoveredNode : null
       return id === null
         ? undefined
-        : nodeAnchor(self.nodePositions?.[id], p => ({
-            x: p.x * self.scaleX + self.translateX,
-            y: p.y * self.scaleY + self.translateY,
-          }))
+        : nodeAnchor(self.nodePositions?.[id], self.toScreen)
     },
   }))
   .views(self => ({
@@ -97,28 +111,18 @@ export const withWalkRowViews = withLaunchViews
           unplaced++
           continue
         }
-        const assemblyName = resolveLocationAssembly(self.assemblyResolver, {
-          sample: row.sample,
-          haplotype:
-            row.haplotype === undefined
-              ? undefined
-              : `${row.sample}#${row.haplotype}`,
-        })
-        const track = assemblyName
-          ? self.geneTracksByAssembly.get(assemblyName)
+        const { assembly, span } = self.rowLocation(row, row.axis)
+        const track = assembly
+          ? self.geneTracksByAssembly.get(assembly)
           : undefined
-        if (!assemblyName || !track) {
+        if (!assembly || !track) {
           untrackedRows++
           continue
         }
         reads.push({
           row: row.name,
           trackId: track.trackId,
-          region: {
-            assemblyName,
-            refName: row.axis.contig,
-            ...rowSpan(row.axis, row.bp),
-          },
+          region: { assemblyName: assembly, ...span },
         })
       }
       return {
@@ -142,26 +146,14 @@ export const withWalkRowViews = withLaunchViews
       if (!row?.axis) {
         return undefined
       }
-      const haplotype =
-        row.haplotype === undefined
-          ? undefined
-          : `${row.sample}#${row.haplotype}`
-      const assembly =
-        index === 0
-          ? self.graphRegion?.assemblyName
-          : resolveLocationAssembly(self.assemblyResolver, {
-              sample: row.sample,
-              haplotype,
-            })
+      const { sample, haplotype, assembly, span } = self.rowLocation(
+        row,
+        row.axis,
+      )
       return {
         label: row.label,
-        assembly,
-        location: {
-          sample: row.sample,
-          haplotype,
-          refName: row.axis.contig,
-          ...rowSpan(row.axis, row.bp),
-        },
+        assembly: index === 0 ? self.graphRegion?.assemblyName : assembly,
+        location: { sample, haplotype, ...span },
       }
     },
     // Each row's genes as offsets along its bar: the reference row's from

@@ -1,14 +1,19 @@
-import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { TabixIndexedFile } from '@gmod/tabix'
 import { parseGFA } from '@jbrowse/bandage-core/gfa-core/index'
+import PluginManager from '@jbrowse/core/PluginManager'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
+import RgfaTabixAdapterF from './index.ts'
 import { linkKey, parseLinkLine } from './rgfaBed.ts'
 
 import type { WalkCut } from './walkRowRuns.ts'
@@ -79,6 +84,16 @@ test('getFeatures returns the segments on a stable sequence', async () => {
   ])
 })
 
+test("the byte gate measures a region from the segment file's index", async () => {
+  const bytes = vi.spyOn(TabixIndexedFile.prototype, 'bytesForRegions')
+  const size = await makeAdapter().getRegionByteSize([k12])
+  expect(size).toBeGreaterThan(0)
+  expect(bytes.mock.calls.map(call => call[0])).toEqual([
+    [{ refName: 'K12#1#chr', start: k12.start, end: k12.end }],
+  ])
+  bytes.mockRestore()
+})
+
 test('getFeatures resolves a PanSN name given unqualified', async () => {
   const qualified = await firstValueFrom(
     makeAdapter()
@@ -117,6 +132,24 @@ test('getSubgraph reaches off-reference neighbours', async () => {
       'L\ts323\t+\ts324\t+\t0M',
     ].join('\n'),
   )
+})
+
+// node runs the script with type stripping, which refuses a parameter property
+// or an enum anywhere among the cut's imports
+test('scripts/dump-subgraph.ts writes the cut getSubgraph makes', async () => {
+  const out = join(mkdtempSync(join(tmpdir(), 'dump-subgraph-')), 'cut.gfa')
+  const window = { ...k12, start: 1_000_000, end: 1_100_000 }
+  execFileSync(process.execPath, [
+    require.resolve('../../scripts/dump-subgraph.ts'),
+    prefix,
+    'K12',
+    'chr',
+    String(window.start),
+    String(window.end),
+    out,
+  ])
+  const cut = gfaText(await makeAdapter().getSubgraph(window, { hops: 1 }))
+  expect(readFileSync(out, 'utf8')).toBe(`${cut}\n`)
 })
 
 test('getSubgraph is byte-identical across calls', async () => {
@@ -405,6 +438,17 @@ test("getSubgraph with tier: 'coarse' cuts the coarse pair", async () => {
   // a bubble keeps its source segment's id, so it joins back to the fine pair
   const fineIds = new Set(fine.nodes.map(n => n.id))
   expect(bubbles.every(n => fineIds.has(n.id))).toBe(true)
+})
+
+test("the adapter type expands the uri shorthand with the schema's preprocessor", () => {
+  const pluginManager = new PluginManager()
+  RgfaTabixAdapterF(pluginManager)
+  pluginManager.createPluggableElements()
+  const { normalizeSnapshot } = pluginManager.getAdapterType('RgfaTabixAdapter')
+  expect(normalizeSnapshot?.({ uri: 'hprc', walksUri: 'w' })).toMatchObject({
+    segmentsLocation: { uri: 'hprc.segs.bed.gz' },
+    walksLocation: { uri: 'w.walks.bed.gz' },
+  })
 })
 
 test('the coarse uri shorthand resolves a pair against the adapter baseUri', () => {

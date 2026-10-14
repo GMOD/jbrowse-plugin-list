@@ -120,6 +120,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           value={choice}
           onChange={event => {
             setChoice(event.target.value as GraphFileChoice)
+            setIndexLoc(undefined)
             setError(undefined)
           }}
         >

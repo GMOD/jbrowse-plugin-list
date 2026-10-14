@@ -3,15 +3,11 @@ import { useEffect, useState } from 'react'
 import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
 import { autorun } from 'mobx'
 
+import { paneLayerStyle } from './PaneLayer'
+
 import type { GraphPaneModel } from '../model'
 
-export const hoverLayerStyle = {
-  position: 'absolute' as const,
-  left: 0,
-  top: 0,
-  pointerEvents: 'none' as const,
-  zIndex: 1,
-}
+export const hoverLayerStyle = paneLayerStyle(1)
 
 // The pane's hover, on a transparent canvas over its drawing and tube map
 export default function HoverLayer({ model }: { model: GraphPaneModel }) {

@@ -1,3 +1,5 @@
+import { isRecord } from '../isRecord'
+
 // What a drawing adds over its nodes and edges:
 // - `paths`: a ribbon per walk
 // - `bubbles`: a halo along each bubble's nodes, with a label that opens it.
@@ -25,9 +27,7 @@ const DEFAULTS: Record<GraphLayer, boolean> = {
 export type GraphLayers = Partial<Record<GraphLayer, boolean>>
 
 export function layersOf(layers: unknown) {
-  const stated = (
-    typeof layers === 'object' && layers !== null ? layers : {}
-  ) as GraphLayers
+  const stated = (isRecord(layers) ? layers : {}) as GraphLayers
   return new Set(
     (Object.keys(DEFAULTS) as GraphLayer[]).filter(
       layer => stated[layer] ?? DEFAULTS[layer],
@@ -37,7 +37,7 @@ export function layersOf(layers: unknown) {
 
 export function withLayer(layers: unknown, layer: GraphLayer, on: boolean) {
   const { [layer]: _was, ...rest } = (
-    typeof layers === 'object' && layers !== null ? layers : {}
+    isRecord(layers) ? layers : {}
   ) as GraphLayers
   return on === DEFAULTS[layer] ? rest : { ...rest, [layer]: on }
 }

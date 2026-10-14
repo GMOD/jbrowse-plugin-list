@@ -42,8 +42,8 @@ const SubgraphContextSelect = observer(function SubgraphContextSelect({
   model: LinearGraphCutModel
 }) {
   const { classes } = useStyles()
-  return model.adapterConfig.type === 'RgfaTabixAdapter' &&
-    !walkIndexed(model.adapterConfig) ? (
+  const adapter = model.sourceAdapter
+  return adapter?.type === 'RgfaTabixAdapter' && !walkIndexed(adapter) ? (
     <div className={classes.section}>
       <FormControl className={classes.formControl}>
         <InputLabel>Graph context</InputLabel>
@@ -53,7 +53,7 @@ const SubgraphContextSelect = observer(function SubgraphContextSelect({
           data-testid="graph-context-select"
           onChange={e => {
             model.setSubgraphContext(e.target.value)
-            void model.cut()
+            model.recut()
           }}
         >
           {SUBGRAPH_CONTEXTS.map(({ value, label }) => (

@@ -1,12 +1,13 @@
 import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { BUBBLE_KIND_COLORS } from '@jbrowse/bandage-core/bubbles/classifyBubble'
+import { EXON_COLOR } from '@jbrowse/bandage-core/genes/exonOutline'
 import { geneCoverageNote } from '@jbrowse/bandage-core/labelLayout'
 import { LABEL_PX, labelWidth } from '@jbrowse/bandage-core/overlayLabels'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
-import { EXON_COLOR } from './GenePins'
 import LabelChip, { inChip } from './LabelChip'
+import { PaneSvgLayer } from './PaneLayer'
 
 import type { GraphPaneModel } from '../model'
 import type { BubbleHalo } from '@jbrowse/bandage-core/bubbles/bubbleHalos'
@@ -15,15 +16,6 @@ import type { LabelLayout } from '@jbrowse/bandage-core/labelLayout'
 // Every chip drawn over the graph, above all of its ink: bubble names and gene
 // names on their pins. `overlayLabels` has placed
 // them against each other and against the row labels already.
-
-const svgStyle = {
-  position: 'absolute' as const,
-  left: 0,
-  top: 0,
-  pointerEvents: 'none' as const,
-  overflow: 'hidden' as const,
-  zIndex: 3,
-}
 
 const GENE_INK = '#1c1c22'
 const TICK_PX = 9
@@ -67,12 +59,7 @@ const LabelLayer = observer(function LabelLayer({
   const isOpen = (h: BubbleHalo) => model.bubbleIsOpen(h.bubble)
 
   return (
-    <svg
-      style={svgStyle}
-      width={model.paneWidth}
-      height={model.canvasHeight}
-      data-testid="graph-label-layer"
-    >
+    <PaneSvgLayer model={model} zIndex={3} testId="graph-label-layer">
       <g
         data-testid="graph-bubble-ticks"
         onClick={e => {
@@ -173,7 +160,7 @@ const LabelLayer = observer(function LabelLayer({
           testId="graph-bubble-tick-label"
         />
       ) : null}
-    </svg>
+    </PaneSvgLayer>
   )
 })
 

@@ -3,6 +3,8 @@ import { BUBBLE_KIND_COLORS } from '@jbrowse/bandage-core/bubbles/classifyBubble
 import { HALO_FACTOR } from '@jbrowse/bandage-core/labelLayout'
 import { observer } from 'mobx-react'
 
+import { PaneSvgLayer } from './PaneLayer'
+
 import type { GraphPaneModel } from '../model'
 
 // The bubbles over a node drawing: each a translucent halo along its nodes,
@@ -10,15 +12,6 @@ import type { GraphPaneModel } from '../model'
 // halo takes no pointer events, so the nodes under it still hover and drag;
 // its name and its routes' chips are LabelLayer's. A small variant is
 // LabelLayer's tick, and shows its halo only while hovered.
-
-const svgStyle = {
-  position: 'absolute' as const,
-  left: 0,
-  top: 0,
-  pointerEvents: 'none' as const,
-  overflow: 'hidden' as const,
-  zIndex: 2,
-}
 
 const BubbleHalos = observer(function BubbleHalos({
   model,
@@ -29,22 +22,10 @@ const BubbleHalos = observer(function BubbleHalos({
   if (bubbleHalos.length === 0) {
     return null
   }
-  const {
-    scaleX,
-    scaleY,
-    translateX,
-    translateY,
-    paneWidth: width,
-    canvasHeight,
-  } = model
+  const { scaleX, scaleY, translateX, translateY } = model
   const halo = model.contigThickness * HALO_FACTOR
   return (
-    <svg
-      style={svgStyle}
-      width={width}
-      height={canvasHeight}
-      data-testid="graph-bubble-halos"
-    >
+    <PaneSvgLayer model={model} zIndex={2} testId="graph-bubble-halos">
       <g
         transform={`translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})`}
       >
@@ -75,7 +56,7 @@ const BubbleHalos = observer(function BubbleHalos({
             />
           ))}
       </g>
-    </svg>
+    </PaneSvgLayer>
   )
 })
 

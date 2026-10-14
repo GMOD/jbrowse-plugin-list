@@ -52,6 +52,10 @@ import { computed } from 'mobx'
 
 import { TUBE_MAP_MODES, dependOn, geometryPainted, paneBase } from './paneBase'
 import { walkRowRuns, walkRowsOf } from '../../RgfaTabixAdapter/walkRowRuns.ts'
+import {
+  canonicalAssemblyName,
+  trackAssemblies,
+} from '../../launchFromGraph/launchFromGraph'
 import { locationIsSet } from '../../locationName.ts'
 import { trackAdapterConfig } from '../../panSNAliases/trackAdapterConfig'
 import {
@@ -77,6 +81,7 @@ import {
 } from '../tubeMapPanels'
 import { groupByOf, groupWalkRows, metadataColumns } from '../walkRowGroups'
 
+import type { ScreenTransform } from './keepInView'
 import type { WalkCut } from '../../RgfaTabixAdapter/walkRowRuns.ts'
 import type { GraphLayers } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
@@ -93,7 +98,7 @@ import type { FacetInput, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { NodeWidth } from '@jbrowse/bandage-core/nodeWidths'
 import type { AssemblyNames } from '@jbrowse/bandage-core/reference'
-import type { GraphNode } from '@jbrowse/bandage-core/types'
+import type { Graph, GraphNode } from '@jbrowse/bandage-core/types'
 import type { NodeInk } from '@jbrowse/bandage-core/util/hitDetection'
 import type { WalkLayer } from '@jbrowse/bandage-core/walkEncoding'
 import type { WalkLift } from '@jbrowse/bandage-core/walkHighlight'
@@ -110,6 +115,34 @@ function walkRowsFromCut(
   return runs ? walkRowsOf(runs, unit) : undefined
 }
 
+// undefined for a pane outside any track or view, as a test makes one
+function orUndefined<T>(get: () => T) {
+  try {
+    return get()
+  } catch {
+    return undefined
+  }
+}
+
+function nodeMapOf(graph: Graph) {
+  const m = new Map<string, GraphNode>()
+  for (const n of graph.nodes) {
+    m.set(n.id, n)
+  }
+  return m
+}
+
+// A node's reference interval, an allele's between its flanks
+function spanIn(
+  nodeId: string,
+  nodeById: Map<string, GraphNode> | undefined,
+  neighbors: ReturnType<typeof buildNeighbors> | undefined,
+) {
+  return nodeById && neighbors
+    ? nodeReferenceSpan({ nodeId, nodeById, neighbors })
+    : undefined
+}
+
 // The layout, node color and hover as a host stores them: a view of its own
 // as props, a track display in its config
 export interface GraphGrammar {
@@ -122,6 +155,8 @@ export interface GraphGrammar {
   hover?: HoverHighlight
 }
 
+type TubeColorKind = 'value' | 'tinted' | 'role' | 'path'
+
 // The rows walk rows draw: `kept` names the samples whose walks show, by the
 // name before the haplotype number; unset shows every walk the cut holds
 export interface GraphRows {
@@ -133,11 +168,6 @@ export const withGraphViews = paneBase
     get grammar(): GraphGrammar {
       return {}
     },
-    // Light paper even under a dark theme: Bandage's deletion edges, the
-    // deletion labels and the gene ink are near-black, and vanish on dark
-    get darkMode() {
-      return false
-    },
     // a source declared but not yet loaded
     get hasPendingSource() {
       return false
@@ -147,11 +177,10 @@ export const withGraphViews = paneBase
     },
     // the track the graph is cut from: the one the pane is a display of
     get sourceTrack(): AnyConfigurationModel | undefined {
-      try {
-        return getContainingTrack(self).configuration
-      } catch {
-        return undefined
-      }
+      return orUndefined(() => getContainingTrack(self).configuration)
+    },
+    get containingView(): object | undefined {
+      return orUndefined(() => getContainingView(self))
     },
   }))
   .views(self => {
@@ -254,14 +283,7 @@ export const withGraphViews = paneBase
   }))
   .views(self => ({
     get nodeById() {
-      if (self.drawnGraph) {
-        const m = new Map<string, GraphNode>()
-        for (const n of self.drawnGraph.nodes) {
-          m.set(n.id, n)
-        }
-        return m
-      }
-      return undefined
+      return self.drawnGraph && nodeMapOf(self.drawnGraph)
     },
     // bp per node id, which is all the label overlay needs of a GraphNode.
     // Held here rather than rebuilt in the component: that render runs on
@@ -356,13 +378,21 @@ export const withGraphViews = paneBase
         ? { start: open.start, end: open.end }
         : (self.statedColorDomain ?? self.graphRegion)
     },
-    // The ramp a lane coloured by reference position reads, computed only
-    // when a layer asks for one: it is a neighbour walk per node
+    // Every node's midpoint on the reference plus the interval the hue ramps
+    // over, on the drawn graph, whose ids a folded tube map's boxes carry.
+    // Deriving it is a bounded neighbour walk per node (referenceMidpoints):
+    // 1.6 ms at 1.5k nodes, 45 ms at 30k. It depends on nothing the
+    // transform touches, so a pan or drag frame reuses it, and the nodes and
+    // the lanes share it. Read only behind walkRamp's and referenceRamp's
+    // gates, so a colouring that ignores it never runs the walk.
+    get drawnReferenceRamp() {
+      const graph = self.drawnGraph
+      return graph ? computeReferenceRamp(graph, this.rampDomain) : undefined
+    },
+    // the ramp a lane coloured by reference position reads
     get walkRamp() {
-      const { graph } = self
-      return graph &&
-        self.walkLayers.some(layer => layer.color?.field === 'reference')
-        ? computeReferenceRamp(graph, this.rampDomain)
+      return self.walkLayers.some(layer => layer.color?.field === 'reference')
+        ? this.drawnReferenceRamp
         : undefined
     },
     // Whether the chosen layout draws the graph's nodes, which a facet
@@ -470,8 +500,13 @@ export const withGraphViews = paneBase
         ? 'uniform'
         : resolveColorScheme(self.chosenColorScheme, self.graph)
     },
+    // Panels lay their walks out without the reads
     get tubeMapReads() {
-      return (self.layoutResult?.tubeMap?.layout.reads.length ?? 0) > 0
+      const layout = self.layoutResult
+      return (
+        !layout?.tubeMapPanels &&
+        (layout?.tubeMap?.layout.reads.length ?? 0) > 0
+      )
     },
     // Why no node scheme is on screen to pick, for every control that
     // offers one: lifted walks colour their own lanes and grey the rest,
@@ -496,14 +531,9 @@ export const withGraphViews = paneBase
     get labelsNodeSizes() {
       return !self.layoutResult?.tubeMap && !this.walkLift
     },
-    // Empty rather than undefined: every consumer maps over it, and a layout
-    // with no row structure (FMMM) is a normal state, not a missing one.
-    get rowLabels() {
-      return self.layoutResult?.rowLabels ?? []
-    },
-    // Deletions the layout found inside an allele, empty for the same reason
-    // rowLabels is: a layout drawn at sequence scale states none, because
-    // there a node's drawn extent already IS its length. `deletions` beside
+    // Deletions the layout found inside an allele, empty rather than
+    // undefined: a layout drawn at sequence scale states none, because there
+    // a node's drawn extent already IS its length. `deletions` beside
     // this one is the bare-edge kind, which every layout has.
     get alleleDeletions() {
       return self.layoutResult?.alleleDeletions ?? []
@@ -634,22 +664,26 @@ export const withGraphViews = paneBase
       const track = self.sourceTrack
       return track ? (readConfObject(track, 'trackId') as string) : undefined
     },
+    // The session's tracks, each with the assemblies it covers by canonical
+    // name, since a track may name one by an alias
+    get sessionTracks() {
+      const session = getSession(self)
+      return session.tracks.map(t => ({
+        trackId: t.trackId as string,
+        name: readConfObject(t, 'name') as string,
+        adapterType: (readConfObject(t, 'adapter') as { type: string }).type,
+        assemblies: trackAssemblies(session, t),
+      }))
+    },
+  }))
+  .views(self => ({
     get assemblyTrackChoices() {
       const region = self.graphRegion
-      if (!region) {
-        return []
-      }
-      return getSession(self)
-        .tracks.filter(t =>
-          (readConfObject(t, 'assemblyNames') as string[]).includes(
-            region.assemblyName,
-          ),
-        )
-        .map(t => ({
-          trackId: t.trackId as string,
-          name: readConfObject(t, 'name') as string,
-          adapterType: (readConfObject(t, 'adapter') as { type: string }).type,
-        }))
+      const assembly =
+        region && canonicalAssemblyName(getSession(self), region.assemblyName)
+      return assembly
+        ? self.sessionTracks.filter(t => t.assemblies.includes(assembly))
+        : []
     },
   }))
   .views(self => ({
@@ -733,10 +767,8 @@ export const withGraphViews = paneBase
     },
     // the filter of the gene track's lane in the view the pane draws in
     get geneLaneFilter() {
-      let view: object
-      try {
-        view = getContainingView(self)
-      } catch {
+      const view = self.containingView
+      if (!view) {
         return undefined
       }
       const filters = laneFilters(view, self.geneTrack?.trackId)
@@ -755,14 +787,13 @@ export const withGraphViews = paneBase
         ? geneModelsFrom(lane ? features.filter(f => lane.passes(f)) : features)
         : undefined
     },
-  }))
-  .views(self => ({
     // The genes on the drawn backbone under its own refNames. The track's
     // config puts its reference on the cut's assembly, whatever the walk's
     // name. After "Draw x along" another walk, the backbone takes the genes
     // only where its PanSN prefix names their assembly.
     get backboneGenes() {
-      const { backbone, geneAssembly, geneFeatures } = self
+      const { backbone } = self
+      const { geneAssembly, geneFeatures } = this
       const binds =
         self.drawsLoadedReference ||
         (geneAssembly !== undefined &&
@@ -858,46 +889,47 @@ export const withGraphViews = paneBase
         unvalued: walks.some(w => valueOf(w) === ''),
       }
     },
+    // The grouping by a sample table column, once the table is read and
+    // has that column
+    get tableGroupBy() {
+      const groupBy = self.walkRowGroupBy
+      const table = self.walkRowSampleTable
+      return groupBy && table && this.walkRowGroupFields.includes(groupBy.field)
+        ? { groupBy, table }
+        : undefined
+    },
     // How a tube map splits into panels: by sample or walk, or by a sample
-    // table column once the table is read
+    // table column
     get tubeMapPanelSplit(): TubeMapPanelSplit | undefined {
       const { field, domain } = self.facetSetting
-      const groupBy = self.walkRowGroupBy
-      const table = self.walkRowSampleTable
+      const grouped = this.tableGroupBy
       return field !== ''
         ? { by: field, domain }
-        : groupBy && table && this.walkRowGroupFields.includes(groupBy.field)
-          ? { by: 'column', ...groupBy, table }
+        : grouped
+          ? { by: 'column', ...grouped.groupBy, table: grouped.table }
           : undefined
     },
-    // The filtered rows in a section per value of the grouped column, or
+    // the cohort's rows the sample filter keeps
+    get keptCohortRows() {
+      const bars = this.cohortWalkRows
+      return bars && filterSamples(bars.rows, self.walkRowSamples)
+    },
+    // The kept rows in a section per value of the grouped column, or
     // undefined while ungrouped or the table lacks that column
     get walkRowGroups() {
-      const bars = this.cohortWalkRows
-      const table = self.walkRowSampleTable
-      const groupBy = self.walkRowGroupBy
-      return bars &&
-        table &&
-        groupBy &&
-        this.walkRowGroupFields.includes(groupBy.field)
-        ? groupWalkRows(
-            filterSamples(bars.rows, self.walkRowSamples),
-            table,
-            groupBy,
-          )
+      const rows = this.keptCohortRows
+      const grouped = this.tableGroupBy
+      return rows && grouped
+        ? groupWalkRows(rows, grouped.table, grouped.groupBy)
         : undefined
     },
     // The bars the overlay draws: the cohort's, narrowed by the sample
     // filter, and stacked section by section while grouped
     get walkRowBars() {
       const bars = this.cohortWalkRows
-      return bars
-        ? {
-            ...bars,
-            rows:
-              this.walkRowGroups?.rows ??
-              filterSamples(bars.rows, self.walkRowSamples),
-          }
+      const rows = this.keptCohortRows
+      return bars && rows
+        ? { ...bars, rows: this.walkRowGroups?.rows ?? rows }
         : undefined
     },
     // Whether the canvas draws the graph's nodes. A tube map and walk rows
@@ -933,23 +965,11 @@ export const withGraphViews = paneBase
       }
       return bubbleHalos(self.graph, self.bubbles, positions, self.repeatArrays)
     },
-    // Every node's midpoint on the reference plus the interval the hue ramps
-    // over — what `reference-position` paints from, and undefined under every
-    // other scheme so the walk is never run for a colouring that ignores it.
-    //
-    // Here for the same reason `deletions` is, only more so: deriving it is a
-    // bounded neighbour walk PER NODE (referenceMidpoints), it depends on
-    // nothing the transform touches, and it was being redone inside every
-    // geometry rebuild — 1.6 ms at 1.5k nodes, 45 ms at 30k, on a pass that
-    // reruns on each debounced pan and each drag frame. `reference-position`
-    // is also what `auto` resolves to on any anchored graph, so this was the
-    // default path rather than an opt-in one.
-    //
-    // On the drawn graph, whose ids a folded tube map's boxes carry
+    // What `reference-position` paints from, which is also what `auto`
+    // resolves to on any anchored graph
     get referenceRamp() {
-      return self.effectiveColorScheme === 'reference-position' &&
-        self.drawnGraph
-        ? computeReferenceRamp(self.drawnGraph, self.rampDomain)
+      return self.effectiveColorScheme === 'reference-position'
+        ? self.drawnReferenceRamp
         : undefined
     },
     // The assemblies this view is showing, which is the interface every
@@ -979,12 +999,7 @@ export const withGraphViews = paneBase
     //
     // Everything that mixes the two axes takes their ratio as `yToX`
     // (scaleY / scaleX) — see computeEdgeCurves.
-    get scaleX() {
-      return axisScaleOf(self.scale, self.pixelRows).scaleX
-    },
-    get scaleY() {
-      return axisScaleOf(self.scale, self.pixelRows).scaleY
-    },
+    //
     // The pair, for everything that draws or hit-tests. Handed over as one
     // value on purpose: every consumer needs both, and passing them separately
     // let a caller supply the x scale and default y, which compiles and draws
@@ -992,8 +1007,29 @@ export const withGraphViews = paneBase
     get axisScale() {
       return axisScaleOf(self.scale, self.pixelRows)
     },
+    get scaleX() {
+      return this.axisScale.scaleX
+    },
+    get scaleY() {
+      return this.axisScale.scaleY
+    },
   }))
   .views(self => ({
+    // layout units to pane px
+    get screenTransform(): ScreenTransform {
+      return {
+        scaleX: self.scaleX,
+        scaleY: self.scaleY,
+        translateX: self.translateX,
+        translateY: self.translateY,
+      }
+    },
+    toScreen(p: { x: number; y: number }) {
+      return {
+        x: p.x * self.scaleX + self.translateX,
+        y: p.y * self.scaleY + self.translateY,
+      }
+    },
     get deletionDrawing() {
       return self.graph
         ? deletionDrawing(self.graph, self.allDeletions, self.showDeletionEdges)
@@ -1060,43 +1096,79 @@ export const withGraphViews = paneBase
           )
         : undefined
     },
-    // Beside tinted boxes, and past the walks a key can name, the tubes take
-    // their roles' colours: a hue per walk would either share a box's or
-    // identify nothing
+    // How a tube map colours its tubes: a hue per value of the column
+    // picked; grey by role beside tinted boxes, which a hue per walk would
+    // share; the reference charcoal and the haplotypes blue in a panel, whose
+    // title names its walks, and past the walks a key can name; else a hue
+    // per walk. Beside reads, which take the reds and blues, that hue is grey.
+    get tubeColorKind(): TubeColorKind | undefined {
+      const layout = self.layoutResult
+      const paths = self.drawnGraph?.paths ?? []
+      const reads = self.tubeMapReads
+      return !layout?.tubeMap
+        ? undefined
+        : self.tubeMapColoring && !reads
+          ? 'value'
+          : layout.tubeMapPanels
+            ? 'role'
+            : this.tubeMapNodeColors
+              ? 'tinted'
+              : !reads &&
+                  (!pathColorsLegible(paths.length) ||
+                    paths.some(p => p.members))
+                ? 'role'
+                : 'path'
+    },
+    // `graph`'s tubes as tubeColorKind colours them, `pathColors` being
+    // its drawing's hue per walk
+    tubeColorsOf(graph: Graph, pathColors: readonly string[]) {
+      const paths = graph.paths ?? []
+      const kind = this.tubeColorKind
+      const coloring = self.tubeMapColoring
+      return kind === 'value' && coloring
+        ? valueTubeColors(
+            paths,
+            graph.referencePath,
+            coloring.valueOf,
+            coloring.palette,
+          )
+        : kind === 'tinted'
+          ? roleTubeColors(paths, graph.referencePath, TINTED_TUBES)
+          : kind === 'role'
+            ? roleTubeColors(paths, graph.referencePath)
+            : pathColors
+    },
+    // While a lane row is hovered, every tube but its walks' and `kept`'s
+    // fades. A panel keeps its reference to compare against; the unsplit map
+    // fades it with the rest.
+    fadeUnhovered(
+      colors: readonly string[],
+      paths: readonly { name: string }[],
+      kept?: string,
+    ) {
+      const hovered = new Set(self.hoveredRowWalks)
+      return hovered.size > 0
+        ? colors.map((color, i) => {
+            const name = paths[i]?.name ?? ''
+            return hovered.has(name) ||
+              (kept !== undefined && pathOrigin(name).name === kept)
+              ? color
+              : LIFT_BACKDROP_CSS
+          })
+        : colors
+    },
     get tubeMapTubeColors() {
       const drawing = self.layoutResult?.tubeMap
-      const colors = drawing?.pathColors
-      const paths = self.drawnGraph?.paths
-      const coloring = self.tubeMapColoring
-      const tubes =
-        colors && paths && coloring && drawing.layout.reads.length === 0
-          ? valueTubeColors(
-              paths,
-              self.drawnGraph.referencePath,
-              coloring.valueOf,
-              coloring.palette,
-            )
-          : colors && paths && this.tubeMapNodeColors
-            ? roleTubeColors(paths, self.drawnGraph.referencePath, TINTED_TUBES)
-            : colors &&
-                paths &&
-                drawing.layout.reads.length === 0 &&
-                (!pathColorsLegible(paths.length) || paths.some(p => p.members))
-              ? roleTubeColors(paths, self.drawnGraph.referencePath)
-              : colors
-      const hovered = new Set(self.hoveredRowWalks)
-      return tubes && paths && hovered.size > 0
-        ? tubes.map((color, i) =>
-            hovered.has(paths[i]?.name ?? '') ? color : LIFT_BACKDROP_CSS,
+      const graph = self.drawnGraph
+      return drawing && graph
+        ? this.fadeUnhovered(
+            this.tubeColorsOf(graph, drawing.pathColors),
+            graph.paths ?? [],
           )
-        : tubes
-    },
-    // A node's reference interval, an allele's between its flanks
-    nodeSpan(nodeId: string) {
-      const { nodeById, nodeNeighbors: neighbors } = self
-      return nodeById && neighbors
-        ? nodeReferenceSpan({ nodeId, nodeById, neighbors })
         : undefined
+    },
+    nodeSpan(nodeId: string) {
+      return spanIn(nodeId, self.nodeById, self.nodeNeighbors)
     },
     // The drawing the pointer is over: its panel's while a tube map is split,
     // each panel laid out alone and merging its own runs
@@ -1109,22 +1181,18 @@ export const withGraphViews = paneBase
         self.layoutResult?.tubeMap
       )
     },
-  }))
-  .views(self => ({
     // the graph whose ids the hover names
     get hoverGraph() {
-      return self.hoverDrawing?.graph ?? self.drawnGraph
+      return this.hoverDrawing?.graph ?? self.drawnGraph
     },
-  }))
-  .views(self => ({
     get hoverNodeById() {
-      const graph = self.hoverGraph
+      const graph = this.hoverGraph
       return graph === self.drawnGraph
         ? self.nodeById
-        : graph && new Map(graph.nodes.map(n => [n.id, n]))
+        : graph && nodeMapOf(graph)
     },
     get hoverNeighbors() {
-      const graph = self.hoverGraph
+      const graph = this.hoverGraph
       return graph === self.drawnGraph
         ? self.nodeNeighbors
         : graph && buildNeighbors(graph)
@@ -1137,20 +1205,17 @@ export const withGraphViews = paneBase
     // Empty unless the ribbons are actually on: a colour key beside a drawing
     // with no colours in it is a legend for nothing.
     // The tube map colours its tubes whether or not paths are drawn on the
-    // nodes, so under it the key follows the tubes, and names the colours
-    // the tubes were drawn in.
+    // nodes, so under it the key follows the tubes: walk by walk where each
+    // has a hue, and otherwise the tube map's own key names the colours.
     get pathLegend() {
       const paths = self.drawnGraph?.paths
-      const tubeMap = self.layoutResult?.tubeMap
-      const colouring = self.drawPaths || tubeMap
-      // tubes coloured by role or by a column take the tube map's role or value key
-      return colouring &&
+      const keyed = self.layoutResult?.tubeMap
+        ? self.tubeColorKind === 'path'
+        : self.drawPaths
+      return keyed &&
         paths &&
         pathColorsLegible(paths.length) &&
-        !self.layoutResult?.tubeMapPanels &&
-        !self.tubeMapNodeColors &&
-        !paths.some(p => p.members) &&
-        !self.tubeMapColoring
+        !paths.some(p => p.members)
         ? pathLegend(paths, self.tubeMapTubeColors)
         : []
     },
@@ -1159,24 +1224,18 @@ export const withGraphViews = paneBase
     get hoveredSpan() {
       const nodeId = self.hoveredNode
       const bubble = self.hoveredBubble
-      const nodeById = self.hoverNodeById
-      const neighbors = self.hoverNeighbors
       return nodeId !== null
-        ? nodeById && neighbors
-          ? nodeReferenceSpan({ nodeId, nodeById, neighbors })
-          : undefined
+        ? spanIn(nodeId, self.hoverNodeById, self.hoverNeighbors)
         : bubble && !bubble.offReference
           ? { start: bubble.start, end: bubble.end }
           : undefined
     },
-  }))
-  .views(self => ({
     // The hovered span, for a connected linear view to highlight. Only a
     // graph cut from a track has one: a whole-file import has no region, and
     // its stable names need not name anything in a loaded assembly.
     get hoverHighlight() {
       const region = self.graphRegion
-      const span = self.hoveredSpan
+      const span = this.hoveredSpan
       return region && span && self.chosenHover !== 'off'
         ? {
             refName: region.refName,

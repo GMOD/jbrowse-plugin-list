@@ -49,6 +49,14 @@ export function requestedPairs(opts: LaneFeatureOptions): LanePair[] {
   }
 }
 
+// The status a fetch of lane pairs shows while it reads
+export function lanePairsStatus(pairs: LanePair[]) {
+  const [first] = pairs
+  return pairs.length === 1 && first
+    ? `Reading ${first.queryAssemblyName} against ${first.targetAssemblyName}`
+    : `Reading ${pairs.length} lane pairs`
+}
+
 /**
  * The lane a haplotype draws on: the JBrowse assembly the config maps to its
  * `sample#haplotype` prefix, else to its sample, else the prefix itself. The

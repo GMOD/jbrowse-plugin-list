@@ -38,6 +38,9 @@ const GraphToolbar = observer(function GraphToolbar({
   model: GraphPaneModel
 }) {
   const { classes } = useStyles()
+  const zoomAboutCentre = (factor: number) => {
+    model.zoom(factor, model.viewBox.width / 2, model.viewBox.height / 2)
+  }
   return (
     <div className={classes.toolbar}>
       <LayoutSelect model={model} />
@@ -48,7 +51,7 @@ const GraphToolbar = observer(function GraphToolbar({
         <IconButton
           size="small"
           onClick={() => {
-            model.zoom(1.5, model.viewBox.width / 2, model.viewBox.height / 2)
+            zoomAboutCentre(1.5)
           }}
         >
           <ZoomInIcon />
@@ -58,11 +61,7 @@ const GraphToolbar = observer(function GraphToolbar({
         <IconButton
           size="small"
           onClick={() => {
-            model.zoom(
-              1 / 1.5,
-              model.viewBox.width / 2,
-              model.viewBox.height / 2,
-            )
+            zoomAboutCentre(1 / 1.5)
           }}
         >
           <ZoomOutIcon />

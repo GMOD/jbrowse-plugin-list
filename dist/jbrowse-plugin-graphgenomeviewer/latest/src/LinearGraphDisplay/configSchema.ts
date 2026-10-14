@@ -5,8 +5,6 @@ import { types } from '@jbrowse/mobx-state-tree'
 
 import { HOVER_HIGHLIGHT_VALUES } from '../GraphGenomeView/hoverHighlight'
 
-import type { Instance } from '@jbrowse/mobx-state-tree'
-
 /**
  * #config LinearGraphDisplay
  * The graph drawn as a track of the linear genome view. A layout whose x is
@@ -105,4 +103,3 @@ export function configSchemaFactory() {
 export type LinearGraphDisplayConfigModel = ReturnType<
   typeof configSchemaFactory
 >
-export type LinearGraphDisplayConfig = Instance<LinearGraphDisplayConfigModel>

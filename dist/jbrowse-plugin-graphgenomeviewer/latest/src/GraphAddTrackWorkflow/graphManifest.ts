@@ -76,10 +76,22 @@ export function besideSegments(segs: FileLocation, fileName: string) {
   return renamed(segs, name => name.replace(/[^/\\]*$/, fileName))
 }
 
+// A segments BED the links BED and the manifest can be found beside
+export function isSegmentsLocation(loc: FileLocation) {
+  return readsSiblings(loc) && locationName(loc).endsWith(SEGMENTS_SUFFIX)
+}
+
+// `<prefix><suffix>` beside `<prefix>.segs.bed.gz`
+export function segmentsSibling(segs: FileLocation, suffix: string) {
+  return renamed(
+    segs,
+    name => `${name.slice(0, -SEGMENTS_SUFFIX.length)}${suffix}`,
+  )
+}
+
 export function manifestLocation(segs: FileLocation) {
-  const name = locationName(segs)
-  return readsSiblings(segs) && name.endsWith(SEGMENTS_SUFFIX)
-    ? renamed(segs, n => `${n.slice(0, -SEGMENTS_SUFFIX.length)}.graph.json`)
+  return isSegmentsLocation(segs)
+    ? segmentsSibling(segs, '.graph.json')
     : undefined
 }
 

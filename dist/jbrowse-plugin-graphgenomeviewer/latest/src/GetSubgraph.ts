@@ -1,7 +1,8 @@
 import { gfaTables } from '@jbrowse/bandage-core/gfa/gfaTables'
-import { getAdapter } from '@jbrowse/core/data_adapters/dataAdapterCache'
 import { RpcMethodTypeWithRenameRegion } from '@jbrowse/core/pluggableElementTypes'
 import { rpcResultWithArrayBuffers } from '@jbrowse/core/util/librpc'
+
+import { adapterImplementing } from './adapterImplementing'
 
 import type { WalkCut } from './RgfaTabixAdapter/walkRowRuns.ts'
 import type { RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry'
@@ -72,13 +73,6 @@ interface SubgraphAdapter {
   ): Promise<string | WalkCut>
 }
 
-function isSubgraphAdapter(adapter: object): adapter is SubgraphAdapter {
-  return (
-    'getSubgraph' in adapter &&
-    typeof (adapter as SubgraphAdapter).getSubgraph === 'function'
-  )
-}
-
 // RpcMethodTypeWithRenameRegion, not the plain RpcMethodType: the base class is
 // what maps `region.refName` from the assembly's spelling onto the adapter's own
 // before the call crosses to the worker. Without it a launch on an hg38 whose
@@ -100,28 +94,25 @@ export default class GetSubgraph extends RpcMethodTypeWithRenameRegion<'GetSubgr
     // `signal` arrives on every call and has to be named to be forwarded:
     // unnamed, a cut the view had replaced went on querying to the end, one
     // tabix read per off-reference segment per hop.
-    const { adapterConfig, region, sessionId, opts, signal } = args
-
-    const { dataAdapter } = await getAdapter(
+    const { region, opts, signal } = args
+    const { adapter, name } = await adapterImplementing<SubgraphAdapter>(
       this.pluginManager,
-      sessionId,
-      adapterConfig,
+      args,
+      'getSubgraph',
     )
     // A text cut is read into tables here, off the main thread: a GBZ cut of
     // every haplotype is tens of MB of W lines
-    if (isSubgraphAdapter(dataAdapter)) {
-      const cut = await dataAdapter.getSubgraph(region, { ...opts, signal })
+    if (adapter) {
+      const cut = await adapter.getSubgraph(region, { ...opts, signal })
       if (typeof cut !== 'string') {
         return rpcResultWithArrayBuffers(cut)
       }
       const tables = cut ? gfaTables(cut) : undefined
       return tables ? rpcResultWithArrayBuffers(tables) : cut
     }
-    // An empty result is how the view and the launch menu detect "this track
-    // can't do subgraphs" — see the pane's cutSubgraph.
-    console.warn(
-      `[GetSubgraph] ${dataAdapter.constructor.name} does not implement getSubgraph`,
-    )
+    // The pane's cutSubgraph reports an empty result as a track that cannot
+    // cut subgraphs
+    console.warn(`[GetSubgraph] ${name} does not implement getSubgraph`)
     return ''
   }
 }

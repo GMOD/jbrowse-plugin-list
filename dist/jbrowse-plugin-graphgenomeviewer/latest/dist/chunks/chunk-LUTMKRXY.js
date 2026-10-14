@@ -1,2 +1,0 @@
-function n(e){return e instanceof Error&&(e.name==="NodeLimitError"||e.regionTooLarge===!0||/reads more than nodeLimit|^Subgraph size limit of \d+ nodes exceeded/.test(e.message))}function o(e,t){if(e?.refName!==t.refName||e.assemblyName!==t.assemblyName)return!1;let r=e.end-e.start;return t.end-t.start>=r&&t.end>e.start-r&&t.start<e.end+r}export{n as a,o as b};
-//# sourceMappingURL=chunk-LUTMKRXY.js.map

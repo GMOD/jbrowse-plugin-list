@@ -35,6 +35,7 @@ import { HOVER_HIGHLIGHT_VALUES } from '../hoverHighlight'
 import { TUBE_MAP_PANELS, tubeMapPanelGroups } from '../tubeMapPanels'
 
 import type { GraphLocation } from '../../launchFromGraph/contributors'
+import type { GraphLayer } from '../graphLayers'
 import type { TubeMapPanelSplit } from '../tubeMapPanels'
 import type { ColorScheme } from '@jbrowse/bandage-core/colorSchemes'
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
@@ -47,6 +48,22 @@ const ENGINE_NAMES: readonly (readonly [LayoutEngineKind, string])[] = [
 
 const layoutMenuLabel = (mode: { label: string }) =>
   mode.label.replace(/ layout$/, '')
+
+function radioItems<T>(
+  options: readonly { value: T; label: string; disabled?: boolean }[],
+  current: T | undefined,
+  onPick: (value: T) => void,
+): MenuItem[] {
+  return options.map(({ value, label, disabled }) => ({
+    type: 'radio',
+    label,
+    disabled,
+    checked: value === current,
+    onClick: () => {
+      onPick(value)
+    },
+  }))
+}
 
 export const withLaunchActions = withRenderingActions
   .actions(self => ({
@@ -156,24 +173,16 @@ export const withLaunchActions = withRenderingActions
     // Which sample table column walk rows stack into sections by
     walkRowGroupMenuItems(): MenuItem[] {
       const field = self.walkRowGroups ? self.walkRowGroupBy?.field : undefined
-      return [
-        {
-          type: 'radio',
-          label: 'None',
-          checked: field === undefined,
-          onClick: () => {
-            self.setWalkRowGroupBy(undefined)
-          },
+      return radioItems(
+        [
+          { value: undefined, label: 'None' },
+          ...self.walkRowGroupFields.map(c => ({ value: c, label: c })),
+        ],
+        field,
+        c => {
+          self.setWalkRowGroupBy(c === undefined ? undefined : { field: c })
         },
-        ...self.walkRowGroupFields.map(column => ({
-          type: 'radio' as const,
-          label: column,
-          checked: field === column,
-          onClick: () => {
-            self.setWalkRowGroupBy({ field: column })
-          },
-        })),
-      ]
+      )
     },
     // A tube map's panels: none, a sample's or a walk's each, or a group of
     // samples' each by a column of the source track's sample table
@@ -184,28 +193,32 @@ export const withLaunchActions = withRenderingActions
       const splits = (split: TubeMapPanelSplit) =>
         !!graph && tubeMapPanelGroups(graph, split).length > 1
       return [
-        ...TUBE_MAP_PANELS.map(item => ({
-          type: 'radio' as const,
-          label: item.label,
-          checked: item.field === field && (field !== '' || !column),
-          disabled: item.field !== '' && !splits({ by: item.field }),
-          onClick: () => {
-            self.setFacet(item.field)
-            if (item.field === '') {
+        ...radioItems(
+          TUBE_MAP_PANELS.map(item => ({
+            value: item.field,
+            label: item.label,
+            disabled: item.field !== '' && !splits({ by: item.field }),
+          })),
+          column ? undefined : field,
+          by => {
+            self.setFacet(by)
+            if (by === '') {
               self.setWalkRowGroupBy(undefined)
             }
           },
-        })),
-        ...self.walkRowGroupFields.map(c => ({
-          type: 'radio' as const,
-          label: `By ${c}`,
-          checked: column === c,
-          disabled: !table || !splits({ by: 'column', field: c, table }),
-          onClick: () => {
+        ),
+        ...radioItems(
+          self.walkRowGroupFields.map(c => ({
+            value: c,
+            label: `By ${c}`,
+            disabled: !table || !splits({ by: 'column', field: c, table }),
+          })),
+          column,
+          c => {
             self.setFacet('')
             self.setWalkRowGroupBy({ field: c })
           },
-        })),
+        ),
       ]
     },
     // `repeat` false where a toolbar already picks the repeat
@@ -215,16 +228,16 @@ export const withLaunchActions = withRenderingActions
           ? [
               {
                 label: 'Fold variants',
-                subMenu: TUBE_MAP_FOLDS.map(({ bp, label }) => ({
-                  type: 'radio' as const,
-                  label,
-                  // reads are placed by the cut's names, which a fold renames
-                  checked: (self.graph?.reads ? 0 : self.tubeMapFold) === bp,
-                  disabled: bp > 0 && self.graph?.reads !== undefined,
-                  onClick: () => {
-                    self.setTubeMapFold(bp)
-                  },
-                })),
+                // reads are placed by the cut's names, which a fold renames
+                subMenu: radioItems(
+                  TUBE_MAP_FOLDS.map(({ bp, label }) => ({
+                    value: bp,
+                    label,
+                    disabled: bp > 0 && self.graph?.reads !== undefined,
+                  })),
+                  self.graph?.reads ? 0 : self.tubeMapFold,
+                  self.setTubeMapFold,
+                ),
               },
               {
                 label: 'Panels',
@@ -232,27 +245,24 @@ export const withLaunchActions = withRenderingActions
               },
               {
                 label: 'Routes',
-                subMenu: TUBE_MAP_ROUTES.map(({ value, label }) => ({
-                  type: 'radio' as const,
-                  label,
-                  checked: self.tubeMapRoutes === value,
-                  onClick: () => {
-                    self.setTubeMapRoutes(value)
-                  },
-                })),
+                subMenu: radioItems(
+                  TUBE_MAP_ROUTES,
+                  self.tubeMapRoutes,
+                  self.setTubeMapRoutes,
+                ),
               },
               ...(self.walkRowGroupFields.length > 0
                 ? [
                     {
                       label: 'Tube color',
-                      subMenu: ['', ...self.walkRowGroupFields].map(field => ({
-                        type: 'radio' as const,
-                        label: field ? `By ${field}` : 'By role',
-                        checked: self.tubeMapColorBy === field,
-                        onClick: () => {
-                          self.setTubeMapColorBy(field)
-                        },
-                      })),
+                      subMenu: radioItems(
+                        ['', ...self.walkRowGroupFields].map(field => ({
+                          value: field,
+                          label: field ? `By ${field}` : 'By role',
+                        })),
+                        self.tubeMapColorBy,
+                        self.setTubeMapColorBy,
+                      ),
                     },
                   ]
                 : []),
@@ -264,24 +274,17 @@ export const withLaunchActions = withRenderingActions
           ? [
               {
                 label: 'Repeat',
-                subMenu: [
-                  {
-                    type: 'radio' as const,
-                    label: 'Whole window',
-                    checked: !self.selectedRepeat,
-                    onClick: () => {
-                      self.setRepeatKey('')
-                    },
-                  },
-                  ...self.repeatChoices.map(({ key, name, unit }) => ({
-                    type: 'radio' as const,
-                    label: `${name} · ${unit.toLocaleString()} bp unit`,
-                    checked: self.repeatKey === key,
-                    onClick: () => {
-                      self.setRepeatKey(key)
-                    },
-                  })),
-                ],
+                subMenu: radioItems(
+                  [
+                    { value: '', label: 'Whole window' },
+                    ...self.repeatChoices.map(({ key, name, unit }) => ({
+                      value: key,
+                      label: `${name} · ${unit.toLocaleString()} bp unit`,
+                    })),
+                  ],
+                  self.selectedRepeat?.key ?? '',
+                  self.setRepeatKey,
+                ),
               },
             ]
           : []),
@@ -296,53 +299,31 @@ export const withLaunchActions = withRenderingActions
       ]
     },
     showMenuItems(): MenuItem[] {
+      const layerItem = (label: string, layer: GraphLayer) => ({
+        type: 'checkbox' as const,
+        label,
+        checked: self.layerSet.has(layer),
+        onClick: () => {
+          self.setLayer(layer, !self.layerSet.has(layer))
+        },
+      })
       return [
-        {
-          type: 'checkbox',
-          label: 'Show bubble halos',
-          checked: self.showBubbles,
-          onClick: () => {
-            self.setShowBubbles(!self.showBubbles)
-          },
-        },
-        {
-          type: 'checkbox',
-          label: 'Show deletion edges',
-          checked: self.showDeletionEdges,
-          onClick: () => {
-            void self.toggleDeletionEdges()
-          },
-        },
+        layerItem('Show bubble halos', 'bubbles'),
+        layerItem('Show deletion edges', 'deletions'),
         {
           label: 'Hover highlight',
-          subMenu: HOVER_HIGHLIGHT_VALUES.map(value => ({
-            type: 'radio' as const,
-            label: value[0]!.toUpperCase() + value.slice(1),
-            checked: self.chosenHover === value,
-            onClick: () => {
-              self.setHover(value)
-            },
-          })),
+          subMenu: radioItems(
+            HOVER_HIGHLIGHT_VALUES.map(value => ({
+              value,
+              label: value[0]!.toUpperCase() + value.slice(1),
+            })),
+            self.chosenHover,
+            self.setHover,
+          ),
         },
-        {
-          type: 'checkbox',
-          label: 'Show genes on the backbone',
-          checked: self.showGenes,
-          onClick: () => {
-            self.setShowGenes(!self.showGenes)
-          },
-        },
+        layerItem('Show genes on the backbone', 'genes'),
         ...(self.referenceStripApplies
-          ? [
-              {
-                type: 'checkbox' as const,
-                label: 'Show reference strip',
-                checked: self.showReferenceStrip,
-                onClick: () => {
-                  self.setShowReferenceStrip(!self.showReferenceStrip)
-                },
-              },
-            ]
+          ? [layerItem('Show reference strip', 'referenceStrip')]
           : []),
       ]
     },
@@ -448,14 +429,14 @@ export const withLaunchActions = withRenderingActions
         ...(self.walkLayers.length > 1 && self.modeDrawsNodes
           ? [
               { type: 'subHeader' as const, label: 'Arrange' },
-              ...FACET_FIELDS.map(({ value, label }) => ({
-                type: 'radio' as const,
-                label: value === 'walk' ? 'A panel per haplotype' : label,
-                checked: self.facetSetting.field === value,
-                onClick: () => {
-                  self.setFacet(value)
-                },
-              })),
+              ...radioItems(
+                FACET_FIELDS.map(({ value, label }) => ({
+                  value,
+                  label: value === 'walk' ? 'A panel per haplotype' : label,
+                })),
+                self.facetSetting.field,
+                self.setFacet,
+              ),
             ]
           : []),
       ]
@@ -489,10 +470,7 @@ export const withLaunchActions = withRenderingActions
                       self.chosenLayoutMode === mode.value &&
                       self.layoutEngine === engine,
                     onClick: () => {
-                      self.setLayoutEngine(engine)
-                      void (self.chosenLayoutMode === mode.value
-                        ? self.recomputeLayout()
-                        : self.switchLayout(mode.value))
+                      void self.switchForceEngine(engine)
                     },
                   }))
                 : [
@@ -527,14 +505,14 @@ export const withLaunchActions = withRenderingActions
           icon: PaletteIcon,
           disabled: self.colorSchemeLock !== undefined,
           disabledHelpText: self.colorSchemeLock?.why,
-          subMenu: COLOR_SCHEMES.map(scheme => ({
-            type: 'radio' as const,
-            label: this.colorSchemeLabel(scheme.value),
-            checked: self.chosenColorScheme === scheme.value,
-            onClick: () => {
-              self.setColorScheme(scheme.value)
-            },
-          })),
+          subMenu: radioItems(
+            COLOR_SCHEMES.map(({ value }) => ({
+              value,
+              label: this.colorSchemeLabel(value),
+            })),
+            self.chosenColorScheme,
+            self.setColorScheme,
+          ),
         },
         {
           label: 'Show...',

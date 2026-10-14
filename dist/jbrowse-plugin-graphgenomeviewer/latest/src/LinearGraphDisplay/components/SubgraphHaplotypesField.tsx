@@ -14,12 +14,8 @@ const useStyles = makeStyles()({
   },
 })
 
-export function parseHaplotypeList(text: string) {
-  const names = text
-    .split(/[\s,]+/)
-    .map(name => name.trim())
-    .filter(name => name !== '')
-  return names.length === 0 ? undefined : names
+function parseHaplotypeList(text: string) {
+  return text.split(/[\s,]+/).filter(name => name !== '')
 }
 
 const HaplotypeListField = observer(function HaplotypeListField({
@@ -29,12 +25,12 @@ const HaplotypeListField = observer(function HaplotypeListField({
 }) {
   const [draft, setDraft] = useState(model.cutHaplotypes?.join(', ') ?? '')
   const apply = () => {
-    const parsed = parseHaplotypeList(draft) ?? []
+    const parsed = parseHaplotypeList(draft)
     const unchanged =
       parsed.join('\n') === (model.cutHaplotypes ?? []).join('\n')
     if (!unchanged) {
       model.setSubgraphHaplotypes(parsed)
-      void model.cut()
+      model.recut()
     }
   }
   return (
@@ -74,7 +70,7 @@ const HaplotypePickField = observer(function HaplotypePickField({
   const apply = (haplotypes: string[]) => {
     if (haplotypes.join('\n') !== (model.cutHaplotypes ?? []).join('\n')) {
       model.setSubgraphHaplotypes(haplotypes)
-      void model.cut()
+      model.recut()
     }
   }
   return (
@@ -127,7 +123,8 @@ const SubgraphHaplotypesField = observer(function SubgraphHaplotypesField({
   const { classes } = useStyles()
   const names = model.haplotypeNames
   const key = model.cutHaplotypes?.join(',') ?? ''
-  return cutsByHaplotype(model.adapterConfig) ? (
+  const adapter = model.sourceAdapter
+  return adapter && cutsByHaplotype(adapter) ? (
     <div className={classes.section}>
       {names ? (
         <HaplotypePickField key={key} model={model} names={names} />

@@ -10,7 +10,7 @@ import {
 
 import type { SxProps } from '@mui/material'
 
-export interface SelectOption<T extends string> {
+interface SelectOption<T extends string> {
   value: T
   label: string
   // an option's tooltip, and the reason under a disabled one, whose tooltip

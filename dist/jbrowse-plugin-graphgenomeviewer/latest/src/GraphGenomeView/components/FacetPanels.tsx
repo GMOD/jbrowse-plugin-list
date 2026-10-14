@@ -10,6 +10,7 @@ import { LegendRowView } from './Legend'
 import { useWheelZoom } from './usePaneGestures'
 import { facetKeyRows, walkKeyRow } from '../legendSections'
 import { FACET_KEY_ROW_PX } from '../pane/fitViews'
+import { PAPER_CSS } from '../pane/paneBase'
 
 import type { PaneHandlers } from './usePaneGestures'
 import type { GraphPaneModel } from '../model'
@@ -64,6 +65,7 @@ const FacetPanel = observer(function FacetPanel({
   height,
   cell,
   handlers,
+  canvasStyle,
 }: {
   model: GraphPaneModel
   lift: WalkLift
@@ -71,6 +73,7 @@ const FacetPanel = observer(function FacetPanel({
   height: number
   cell: { gridRow: number; gridColumn: number }
   handlers: PaneHandlers
+  canvasStyle: React.CSSProperties
 }) {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const [hoverCanvas, setHoverCanvas] = useState<HTMLCanvasElement | null>(null)
@@ -83,12 +86,14 @@ const FacetPanel = observer(function FacetPanel({
     }
     const renderer = new Canvas2DRenderer(canvas)
     const hover = new Canvas2DRenderer(hoverCanvas)
-    renderer.resize(width, height)
-    hover.resize(width, height)
     const drawing = computed(() => model.buildDrawing(lift, false))
     let uploaded: ReturnType<typeof model.buildDrawing>
     const disposers = [
       autorun(() => {
+        const grid = model.facetGrid
+        if (grid) {
+          renderer.resize(grid.width, grid.height)
+        }
         const built = drawing.get()
         if (!built) {
           return
@@ -101,6 +106,10 @@ const FacetPanel = observer(function FacetPanel({
         model.paint(renderer)
       }),
       autorun(() => {
+        const grid = model.facetGrid
+        if (grid) {
+          hover.resize(grid.width, grid.height)
+        }
         const built = drawing.get()
         if (built) {
           model.paintHover(hover, built.batch)
@@ -114,7 +123,7 @@ const FacetPanel = observer(function FacetPanel({
       renderer.dispose()
       hover.dispose()
     }
-  }, [canvas, hoverCanvas, model, lift, width, height])
+  }, [canvas, hoverCanvas, model, lift])
 
   const label = model.walkLabel(walk.name)
   return (
@@ -138,14 +147,7 @@ const FacetPanel = observer(function FacetPanel({
         <canvas
           ref={setCanvas}
           data-testid="graph-facet-canvas"
-          style={{
-            width,
-            height,
-            display: 'block',
-            cursor: model.isPanning || model.draggingNode ? 'grabbing' : 'grab',
-            touchAction: model.hostPlacesX ? 'auto' : 'none',
-            overscrollBehavior: 'contain',
-          }}
+          style={{ ...canvasStyle, width, height, display: 'block' }}
           {...handlers}
         />
         <canvas ref={setHoverCanvas} style={hoverLayerStyle} />
@@ -157,9 +159,11 @@ const FacetPanel = observer(function FacetPanel({
 const FacetPanels = observer(function FacetPanels({
   model,
   handlers,
+  canvasStyle,
 }: {
   model: GraphPaneModel
   handlers: PaneHandlers
+  canvasStyle: React.CSSProperties
 }) {
   const panels = model.facetPanels
   const grid = model.facetGrid
@@ -176,7 +180,7 @@ const FacetPanels = observer(function FacetPanels({
         width: model.paneWidth,
         minHeight: model.canvasHeight,
         gridTemplateColumns: `repeat(${columns}, ${width}px)`,
-        background: model.darkMode ? '#1f1f1f' : 'white',
+        background: PAPER_CSS,
       }}
     >
       {panels.map((lift, i) => (
@@ -191,6 +195,7 @@ const FacetPanels = observer(function FacetPanels({
             gridColumn: (place.cells[i]! % columns) + 1,
           }}
           handlers={handlers}
+          canvasStyle={canvasStyle}
         />
       ))}
       <div

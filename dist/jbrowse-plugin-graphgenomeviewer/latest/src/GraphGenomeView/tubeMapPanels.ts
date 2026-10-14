@@ -4,6 +4,8 @@ import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 import { drawTubeMapHighlight } from '@jbrowse/bandage-core/tubeMap/draw'
 import { groupKeyComparator } from '@jbrowse/core/util/groupKeys'
 
+import { columnValueOf, groupsByColumn, plural } from './walkRowGroups'
+
 import type { SampleRow } from './walkRowGroups'
 import type { FacetBy } from '@jbrowse/bandage-core/facetGrid'
 import type { TubeMapDrawing } from '@jbrowse/bandage-core/layout/tubeMapLayout'
@@ -115,18 +117,13 @@ export function valueTubeColors(
   })
 }
 
-// A walk's value in a column: its haplotype's row (`HG00097#1`), else its
-// sample's, as groupWalkRows reads it
+// A PanSN walk's value in a column
 export function columnKeyOf(field: string, table: SampleRow[]) {
-  const valueOf = new Map(table.map(row => [row.name, row[field] ?? '']))
+  const valueOf = columnValueOf(field, table)
   return (walk: string) => {
     const { sample, haplotype } = parsePanSN(walk)
-    return valueOf.get(`${sample}#${haplotype}`) || valueOf.get(sample) || ''
+    return valueOf(`${sample}#${haplotype}`, sample)
   }
-}
-
-function plural(n: number, noun: string) {
-  return `${n} ${noun}${n === 1 ? '' : 's'}`
 }
 
 // Each non-reference walk's group
@@ -134,37 +131,32 @@ export function tubeMapPanelGroups(
   graph: Graph,
   split: TubeMapPanelSplit,
 ): TubeMapPanelGroup[] {
-  const keyOf =
-    split.by === 'column'
-      ? columnKeyOf(split.field, split.table)
-      : split.by === 'sample'
-        ? (walk: string) => parsePanSN(walk).sample
-        : (walk: string) => walk
-  const groups = new Map<string, string[]>()
-  for (const { name } of graph.paths ?? []) {
-    const walk = walkOf(name)
-    if (walk !== graph.referencePath) {
-      const key = keyOf(walk)
-      const list = groups.get(key)
-      if (list) {
-        list.push(name)
-      } else {
-        groups.set(key, [name])
-      }
-    }
-  }
+  const names = (graph.paths ?? [])
+    .map(p => p.name)
+    .filter(name => walkOf(name) !== graph.referencePath)
   if (split.by === 'column') {
-    return [...groups.keys()]
-      .sort(groupKeyComparator(split.domain))
-      .map(key => {
-        const paths = groups.get(key)!
-        const samples = new Set(paths.map(p => parsePanSN(walkOf(p)).sample))
-        return {
-          key,
-          paths,
-          label: `${key || `${split.field}: none`} · ${plural(samples.size, 'sample')}`,
-        }
-      })
+    const keyOf = columnKeyOf(split.field, split.table)
+    return groupsByColumn(
+      names,
+      name => keyOf(walkOf(name)),
+      split,
+      'sample',
+      name => parsePanSN(walkOf(name)).sample,
+    ).map(({ key, members, title }) => ({ key, paths: members, label: title }))
+  }
+  const keyOf =
+    split.by === 'sample'
+      ? (walk: string) => parsePanSN(walk).sample
+      : (walk: string) => walk
+  const groups = new Map<string, string[]>()
+  for (const name of names) {
+    const key = keyOf(walkOf(name))
+    const list = groups.get(key)
+    if (list) {
+      list.push(name)
+    } else {
+      groups.set(key, [name])
+    }
   }
   const domain = split.domain ?? []
   const rank = new Map(domain.map((key, i) => [key, i]))

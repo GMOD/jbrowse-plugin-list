@@ -3,7 +3,7 @@ import type { SubgraphRegion } from '../GetSubgraph'
 // The members of a LinearGenomeView a hosted pane reads and drives.
 // Structural, because this plugin takes no runtime dependency on the LGV
 // plugin (see hoverSync/index.tsx).
-export interface HostBlock {
+interface HostBlock {
   refName: string
   assemblyName: string
   start: number

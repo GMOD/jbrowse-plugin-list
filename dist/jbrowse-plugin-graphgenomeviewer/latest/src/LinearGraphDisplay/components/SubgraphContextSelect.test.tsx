@@ -9,7 +9,7 @@ const shown = (adapterConfig: Record<string, unknown>) => {
     <SubgraphContextSelect
       model={
         {
-          adapterConfig,
+          sourceAdapter: adapterConfig,
           subgraphContext: 1,
         } as unknown as LinearGraphCutModel
       }

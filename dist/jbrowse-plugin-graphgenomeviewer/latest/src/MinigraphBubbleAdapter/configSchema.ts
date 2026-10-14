@@ -1,6 +1,6 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 
-import { tabixIndexSchema, tbiBeside } from '../panSNTabix.ts'
+import { fileLocationSlot, tabixIndexSchema, tbiBeside } from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -25,7 +25,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```
  */
 
-export function normalizeSnapshot(snap: Record<string, unknown>) {
+function normalizeSnapshot(snap: Record<string, unknown>) {
   const { uri, baseUri, csi } = snap
   return typeof uri === 'string'
     ? {
@@ -42,13 +42,7 @@ const MinigraphBubbleAdapter = ConfigurationSchema(
     /**
      * #slot
      */
-    bubblesLocation: {
-      type: 'fileLocation',
-      defaultValue: {
-        uri: '/path/to/graph.bb.bed.gz',
-        locationType: 'UriLocation',
-      },
-    },
+    bubblesLocation: fileLocationSlot('/path/to/graph.bb.bed.gz'),
     /**
      * #slot
      */

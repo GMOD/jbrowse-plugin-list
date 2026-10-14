@@ -33,6 +33,10 @@ const fixture = (name: string) =>
 //   W HG00097 1 chr1 >1>2>3>4>5>6
 const headerPrefix = fixture('walks2_header')
 
+// walks2_header's walks with the reference named as pggb names a P-line,
+// GRCh38#chr1
+const twoPartPrefix = fixture('walks2_twopart')
+
 // An unchopped graph, node 1 spanning 0-2600 and filed under chunk 0 alone:
 //   W GRCh38 0 chr1 >1>2>4
 //   W HG002  1 chr1 >1>3>4   3 replaces 2
@@ -193,6 +197,13 @@ test("the haplotypes a walk file's header names", async () => {
   expect(gfa).not.toMatch(/^S\t8\t/m)
 })
 
+test('a cut for some haplotypes keeps a reference walk named without a haplotype', async () => {
+  const cut = (await makeAdapter(twoPartPrefix).getSubgraph(chr1(1000, 2600), {
+    haplotypes: ['HG002#1'],
+  })) as GraphTables
+  expect(cut.walks.names).toEqual(['GRCh38#chr1', 'HG002#1#chr1'])
+})
+
 test('a format 1 walk file is refused, with what to rebuild it with', async () => {
   const cut = makeAdapter(fixture('walks1_header')).getSubgraph(chr1(0, 600))
   await expect(cut).rejects.toThrow(/rebuild it with gfa-to-tabix 1.0/)
@@ -228,6 +239,9 @@ test('a cut or a feature read over a range that is not finite queries nothing', 
   await expect(
     firstValueFrom(adapter.getFeatures(region).pipe(toArray())),
   ).rejects.toThrow(/not a finite range/)
+  await expect(adapter.getRegionByteSize([region])).rejects.toThrow(
+    /not a finite range/,
+  )
   expect(getLines).not.toHaveBeenCalled()
   expect(bytes).not.toHaveBeenCalled()
   getLines.mockRestore()
@@ -245,6 +259,25 @@ test("a node longer than a chunk is read back as far as the header's maxnode rea
   expect(gfa).toMatch(/^S\t1\t/m)
   expect(gfa).toMatch(/^W\tGRCh38\t0\tchr1\t0\t3800\t>1>2>4$/m)
   expect(walkNames(gfa)).toEqual(['GRCh38#0#chr1', 'HG002#1#chr1'])
+})
+
+test("a walk-indexed graph's features are the reference nodes overlapping the window", async () => {
+  const features = await firstValueFrom(
+    makeAdapter(headerPrefix).getFeatures(chr1(1000, 2300)).pipe(toArray()),
+  )
+  expect(features.map(f => f.get('name'))).toEqual(['2', '3', '4'])
+})
+
+test('the byte gate measures a walk file from the chunk before the window', async () => {
+  const bytes = vi.spyOn(TabixIndexedFile.prototype, 'bytesForRegions')
+  const size = await makeAdapter(headerPrefix).getRegionByteSize([
+    chr1(2100, 2600),
+  ])
+  expect(size).toBeGreaterThan(0)
+  expect(bytes.mock.calls.map(call => call[0])).toEqual([
+    [{ refName: 'GRCh38#0#chr1', start: 1000, end: 2600 }],
+  ])
+  bytes.mockRestore()
 })
 
 test('getFeatures reads from the chunk before the window', async () => {

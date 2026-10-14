@@ -1,5 +1,6 @@
 import { FACET_GAP_PX, FACET_TITLE_PX } from '@jbrowse/bandage-core/facetGrid'
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
+import { LABEL_CHAR_PX } from '@jbrowse/bandage-core/overlayLabels'
 import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
 import { svgCanvas } from '@jbrowse/bandage-core/renderer/svgCanvas'
 import { rulerInk } from '@jbrowse/bandage-core/tubeMap/axis'
@@ -25,7 +26,6 @@ import type { WalkLift } from '@jbrowse/bandage-core/walkHighlight'
 import type { Ctx2D } from '@jbrowse/core/util/paintLayer'
 
 const FONT = { fontFamily: 'sans-serif', fontSize: 11 }
-const CHAR_PX = 6.2
 const ROW_PX = 16
 const RASTER_SCALE = 2
 
@@ -52,45 +52,30 @@ function Body({
   if (!built) {
     return null
   }
-  const transform = {
-    scaleX: model.scaleX,
-    scaleY: model.scaleY,
-    translateX: model.translateX,
-    translateY: model.translateY,
+  const k = rasterize ? RASTER_SCALE : 1
+  const vector = rasterize ? undefined : svgCanvas(width, height)
+  const canvas = vector?.canvas ?? document.createElement('canvas')
+  if (!vector) {
+    canvas.width = Math.round(width * k)
+    canvas.height = Math.round(height * k)
   }
-  if (rasterize) {
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(width * RASTER_SCALE)
-    canvas.height = Math.round(height * RASTER_SCALE)
-    const renderer = new Canvas2DRenderer(canvas)
-    renderer.uploadGeometry(built.batch)
-    renderer.updateTransform({
-      scaleX: transform.scaleX * RASTER_SCALE,
-      scaleY: transform.scaleY * RASTER_SCALE,
-      translateX: transform.translateX * RASTER_SCALE,
-      translateY: transform.translateY * RASTER_SCALE,
-      dpr: RASTER_SCALE,
-    })
-    renderer.render([0, 0, 0, 0])
-    return (
-      <image
-        width={width}
-        height={height}
-        href={canvas.toDataURL('image/png')}
-      />
-    )
-  }
-  const { canvas, markup } = svgCanvas(width, height)
-  const ctx = canvas.getContext('2d') as unknown as { clearRect?: () => void }
-  ctx.clearRect ??= () => {}
+  const { scaleX, scaleY, translateX, translateY } = model.screenTransform
   const renderer = new Canvas2DRenderer(canvas)
   renderer.uploadGeometry(built.batch)
-  renderer.updateTransform({ ...transform, dpr: 1 })
+  renderer.updateTransform({
+    scaleX: scaleX * k,
+    scaleY: scaleY * k,
+    translateX: translateX * k,
+    translateY: translateY * k,
+    dpr: k,
+  })
   renderer.render([0, 0, 0, 0])
-  return (
+  return vector ? (
     <svg width={width} height={height} overflow="hidden">
-      <g dangerouslySetInnerHTML={{ __html: markup() }} />
+      <g dangerouslySetInnerHTML={{ __html: vector.markup() }} />
     </svg>
+  ) : (
+    <image width={width} height={height} href={canvas.toDataURL('image/png')} />
   )
 }
 
@@ -293,7 +278,7 @@ function svgRow(row: LegendRow, id: string): KeyRow {
   if (!row.swatch) {
     return {
       key: row.key,
-      width: row.label.length * CHAR_PX,
+      width: row.label.length * LABEL_CHAR_PX,
       height: ROW_PX,
       draw: left => (
         <text key={row.key} {...FONT} x={left} y={0} fill="#666">
@@ -308,8 +293,8 @@ function svgRow(row: LegendRow, id: string): KeyRow {
   return {
     key: row.key,
     width: Math.max(
-      sw + 5 + words.length * CHAR_PX,
-      (row.under?.length ?? 0) * CHAR_PX,
+      sw + 5 + words.length * LABEL_CHAR_PX,
+      (row.under?.length ?? 0) * LABEL_CHAR_PX,
     ),
     height: row.under ? ROW_PX * 2 : ROW_PX,
     draw: left => (
@@ -455,19 +440,16 @@ function SizeLabels({ model }: { model: GraphPaneModel }) {
 function RowLabels({ model }: { model: GraphPaneModel }) {
   return (
     <g fontFamily={FONT.fontFamily}>
-      {model.drawnRowLabels.map(({ label, y }) => {
-        const screenY = y * model.scaleY + model.translateY
-        return screenY >= 0 && screenY <= model.canvasHeight ? (
-          <Chip
-            key={y}
-            x={10}
-            y={screenY}
-            text={label}
-            fontSize={11}
-            anchor="start"
-          />
-        ) : null
-      })}
+      {model.visibleRowLabels.map(({ label, y, top }) => (
+        <Chip
+          key={y}
+          x={10}
+          y={top}
+          text={label}
+          fontSize={11}
+          anchor="start"
+        />
+      ))}
     </g>
   )
 }

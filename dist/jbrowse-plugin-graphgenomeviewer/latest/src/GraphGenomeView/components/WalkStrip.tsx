@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import {
   walkRowReadout,
@@ -15,9 +15,9 @@ import { RAMP_GRADIENT_CSS } from '@jbrowse/bandage-core/referenceRampCss'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
-import ElTree from './ElTree'
+import ElTree, { useSvgId } from './ElTree'
 import { LegendSwatchView } from './Legend'
-import { WalkRowContextMenu } from './WalkRowContextMenu'
+import PaneContextMenu from './PaneContextMenu'
 import { legendRowStyle } from './legendStyles'
 import { walkRowSwatch } from '../legendSections'
 
@@ -67,7 +67,7 @@ const StripBars = observer(function StripBars({
   ramp: { start: number; end: number } | undefined
   rowGenes: Map<string, RowGene[]> | undefined
 }) {
-  const idPrefix = useId().replace(/[^\w-]/g, '')
+  const idPrefix = useSvgId()
   const tree = useMemo(
     () => walkRowsTree(bars, frame, { ramp, rowGenes, idPrefix }),
     [bars, frame, ramp, rowGenes, idPrefix],
@@ -115,9 +115,11 @@ const WalkStrip = observer(function WalkStrip({
 }) {
   const bars = model.walkStripRows
   const frame = model.walkStripFrame
-  const [menu, setMenu] = useState<
-    { row: number; top: number; left: number } | undefined
-  >(undefined)
+  const [menu, setMenu] = useState<{
+    clientX: number
+    clientY: number
+    row: number
+  }>()
   if (!bars || !frame) {
     return null
   }
@@ -165,7 +167,7 @@ const WalkStrip = observer(function WalkStrip({
           const at = hit(e)
           if (at) {
             e.preventDefault()
-            setMenu({ row: at.index, top: e.clientY, left: e.clientX })
+            setMenu({ clientX: e.clientX, clientY: e.clientY, row: at.index })
           }
         }}
       >
@@ -197,18 +199,13 @@ const WalkStrip = observer(function WalkStrip({
           </div>
         ))}
       </div>
-      {menu ? (
-        <WalkRowContextMenu
-          model={model}
-          row={menu.row}
-          bars={bars}
-          top={menu.top}
-          left={menu.left}
-          onClose={() => {
-            setMenu(undefined)
-          }}
-        />
-      ) : null}
+      <PaneContextMenu
+        model={model}
+        at={menu && { ...menu, bars }}
+        onClose={() => {
+          setMenu(undefined)
+        }}
+      />
     </div>
   )
 })

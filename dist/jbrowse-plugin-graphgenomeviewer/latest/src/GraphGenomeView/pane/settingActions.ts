@@ -1,16 +1,10 @@
-import { FACET_PAD_PX } from '@jbrowse/bandage-core/facetGrid'
 import { segmentAt } from '@jbrowse/bandage-core/layout/walkStrip'
 import { anchorFromPaths } from '@jbrowse/bandage-core/pathAnchoring'
-import {
-  FIT_PADDING,
-  clampZoom,
-  fittedTranslateY,
-} from '@jbrowse/bandage-core/pipeline'
+import { clampZoom, fittedTranslateY } from '@jbrowse/bandage-core/pipeline'
 import { zoomAbout } from '@jbrowse/bandage-core/viewport'
 import { getSession, isSessionModelWithWidgets } from '@jbrowse/core/util'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 
-import { withFitViews } from './fitViews'
 import { keepInView, onScreen } from './keepInView'
 import {
   MORPH_MAX_NODES,
@@ -22,6 +16,7 @@ import {
   routeStarts,
 } from './morph'
 import { VIEWPORT_DEBOUNCE_MS, forceLayouts } from './paneBase'
+import { withTubeMapViews } from './tubeMapViews'
 import { nodeOwnLocation } from '../../launchFromGraph/contributors'
 import { withRows } from '../../launchFromGraph/linearViewTarget'
 import { withLayer } from '../graphLayers'
@@ -29,7 +24,8 @@ import { colorOfScheme } from '../nodeColor'
 import { sizeOfNodeWidth } from '../nodeSize'
 
 import type { GraphGrammar } from './graphViews'
-import type { MorphEntering, PaneTransform } from './morph'
+import type { ScreenTransform } from './keepInView'
+import type { MorphEntering } from './morph'
 import type { HoveredTube, TubeMapRoutes } from './paneBase'
 import type { GraphLayer } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
@@ -49,7 +45,7 @@ import type {
   WalkLayer,
 } from '@jbrowse/bandage-core/walkEncoding'
 
-export const withSettingActions = withFitViews
+export const withSettingActions = withTubeMapViews
   .actions(() => ({
     // each host overrides: a view assigns its props, a track display writes
     // its config. Its own block, so the setters below reach the override
@@ -160,9 +156,6 @@ export const withSettingActions = withFitViews
     setLayer(layer: GraphLayer, on: boolean) {
       self.writeGrammar({ layers: withLayer(self.grammar.layers, layer, on) })
     },
-    setDrawPaths(draw: boolean) {
-      this.setLayer('paths', draw)
-    },
     setShowPerf(show: boolean) {
       self.showPerf = show
     },
@@ -176,18 +169,6 @@ export const withSettingActions = withFitViews
       self.writeGrammar({
         size: sizeOfNodeWidth(width, self.contigThickness),
       })
-    },
-    setShowBubbles(show: boolean) {
-      this.setLayer('bubbles', show)
-    },
-    setShowDeletionEdges(show: boolean) {
-      this.setLayer('deletions', show)
-    },
-    setShowGenes(show: boolean) {
-      this.setLayer('genes', show)
-    },
-    setShowReferenceStrip(show: boolean) {
-      this.setLayer('referenceStrip', show)
     },
     setTubeMapFold(bp: number) {
       self.tubeMapFold = bp
@@ -347,18 +328,21 @@ export const withSettingActions = withFitViews
       self.draggingNode = null
       self.isPanning = false
     },
-    // Everything that names a part of the current graph. Reset when the graph
-    // is replaced, and by clearGraph.
-    clearInteractionState() {
+    clearHover() {
       self.hoveredNode = null
       self.hoveredAt = null
       self.hoveredTube = null
-      self.hoveredRowWalks = []
-      self.stripHover = null
       self.hoveredPanel = null
       self.hoveredWalkRow = null
       self.hoveredBubble = null
       self.hoveredEdge = null
+    },
+    // Everything that names a part of the current graph. Reset when the graph
+    // is replaced, and by clearGraph.
+    clearInteractionState() {
+      this.clearHover()
+      self.hoveredRowWalks = []
+      self.stripHover = null
       self.selectedNode = null
       self.draggingNode = null
       self.isPanning = false
@@ -455,16 +439,13 @@ export const withSettingActions = withFitViews
       // A host owns x, so a fit while hosted places the rows only.
       if (self.viewportOwner === 'host') {
         const bounds = self.layoutBounds
-        const faceted = self.facetGrid !== undefined
-        const pad = faceted ? FACET_PAD_PX : FIT_PADDING
-        const padTop = faceted ? FACET_PAD_PX : self.fitPadTop
-        const usableHeight = self.viewBox.height - padTop - pad
+        const { usableHeight } = self
         if (bounds && usableHeight > 0) {
           self.translateY = fittedTranslateY(
             bounds,
             usableHeight,
             self.scaleY,
-            padTop,
+            self.fitPads.top,
           )
         }
         return
@@ -599,7 +580,7 @@ export const withSettingActions = withFitViews
       // layout just landed, so a re-cut or a relayout reads as one picture
       // moving rather than a jump. Positions move in place as a drag moves
       // them, a frame at a time; anything new grows out of its neighbours.
-      morphFrom(previous: LayoutResult | undefined, before: PaneTransform) {
+      morphFrom(previous: LayoutResult | undefined, before: ScreenTransform) {
         const next = self.layoutResult
         // the layout cache handing back the drawing on screen leaves its
         // morph running
@@ -637,19 +618,13 @@ export const withSettingActions = withFitViews
         if (self.viewportOwner === 'fit') {
           self.zoomToFit()
         }
-        const after = {
-          scaleX: self.scaleX,
-          scaleY: self.scaleY,
-          translateX: self.translateX,
-          translateY: self.translateY,
-        }
         const routes = next.deletionRoutes ?? {}
         const ends = structuredClone({ nodes: next.nodePositions, routes })
         const nodeStarts = morphStarts(
           shown,
           before,
           next.nodePositions,
-          after,
+          self.screenTransform,
           graph.edges,
         )
         const starts = {

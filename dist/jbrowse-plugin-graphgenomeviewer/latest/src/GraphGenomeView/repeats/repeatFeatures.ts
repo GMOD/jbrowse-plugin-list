@@ -1,4 +1,6 @@
-import type { Feature } from '@jbrowse/core/util'
+import { namedTrack, ownField, trackLabel } from '../trackFeatures'
+
+import type { FeatureLike, TrackChoice } from '../trackFeatures'
 
 export interface RepeatCall {
   bp: number
@@ -46,24 +48,15 @@ export const REPEAT_ADAPTER_TYPES = new Set([
 export const REPEAT_TRACK_HINT =
   /repeat|tandem|\bstr\b|vntr|trf|trgt|vamos|expansion|microsat/i
 
-export function pickRepeatTrack<
-  T extends { trackId: string; name?: string; adapterType: string },
->(tracks: T[], named: string) {
+export function pickRepeatTrack<T extends TrackChoice>(
+  tracks: T[],
+  named: string,
+) {
   if (named) {
-    return tracks.find(t => t.trackId === named)
+    return namedTrack(tracks, named)
   }
   const candidates = tracks.filter(t => REPEAT_ADAPTER_TYPES.has(t.adapterType))
-  return candidates.find(t =>
-    REPEAT_TRACK_HINT.test(`${t.trackId} ${t.name ?? ''}`),
-  )
-}
-
-type FeatureLike = Feature | Record<string, unknown>
-
-function own(f: FeatureLike, name: string): unknown {
-  return typeof (f as Feature).get === 'function'
-    ? (f as Feature).get(name)
-    : (f as Record<string, unknown>)[name]
+  return candidates.find(t => REPEAT_TRACK_HINT.test(trackLabel(t)))
 }
 
 // A TRGT repeat catalogue is a BED whose name column packs the record:
@@ -72,7 +65,7 @@ function own(f: FeatureLike, name: string): unknown {
 const PACKED_NAME = /^\w+=[^;]*(;\w+=[^;]*)*$/
 
 function packedName(f: FeatureLike) {
-  const name = own(f, 'name')
+  const name = ownField(f, 'name')
   if (typeof name !== 'string' || !PACKED_NAME.test(name)) {
     return undefined
   }
@@ -87,11 +80,11 @@ function packedName(f: FeatureLike) {
 // A field at the feature's top level, in a VCF record's INFO, or in a packed
 // name column, in that order.
 function field(f: FeatureLike, name: string): unknown {
-  const top = own(f, name)
+  const top = ownField(f, name)
   if (top !== undefined) {
     return top
   }
-  const info = own(f, 'INFO') as Record<string, unknown> | undefined
+  const info = ownField(f, 'INFO') as Record<string, unknown> | undefined
   return info?.[name] ?? packedName(f)?.[name]
 }
 
@@ -173,7 +166,7 @@ const TANDEM_REPEAT = '<CNV:TR>'
 // its runs' RB, or unit length times count where RB is missing. An allele that
 // is not <CNV:TR>, or has a run stating neither, has none.
 function tandemAlleleBp(f: FeatureLike) {
-  const alts = strings(own(f, 'ALT'))
+  const alts = strings(ownField(f, 'ALT'))
   if (!alts.includes(TANDEM_REPEAT)) {
     return undefined
   }
@@ -216,7 +209,7 @@ function genotyped(
 ) {
   const phased = gt?.includes('|')
   return (gt ?? '').split(/[/|]/).flatMap((index, k): RepeatCall[] => {
-    const i = Number(index)
+    const i = index === '' ? NaN : Number(index)
     const bp = i > 0 ? alleleBp[i - 1] : referenceBp
     if (!Number.isInteger(i) || bp === undefined) {
       return []
@@ -230,7 +223,7 @@ function callsOf(
   alleleBp: (number | undefined)[] | undefined,
   referenceBp: number,
 ) {
-  const samples = own(f, 'samples') as
+  const samples = ownField(f, 'samples') as
     Record<string, Record<string, unknown>> | undefined
   const called: Record<string, RepeatCall[]> = {}
   for (const [sample, fields] of Object.entries(samples ?? {})) {
@@ -280,7 +273,7 @@ export function repeatArraysFrom(features: FeatureLike[]): RepeatArray[] {
         (stated && !PACKED_NAME.test(stated) ? stated : undefined) ??
         (motif && motif.length <= 12
           ? `(${motif})n`
-          : `${refName}:${(start + 1).toLocaleString()}-${end.toLocaleString()}`),
+          : `${refName}:${(start + 1).toLocaleString('en-US')}-${end.toLocaleString('en-US')}`),
       refName,
       start,
       end,

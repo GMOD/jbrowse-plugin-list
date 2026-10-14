@@ -76,3 +76,38 @@ test('the canvas reads out the gene chip under the pointer, since the chip leave
   expect(result.current.hoveredChip).toBeUndefined()
   vi.unstubAllGlobals()
 })
+
+test('a pan frame before any layout does not replay the last hover', () => {
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+    frames.push(cb),
+  )
+  const walkRowAt = vi.fn(() => undefined)
+  const setTransform = vi.fn()
+  const model = fakeModel({
+    isPanning: false,
+    draggingNode: null,
+    overlayLabels: { genes: [] },
+    walkRowBars: { reference: { name: 'ref' }, rows: [] },
+    walkRowAt,
+    setHoveredWalkRow: vi.fn(),
+    scale: 1,
+    setTransform,
+  })
+  const { result } = renderHook(() =>
+    usePaneGestures(model as unknown as GraphPaneModel),
+  )
+  const move = (x: number) => {
+    act(() => {
+      result.current.handlers.onPointerMove(at(x, 20))
+      frames.shift()?.(0)
+    })
+  }
+  move(40)
+  expect(walkRowAt).toHaveBeenCalledTimes(1)
+  Object.assign(model, { isPanning: true })
+  move(60)
+  expect(setTransform).toHaveBeenCalledWith(1, 20, 0)
+  expect(walkRowAt).toHaveBeenCalledTimes(1)
+  vi.unstubAllGlobals()
+})

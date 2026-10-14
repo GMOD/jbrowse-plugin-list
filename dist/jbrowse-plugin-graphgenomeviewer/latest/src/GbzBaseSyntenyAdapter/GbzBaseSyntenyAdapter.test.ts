@@ -258,21 +258,22 @@ test('the reference contigs are the anchor refNames; a haplotype prefix lists it
   expect(await adapter.getRefNames({ assemblyName: 'nobody' })).toEqual([])
 })
 
+// the header's lanes are every haplotype but the reference sample's
+const laneLabels = async (adapter: Adapter) =>
+  (await adapter.getHeader()).lanes.map(lane => lane.label)
+
 test('the reference sample comes from the anchor prefix, the tag, or the slot', async () => {
   expect(await makeAdapter().getHeader()).toMatchObject({
     hasCoarseTier: false,
     anchorAssemblyName: 'hg38',
-    referenceSample: 'GRCh38',
-    referenceSamples: ['CHM13', 'GRCh38'],
   })
+  expect(await laneLabels(makeAdapter())).toContain('CHM13#0')
+  expect(await laneLabels(makeAdapter())).not.toContain('GRCh38#0')
   expect(
-    (
-      await makeAdapter({
-        assemblyNames: ['GRCh38'],
-        assemblyNameToPanSN: {},
-      }).getHeader()
-    ).referenceSample,
-  ).toBe('GRCh38')
+    await laneLabels(
+      makeAdapter({ assemblyNames: ['GRCh38'], assemblyNameToPanSN: {} }),
+    ),
+  ).not.toContain('GRCh38#0')
   await expect(
     makeAdapter({
       assemblyNames: ['mm39'],
@@ -283,7 +284,8 @@ test('the reference sample comes from the anchor prefix, the tag, or the slot', 
     assemblyNameToPanSN: {},
     referenceSample: 'CHM13',
   })
-  expect((await chm13.getHeader()).referenceSample).toBe('CHM13')
+  expect(await laneLabels(chm13)).toContain('GRCh38#0')
+  expect(await laneLabels(chm13)).not.toContain('CHM13#0')
   const fa = await feats(chm13, {
     refName: 'chr6',
     start: 31352000,
