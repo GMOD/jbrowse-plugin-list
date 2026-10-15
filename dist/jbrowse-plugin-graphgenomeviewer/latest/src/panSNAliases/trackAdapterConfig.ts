@@ -1,6 +1,8 @@
 import { readConfObject } from '@jbrowse/core/configuration'
 import { getSession } from '@jbrowse/core/util'
 
+import { walkIndexed } from '../graphTrackConfig'
+
 import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 import type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
 
@@ -91,8 +93,8 @@ export const LANE_ADAPTERS = new Set([
 
 /**
  * A track's adapter config as its requests carry it. A worker has no assembly
- * manager, so a lane track learns the session's assembly names and PanSN
- * aliases here.
+ * manager, so a lane track, or a walk-indexed rGFA track cutting for named
+ * haplotypes, learns the session's assembly names and PanSN aliases here.
  */
 export function trackAdapterConfig(
   node: IAnyStateTreeNode,
@@ -102,7 +104,10 @@ export function trackAdapterConfig(
     string,
     unknown
   >
-  if (!LANE_ADAPTERS.has(adapterConfig.type as string)) {
+  if (
+    !LANE_ADAPTERS.has(adapterConfig.type as string) &&
+    !walkIndexed(adapterConfig)
+  ) {
     return adapterConfig
   }
   const assemblies = getSession(node).assemblyManager.assemblyList.map(

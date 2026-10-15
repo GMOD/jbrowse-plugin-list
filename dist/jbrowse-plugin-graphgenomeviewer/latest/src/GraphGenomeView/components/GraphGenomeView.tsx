@@ -4,12 +4,12 @@ import GraphCanvas from './GraphCanvas'
 import GraphLoadStatus from './GraphLoadStatus'
 import ImportForm from './ImportForm'
 
-import type { GraphPaneModel } from '../model'
+import type { GraphGenomeViewModel } from '../viewModel'
 
 const GraphGenomeView = observer(function GraphGenomeView({
   model,
 }: {
-  model: GraphPaneModel
+  model: GraphGenomeViewModel
 }) {
   if (model.hasGraph) {
     return <GraphCanvas model={model} />

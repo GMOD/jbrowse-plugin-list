@@ -1,6 +1,19 @@
 import type { FileLocation } from '@jbrowse/core/util'
 
 export const SEGMENTS_SUFFIX = '.segs.bed.gz'
+export const WALKS_SUFFIX = '.walks.bed.gz'
+
+// The reference sample `gfa-to-tabix --walks` names a walk file after:
+// GRCh38 in `chr22.GRCh38.walks.bed.gz`
+export function walkFileSample(loc: FileLocation) {
+  const name = locationName(loc).replace(/^.*[/\\]/, '')
+  if (!name.endsWith(WALKS_SUFFIX)) {
+    return undefined
+  }
+  const prefix = name.slice(0, -WALKS_SUFFIX.length)
+  const dot = prefix.lastIndexOf('.')
+  return dot === -1 ? undefined : prefix.slice(dot + 1) || undefined
+}
 
 // A schema's unset file slot defaults to an empty uri
 export function locationIsSet(loc: FileLocation) {

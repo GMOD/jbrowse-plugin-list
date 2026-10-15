@@ -1,6 +1,6 @@
 import PluginManager from '@jbrowse/core/PluginManager'
 
-import GraphTrackDefaultsF, { withLaneAnchor } from './index'
+import GraphTrackDefaultsF, { withLaneAnchor, withWalkReference } from './index'
 
 const uri = (u: string) => ({ uri: u, locationType: 'UriLocation' as const })
 
@@ -117,4 +117,37 @@ test("a walk lanes adapter naming no assemblies takes the track's", () => {
     type: 'WalkTabixSyntenyAdapter',
     assemblyNames: ['hg38', 'HG002.1'],
   })
+})
+
+test('a walk file guesses a walk-indexed rGFA adapter', () => {
+  const walks = uri('https://example.com/chr22.GRCh38.walks.bed.gz?sig=1')
+  expect(guessers().adapter(walks)).toEqual({
+    type: 'RgfaTabixAdapter',
+    walksLocation: walks,
+    walksIndex: {
+      indexType: 'TBI',
+      location: uri('https://example.com/chr22.GRCh38.walks.bed.gz.tbi?sig=1'),
+    },
+  })
+})
+
+test("a walk file with no PanSN map reads as its name's sample on the track's assembly", () => {
+  const track = {
+    type: 'GraphTrack',
+    assemblyNames: ['hg38'],
+    adapter: {
+      type: 'RgfaTabixAdapter',
+      walksLocation: uri('https://example.com/chr22.GRCh38.walks.bed.gz'),
+    },
+  }
+  expect(withWalkReference(track).adapter).toMatchObject({
+    assemblyNameToPanSN: { hg38: 'GRCh38' },
+  })
+  const mapped = {
+    ...track,
+    adapter: { ...track.adapter, assemblyNameToPanSN: { hg38: 'X' } },
+  }
+  expect(withWalkReference(mapped)).toBe(mapped)
+  const same = { ...track, assemblyNames: ['GRCh38'] }
+  expect(withWalkReference(same)).toBe(same)
 })

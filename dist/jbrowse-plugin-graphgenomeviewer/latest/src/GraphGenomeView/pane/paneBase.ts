@@ -122,8 +122,6 @@ export function dependOn(..._values: unknown[]) {}
 // Hard size cap for the single-mode graph view. Past it the view declines with a
 // "zoom in" message rather than switching to a degraded rendering mode — one mode
 // only, since the large-region case is a linear synteny view, not a graph.
-// (The `adr-027` citation this used to carry was stale: that number was reused
-// for wheel-input semantics after the large-mode ADR was removed in 9d8102f0b5.)
 //
 // This bounds the *fetch*, and it is the only cap that can be applied before one
 // happens. It is a poor proxy for cost, because cost tracks node count, so the
@@ -245,13 +243,8 @@ export const paneBase = types
       //
       // 2 because that is what the engine we vendor ships as its default
       // (`graphLayoutQuality = IntSetting(2, 0, 4)`, program/settings.cpp).
-      // This was 1 for no recorded reason, i.e. one step BELOW upstream, and a
-      // first sight of any graph is the default: review kept asking whether
-      // the drawing could be iterated more ("are you sure you can't iterate it
-      // more times for better layout?") of figures that were simply on a lower
-      // setting than the tool they come from. Cost at the sizes this view
-      // draws is milliseconds, and the header states the layout time so the
-      // difference is visible rather than asserted.
+      // Cost at the sizes this view draws is milliseconds, and the header
+      // states the layout time.
       layoutQuality: types.optional(types.number, 2),
       // Which engine draws the force layout: Bandage's FMMM, or the stress
       // layout, which reads the reference straight. See LAYOUT_ENGINES.
@@ -441,9 +434,9 @@ export const paneBase = types
     positionsDirtyFrame: 0,
     // Performance instrumentation, surfaced in GraphStats for browser tests
     // to assert against budgets. `fetchMs` is the GetSubgraph RPC round-trip,
-    // `layoutMs` is the Bandage FMMM compute time reported by the
-    // GraphComputeLayout RPC, `geometryMs` is the main-thread buildGeometry
-    // pass and `geometryStrokeCount` the node strokes it produced.
+    // `layoutMs` the last layout's compute time in any mode (near zero on a
+    // cache hit), `geometryMs` the main-thread buildGeometry pass and
+    // `geometryStrokeCount` the node strokes it produced.
     lastFetchMs: undefined as number | undefined,
     // how many of the cut's reads the tube map was handed, of how many
     readsShown: undefined as { shown: number; total: number } | undefined,

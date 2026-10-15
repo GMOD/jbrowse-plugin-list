@@ -23,6 +23,7 @@ test("the strip tip reads the hovered row from the model's strip hover", () => {
     },
     walkStripFrame: {
       labelled: false,
+      width: 1000,
       scaleX: 0.5,
       translateX: 0,
       rowPx: 10,
@@ -41,4 +42,14 @@ test("the strip tip reads the hovered row from the model's strip hover", () => {
   expect(tip.textContent).toMatch(/^HG00097#1 · /)
   expect(tip.style.left).toBe('112px')
   expect(tip.style.top).toBe('-3px')
+
+  // past the middle of the strip the tip opens leftward
+  act(() => {
+    runInAction(() => {
+      model.stripHover = { row: 'HG00097#1', offset: 1400 }
+    })
+  })
+  const flipped = screen.getByTestId('graph-walk-strip-tip')
+  expect(flipped.style.left).toBe('')
+  expect(flipped.style.right).toBe('312px')
 })

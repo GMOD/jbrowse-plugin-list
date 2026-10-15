@@ -97,6 +97,7 @@ test('the repeat track is the named one, else one whose name says repeats', () =
   ]
   expect(pickRepeatTrack(tracks, '')?.trackId).toBe('simple')
   expect(pickRepeatTrack(tracks, 'bed')?.trackId).toBe('bed')
+  expect(pickRepeatTrack(tracks, 'removed')?.trackId).toBe('simple')
   expect(pickRepeatTrack([tracks[2]!], '')).toBeUndefined()
 })
 

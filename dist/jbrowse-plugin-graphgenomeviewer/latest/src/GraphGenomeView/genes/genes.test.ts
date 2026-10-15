@@ -188,6 +188,8 @@ test('the gene track is the named one, else the annotation-looking one', () => {
   ]
   expect(pickGeneTrack(tracks, '')?.trackId).toBe('ncbi')
   expect(pickGeneTrack(tracks, 'repeats')?.trackId).toBe('repeats')
+  // a pick naming a track no longer offered falls back to the heuristic
+  expect(pickGeneTrack(tracks, 'removed')?.trackId).toBe('ncbi')
   expect(pickGeneTrack(tracks.slice(0, 1), '')).toBeUndefined()
 })
 

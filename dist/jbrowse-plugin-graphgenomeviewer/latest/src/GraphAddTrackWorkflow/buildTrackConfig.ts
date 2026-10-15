@@ -3,19 +3,26 @@ import { makeIndexType } from '@jbrowse/core/util/tracks'
 import { besideSegments, segmentsSibling } from './graphManifest'
 import {
   SEGMENTS_SUFFIX,
+  WALKS_SUFFIX,
   locationName,
   readsSiblings,
   renamed,
+  walkFileSample,
 } from '../locationName'
 
 import type { GraphManifest } from './graphManifest'
 import type { FileLocation } from '@jbrowse/core/util'
 
+// 'RgfaTabixWalks' is an RgfaTabixAdapter read from a walk file
 export type GraphFileChoice =
-  'RgfaTabixAdapter' | 'GbzBaseSyntenyAdapter' | 'MinigraphBubbleAdapter'
+  | 'RgfaTabixAdapter'
+  | 'RgfaTabixWalks'
+  | 'GbzBaseSyntenyAdapter'
+  | 'MinigraphBubbleAdapter'
 
 export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter: 'rGFA segments (tabix BED pair)',
+  RgfaTabixWalks: 'Haplotype walks (.walks.bed.gz)',
   GbzBaseSyntenyAdapter: 'GBZ database (.gbz.db)',
   MinigraphBubbleAdapter: 'Minigraph bubbles (tabix BED)',
 }
@@ -23,6 +30,8 @@ export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
 export const GRAPH_FILE_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter:
     'Path to segments BED (.segs.bed.gz from gfa-to-tabix; the .links.bed.gz, its index and any .graph.json are read beside it)',
+  RgfaTabixWalks:
+    'Path to a walk file (<prefix>.<sample>.walks.bed.gz from gfa-to-tabix --walks, for the sample this assembly is)',
   GbzBaseSyntenyAdapter: 'Path to the .gbz.db written by gbz-base construct',
   MinigraphBubbleAdapter: 'Path to bubbles BED (.bed.gz from gfatools bubble)',
 }
@@ -32,6 +41,7 @@ const TABIX_INDEX_FIELD =
 
 export const GRAPH_INDEX_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter: TABIX_INDEX_FIELD,
+  RgfaTabixWalks: TABIX_INDEX_FIELD,
   GbzBaseSyntenyAdapter:
     'Path to the haplotype index (optional; graph.haplotype-index.db beside the database is assumed)',
   MinigraphBubbleAdapter: TABIX_INDEX_FIELD,
@@ -69,9 +79,10 @@ function siblingIndex(loc: FileLocation, indexLoc: FileLocation | undefined) {
     : { location: sibling(loc, '.tbi'), indexType: 'TBI' }
 }
 
+// none for a guessed config, which knows no assembly yet; see withWalkReference
 function panSN(assembly: string, sample: string) {
   const name = sample.trim()
-  return name ? { assemblyNameToPanSN: { [assembly]: name } } : {}
+  return name && assembly ? { assemblyNameToPanSN: { [assembly]: name } } : {}
 }
 
 function coarseTier(
@@ -95,8 +106,9 @@ function coarseTier(
   }
 }
 
-// The user's sample wins; the manifest's reference stands in when blank
-function manifestPanSN(
+// The user's sample wins; the reference the graph's files name (a manifest's,
+// or a walk file's own) stands in when blank
+function referencePanSN(
   assembly: string,
   sample: string,
   reference: string | undefined,
@@ -117,6 +129,11 @@ function readsConfig(readsLoc: FileLocation | undefined) {
     : {}
 }
 
+// Names typed as a list, by comma or space
+export function parseHaplotypes(text: string) {
+  return text.split(/[\s,]+/).filter(name => name !== '')
+}
+
 export function buildAdapterConfig({
   choice,
   loc,
@@ -125,6 +142,7 @@ export function buildAdapterConfig({
   manifest,
   assembly,
   sample,
+  haplotypes = [],
 }: {
   choice: GraphFileChoice
   loc: FileLocation
@@ -135,7 +153,23 @@ export function buildAdapterConfig({
   manifest?: GraphManifest
   assembly: string
   sample: string
+  // a walk file's haplotypes to cut for until the user picks others
+  haplotypes?: string[]
 }) {
+  if (choice === 'RgfaTabixWalks') {
+    if (!locationName(loc).endsWith(WALKS_SUFFIX)) {
+      throw new Error(
+        `Expected a walk file ending in ${WALKS_SUFFIX}, got ${locationName(loc)}`,
+      )
+    }
+    return {
+      type: 'RgfaTabixAdapter',
+      walksLocation: loc,
+      walksIndex: tabixIndex(loc, indexLoc),
+      ...referencePanSN(assembly, sample, walkFileSample(loc)),
+      ...(haplotypes.length > 0 ? { defaultHaplotypes: haplotypes } : {}),
+    }
+  }
   if (choice === 'GbzBaseSyntenyAdapter') {
     return {
       type: 'GbzBaseSyntenyAdapter',
@@ -160,7 +194,7 @@ export function buildAdapterConfig({
     segmentsIndex: tabixIndex(loc, indexLoc),
     linksLocation: links,
     linksIndex: siblingIndex(links, indexLoc),
-    ...manifestPanSN(assembly, sample, manifest?.reference),
+    ...referencePanSN(assembly, sample, manifest?.reference),
     ...coarseTier(loc, indexLoc, manifest?.tier),
   }
 }
@@ -173,6 +207,7 @@ export function buildTrackConfig(args: {
   manifest?: GraphManifest
   assembly: string
   sample: string
+  haplotypes?: string[]
   trackId: string
   name: string
 }) {
@@ -183,7 +218,7 @@ export function buildTrackConfig(args: {
     name,
     assemblyNames: [assembly],
     adapter: buildAdapterConfig(args),
-    ...(choice === 'RgfaTabixAdapter'
+    ...(choice === 'RgfaTabixAdapter' || choice === 'RgfaTabixWalks'
       ? { displayDefaults: { showLabels: 'none' } }
       : {}),
   }

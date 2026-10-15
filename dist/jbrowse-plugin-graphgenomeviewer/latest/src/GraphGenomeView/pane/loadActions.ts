@@ -22,9 +22,10 @@ import {
   statusMessageText,
 } from '@jbrowse/core/util'
 import { openLocation } from '@jbrowse/core/util/io'
-import { flow, isAlive } from '@jbrowse/mobx-state-tree'
+import { flow, getEnv, isAlive } from '@jbrowse/mobx-state-tree'
 
 import {
+  EMPTY_BATCH,
   TUBE_MAP_MODES,
   bubblePrefix,
   fileName,
@@ -34,6 +35,7 @@ import { withSettingActions } from './settingActions'
 import { namesReads } from '../../GetGraphReads'
 import { walkRowsOf } from '../../RgfaTabixAdapter/walkRowRuns.ts'
 import { geneModelsFrom } from '../genes/geneFeatures'
+import { gfaText } from '../gfaText'
 import { repeatArraysFrom } from '../repeats/repeatFeatures'
 import {
   graphOfPaths,
@@ -329,6 +331,9 @@ export const withLoadActions = withEngineSettings.actions(self => {
     keepSelection = false,
     readsOf?: (graph: Graph) => Promise<GafReads>,
     foldBelowBp = 0,
+    // reads over the cut that need no layout, started with it so a layout
+    // that fails or runs long neither drops nor delays them
+    alongside?: () => Promise<unknown>,
   ) {
     const signal = loadController?.signal
     const walkCut =
@@ -386,7 +391,14 @@ export const withLoadActions = withEngineSettings.actions(self => {
       self.selectedNode = selected
     }
     self.setStatusMessage('Computing layout')
+    const reads = alongside?.()
+    reads?.catch(() => undefined)
     yield* layoutInto(graph)
+    // a load superseded mid-layout leaves the status to the one replacing it
+    if (reads && !signal?.aborted) {
+      self.setStatusMessage('Reading annotations')
+      yield reads
+    }
   }
 
   // Which load is the live one, for the reason liveRequest orders layouts:
@@ -534,9 +546,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     what: string,
     signal?: AbortSignal,
   ) {
-    const config = trackId
-      ? getSession(self).tracks.find(t => t.trackId === trackId)
-      : undefined
+    const config = trackId ? self.sessionTrack(trackId) : undefined
     if (!config) {
       return undefined
     }
@@ -619,11 +629,15 @@ export const withLoadActions = withEngineSettings.actions(self => {
       if (!isLive()) {
         return
       }
-      yield* parseAndLayout(text, name, region)
-      if (region && isLive()) {
-        self.setStatusMessage('Reading annotations')
-        yield Promise.all(annotationReads(region, isLive, signal))
-      }
+      yield* parseAndLayout(
+        text,
+        name,
+        region,
+        false,
+        undefined,
+        0,
+        region && (() => Promise.all(annotationReads(region, isLive, signal))),
+      )
     })
   }
 
@@ -655,6 +669,10 @@ export const withLoadActions = withEngineSettings.actions(self => {
   // would otherwise land its graph afterwards
   function dropGraph() {
     abortLoad()
+    self.finishMorph()
+    self.morphEntering = undefined
+    self.drawnBatch = EMPTY_BATCH
+    self.paintedViewport = undefined
     resetCut()
     laidOutGraph = undefined
     layoutError = undefined
@@ -705,6 +723,14 @@ export const withLoadActions = withEngineSettings.actions(self => {
     loadGFA: flow(function* (text: string, name = 'Imported GFA') {
       yield* loadWholeGFA(name, text)
     }),
+    // A file the user picked, read inside the load so the form shows its
+    // progress rather than sitting idle through a large read
+    loadGFAFile: flow(function* (file: Blob, name: string) {
+      self.setStatusMessage('Reading file')
+      yield* loadWholeGFA(name, () =>
+        file.arrayBuffer().then(buf => gfaText(new Uint8Array(buf))),
+      )
+    }),
     loadGFAFromLocation: flow(function* (
       location: FileLocation,
       region?: SubgraphRegion,
@@ -712,7 +738,10 @@ export const withLoadActions = withEngineSettings.actions(self => {
       self.setStatusMessage('Fetching GFA')
       yield* loadWholeGFA(
         fileName(location) || 'GFA',
-        signal => openLocation(location).readFile({ encoding: 'utf8', signal }),
+        signal =>
+          openLocation(location, getEnv(self).pluginManager)
+            .readFile({ signal })
+            .then(gfaText),
         region,
       )
     }),
@@ -760,26 +789,23 @@ export const withLoadActions = withEngineSettings.actions(self => {
                 )
             : undefined,
           foldBelowBp,
+          // Independent remote reads, each landing as it arrives. A coarse
+          // cut reads no bubble index: its nodes are the bubbles, and the
+          // index over its window can run to a chromosome's rows.
+          () =>
+            Promise.all([
+              opts.tier === 'coarse'
+                ? undefined
+                : flow(loadBubbles)(
+                    adapterConfig,
+                    region,
+                    isLive,
+                    signal,
+                    self.foldedBelowBp,
+                  ),
+              ...annotationReads(region, isLive, signal),
+            ]),
         )
-        if (!isLive()) {
-          return
-        }
-        // Independent remote reads, each landing as it arrives. A coarse
-        // cut reads no bubble index: its nodes are the bubbles, and the
-        // index over its window can run to a chromosome's rows.
-        self.setStatusMessage('Reading annotations')
-        yield Promise.all([
-          opts.tier === 'coarse'
-            ? undefined
-            : flow(loadBubbles)(
-                adapterConfig,
-                region,
-                isLive,
-                signal,
-                self.foldedBelowBp,
-              ),
-          ...annotationReads(region, isLive, signal),
-        ])
       })
     }),
     // A track change re-reads that annotation alone. The graph, its layout
@@ -805,7 +831,10 @@ export const withLoadActions = withEngineSettings.actions(self => {
         return
       }
       try {
-        const text = (yield openLocation(location).readFile('utf8')) as string
+        const text = (yield openLocation(
+          location,
+          getEnv(self).pluginManager,
+        ).readFile('utf8')) as string
         if (isAlive(self) && key === sampleTableKey) {
           self.walkRowSampleTable = parseSamplesTsv(text)
         }

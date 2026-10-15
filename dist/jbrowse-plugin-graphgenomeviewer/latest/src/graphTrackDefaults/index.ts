@@ -1,6 +1,11 @@
 import { buildAdapterConfig } from '../GraphAddTrackWorkflow/buildTrackConfig'
 import { isSegmentsLocation } from '../GraphAddTrackWorkflow/graphManifest'
-import { locationName } from '../locationName'
+import {
+  WALKS_SUFFIX,
+  locationName,
+  readsSiblings,
+  walkFileSample,
+} from '../locationName'
 import { LANE_ADAPTERS } from '../panSNAliases/trackAdapterConfig'
 
 import type { GraphFileChoice } from '../GraphAddTrackWorkflow/buildTrackConfig'
@@ -33,6 +38,34 @@ export function withLaneAnchor(snap: TrackConfigSnapshot) {
     : snap
 }
 
+// A walk file opened with no PanSN map reads as the sample its name gives, on
+// the track's assembly; a guessed adapter had no assembly to key that by
+export function withWalkReference(snap: TrackConfigSnapshot) {
+  const adapter = snap.adapter as
+    | {
+        type?: string
+        walksLocation?: FileLocation
+        assemblyNameToPanSN?: unknown
+      }
+    | undefined
+  const [assembly] = Array.isArray(snap.assemblyNames)
+    ? (snap.assemblyNames as string[])
+    : []
+  const sample =
+    adapter?.type === 'RgfaTabixAdapter' && adapter.walksLocation
+      ? walkFileSample(adapter.walksLocation)
+      : undefined
+  return assembly &&
+    sample &&
+    sample !== assembly &&
+    adapter?.assemblyNameToPanSN === undefined
+    ? {
+        ...snap,
+        adapter: { ...adapter, assemblyNameToPanSN: { [assembly]: sample } },
+      }
+    : snap
+}
+
 export function guessGraphAdapter(
   file: FileLocation,
   index?: FileLocation,
@@ -52,11 +85,17 @@ export function guessGraphAdapter(
   ) {
     return guess('GbzBaseSyntenyAdapter')
   }
-  if (
-    (!adapterHint || adapterHint === 'RgfaTabixAdapter') &&
-    isSegmentsLocation(file)
-  ) {
-    return guess('RgfaTabixAdapter')
+  if (!adapterHint || adapterHint === 'RgfaTabixAdapter') {
+    if (isSegmentsLocation(file)) {
+      return guess('RgfaTabixAdapter')
+    }
+    // a file picked in the browser has no index beside it to assume
+    if (
+      locationName(file).endsWith(WALKS_SUFFIX) &&
+      (index !== undefined || readsSiblings(file))
+    ) {
+      return guess('RgfaTabixWalks')
+    }
   }
   return undefined
 }
@@ -65,6 +104,10 @@ export default function GraphTrackDefaultsF(pluginManager: PluginManager) {
   pluginManager.addToExtensionPoint(
     'Core-preProcessTrackConfig',
     withLaneAnchor,
+  )
+  pluginManager.addToExtensionPoint(
+    'Core-preProcessTrackConfig',
+    withWalkReference,
   )
   pluginManager.addToExtensionPoint(
     'Core-guessAdapterForLocation',

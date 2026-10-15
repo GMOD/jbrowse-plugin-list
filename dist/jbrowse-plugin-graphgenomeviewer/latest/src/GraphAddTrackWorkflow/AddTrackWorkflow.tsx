@@ -26,6 +26,7 @@ import {
   GRAPH_FILE_LABELS,
   GRAPH_INDEX_FIELDS,
   buildTrackConfig,
+  parseHaplotypes,
 } from './buildTrackConfig'
 import { readGraphManifest } from './graphManifest'
 
@@ -53,6 +54,7 @@ const useStyles = makeStyles()(theme => ({
 
 const CHOICES: GraphFileChoice[] = [
   'RgfaTabixAdapter',
+  'RgfaTabixWalks',
   'GbzBaseSyntenyAdapter',
   'MinigraphBubbleAdapter',
 ]
@@ -70,7 +72,9 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
   const [indexLoc, setIndexLoc] = useState<FileLocation>()
   const [readsLoc, setReadsLoc] = useState<FileLocation>()
   const gbz = choice === 'GbzBaseSyntenyAdapter'
+  const walks = choice === 'RgfaTabixWalks'
   const [sample, setSample] = useState('')
+  const [haplotypes, setHaplotypes] = useState('')
   const [trackName, setTrackName] = useState('Pangenome graph')
   const [error, setError] = useState<unknown>()
   const [submitting, setSubmitting] = useState(false)
@@ -102,6 +106,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           manifest,
           assembly: model.assembly,
           sample,
+          haplotypes: walks ? parseHaplotypes(haplotypes) : undefined,
           trackId: makeTrackId({ name }),
           name,
         }),
@@ -165,15 +170,31 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
         helperText={
           gbz
             ? "Optional. The graph's sample for this assembly, e.g. GRCh38 where the assembly is hg38; leave blank when they share a name or the graph has one reference sample"
-            : "Optional. The PanSN prefix the graph gives this assembly, e.g. GRCh38 for HPRC's GRCh38#0#chr1; leave blank when the graph's stable names are bare"
+            : walks
+              ? 'Optional. The PanSN sample this assembly is in the graph; blank takes it from the file name, GRCh38 in chr22.GRCh38.walks.bed.gz'
+              : "Optional. The PanSN prefix the graph gives this assembly, e.g. GRCh38 for HPRC's GRCh38#0#chr1; leave blank when the graph's stable names are bare"
         }
         placeholder="GRCh38"
         fullWidth
       />
+      {walks ? (
+        <TextField
+          className={classes.field}
+          value={haplotypes}
+          onChange={event => {
+            setHaplotypes(event.target.value)
+          }}
+          label="Haplotypes"
+          slotProps={{ htmlInput: { 'data-testid': 'graph-haplotypes-input' } }}
+          helperText="Optional. The haplotypes the track cuts for until you pick others in its menu, as PanSN names separated by commas (HG002#1, or HG002 for both); blank is every haplotype in the file"
+          placeholder="HG002, HG00733"
+          fullWidth
+        />
+      ) : null}
       <TextField
         className={classes.field}
         value={trackName}
-        helperText="Track name"
+        label="Track name"
         slotProps={{ htmlInput: { 'data-testid': 'graph-track-name-input' } }}
         onChange={event => {
           setTrackName(event.target.value)
@@ -196,7 +217,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           void handleSubmit()
         }}
       >
-        Submit
+        {submitting ? 'Reading graph.json…' : 'Submit'}
       </Button>
     </Paper>
   )

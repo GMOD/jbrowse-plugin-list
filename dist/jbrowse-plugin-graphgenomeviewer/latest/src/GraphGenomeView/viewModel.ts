@@ -4,7 +4,7 @@ import {
 } from '@jbrowse/bandage-core/layoutModes'
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes/models'
 import { getSession } from '@jbrowse/core/util'
-import { addDisposer, types } from '@jbrowse/mobx-state-tree'
+import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
 import { reaction } from 'mobx'
 
 import { HOVER_HIGHLIGHT_VALUES } from './hoverHighlight'
@@ -98,7 +98,7 @@ export default function stateModelFactory() {
       },
       get sourceTrack(): AnyConfigurationModel | undefined {
         return self.loadedTrackId
-          ? getSession(self).tracks.find(t => t.trackId === self.loadedTrackId)
+          ? self.sessionTrack(self.loadedTrackId)
           : undefined
       },
       get canRetryLoad() {
@@ -153,9 +153,15 @@ export default function stateModelFactory() {
       }
       return {
         // the stated source goes too, or a reloaded session would load the
-        // dismissed graph again
+        // dismissed graph again, and so does a name taken from its file
         clearGraph() {
           clearPane()
+          if (
+            self.gfaLocation &&
+            self.displayName === fileName(self.gfaLocation)
+          ) {
+            self.displayName = undefined
+          }
           self.gfaLocation = undefined
           self.loadedRegion = undefined
           self.loadedTrackId = ''
@@ -188,11 +194,25 @@ export default function stateModelFactory() {
       retryLoad() {
         void self.load()
       },
+      setGfaLocation(location: FileLocation) {
+        self.gfaLocation = location
+      },
       // the strip's toggle cuts the track again too (afterAttach)
       relayoutFrom(from: LayoutModeValue) {
         return self.loadedTrackId && self.cutChangedFrom(from)
           ? self.load()
           : self.recomputeLayout()
+      },
+      // Stated as the source once it loads, so a saved session reopens it; a
+      // URL that fails stays in the import form to be corrected.
+      async openGfaLocation(location: FileLocation) {
+        await self.loadGFAFromLocation(location)
+        if (isAlive(self) && self.hasGraph) {
+          this.setGfaLocation(location)
+          if (!self.displayName) {
+            self.setDisplayName(fileName(location))
+          }
+        }
       },
       // Here rather than when the rendering backend starts: the canvas only
       // mounts once there is a graph, so a view whose graph must be fetched

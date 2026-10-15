@@ -3,7 +3,11 @@ import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
 import { locationIsSet } from '../locationName.ts'
-import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
+import {
+  PanSNRefNames,
+  openTabixSlot,
+  unmappedRegionMessage,
+} from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
 import { parseSegmentRow, segmentSamples } from './rgfaBed.ts'
 import { rgfaCut } from './rgfaCut.ts'
@@ -97,7 +101,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
 
   getFeatures(query: Region, opts: BaseOptions = {}) {
     return ObservableCreate<Feature>(async observer => {
-      const tabixRefName = await this.fine.refNames.resolve(query, opts)
+      const tabixRefName = await this.fine.refNames.resolveMapped(query, opts)
       if (tabixRefName !== undefined) {
         const { walks } = this.fine
         const emit = (feature: Feature) => {
@@ -191,9 +195,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     const index = this.index(tier)
     const tabixRefName = await index.refNames.resolve(region, { signal })
     if (tabixRefName === undefined) {
-      throw new Error(
-        `${region.assemblyName} ${region.refName} is not in this graph's index; a graph with PanSN names (GRCh38#0#chr1) needs ${region.assemblyName} mapped to its prefix in assemblyNameToPanSN`,
-      )
+      throw new Error(unmappedRegionMessage(region))
     }
     if (index.walks) {
       return index.walks.subgraph(tabixRefName, region, opts)

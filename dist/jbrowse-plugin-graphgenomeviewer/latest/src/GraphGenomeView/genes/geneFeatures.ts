@@ -30,7 +30,8 @@ const GENE_TRACK_HINT = /gene|refseq|gencode|ensembl|annotation/i
 // its name says it is annotation
 const BED_ADAPTER_TYPES = new Set(['BedTabixAdapter', 'BedAdapter'])
 
-// Which of the session's tracks to read genes from: the named one, else the
+// Which of the session's tracks to read genes from: the named one while the
+// assembly has it (a saved pick can name a track since removed), else the
 // first gene-bearing track on the assembly whose name says it is annotation,
 // else the first non-BED gene-bearing track. A track whose name says repeats is
 // never picked unnamed, as "RepeatMasker annotation" would be.
@@ -38,8 +39,9 @@ export function pickGeneTrack<T extends TrackChoice>(
   tracks: T[],
   named: string,
 ) {
-  if (named) {
-    return namedTrack(tracks, named)
+  const chosen = named ? namedTrack(tracks, named) : undefined
+  if (chosen) {
+    return chosen
   }
   const candidates = tracks.filter(
     t =>

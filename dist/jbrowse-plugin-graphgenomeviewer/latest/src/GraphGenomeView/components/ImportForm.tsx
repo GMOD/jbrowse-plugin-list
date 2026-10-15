@@ -5,7 +5,7 @@ import { Button, Paper, TextField, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
-import type { GraphPaneModel } from '../model'
+import type { GraphGenomeViewModel } from '../viewModel'
 
 const EXAMPLE_GFA = `H\tVN:Z:1.0
 S\t1\tACGT
@@ -30,7 +30,7 @@ const useStyles = makeStyles()({
 const ImportForm = observer(function ImportForm({
   model,
 }: {
-  model: GraphPaneModel
+  model: GraphGenomeViewModel
 }) {
   const { classes } = useStyles()
   const [url, setUrl] = useState('')
@@ -38,7 +38,7 @@ const ImportForm = observer(function ImportForm({
   function handleUrlLoad() {
     const uri = url.trim()
     if (uri) {
-      void model.loadGFAFromLocation({ uri, locationType: 'UriLocation' })
+      void model.openGfaLocation({ uri, locationType: 'UriLocation' })
     }
   }
 
@@ -47,12 +47,7 @@ const ImportForm = observer(function ImportForm({
     // or picking the same file again fires no change
     event.target.value = ''
     if (file) {
-      file
-        .text()
-        .then(text => model.loadGFA(text, file.name))
-        .catch((err: unknown) => {
-          model.setError(err)
-        })
+      void model.loadGFAFile(file, file.name)
     }
   }
 
@@ -68,7 +63,7 @@ const ImportForm = observer(function ImportForm({
             Choose file
             <input
               type="file"
-              accept=".gfa,.gfa1,.gfa2"
+              accept=".gfa,.gfa1,.gfa2,.gz"
               hidden
               onChange={event => {
                 handleFileUpload(event)

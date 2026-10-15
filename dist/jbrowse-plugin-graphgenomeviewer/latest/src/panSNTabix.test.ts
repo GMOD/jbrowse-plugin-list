@@ -45,3 +45,25 @@ describe('the shared read of the index names', () => {
     await expect(refNames.resolve(region)).resolves.toBe('chr6')
   })
 })
+
+describe('a region the file holds no name for', () => {
+  const adapter = { getConf: () => undefined }
+  const refNamesOf = (names: string[]) =>
+    new PanSNRefNames(
+      { getReferenceSequenceNames: () => Promise.resolve(names) } as never,
+      adapter as never,
+    )
+  const chrM = { assemblyName: 'hg38', refName: 'chrM', start: 0, end: 10 }
+
+  test('is an unmapped assembly where every name is PanSN under another prefix', async () => {
+    await expect(
+      refNamesOf(['GRCh38#0#chr1', 'HG002#1#chr1']).resolveMapped(chrM),
+    ).rejects.toThrow(/hg38 chrM is not in this graph's index/)
+  })
+
+  test('is a contig the graph lacks where the reference is named bare', async () => {
+    await expect(
+      refNamesOf(['chr1', 'HG002#1#chr1']).resolveMapped(chrM),
+    ).resolves.toBeUndefined()
+  })
+})

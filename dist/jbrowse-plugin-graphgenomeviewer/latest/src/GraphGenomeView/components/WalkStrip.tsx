@@ -92,13 +92,16 @@ export const StripTip = observer(function StripTip({
   if (!bars || !frame || frame.labelled || !hover || !row) {
     return null
   }
+  const x = (bars.origin + hover.offset) * frame.scaleX + frame.translateX
+  // past the middle it opens leftward, so a long readout stays in the pane
+  const side =
+    x > frame.width / 2 ? { right: frame.width - x + 12 } : { left: x + 12 }
   return (
     <div
       data-testid="graph-walk-strip-tip"
       style={{
         ...tipStyle,
-        left:
-          (bars.origin + hover.offset) * frame.scaleX + frame.translateX + 12,
+        ...side,
         top: index * frame.rowPx + frame.translateY - 18,
       }}
     >
@@ -106,6 +109,20 @@ export const StripTip = observer(function StripTip({
       {walkRowReadout(row, index === 0 ? undefined : bars.reference)}
     </div>
   )
+})
+
+// Its own observer, so the node a hover lights redraws the ticks and not the
+// strip
+const StripMarks = observer(function StripMarks({
+  model,
+  bars,
+  frame,
+}: {
+  model: GraphPaneModel
+  bars: WalkRows
+  frame: StripFrame
+}) {
+  return <ElTree el={walkMarksTree(bars, frame, model.walkStripMarks)} />
 })
 
 const WalkStrip = observer(function WalkStrip({
@@ -171,17 +188,13 @@ const WalkStrip = observer(function WalkStrip({
           }
         }}
       >
-        <title>
-          Ticks mark where each walk passes the node under the pointer. Click a
-          bar to lift its walk.
-        </title>
         <StripBars
           bars={bars}
           frame={frame}
           ramp={model.referenceRampDomain}
           rowGenes={model.walkRowGenes}
         />
-        <ElTree el={walkMarksTree(bars, frame, model.walkStripMarks)} />
+        <StripMarks model={model} bars={bars} frame={frame} />
         <ElTree
           el={walkStripLabelsTree(
             bars,
@@ -198,6 +211,10 @@ const WalkStrip = observer(function WalkStrip({
             <span>{entry.label}</span>
           </div>
         ))}
+        <span style={{ color: '#777' }}>
+          Ticks mark where each walk passes the node under the pointer; click a
+          haplotype&apos;s bar to lift its walk
+        </span>
       </div>
       <PaneContextMenu
         model={model}

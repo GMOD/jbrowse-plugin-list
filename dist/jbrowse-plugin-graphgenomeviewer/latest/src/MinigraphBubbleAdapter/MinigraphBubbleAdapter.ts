@@ -40,7 +40,7 @@ export default class MinigraphBubbleAdapter extends BaseFeatureDataAdapter<Minig
   getFeatures(query: Region, opts: BaseOptions = {}) {
     const { signal, statusCallback } = opts
     return ObservableCreate<Feature>(async observer => {
-      const tabixRefName = await this.refNames.resolve(query, opts)
+      const tabixRefName = await this.refNames.resolveMapped(query, opts)
       if (tabixRefName !== undefined) {
         await updateStatus('Downloading bubbles', statusCallback, () =>
           getLines(this.bubbles, tabixRefName, query.start, query.end, {

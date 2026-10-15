@@ -165,6 +165,10 @@ export interface GraphRows {
 
 export const withGraphViews = paneBase
   .views(self => ({
+    // the session's config for a track, by id
+    sessionTrack(trackId: string): AnyConfigurationModel | undefined {
+      return getSession(self).tracks.find(t => t.trackId === trackId)
+    },
     get grammar(): GraphGrammar {
       return {}
     },
@@ -333,8 +337,9 @@ export const withGraphViews = paneBase
     get canCancelLoad() {
       return self.isLoading && !self.layoutResult
     },
-    // Whether the drawing on screen is the FMMM engine's. False before there
-    // is a graph, since nothing is drawn by anything yet.
+    // Whether the chosen layout runs the force engine (FMMM or stress) rather
+    // than placing nodes from their coordinates. False before there is a
+    // graph.
     //
     // Read by the settings that only the engine looks at: the layout quality
     // and the bubble spread do nothing at all to an anchored drawing, which

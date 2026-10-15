@@ -85,11 +85,32 @@ const LabelLayer = observer(function LabelLayer({
             model.setHoveredBubble(null)
           }
         }}
+        onFocus={e => {
+          const tick = tickAt(e.target)
+          if (tick) {
+            model.setHoveredBubble(tick.item.bubble)
+          }
+        }}
+        onBlur={() => {
+          if (isAlive(model)) {
+            model.setHoveredBubble(null)
+          }
+        }}
+        onKeyDown={e => {
+          const tick = tickAt(e.target)
+          if (tick && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault()
+            model.toggleBubble(tick.item.bubble)
+          }
+        }}
       >
         {ticks.map(({ item: h, x, y }, i) => (
           <rect
             key={bubbleKey(h.bubble)}
             data-tick={i}
+            role="button"
+            tabIndex={0}
+            aria-label={`${h.label}, ${isOpen(h) ? 'close' : 'open'} bubble`}
             x={x - TICK_WIDTH / 2}
             y={y - TICK_PX}
             width={TICK_WIDTH}

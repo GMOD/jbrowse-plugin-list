@@ -52,8 +52,9 @@ export function pickRepeatTrack<T extends TrackChoice>(
   tracks: T[],
   named: string,
 ) {
-  if (named) {
-    return namedTrack(tracks, named)
+  const chosen = named ? namedTrack(tracks, named) : undefined
+  if (chosen) {
+    return chosen
   }
   const candidates = tracks.filter(t => REPEAT_ADAPTER_TYPES.has(t.adapterType))
   return candidates.find(t => REPEAT_TRACK_HINT.test(trackLabel(t)))

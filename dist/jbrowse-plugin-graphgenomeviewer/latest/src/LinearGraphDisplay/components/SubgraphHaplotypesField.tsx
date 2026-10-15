@@ -56,10 +56,11 @@ const HaplotypeListField = observer(function HaplotypeListField({
 })
 
 // The haplotypes a walk-indexed graph's header names, searched as typed. A
-// typed prefix the list lacks (HG002 for both haplotypes) is kept too, and
-// becomes a chip on blur as well as on Enter. The set applies when the list
-// closes or, with the list closed, as it changes. The ref holds the draft
-// because a blur's onChange and onClose land in one event, before a rerender.
+// typed prefix the list lacks (HG002 for both haplotypes) is kept too, on
+// Enter or when the field loses focus. The set applies when the list closes
+// or, with the list closed, as it changes. Not MUI's `autoSelect`: in a
+// multiple select its blur toggles the highlighted option, so a pick made by
+// keyboard was dropped again on Tab.
 const HaplotypePickField = observer(function HaplotypePickField({
   model,
   names,
@@ -69,6 +70,7 @@ const HaplotypePickField = observer(function HaplotypePickField({
 }) {
   const [draft, setDraft] = useState(model.cutHaplotypes ?? [])
   const draftRef = useRef(draft)
+  const typed = useRef('')
   const [open, setOpen] = useState(false)
   const apply = (haplotypes: string[]) => {
     if (haplotypes.join('\n') !== (model.cutHaplotypes ?? []).join('\n')) {
@@ -80,7 +82,6 @@ const HaplotypePickField = observer(function HaplotypePickField({
     <Autocomplete
       multiple
       freeSolo
-      autoSelect
       disableCloseOnSelect
       options={names}
       value={draft}
@@ -88,8 +89,16 @@ const HaplotypePickField = observer(function HaplotypePickField({
       onOpen={() => {
         setOpen(true)
       }}
-      onClose={() => {
+      onInputChange={(_, text) => {
+        typed.current = text
+      }}
+      onClose={(_, reason) => {
         setOpen(false)
+        const text = typed.current.trim()
+        if (reason === 'blur' && text && !draftRef.current.includes(text)) {
+          draftRef.current = [...draftRef.current, text]
+          setDraft(draftRef.current)
+        }
         apply(draftRef.current)
       }}
       onChange={(_, value) => {

@@ -17,6 +17,7 @@ import type { GraphPaneModel } from '../model'
 const useStyles = makeStyles()({
   toolbar: {
     display: 'flex',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 4,
     padding: '2px 4px',

@@ -38,7 +38,6 @@ import {
   expandTabixShorthand,
   readConfObject,
 } from '@jbrowse/core/configuration'
-import { getSession } from '@jbrowse/core/util'
 import { untracked } from 'mobx'
 
 import { SECTION_HEADER_PX, sectionPlacement } from '../walkRowGroups'
@@ -600,7 +599,7 @@ export const withFitViews = withHostViews
       }
       const geneTrack = self.showGenes ? self.geneTrack : undefined
       const geneConf = geneTrack
-        ? getSession(self).tracks.find(t => t.trackId === geneTrack.trackId)
+        ? self.sessionTrack(geneTrack.trackId)
         : undefined
       const geneAdapter = geneConf
         ? expandTabixShorthand(

@@ -103,13 +103,26 @@ test('getFeatures resolves a PanSN name given unqualified', async () => {
   expect(qualified.map(f => f.get('name'))).toEqual(['s322', 's323'])
 })
 
-test('getFeatures is empty for a sequence the graph does not anchor to', async () => {
+test('getFeatures is empty for a contig the mapped assembly lacks', async () => {
   const features = await firstValueFrom(
     makeAdapter()
-      .getFeatures({ ...k12, assemblyName: 'volvox', refName: 'ctgA' })
+      .getFeatures({ ...k12, refName: 'chrM' })
       .pipe(toArray()),
   )
   expect(features).toEqual([])
+})
+
+// An empty track here read as "no data" when the fix is a config entry
+test('getFeatures names the missing mapping for an assembly no PanSN prefix matches', async () => {
+  await expect(
+    firstValueFrom(
+      makeAdapter()
+        .getFeatures({ ...k12, assemblyName: 'volvox', refName: 'ctgA' })
+        .pipe(toArray()),
+    ),
+  ).rejects.toThrow(
+    /volvox ctgA is not in this graph's index.*assemblyNameToPanSN/,
+  )
 })
 
 // The point of the two-file index: a region on the reference backbone reaches
@@ -375,11 +388,10 @@ test('maps an assembly name to a differing PanSN sample prefix', async () => {
   expect(features.every(f => f.get('refName') === 'chr')).toBe(true)
 })
 
-test('without the mapping the same query resolves nothing', async () => {
-  const features = await firstValueFrom(
-    makeMappedAdapter({}).getFeatures(renamed).pipe(toArray()),
-  )
-  expect(features).toEqual([])
+test('without the mapping the same query names the missing entry', async () => {
+  await expect(
+    firstValueFrom(makeMappedAdapter({}).getFeatures(renamed).pipe(toArray())),
+  ).rejects.toThrow(/assemblyNameToPanSN/)
 })
 
 test('getSubgraph resolves through the mapping too', async () => {

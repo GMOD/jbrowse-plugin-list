@@ -1157,6 +1157,14 @@ function walkIndexedDisplay(names?: string[] | null) {
   return { ...env, display, menu }
 }
 
+test("a walk-indexed track's cut maps a lane assembly to its PanSN alias", () => {
+  const { display } = walkIndexedDisplay()
+  expect(display.sourceAdapter?.assemblyNameToPanSN).toEqual({
+    'HG1.1': 'HG1#1',
+    'HG2.1': 'HG2#1',
+  })
+})
+
 test("a walk-indexed track cuts for its config's default haplotypes", async () => {
   const { display, menu } = walkIndexedDisplay()
   expect(display.cutHaplotypes).toEqual(['HG1', 'HG2#1'])

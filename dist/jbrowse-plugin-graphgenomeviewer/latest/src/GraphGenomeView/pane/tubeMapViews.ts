@@ -324,7 +324,21 @@ export const withTubeMapViews = withFitViews
   }))
   .views(self => {
     // Compared by value: the marks in view are read off the transform, and
-    // the legend should redraw when a kind comes or goes, not every pan frame
+    // the legend should redraw when a kind comes or goes, not every pan frame.
+    // The rest of the key reads no transform, so a pan leaves it cached.
+    const sameJson = (a: unknown, b: unknown) =>
+      JSON.stringify(a) === JSON.stringify(b)
+    const marksInView = computed(
+      () =>
+        mismatchKindsShown(
+          self.layoutResult?.tubeMapPanels !== undefined
+            ? undefined
+            : self.tubeMapPicture,
+          self.tubeMapFrame,
+          self.paneWidth,
+        ),
+      { equals: sameJson },
+    )
     const keys = computed(
       () => {
         const layout = self.layoutResult
@@ -361,21 +375,16 @@ export const withTubeMapViews = withFitViews
             self.tubeMapDeviations.length > 0 ? self.tubeMapFold : undefined,
           forwardReads: reads.some(r => !r.is_reverse),
           reverseReads: reads.some(r => r.is_reverse),
-          ...mismatchKindsShown(
-            split ? undefined : self.tubeMapPicture,
-            self.tubeMapFrame,
-            self.paneWidth,
-          ),
         }
       },
-      { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+      { equals: sameJson },
     )
     return {
       // What the tube map's legend has to explain: that on the own axis a
       // box is as wide as the log of its length, the fold its walks' ticks
       // stand for, the reads' strands, and the marks on the reads in view
       get tubeMapKeys() {
-        return keys.get()
+        return { ...keys.get(), ...marksInView.get() }
       },
     }
   })

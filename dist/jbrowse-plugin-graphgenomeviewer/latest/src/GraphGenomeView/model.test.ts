@@ -138,8 +138,18 @@ vi.mock(import('@jbrowse/core/configuration'), async importOriginal => ({
 }))
 
 const mockReadFile = vi.hoisted(() => vi.fn())
+// A read with no encoding gets bytes, as generic-filehandle2 returns them
 vi.mock('@jbrowse/core/util/io', () => ({
-  openLocation: () => ({ readFile: mockReadFile }),
+  openLocation: () => ({
+    readFile: async (opts?: string | { encoding?: string }) => {
+      const read: unknown = await mockReadFile(opts)
+      return typeof read === 'string' &&
+        typeof opts !== 'string' &&
+        !opts?.encoding
+        ? new TextEncoder().encode(read)
+        : read
+    },
+  }),
 }))
 
 const SIMPLE_GFA = 'H\tVN:Z:1.0\nS\t1\tACGT\nS\t2\tGGCC\nL\t1\t+\t2\t+\t0M\n'
@@ -462,6 +472,26 @@ describe('performance instrumentation', () => {
     expect(model.lastGeometryStrokeCount).toBeUndefined()
   })
 
+  test('clearGraph lets go of the drawn geometry and a morph in progress', async () => {
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(SIMPLE_GFA, 'imported')
+    const batch = { ...model.drawnBatch, nodeStrokes: [] }
+    model.setGeometryMetrics(1, batch, {
+      scale: 1,
+      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+    })
+    model.setMorphFrame({
+      layout: model.layoutResult!,
+      ids: new Set(['1']),
+      alpha: 0.5,
+    })
+    model.clearGraph()
+    expect(model.drawnBatch).not.toBe(batch)
+    expect(model.drawnBatch.nodeStrokes).toHaveLength(0)
+    expect(model.morphEntering).toBeUndefined()
+  })
+
   test('only the force run the live layout waits on writes the status line', async () => {
     rpcRespond()
     const model = createModel()
@@ -771,6 +801,53 @@ describe('loadGFAFromLocation', () => {
 
     expect(model.isLoading).toBe(false)
     expect(String(model.error)).toMatch(/404/)
+  })
+
+  test('a picked file loads with the view loading while it is read', async () => {
+    rpcRespond()
+    const model = createModel()
+    const load = model.loadGFAFile(new Blob([SIMPLE_GFA]), 'picked.gfa')
+    expect(model.isLoading).toBe(true)
+    expect(model.statusMessage).toBe('Reading file')
+    await load
+    expect(model.nodeCount).toBe(2)
+  })
+
+  test('a url opened from the import form is the source a saved session reopens', async () => {
+    rpcRespond()
+    mockReadFile.mockResolvedValue(SIMPLE_GFA)
+    const model = stateModelFactory().create({ type: 'GraphGenomeView' })
+    await model.openGfaLocation(location)
+    expect(model.nodeCount).toBe(2)
+    expect(getSnapshot(model).gfaLocation).toEqual(location)
+    expect(model.displayName).toBe('small.gfa')
+  })
+
+  test('a url opened after clearing names the view by its own file', async () => {
+    rpcRespond()
+    mockReadFile.mockResolvedValue(SIMPLE_GFA)
+    const model = stateModelFactory().create({ type: 'GraphGenomeView' })
+    await model.openGfaLocation(location)
+    model.clearGraph()
+    await model.openGfaLocation({
+      ...location,
+      uri: 'https://example.com/b.gfa',
+    })
+    expect(model.displayName).toBe('b.gfa')
+
+    model.setDisplayName('my graph')
+    model.clearGraph()
+    expect(model.displayName).toBe('my graph')
+  })
+
+  test('a url that fails to open stays out of the saved session', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockReadFile.mockRejectedValue(new Error('404'))
+    const model = stateModelFactory().create({ type: 'GraphGenomeView' })
+    await model.openGfaLocation(location)
+    expect(String(model.error)).toMatch(/404/)
+    expect(model.gfaLocation).toBeUndefined()
+    expect(model.canRetryLoad).toBe(false)
   })
 
   test('the region a file was stated beside outlives a failed fetch, so a retry has it', async () => {
@@ -3931,6 +4008,22 @@ describe('annotation reads beside a cut', () => {
     await loaded
     expect(model.isLoading).toBe(false)
     expect(model.error).toBeUndefined()
+  })
+
+  test('a cut too large to draw still reads its genes, for when the limit is raised', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const model = attachedModel()
+    model.setMaxGraphNodes(1)
+    const loaded = cut(model)
+    await vi.waitFor(() => {
+      expect(reads.map(r => r.tag)).toContain('genes-a')
+    })
+    readOf('genes-a').settle([gene('ABC1')])
+    await loaded
+    expect(String(model.error)).toMatch(/too large to draw/i)
+    await vi.waitFor(() => {
+      expect(model.geneFeatures?.map(g => g.name)).toEqual(['ABC1'])
+    })
   })
 
   test('picking another gene track reads it and leaves the graph alone', async () => {

@@ -71,6 +71,24 @@ export default function LabelChip({
       onMouseLeave={() => {
         onHover?.(false)
       }}
+      // a clickable chip is a button to the keyboard too
+      {...(onClick && {
+        role: 'button',
+        tabIndex: 0,
+        'aria-label': (title ?? text).replaceAll('\n', ', '),
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        },
+        onFocus: () => {
+          onHover?.(true)
+        },
+        onBlur: () => {
+          onHover?.(false)
+        },
+      })}
     >
       {title ? <title>{title}</title> : null}
       <rect

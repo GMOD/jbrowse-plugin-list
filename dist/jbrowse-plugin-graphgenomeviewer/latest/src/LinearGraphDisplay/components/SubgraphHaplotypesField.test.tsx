@@ -38,6 +38,17 @@ test('a typed prefix left in the box applies when the box loses focus', () => {
   expect(m.setSubgraphHaplotypes).toHaveBeenCalledWith(['HG002', 'NA19240'])
 })
 
+test('a pick made by keyboard survives the field losing focus', () => {
+  const m = model(['HG002#1', 'HG002#2', 'NA19240#1'])
+  render(<SubgraphHaplotypesField model={m} />)
+  const field = screen.getByTestId('graph-haplotypes-field')
+  fireEvent.mouseDown(field)
+  fireEvent.keyDown(field, { key: 'ArrowDown' })
+  fireEvent.keyDown(field, { key: 'Enter' })
+  fireEvent.blur(field)
+  expect(m.setSubgraphHaplotypes).toHaveBeenLastCalledWith(['HG002', 'HG002#1'])
+})
+
 test('without names the field takes typed ones', () => {
   const m = model()
   render(<SubgraphHaplotypesField model={m} />)
