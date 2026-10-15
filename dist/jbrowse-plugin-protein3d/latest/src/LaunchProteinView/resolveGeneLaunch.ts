@@ -7,12 +7,15 @@ import {
 } from 'p2s_mapper'
 
 import { codingTranscripts, flaggedTranscriptId } from './codingFeature'
-import { rankIsoforms, rankedTranscriptId } from '../AlignTranscriptRpc'
+import {
+  rankIsoforms,
+  rankedTranscriptId,
+} from '../AlignTranscriptRpc/isoformRanking'
 import { fetchTranscriptProteinSeqs } from './utils/translateTranscripts'
 import { extractFeatureIdentifiers, extractTaxonId } from './utils/util'
 import { alignOffThread } from '../ProteinView/alignOffThread'
 
-import type { IsoformRanking } from '../AlignTranscriptRpc'
+import type { IsoformRanking } from '../AlignTranscriptRpc/isoformRanking'
 import type { TranscriptTranslation } from './utils/translateTranscripts'
 import type { FeatureIdentifiers } from './utils/util'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'

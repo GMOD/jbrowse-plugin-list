@@ -1,5 +1,6 @@
 import { maybeLaunchSideBySide } from './sideBySide';
 import { getGeneDisplayName, getTranscriptDisplayName } from './util';
+import { addProteinView } from '../../ProteinView/addProteinView';
 import { proteinViewSnapshot } from '../../ProteinView/proteinViewSpec';
 import { clinVarTrackConfFor } from '../components/clinVarTrackSource';
 import { launchProteinAnnotationView } from '../components/launchProteinAnnotationView';
@@ -16,7 +17,7 @@ export function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
         .filter(s => !!s)
         .join(' - ');
 }
-export function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, sideBySide, }) {
+export async function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, sideBySide, }) {
     const snap = proteinViewSnapshot({
         displayName: formatViewName('Protein view', feature, selectedTranscript, uniprotId),
         structures: [
@@ -29,7 +30,7 @@ export function launch3DProteinView({ session, view, feature, selectedTranscript
             },
         ],
     });
-    const proteinView = session.addView('ProteinView', snap);
+    const proteinView = await addProteinView(session, snap);
     maybeLaunchSideBySide(session, proteinView.id, sideBySide);
     return proteinView;
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { rankedTranscriptId } from '../../AlignTranscriptRpc'
+import { rankedTranscriptId } from '../../AlignTranscriptRpc/isoformRanking'
 import { flaggedTranscriptId } from '../codingFeature'
 import { rankableIsoforms } from '../utils/util'
 

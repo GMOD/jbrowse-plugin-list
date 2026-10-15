@@ -36,9 +36,7 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
         userProvidedTranscriptSequence: userSelectedProteinSequence?.seq,
         sideBySide,
     };
-    const handleLaunch3DView = runLaunch(() => {
-        launch3DProteinView(launch3DParams);
-    });
+    const handleLaunch3DView = runLaunch(() => launch3DProteinView(launch3DParams));
     const { launch1D } = getConditionalProteinLaunches({
         session,
         view,

@@ -1,19 +1,12 @@
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes'
-import {
-  alignTranscriptToEntity,
-  chooseMappedEntity,
-  classifyIsoforms,
-  pickStructureSequence,
-} from 'p2s_mapper'
 
+import type { IsoformRanking } from './isoformRanking'
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type {
   AlignmentAlgorithm,
-  ClassifiedIsoforms,
   EntityCandidate,
   EntitySelection,
   Isoform,
-  RankedIsoform,
   ScoredAlignment,
 } from 'p2s_mapper'
 
@@ -32,45 +25,6 @@ interface AlignArgs {
 interface RankArgs {
   isoforms: Isoform[]
   structureSequences: string[]
-}
-
-export interface IsoformRanking {
-  /** the chain the isoforms are compared against; see pickStructureSequence */
-  structureSequence?: string
-  ranking: ClassifiedIsoforms
-}
-
-/** The launch dialog's isoform order: one alignment per chain to pick the
- * chain, then one per isoform that does not match it exactly. */
-export function rankIsoforms(
-  isoforms: Isoform[],
-  structureSequences?: string[],
-): IsoformRanking {
-  const structureSequence = pickStructureSequence(structureSequences, isoforms)
-  return {
-    structureSequence,
-    ranking: classifyIsoforms({ isoforms, structureSequence }),
-  }
-}
-
-/**
- * The isoform to open from a ranking. An exact match to the structure wins;
- * the annotation's flagged transcript (MANE Select) breaks a tie between exact
- * matches, and leads when there is no structure to rank against, where length
- * alone would decide.
- */
-export function rankedTranscriptId(
-  { matches, nonMatches }: ClassifiedIsoforms,
-  flaggedId?: string,
-) {
-  const flagged = (list: RankedIsoform[]) => list.find(i => i.id === flaggedId)
-  const unranked = nonMatches.every(i => i.score === undefined)
-  return (
-    flagged(matches) ??
-    matches[0] ??
-    (unranked ? flagged(nonMatches) : undefined) ??
-    nonMatches[0]
-  )?.id
 }
 
 declare module '@jbrowse/core/rpc/RpcRegistry' {
@@ -93,11 +47,13 @@ declare module '@jbrowse/core/rpc/RpcRegistry' {
 // The alignment DP runs ~50 ns a cell, so a 4,000-residue transcript against
 // its structure is almost a second and a complex of long chains several: on
 // the main thread, frozen UI. These run it in the host's RPC worker instead,
-// or in place on a host whose driver is MainThreadRpcDriver.
+// or in place on a host whose driver is MainThreadRpcDriver. The aligner loads
+// on the first call, so registering the methods costs the plugin's boot nothing.
 export class ProteinChooseMappedEntity extends RpcMethodType<'ProteinChooseMappedEntity'> {
   name = 'ProteinChooseMappedEntity' as const
 
   async execute({ transcript, entities, algorithm }: ChooseArgs) {
+    const { chooseMappedEntity } = await import('p2s_mapper')
     return chooseMappedEntity(transcript, entities, algorithm)
   }
 }
@@ -106,6 +62,7 @@ export class ProteinAlignTranscriptToEntity extends RpcMethodType<'ProteinAlignT
   name = 'ProteinAlignTranscriptToEntity' as const
 
   async execute({ transcript, entitySeq, algorithm }: AlignArgs) {
+    const { alignTranscriptToEntity } = await import('p2s_mapper')
     return alignTranscriptToEntity(transcript, entitySeq, algorithm)
   }
 }
@@ -114,6 +71,7 @@ export class ProteinRankIsoforms extends RpcMethodType<'ProteinRankIsoforms'> {
   name = 'ProteinRankIsoforms' as const
 
   async execute({ isoforms, structureSequences }: RankArgs) {
+    const { rankIsoforms } = await import('./isoformRanking')
     return rankIsoforms(isoforms, structureSequences)
   }
 }

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:@jbrowse/core/pluggableElementTypes"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"@jbrowse/core/pluggableElementTypes\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,qCAAqC",
+  "names": ["require_pluggableElementTypes", "__commonJSMin", "exports", "module"]
+}

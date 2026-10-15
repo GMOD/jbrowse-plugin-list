@@ -94,9 +94,9 @@ export default function ProteinViewActions({
     sideBySide,
   }
 
-  const handleLaunch3DView = runLaunch(() => {
-    launch3DProteinView(launch3DParams)
-  })
+  const handleLaunch3DView = runLaunch(() =>
+    launch3DProteinView(launch3DParams),
+  )
 
   const { launch1D } = getConditionalProteinLaunches({
     session,

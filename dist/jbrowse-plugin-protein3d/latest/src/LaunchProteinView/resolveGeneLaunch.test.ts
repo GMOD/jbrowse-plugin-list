@@ -6,7 +6,7 @@ import {
   resolveGeneLaunch,
   unambiguousEntry,
 } from './resolveGeneLaunch'
-import { rankIsoforms } from '../AlignTranscriptRpc'
+import { rankIsoforms } from '../AlignTranscriptRpc/isoformRanking'
 
 import type { GeneLaunchHost } from './resolveGeneLaunch'
 import type { AlphaFoldModel, UniProtEntry } from 'p2s_mapper'

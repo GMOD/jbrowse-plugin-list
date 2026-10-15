@@ -68,7 +68,7 @@ export default function FoldseekActionMenu({
       !hit.structureUrl && hasValidCaCoords(hit)
         ? caCoordsToPdb(hit.tCa, hit.tSeq, 'A', hit.target)
         : undefined
-    launch3DProteinView({
+    return launch3DProteinView({
       ...baseParams,
       url: hit.structureUrl,
       data: pdbData,

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 
-import { launchViewSnapshot } from './index'
+import { launchViewSnapshot } from './launchProteinView'
 
 test('every view setting a launch names reaches the snapshot', () => {
   const snapshot = launchViewSnapshot(

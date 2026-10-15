@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/ProteinView/loadMolstar.ts"],
+  "sourcesContent": ["import type * as MolstarExports from './molstarExports'\n\nlet cached: Promise<typeof MolstarExports> | undefined\n\n// A failed chunk load is forgotten so the next caller retries it\nexport default function loadMolstar() {\n  cached ??= import('./molstarExports').catch((e: unknown) => {\n    cached = undefined\n    throw e\n  })\n  return cached\n}\n"],
+  "mappings": "AAEA,IAAIA,EAGW,SAARC,GAA+B,CACpC,OAAAD,IAAW,OAAO,8BAAkB,EAAE,MAAOE,GAAe,CAC1D,MAAAF,EAAS,OACHE,CACR,CAAC,EACMF,CACT",
+  "names": ["cached", "loadMolstar", "e"]
+}

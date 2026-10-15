@@ -1,10 +1,10 @@
+import { lazy } from 'react';
 import { getContainingTrack, getContainingView, getSession, isGeneLikeType, } from '@jbrowse/core/util';
 import AddIcon from '@mui/icons-material/Add';
 import { isCodingFeature } from './codingFeature';
-import LaunchProteinViewDialog from './components/LaunchProteinViewDialog';
-import { describeMissingStructure, resolveGeneLaunch, sessionGeneLaunchHost, } from './resolveGeneLaunch';
-import { launch3DProteinView } from './utils/launchViewUtils';
 import { getGeneDisplayName } from './utils/util';
+// the menu items register at boot; what they open loads on the first click
+const LaunchProteinViewDialog = lazy(() => import('./components/LaunchProteinViewDialog'));
 function isDisplay(elt) {
     return elt.name === 'LinearBasicDisplay';
 }
@@ -84,6 +84,10 @@ function openAlphaFoldStructure(self, target) {
             return;
         }
         session.notify(`Looking up the AlphaFold structure of ${name}`, 'info');
+        const [{ describeMissingStructure, resolveGeneLaunch, sessionGeneLaunchHost }, { launch3DProteinView },] = await Promise.all([
+            import('./resolveGeneLaunch'),
+            import('./utils/launchViewUtils'),
+        ]);
         const launch = await resolveGeneLaunch({
             host: sessionGeneLaunchHost(session, assemblyName),
             feature,
@@ -91,7 +95,7 @@ function openAlphaFoldStructure(self, target) {
         });
         const { transcript, userProvidedTranscriptSequence, uniprotId, url } = launch;
         if (url) {
-            launch3DProteinView({
+            await launch3DProteinView({
                 session,
                 view,
                 feature,

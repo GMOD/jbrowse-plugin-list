@@ -70,7 +70,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
             const structureData = activeFile
                 ? await readStructureFile(activeFile)
                 : undefined;
-            launch3DProteinView({
+            await launch3DProteinView({
                 session,
                 view,
                 feature,

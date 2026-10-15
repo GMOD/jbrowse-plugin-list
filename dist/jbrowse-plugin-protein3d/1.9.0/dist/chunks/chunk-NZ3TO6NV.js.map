@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["global-externals:tss-react/mui"],
+  "sourcesContent": ["module.exports = JBrowseExports[\"tss-react/mui\"];"],
+  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe,eAAe",
+  "names": ["require_mui", "__commonJSMin", "exports", "module"]
+}

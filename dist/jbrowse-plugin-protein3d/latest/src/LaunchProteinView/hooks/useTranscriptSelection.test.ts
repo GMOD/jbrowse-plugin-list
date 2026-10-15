@@ -2,7 +2,7 @@ import { SimpleFeature } from '@jbrowse/core/util'
 import { expect, test } from 'vitest'
 
 import { defaultTranscriptId } from './useTranscriptSelection'
-import { rankIsoforms } from '../../AlignTranscriptRpc'
+import { rankIsoforms } from '../../AlignTranscriptRpc/isoformRanking'
 import { rankableIsoforms } from '../utils/util'
 
 const transcript = (id: string) =>

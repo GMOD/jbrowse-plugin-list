@@ -2,10 +2,10 @@ import { getSession } from '@jbrowse/core/util'
 import useSWR from 'swr'
 
 import { STATIC_SWR_OPTIONS } from './swrOptions'
-import { rankIsoforms } from '../../AlignTranscriptRpc'
+import { rankIsoforms } from '../../AlignTranscriptRpc/isoformRanking'
 import { alignOffThread } from '../../ProteinView/alignOffThread'
 
-import type { IsoformRanking } from '../../AlignTranscriptRpc'
+import type { IsoformRanking } from '../../AlignTranscriptRpc/isoformRanking'
 import type { Isoform } from 'p2s_mapper'
 
 /**

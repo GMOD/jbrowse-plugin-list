@@ -1,7 +1,7 @@
 import { getConf } from '@jbrowse/core/configuration';
 import { fetchAlphaFoldModels, getAlphaFoldStructureUrl, pickAlphaFoldModel, searchUniProtEntries, } from 'p2s_mapper';
 import { codingTranscripts, flaggedTranscriptId } from './codingFeature';
-import { rankIsoforms, rankedTranscriptId } from '../AlignTranscriptRpc';
+import { rankIsoforms, rankedTranscriptId, } from '../AlignTranscriptRpc/isoformRanking';
 import { fetchTranscriptProteinSeqs } from './utils/translateTranscripts';
 import { extractFeatureIdentifiers, extractTaxonId } from './utils/util';
 import { alignOffThread } from '../ProteinView/alignOffThread';
