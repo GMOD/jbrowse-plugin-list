@@ -23,28 +23,34 @@ const useStyles = makeStyles()({
   },
 })
 
-// What a view with no graph on screen shows while its load runs, and after a
-// load of a source it can retry was canceled or failed.
+// What a view with no graph on screen shows while its load runs or waits on
+// its assembly, and after a load of a source it can retry was canceled or
+// failed.
 const GraphLoadStatus = observer(function GraphLoadStatus({
   model,
 }: {
   model: GraphPaneModel
 }) {
   const { classes } = useStyles()
-  if (model.isLoading) {
+  if (!model.error && !model.loadCanceled) {
     return (
       <Paper className={classes.paper} data-testid="graph-genome-loading">
         <div className={classes.row}>
-          <LoadingEllipses variant="h6" message={model.statusMessage} />
-          <Button
-            size="small"
-            data-testid="graph-genome-cancel"
-            onClick={() => {
-              model.cancelLoad()
-            }}
-          >
-            Cancel
-          </Button>
+          <LoadingEllipses
+            variant="h6"
+            message={model.statusMessage || undefined}
+          />
+          {model.canCancelLoad ? (
+            <Button
+              size="small"
+              data-testid="graph-genome-cancel"
+              onClick={() => {
+                model.cancelLoad()
+              }}
+            >
+              Cancel
+            </Button>
+          ) : null}
         </div>
         <LinearProgress variant="indeterminate" />
       </Paper>

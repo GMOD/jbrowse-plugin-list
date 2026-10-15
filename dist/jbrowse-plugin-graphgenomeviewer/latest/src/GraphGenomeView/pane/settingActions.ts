@@ -196,6 +196,15 @@ export const withSettingActions = withTubeMapViews
       const had = new Map(self.walkLayers.map(l => [l.walk, l]))
       self.walkLayers = names.map(walk => had.get(walk) ?? { walk })
     },
+    // A picker's set, which lists only this cut's walks: the lifted walks it
+    // cannot show keep their layers for when a cut has them again
+    liftAmongChoices(names: string[]) {
+      const shown = new Set(self.walkChoices.map(c => c.name))
+      this.liftWalks([
+        ...names,
+        ...self.walkLayers.map(l => l.walk).filter(walk => !shown.has(walk)),
+      ])
+    },
     // The field the panels split on; a change of field drops the order
     // written for the old one and keeps the column count
     // Panels off clears only panels, leaving a walk-row grouping the facet

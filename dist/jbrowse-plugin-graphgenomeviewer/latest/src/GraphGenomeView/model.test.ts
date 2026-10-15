@@ -3422,6 +3422,24 @@ describe('walk rows', () => {
     expect(model.figureSpecUnavailable).toMatch(/^bandage-figure draws no /)
   })
 
+  test("a picker's set keeps lifted walks this cut does not hold", async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'auto',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    model.setWalkLayers([
+      { walk: 'elsewhere#1', color: { scheme: 'green' } },
+      { walk: 'B#1#ctg' },
+    ])
+    model.liftAmongChoices(['A#1#ctg'])
+    expect(model.walkLayers).toEqual([
+      { walk: 'A#1#ctg' },
+      { walk: 'elsewhere#1', color: { scheme: 'green' } },
+    ])
+  })
+
   test('walks lift together, each keeping the colour it was given', async () => {
     rpcRespond()
     const model = stateModelFactory().create({

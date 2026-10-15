@@ -27,7 +27,6 @@ import {
   fitTransform,
 } from '@jbrowse/bandage-core/pipeline'
 import { buildGeometry } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
-import { getDpr } from '@jbrowse/bandage-core/renderer/canvas'
 import { layoutGeometryInputs } from '@jbrowse/bandage-core/renderer/geometryInputs'
 import {
   GENE_ROW_PX,
@@ -56,6 +55,7 @@ import {
   paneViewportOf,
   uriOf,
 } from './paneBase'
+import { trackedDpr } from '../trackedDpr'
 
 import type { FacetGrid, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type {
@@ -479,11 +479,10 @@ export const withFitViews = withHostViews
     // getDpr(), never a bare `devicePixelRatio`: it is capped at MAX_DPR so
     // this canvas costs what every other canvas in the app costs on a 3x
     // display, and it is the same read `syncCanvasSize` sizes the backing
-    // store with — two call sites reading the global separately can
-    // disagree, and then the geometry lands at a different scale from the
-    // canvas under it.
+    // store with. Tracked, so a new ratio repaints rather than leaving the
+    // geometry at a different scale from the canvas under it.
     get paintTransform() {
-      const dpr = getDpr()
+      const dpr = trackedDpr()
       return {
         scaleX: self.scaleX * dpr,
         scaleY: self.scaleY * dpr,
@@ -702,5 +701,22 @@ export const withFitViews = withHostViews
             spec: self.drawsNodes ? this.figureSpec() : undefined,
           })
         : undefined
+    },
+  }))
+  .views(self => ({
+    // A drawing in its own coordinates that still follows the linear view's
+    // pan and zoom as a stretched picture until the re-cut lands. The view
+    // drives it, so a horizontal drag or a zoom over it is the view's.
+    get followsHostView() {
+      const layout = self.layoutResult
+      return (
+        !!self.host &&
+        !self.hostPlacesX &&
+        !!layout &&
+        !layout.referenceAxis &&
+        !layout.pixelRows &&
+        !layout.tubeMap &&
+        !self.facetGrid
+      )
     },
   }))

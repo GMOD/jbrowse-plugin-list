@@ -1,5 +1,4 @@
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
-import { getDpr } from '@jbrowse/bandage-core/renderer/canvas'
 import { referenceBoxes, rulerBoxes } from '@jbrowse/bandage-core/tubeMap/axis'
 import {
   connectorAt,
@@ -34,6 +33,7 @@ import {
 } from '../tubeMapPanels'
 import { withFitViews } from './fitViews'
 import { HOVER_BRIGHTEN } from './paneBase'
+import { trackedDpr } from '../trackedDpr'
 
 import type { HoveredTube } from './paneBase'
 import type { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
@@ -287,7 +287,7 @@ export const withTubeMapViews = withFitViews
       const node = self.hoverLayerNode
       if (picture && frame) {
         const { ctx, canvas } = r
-        const dpr = getDpr()
+        const dpr = trackedDpr(self.paneWidth, self.canvasHeight)
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)

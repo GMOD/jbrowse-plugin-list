@@ -268,6 +268,7 @@ const GraphCanvas = observer(function GraphCanvas({
     handlers,
     canvasStyle,
     surfaceProps,
+    labelHandlers,
     contextMenu,
     closeContextMenu,
     hoveredChip,
@@ -283,6 +284,7 @@ const GraphCanvas = observer(function GraphCanvas({
       <div
         ref={setArea}
         style={canvasAreaStyle}
+        {...labelHandlers}
         onMouseEnter={() => {
           model.setPointerInPane(true)
         }}

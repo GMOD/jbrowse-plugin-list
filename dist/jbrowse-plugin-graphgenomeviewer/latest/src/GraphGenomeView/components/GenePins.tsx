@@ -1,7 +1,10 @@
+import { useMemo } from 'react'
+
 import {
   exonOutlineTree,
   exonStretches,
 } from '@jbrowse/bandage-core/genes/exonOutline'
+import { computed } from 'mobx'
 import { observer } from 'mobx-react'
 
 import ElTree, { useSvgId } from './ElTree'
@@ -19,26 +22,33 @@ const GenePins = observer(function GenePins({
   model: GraphPaneModel
 }) {
   const id = `exon-outline-${useSvgId()}`
-  const { genePins, walkLift, nodeInk } = model
+  // in layout units, so a pan frame reuses them and only moves the transform
+  const stretches = useMemo(
+    () =>
+      computed(() => {
+        const { genePins, walkLift } = model
+        // an open bubble rings only its own exons
+        const focus = walkLift ? undefined : model.openBubbleFocus
+        const pins = focus
+          ? genePins.map(pin => ({
+              ...pin,
+              exonsByNode: pin.exonsByNode.filter(e =>
+                focus.nodeIds.has(e.nodeId),
+              ),
+            }))
+          : genePins
+        return exonStretches(pins, model.nodeInk.halfWidthPx, walkLift)
+      }),
+    [model],
+  )
   const { scaleX, scaleY, translateX, translateY, paneWidth, canvasHeight } =
     model
-  // an open bubble rings only its own exons
-  const focus = walkLift ? undefined : model.openBubbleFocus
-  const pins = focus
-    ? genePins.map(pin => ({
-        ...pin,
-        exonsByNode: pin.exonsByNode.filter(e => focus.nodeIds.has(e.nodeId)),
-      }))
-    : genePins
-  const tree = exonOutlineTree(
-    exonStretches(pins, nodeInk.halfWidthPx, walkLift),
-    {
-      id,
-      width: paneWidth,
-      height: canvasHeight,
-      transform: `translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})`,
-    },
-  )
+  const tree = exonOutlineTree(stretches.get(), {
+    id,
+    width: paneWidth,
+    height: canvasHeight,
+    transform: `translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})`,
+  })
   return tree ? (
     <PaneSvgLayer model={model} zIndex={2} testId="graph-gene-pins">
       <ElTree el={tree} />

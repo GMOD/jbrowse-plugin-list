@@ -34,7 +34,11 @@ test('a view with nothing to load offers the import form', () => {
 })
 
 test('a view fetching its first graph shows the loading state instead', () => {
-  const model = view({ isLoading: true, statusMessage: 'Fetching subgraph' })
+  const model = view({
+    isLoading: true,
+    canCancelLoad: true,
+    statusMessage: 'Fetching subgraph',
+  })
   expect(screen.getByTestId('graph-genome-loading').textContent).toContain(
     'Fetching subgraph',
   )
@@ -42,6 +46,13 @@ test('a view fetching its first graph shows the loading state instead', () => {
 
   fireEvent.click(screen.getByTestId('graph-genome-cancel'))
   expect(model.cancelLoad).toHaveBeenCalled()
+})
+
+test('a restored view waiting on its assembly shows loading, not the form', () => {
+  view({ canRetryLoad: true })
+  expect(screen.getByTestId('graph-genome-loading')).toBeTruthy()
+  expect(screen.queryByText('Load a GFA graph')).toBeNull()
+  expect(screen.queryByTestId('graph-genome-cancel')).toBeNull()
 })
 
 test('a launched view whose cut failed offers a retry, not the import form', () => {

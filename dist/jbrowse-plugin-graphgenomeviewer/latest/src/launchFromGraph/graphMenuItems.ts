@@ -84,11 +84,15 @@ function oneOrMany<T>({
 // appears, which is the honest answer rather than a missing feature.
 export function graphLaunchMenuItems({
   contributors,
+  linearContributors = contributors,
   syntenyTracks,
   onShowLinear,
   onShowSynteny,
 }: {
   contributors: Contributor[]
+  // the ones a linear view launch would not just scroll the view already
+  // hosting the graph
+  linearContributors?: Contributor[]
   syntenyTracks: LaunchableSyntenyTrack[]
   onShowLinear: (target: LinearTarget) => void
   onShowSynteny: (trackId: string) => void
@@ -99,7 +103,7 @@ export function graphLaunchMenuItems({
     ...oneOrMany({
       label: LINEAR_LABEL,
       icon: LineStyleIcon,
-      entries: contributors,
+      entries: linearContributors,
       entryLabel: c => `${c.sample} ${regionLabel(c)}`,
       onSelect: c => () => {
         onShowLinear({ location: c, assembly: c.sample })

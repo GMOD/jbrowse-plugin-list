@@ -721,6 +721,16 @@ export const withGraphViews = paneBase
     get geneTrack() {
       return pickGeneTrack(self.geneTrackChoices, self.geneTrackId)
     },
+    // the Repeat picker's entries, in the toolbar and the menu alike
+    get repeatOptions() {
+      return [
+        { value: '', label: 'Whole window' },
+        ...self.repeatChoices.map(({ key, name, unit }) => ({
+          value: key,
+          label: `${name} · ${unit.toLocaleString()} bp unit`,
+        })),
+      ]
+    },
     get selectedRepeat() {
       return self.repeatChoices.find(r => r.key === self.repeatKey)
     },

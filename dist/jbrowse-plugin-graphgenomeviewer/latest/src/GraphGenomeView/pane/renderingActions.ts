@@ -16,6 +16,7 @@ import {
   readLgvHover,
 } from '../../hoverSync/lgvHover'
 import { walksForRow } from '../../hoverSync/rowWalks'
+import { trackedDpr } from '../trackedDpr'
 
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
@@ -240,6 +241,7 @@ export const withRenderingActions = withLoadActions
         // change. scale/translate are untracked so they don't trigger a full
         // rebuild — only the debounced viewportDirty flag does.
         upload: (b: Renderer) => {
+          dependOn(trackedDpr())
           b.resize(self.paneWidth, self.canvasHeight)
           if (self.layoutResult?.tubeMap || self.facetPanels) {
             dependOn(self.viewportDirty)

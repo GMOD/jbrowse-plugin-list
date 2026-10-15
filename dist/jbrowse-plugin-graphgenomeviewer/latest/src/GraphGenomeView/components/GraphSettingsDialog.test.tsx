@@ -21,7 +21,7 @@ function shown(layoutEngine: string) {
     bubbleSpread: 'auto',
     linearLayout: false,
   } as unknown as GraphPaneModel
-  render(<GraphSettingsDialog model={model} open onClose={() => {}} />)
+  render(<GraphSettingsDialog model={model} onClose={() => {}} />)
   return screen.queryByText('Linear layout') !== null
 }
 
@@ -34,3 +34,22 @@ test.each([
     expect(shown(engine)).toBe(offered)
   },
 )
+
+test('a lone repeat track the heuristic skips can still be picked', () => {
+  const model = {
+    maxGraphNodes: 20_000,
+    anchorPaths: [],
+    nodeWidth: 'depth',
+    pathCount: 0,
+    geneTrackChoices: [],
+    repeatTrackChoices: [
+      { trackId: 'loci', name: 'loci.bed', adapterType: 'BedTabixAdapter' },
+    ],
+    repeatTrackId: '',
+    hasGraph: true,
+    layoutEngine: 'stress',
+  } as unknown as GraphPaneModel
+  render(<GraphSettingsDialog model={model} onClose={() => {}} />)
+  expect(screen.getByTestId('graph-repeat-track-select')).toBeTruthy()
+  expect(screen.getByText('Automatic (none)')).toBeTruthy()
+})

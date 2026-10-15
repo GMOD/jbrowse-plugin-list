@@ -3,7 +3,7 @@ import { BUBBLE_KIND_COLORS } from '@jbrowse/bandage-core/bubbles/classifyBubble
 import { HALO_FACTOR } from '@jbrowse/bandage-core/labelLayout'
 import { observer } from 'mobx-react'
 
-import { PaneSvgLayer } from './PaneLayer'
+import { PaneSvgLayer, PaneTransformGroup } from './PaneLayer'
 
 import type { GraphPaneModel } from '../model'
 
@@ -22,13 +22,10 @@ const BubbleHalos = observer(function BubbleHalos({
   if (bubbleHalos.length === 0) {
     return null
   }
-  const { scaleX, scaleY, translateX, translateY } = model
   const halo = model.contigThickness * HALO_FACTOR
   return (
     <PaneSvgLayer model={model} zIndex={2} testId="graph-bubble-halos">
-      <g
-        transform={`translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})`}
-      >
+      <PaneTransformGroup model={model}>
         {bubbleHalos
           .filter(
             h =>
@@ -55,7 +52,7 @@ const BubbleHalos = observer(function BubbleHalos({
               vectorEffect="non-scaling-stroke"
             />
           ))}
-      </g>
+      </PaneTransformGroup>
     </PaneSvgLayer>
   )
 })

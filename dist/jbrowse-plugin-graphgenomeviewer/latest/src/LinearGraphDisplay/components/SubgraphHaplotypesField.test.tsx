@@ -28,6 +28,16 @@ test("the field offers the haplotypes a walk file's header names", () => {
   expect(m.recut).toHaveBeenCalled()
 })
 
+test('a typed prefix left in the box applies when the box loses focus', () => {
+  const m = model(['HG002#1', 'HG002#2', 'NA19240#1'])
+  render(<SubgraphHaplotypesField model={m} />)
+  const field = screen.getByTestId('graph-haplotypes-field')
+  fireEvent.mouseDown(field)
+  fireEvent.change(field, { target: { value: 'NA19240' } })
+  fireEvent.blur(field)
+  expect(m.setSubgraphHaplotypes).toHaveBeenCalledWith(['HG002', 'NA19240'])
+})
+
 test('without names the field takes typed ones', () => {
   const m = model()
   render(<SubgraphHaplotypesField model={m} />)

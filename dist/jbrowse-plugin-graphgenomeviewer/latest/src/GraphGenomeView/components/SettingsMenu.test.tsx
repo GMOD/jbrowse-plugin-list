@@ -25,5 +25,5 @@ test('Graph settings opens its dialog through the session', () => {
   fireEvent.click(screen.getByText('Graph settings...'))
   const [Dialog, props] = queueDialog.mock.calls[0]![0](() => {})
   expect(Dialog).toBe(GraphSettingsDialog)
-  expect(props).toMatchObject({ model, open: true })
+  expect(props).toMatchObject({ model })
 })

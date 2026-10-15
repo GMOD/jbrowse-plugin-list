@@ -68,9 +68,8 @@ export function trackAssemblies(
 export interface GraphLaunchSession extends TrackScanSession {
   addView: (type: string, snapshot?: Record<string, unknown>) => { id: string }
   // The session's own loader for a view whose state model is registered
-  // lazily (JBrowse 4's LinearSyntenyView); absent on an older core, where
-  // addView is enough
-  launchView?: (
+  // lazily, as LinearSyntenyView's is
+  launchView: (
     type: string,
     snapshot?: Record<string, unknown>,
   ) => Promise<{ id: string }>
@@ -306,15 +305,11 @@ export function launchSyntenyView({
       collapseEmptyRows: true,
     },
   }
-  // launchView where the session has it: a synteny view's state model is
-  // loaded on demand and addView throws until it is
-  if (session.launchView) {
-    reportFailure(
-      session,
-      'Could not open the synteny view',
-      session.launchView('LinearSyntenyView', snapshot),
-    )
-  } else {
-    session.addView('LinearSyntenyView', snapshot)
-  }
+  // not addView: a synteny view's state model is loaded on demand and addView
+  // throws until it is
+  reportFailure(
+    session,
+    'Could not open the synteny view',
+    session.launchView('LinearSyntenyView', snapshot),
+  )
 }

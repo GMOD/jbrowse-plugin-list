@@ -4,6 +4,8 @@ import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRendere
 import { autorun } from 'mobx'
 
 import { paneLayerStyle } from './PaneLayer'
+import { dependOn } from '../pane/paneBase'
+import { trackedDpr } from '../trackedDpr'
 
 import type { GraphPaneModel } from '../model'
 
@@ -18,6 +20,7 @@ export default function HoverLayer({ model }: { model: GraphPaneModel }) {
     }
     const renderer = new Canvas2DRenderer(canvas)
     const dispose = autorun(() => {
+      dependOn(trackedDpr())
       renderer.resize(model.paneWidth, model.canvasHeight)
       model.paintHover(renderer, model.drawnBatch)
     })

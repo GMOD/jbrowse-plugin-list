@@ -9,6 +9,7 @@ import { screenToLayout } from '@jbrowse/bandage-core/viewport'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 
 import { chipReadoutAt } from './LabelLayer'
+import { PANS_WITH_DRAWING } from './PaneLayer'
 
 import type { PaneContextAt } from './PaneContextMenu'
 import type { GraphPaneModel } from '../model'
@@ -18,6 +19,19 @@ const WHEEL_LINE_PX = 40
 // A trackpad pinch trails a little sideways scroll that would pan the drawing
 // out from under it; core's linear view ignores deltaX this long after a zoom.
 const ZOOM_ACTIVE_MS = 100
+
+// A wheel notch lands as a few frames of eased zoom rather than one jump, the
+// way core's linear view zooms, and a trackpad's bursts zoom at an even pace.
+// The backlog is in log(scale), capped so a free-spinning wheel cannot bank a
+// zoom that runs on after the hand stops.
+const ZOOM_EASE_MS = 24
+const MAX_ZOOM_BACKLOG = Math.log(16)
+
+// how much of the owed zoom, in log(scale), to apply this frame
+export function easeZoom(backlog: number, elapsedMs: number) {
+  const rest = backlog * Math.exp(-elapsedMs / ZOOM_EASE_MS)
+  return Math.abs(rest) < 1e-3 ? backlog : backlog - rest
+}
 
 // What a wheel does over a pane that draws its own coordinates. Inside a linear
 // view it follows the view's rules: ctrl/⌘+wheel (a trackpad pinch) zooms, a
@@ -48,8 +62,27 @@ export function useWheelZoom(
       return undefined
     }
     let lastZoom = -Infinity
+    const ease = { backlog: 0, x: 0, y: 0, frame: 0, last: 0 }
+    const step = (now: number) => {
+      const owed = easeZoom(ease.backlog, Math.min(100, now - ease.last))
+      ease.backlog -= owed
+      ease.last = now
+      ease.frame = ease.backlog ? requestAnimationFrame(step) : 0
+      if (isAlive(model)) {
+        model.zoom(Math.exp(owed), ease.x, ease.y)
+      }
+    }
+    // a drawing the view places or drives leaves the wheel to the view
     const handleWheel = (e: WheelEvent) => {
-      if (model.hostPlacesX) {
+      if (model.hostPlacesX || model.followsHostView) {
+        return
+      }
+      const under =
+        e.target instanceof Element ? e.target.closest('canvas') : null
+      const origin = under ?? (model.facetPanels ? null : canvas)
+      const rect = origin?.getBoundingClientRect()
+      // the strip is the linear view's bp, so its wheel is the view's
+      if (rect && e.clientY - rect.top < model.referenceStripZonePx) {
         return
       }
       const action = wheelAction(e, model.host)
@@ -72,27 +105,32 @@ export function useWheelZoom(
         return
       }
       lastZoom = e.timeStamp
-      const under =
-        e.target instanceof Element ? e.target.closest('canvas') : null
-      const origin = under ?? (model.facetPanels ? null : canvas)
-      if (!origin) {
+      if (!rect) {
         return
       }
-      const rect = origin.getBoundingClientRect()
-      model.zoom(
-        wheelZoomFactor(e),
-        e.clientX - rect.left,
-        e.clientY - rect.top,
+      ease.x = e.clientX - rect.left
+      ease.y = e.clientY - rect.top
+      ease.backlog = Math.max(
+        -MAX_ZOOM_BACKLOG,
+        Math.min(MAX_ZOOM_BACKLOG, ease.backlog + Math.log(wheelZoomFactor(e))),
       )
+      if (!ease.frame) {
+        ease.last = performance.now() - 1000 / 60
+        ease.frame = requestAnimationFrame(step)
+      }
     }
     area.addEventListener('wheel', handleWheel, { passive: false })
     return () => {
+      cancelAnimationFrame(ease.frame)
       area.removeEventListener('wheel', handleWheel)
     }
   }, [area, canvas, model])
 }
 
 const CLICK_SLOP_PX = 3
+
+// core's marker on an element whose presses the linear view's pan leaves alone
+const GESTURE_OWNER = 'data-gesture-owner'
 
 interface Point {
   x: number
@@ -134,6 +172,8 @@ export function usePaneGestures(model: GraphPaneModel) {
   const pointsRef = useRef(new Map<number, Point>())
   const dragCanvasRef = useRef<Element | null>(null)
   const pinchRef = useRef<ReturnType<typeof pinchOf> | null>(null)
+  const stripPanRef = useRef(false)
+  const verticalPanRef = useRef(false)
   // A pan and a hover are applied once per frame, not once per mousemove:
   // mousemove fires in bursts well above the frame rate, and each pan step
   // repainted the canvas and re-placed every overlay label, while each hover
@@ -227,7 +267,12 @@ export function usePaneGestures(model: GraphPaneModel) {
     }
     const points = pointsRef.current
     if (isOtherPointer(e)) {
-      if (model.isPanning && e.pointerType === 'touch' && points.size === 1) {
+      if (
+        model.isPanning &&
+        !verticalPanRef.current &&
+        e.pointerType === 'touch' &&
+        points.size === 1
+      ) {
         e.currentTarget.setPointerCapture(e.pointerId)
         points.set(e.pointerId, pointOf(e))
         pinchRef.current = pinchOf(points)
@@ -237,7 +282,10 @@ export function usePaneGestures(model: GraphPaneModel) {
     }
     hasMovedRef.current = false
     downRef.current = { x: e.clientX, y: e.clientY }
-    if (model.hostPlacesX) {
+    e.currentTarget.removeAttribute(GESTURE_OWNER)
+    const follows = model.followsHostView
+    // shift-drag is the view's range select
+    if (model.hostPlacesX || (follows && e.shiftKey)) {
       return
     }
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -246,13 +294,20 @@ export function usePaneGestures(model: GraphPaneModel) {
     points.clear()
     points.set(e.pointerId, pointOf(e))
     const { x, y } = pointerAt(e)
+    const onStrip = y < model.referenceStripZonePx
     // a tube map's boxes are the layout's, and the strip's are bp, not
     // positions to drag
-    const node =
-      model.layoutResult?.tubeMap ||
-      e.nativeEvent.offsetY < model.referenceStripZonePx
-        ? null
-        : nodeAt(x, y)
+    const node = model.layoutResult?.tubeMap || onStrip ? null : nodeAt(x, y)
+    // A drawing the view drives leaves the press to the view's own pan,
+    // which carries the drawing sideways, and takes only the vertical. A
+    // press on a node is the node's: the marker keeps the view's pan off it,
+    // since this handler runs before the view's. The strip is the view's bp,
+    // so dragging it scrolls the view in either case.
+    if (follows && node) {
+      e.currentTarget.setAttribute(GESTURE_OWNER, '')
+    }
+    verticalPanRef.current = follows
+    stripPanRef.current = onStrip && !follows
     if (node) {
       model.setDraggingNode(node)
     } else {
@@ -295,7 +350,15 @@ export function usePaneGestures(model: GraphPaneModel) {
     if (pinch) {
       pinchStep()
     }
-    if (pan) {
+    if (pan && stripPanRef.current) {
+      model.host?.horizontalScroll(-pan.dx)
+    } else if (pan && verticalPanRef.current) {
+      model.setTransform(
+        model.scale,
+        model.translateX,
+        model.translateY + pan.dy,
+      )
+    } else if (pan) {
       model.setTransform(
         model.scale,
         model.translateX + pan.dx,
@@ -475,6 +538,87 @@ export function usePaneGestures(model: GraphPaneModel) {
     }
   }
 
+  // A press on a bubble's label or tick pans once it travels, as a press on
+  // the drawing does, rather than leaving a patch of the graph that will not
+  // drag; one that stays put is a click on the label. The click that ends a
+  // pan is swallowed before the label sees it.
+  const labelPanRef = useRef<{ end: () => void; moved: boolean } | null>(null)
+  useEffect(
+    () => () => {
+      labelPanRef.current?.end()
+    },
+    [],
+  )
+  function onLabelPointerDown(e: React.PointerEvent) {
+    if (
+      e.button !== 0 ||
+      model.hostPlacesX ||
+      model.followsHostView ||
+      !(e.target instanceof Element) ||
+      !e.target.closest(`[${PANS_WITH_DRAWING}]`)
+    ) {
+      return
+    }
+    labelPanRef.current?.end()
+    const id = e.pointerId
+    const start = pointOf(e)
+    let last = start
+    const gesture = {
+      moved: false,
+      end: () => {
+        window.removeEventListener('pointermove', move, true)
+        window.removeEventListener('pointerup', release, true)
+        window.removeEventListener('pointercancel', release, true)
+        if (gesture.moved && isAlive(model)) {
+          model.stopDragging()
+        }
+      },
+    }
+    function move(ev: PointerEvent) {
+      if (ev.pointerId !== id) {
+        return
+      }
+      if (!gesture.moved) {
+        if (
+          Math.hypot(ev.clientX - start.x, ev.clientY - start.y) <=
+          CLICK_SLOP_PX
+        ) {
+          return
+        }
+        gesture.moved = true
+        model.setPanning(true)
+      }
+      const pending = pendingRef.current
+      pending.pan = {
+        dx: (pending.pan?.dx ?? 0) + ev.clientX - last.x,
+        dy: (pending.pan?.dy ?? 0) + ev.clientY - last.y,
+      }
+      last = pointOf(ev)
+      scheduleFrame()
+    }
+    // the click, if any, lands before the timeout clears the gesture
+    function release(ev: PointerEvent) {
+      if (ev.pointerId === id) {
+        gesture.end()
+        setTimeout(() => {
+          if (labelPanRef.current === gesture) {
+            labelPanRef.current = null
+          }
+        }, 0)
+      }
+    }
+    labelPanRef.current = gesture
+    window.addEventListener('pointermove', move, true)
+    window.addEventListener('pointerup', release, true)
+    window.addEventListener('pointercancel', release, true)
+  }
+  function onLabelClickCapture(e: React.MouseEvent) {
+    if (labelPanRef.current?.moved) {
+      labelPanRef.current = null
+      e.stopPropagation()
+    }
+  }
+
   const canvasStyle: React.CSSProperties = {
     cursor:
       model.isPanning || model.draggingNode
@@ -491,10 +635,11 @@ export function usePaneGestures(model: GraphPaneModel) {
   // and strip included: the linear view's pan starts on pointerdown and skips
   // `[data-gesture-owner]`, and its shift-drag range select starts on
   // mousedown.
-  const claimsPress = model.host !== undefined && !model.hostPlacesX
+  const claimsPress =
+    model.host !== undefined && !model.hostPlacesX && !model.followsHostView
   const surfaceProps = claimsPress
     ? {
-        'data-gesture-owner': '',
+        [GESTURE_OWNER]: '',
         onMouseDown: (e: React.MouseEvent) => {
           e.stopPropagation()
         },
@@ -517,6 +662,10 @@ export function usePaneGestures(model: GraphPaneModel) {
     },
     contextMenu,
     hoveredChip,
+    labelHandlers: {
+      onPointerDown: onLabelPointerDown,
+      onClickCapture: onLabelClickCapture,
+    },
     closeContextMenu: () => {
       setContextMenu(undefined)
     },

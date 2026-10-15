@@ -20,7 +20,11 @@ const ColorSchemeSelect = observer(function ColorSchemeSelect({
       title={fixed?.why}
       shown={fixed?.value}
       value={model.chosenColorScheme}
-      options={COLOR_SCHEMES}
+      options={COLOR_SCHEMES.map(({ value }) => ({
+        value,
+        label: model.colorSchemeLabel(value),
+      }))}
+      testId="graph-color-select"
       onChange={scheme => {
         model.setColorScheme(scheme)
       }}

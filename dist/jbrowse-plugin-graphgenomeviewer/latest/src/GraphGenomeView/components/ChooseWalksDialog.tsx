@@ -6,7 +6,7 @@ import type { GraphPaneModel } from '../model'
 
 type WalkPicker = Pick<
   GraphPaneModel,
-  'walkChoices' | 'walkLayers' | 'walkLabel' | 'liftWalks'
+  'walkChoices' | 'walkLayers' | 'walkLabel' | 'liftAmongChoices'
 >
 
 // Which haplotypes to highlight, for a graph with more walks than a menu can
@@ -32,7 +32,7 @@ const ChooseWalksDialog = observer(function ChooseWalksDialog({
         picked.length > 0 ? 'Highlight these' : 'Clear highlights'
       }
       onPick={picked => {
-        model.liftWalks(picked)
+        model.liftAmongChoices(picked)
       }}
       onClose={onClose}
     />

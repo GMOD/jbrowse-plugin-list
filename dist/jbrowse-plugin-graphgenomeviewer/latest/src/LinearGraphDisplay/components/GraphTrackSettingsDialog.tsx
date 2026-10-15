@@ -6,15 +6,13 @@ import type { LinearGraphCutModel } from '../model'
 
 export default function GraphTrackSettingsDialog({
   model,
-  open,
   onClose,
 }: {
   model: LinearGraphCutModel
-  open: boolean
   onClose: () => void
 }) {
   return (
-    <GraphSettingsDialog model={model} open={open} onClose={onClose}>
+    <GraphSettingsDialog model={model} onClose={onClose}>
       <SubgraphContextSelect model={model} />
       <SubgraphHaplotypesField model={model} />
     </GraphSettingsDialog>

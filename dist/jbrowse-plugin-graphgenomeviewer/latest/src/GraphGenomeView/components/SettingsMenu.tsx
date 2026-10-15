@@ -64,7 +64,7 @@ const SettingsMenu = observer(function SettingsMenu({
           onClick: () => {
             getSession(model).queueDialog(onClose => [
               GraphSettingsDialog,
-              { model, open: true, onClose },
+              { model, onClose },
             ])
           },
         },

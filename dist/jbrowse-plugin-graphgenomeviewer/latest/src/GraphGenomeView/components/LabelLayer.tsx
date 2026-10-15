@@ -59,7 +59,12 @@ const LabelLayer = observer(function LabelLayer({
   const isOpen = (h: BubbleHalo) => model.bubbleIsOpen(h.bubble)
 
   return (
-    <PaneSvgLayer model={model} zIndex={3} testId="graph-label-layer">
+    <PaneSvgLayer
+      model={model}
+      zIndex={3}
+      testId="graph-label-layer"
+      pansWithDrawing
+    >
       <g
         data-testid="graph-bubble-ticks"
         onClick={e => {

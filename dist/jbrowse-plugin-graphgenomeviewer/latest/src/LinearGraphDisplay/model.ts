@@ -406,7 +406,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             'GetGraphHaplotypes',
             { adapterConfig, signal },
           )
-          if (isAlive(self) && self.sourceAdapter === adapterConfig) {
+          if (isAlive(self) && !signal?.aborted) {
             self.setHaplotypeNames(names)
           }
         } catch (e) {
@@ -421,16 +421,8 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         before: { bpPerPx: number; offsetPx: number },
         now: { bpPerPx: number; offsetPx: number },
       ) {
-        const layout = self.layoutResult
         const bounds = self.layoutBounds
-        if (
-          !layout ||
-          !bounds ||
-          layout.referenceAxis ||
-          layout.pixelRows ||
-          layout.tubeMap ||
-          self.facetGrid
-        ) {
+        if (!bounds || !self.followsHostView) {
           return
         }
         // no longer the fit, so the fit autorun cannot undo it before the
@@ -481,7 +473,13 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
                 void self.fetchHaplotypeNames(adapterConfig, namesRead.signal)
               }
             },
-            { fireImmediately: true, name: 'GraphHaplotypeNames' },
+            {
+              fireImmediately: true,
+              // a lane adapter's config is rebuilt whenever an assembly is
+              // added, which would drop and re-read the names
+              equals: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+              name: 'GraphHaplotypeNames',
+            },
           ),
         )
         addDisposer(
@@ -674,7 +672,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       openSettings() {
         getSession(self).queueDialog(onClose => [
           GraphTrackSettingsDialog,
-          { model: self, open: true, onClose },
+          { model: self, onClose },
         ])
       },
       async renderSvg(opts?: ExportSvgDisplayOptions): Promise<ReactNode> {
@@ -690,7 +688,12 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           label: 'Graph genome view',
           icon: BubbleChartIcon,
           disabled: !self.graphViewSpec,
-          disabledHelpText: 'Zoom in until the track cuts a graph',
+          disabledHelpText:
+            self.error && !isNodeLimitError(self.error)
+              ? 'The track could not cut a graph here'
+              : self.isLoading && !self.hasGraph
+                ? 'The track is still cutting its graph'
+                : 'Zoom in until the track cuts a graph',
           onClick: () => {
             self.openGraphView()
           },

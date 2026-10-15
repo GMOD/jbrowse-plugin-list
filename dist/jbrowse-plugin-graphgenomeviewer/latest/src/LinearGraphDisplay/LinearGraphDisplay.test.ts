@@ -1188,11 +1188,14 @@ test("a walk-indexed track's cut and the graph view it opens carry the default s
   expect(display.graphViewSpec?.subgraphHaplotypes).toEqual(['HG1', 'HG2#1'])
 })
 
-test('haplotype names read for an adapter config the track has since changed are dropped', async () => {
+test('haplotype names from a read since aborted are dropped', async () => {
   const { display } = walkIndexedDisplay()
   await wait(0)
   display.setHaplotypeNames(undefined)
-  await display.fetchHaplotypeNames({ ...display.sourceAdapter })
+  const stale = new AbortController()
+  const read = display.fetchHaplotypeNames(display.sourceAdapter!, stale.signal)
+  stale.abort()
+  await read
   expect(display.haplotypeNames).toBeUndefined()
   await display.fetchHaplotypeNames(display.sourceAdapter!)
   expect(display.haplotypeNames).toEqual(['HG1#1', 'HG1#2', 'HG2#1'])
@@ -1432,6 +1435,22 @@ test('the track menu marks its launch submenu with a rocket', async () => {
   expect(launch && 'icon' in launch && launch.icon).toBe(RocketLaunchIcon)
 })
 
+test("the track's launches leave out a linear view of the view it sits in", async () => {
+  const { display } = await shownGraph()
+  expect(display.launchableAssemblies.map(c => c.sample)).toContain(ASM)
+  const launch = display
+    .trackMenuItems()
+    .find(item => 'label' in item && item.label === LAUNCH_LABEL) as
+    { subMenu: MenuItem[] } | undefined
+  const labels = launch?.subMenu.map(item =>
+    'label' in item ? String(item.label) : '',
+  )
+  expect(labels).toBeDefined()
+  expect(labels!.some(label => label.startsWith('Linear genome view'))).toBe(
+    false,
+  )
+})
+
 function graphViewItem(display: LinearGraphDisplayModel) {
   const launch = display
     .trackMenuItems()
@@ -1439,7 +1458,9 @@ function graphViewItem(display: LinearGraphDisplayModel) {
     { subMenu: MenuItem[] } | undefined
   return launch?.subMenu.find(
     item => 'label' in item && item.label === 'Graph genome view',
-  ) as { disabled?: boolean; onClick: () => void } | undefined
+  ) as
+    | { disabled?: boolean; disabledHelpText?: string; onClick: () => void }
+    | undefined
 }
 
 test('the track menu opens the window on screen in a graph genome view, drawn as the track draws it', async () => {
@@ -1521,7 +1542,10 @@ test('after a cut refused over its node limit, the graph genome view launch is d
     expect(display.dense).toBeDefined()
   })
   expect(display.hasGraph).toBe(true)
-  expect(graphViewItem(display)!.disabled).toBe(true)
+  expect(graphViewItem(display)).toMatchObject({
+    disabled: true,
+    disabledHelpText: 'Zoom in until the track cuts a graph',
+  })
 })
 
 test('with two linear views on its assembly, a node shows and highlights in the one hosting the track', async () => {

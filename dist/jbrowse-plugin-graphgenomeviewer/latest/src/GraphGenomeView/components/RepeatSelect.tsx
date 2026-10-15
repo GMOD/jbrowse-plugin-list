@@ -11,8 +11,10 @@ const RepeatSelect = observer(function RepeatSelect({
 }: {
   model: GraphPaneModel
 }) {
-  const { repeatChoices } = model
-  if (model.chosenLayoutMode !== 'walkrows' || repeatChoices.length === 0) {
+  if (
+    model.chosenLayoutMode !== 'walkrows' ||
+    model.repeatChoices.length === 0
+  ) {
     return null
   }
   return (
@@ -22,13 +24,7 @@ const RepeatSelect = observer(function RepeatSelect({
       sx={{ minWidth: 130, maxWidth: 260 }}
       testId="graph-repeat-select"
       value={model.selectedRepeat?.key ?? ''}
-      options={[
-        { value: '', label: 'Whole window' },
-        ...repeatChoices.map(({ key, name, unit }) => ({
-          value: key,
-          label: `${name} · ${unit.toLocaleString()} bp unit`,
-        })),
-      ]}
+      options={model.repeatOptions}
       onChange={key => {
         model.setRepeatKey(key)
       }}

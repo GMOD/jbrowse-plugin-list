@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { Autocomplete, TextField, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
@@ -56,8 +56,10 @@ const HaplotypeListField = observer(function HaplotypeListField({
 })
 
 // The haplotypes a walk-indexed graph's header names, searched as typed. A
-// typed prefix the list lacks (HG002 for both haplotypes) is kept too. The
-// set applies when the list closes or, with the list closed, as it changes.
+// typed prefix the list lacks (HG002 for both haplotypes) is kept too, and
+// becomes a chip on blur as well as on Enter. The set applies when the list
+// closes or, with the list closed, as it changes. The ref holds the draft
+// because a blur's onChange and onClose land in one event, before a rerender.
 const HaplotypePickField = observer(function HaplotypePickField({
   model,
   names,
@@ -66,6 +68,7 @@ const HaplotypePickField = observer(function HaplotypePickField({
   names: string[]
 }) {
   const [draft, setDraft] = useState(model.cutHaplotypes ?? [])
+  const draftRef = useRef(draft)
   const [open, setOpen] = useState(false)
   const apply = (haplotypes: string[]) => {
     if (haplotypes.join('\n') !== (model.cutHaplotypes ?? []).join('\n')) {
@@ -77,6 +80,7 @@ const HaplotypePickField = observer(function HaplotypePickField({
     <Autocomplete
       multiple
       freeSolo
+      autoSelect
       disableCloseOnSelect
       options={names}
       value={draft}
@@ -86,9 +90,10 @@ const HaplotypePickField = observer(function HaplotypePickField({
       }}
       onClose={() => {
         setOpen(false)
-        apply(draft)
+        apply(draftRef.current)
       }}
       onChange={(_, value) => {
+        draftRef.current = value
         setDraft(value)
         if (!open) {
           apply(value)

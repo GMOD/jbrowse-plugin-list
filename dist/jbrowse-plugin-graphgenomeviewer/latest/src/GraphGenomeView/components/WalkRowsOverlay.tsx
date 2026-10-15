@@ -83,6 +83,39 @@ function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
   )
 }
 
+// Its own observer, so moving between rows redraws this rect and not every row
+const HoveredWalkRow = observer(function HoveredWalkRow({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
+  const bars = model.walkRowBars
+  const place = model.walkRowPlacement
+  const pitch = model.walkRowPitch
+  if (!bars || !place || !pitch || !model.hoveredWalkRowText) {
+    return null
+  }
+  const rows = [bars.reference, ...bars.rows]
+  const index = rows.findIndex(r => r.name === model.hoveredWalkRow)
+  const row = rows[index]
+  if (!row) {
+    return null
+  }
+  const start = model.toScreen({ x: bars.origin, y: place.rowY(index) })
+  return (
+    <rect
+      data-testid="graph-walk-row-hovered"
+      x={start.x - 2}
+      y={start.y - pitch.rowPx / 2 - 1}
+      width={row.bp * model.scaleX + 4}
+      height={pitch.rowPx + 2}
+      fill="none"
+      stroke="#111"
+      strokeWidth={1}
+    />
+  )
+})
+
 // `vector` for an SVG export, which draws the bars as walkRowsTree's rects
 const WalkRowsOverlay = observer(function WalkRowsOverlay({
   model,
@@ -108,18 +141,6 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
     return null
   }
   const { paneWidth: width, canvasHeight } = model
-  const hovered = model.hoveredWalkRowText
-    ? [bars.reference, ...bars.rows].findIndex(
-        r => r.name === model.hoveredWalkRow,
-      )
-    : -1
-  const lit =
-    hovered >= 0
-      ? {
-          row: [bars.reference, ...bars.rows][hovered]!,
-          start: model.toScreen({ x: bars.origin, y: place.rowY(hovered) }),
-        }
-      : undefined
   const frame = {
     ...model.screenTransform,
     width,
@@ -164,18 +185,7 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
             {header.title}
           </text>
         ))}
-        {lit ? (
-          <rect
-            data-testid="graph-walk-row-hovered"
-            x={lit.start.x - 2}
-            y={lit.start.y - pitch.rowPx / 2 - 1}
-            width={lit.row.bp * model.scaleX + 4}
-            height={pitch.rowPx + 2}
-            fill="none"
-            stroke="#111"
-            strokeWidth={1}
-          />
-        ) : null}
+        <HoveredWalkRow model={model} />
       </PaneSvgLayer>
     </>
   )

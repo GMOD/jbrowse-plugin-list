@@ -18,6 +18,8 @@ import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
 import LabelledSelect from './LabelledSelect'
+import { pickGeneTrack } from '../genes/geneFeatures'
+import { pickRepeatTrack } from '../repeats/repeatFeatures'
 
 import type { GraphPaneModel } from '../model'
 
@@ -118,22 +120,60 @@ function nodeLimitOptions(current: number) {
     .map(limit => ({ value: String(limit), label: limit.toLocaleString() }))
 }
 
-const trackOptions = (tracks: { trackId: string; name: string }[]) =>
-  tracks.map(({ trackId, name }) => ({ value: trackId, label: name }))
+interface NamedTrack {
+  trackId: string
+  name: string
+}
+
+// '' leaves the pick to the heuristic, so a session can go back to it
+function TrackPickSetting({
+  label,
+  choices,
+  stored,
+  auto,
+  testId,
+  onChange,
+  children,
+}: {
+  label: string
+  choices: NamedTrack[]
+  stored: string
+  auto: NamedTrack | undefined
+  testId: string
+  onChange: (trackId: string) => void
+  children: ReactNode
+}) {
+  return choices.length > 0 ? (
+    <SettingSelect
+      label={label}
+      value={choices.some(t => t.trackId === stored) ? stored : ''}
+      options={[
+        { value: '', label: `Automatic (${auto?.name ?? 'none'})` },
+        ...choices.map(({ trackId, name }) => ({
+          value: trackId,
+          label: name,
+        })),
+      ]}
+      testId={testId}
+      onChange={onChange}
+    >
+      {children}
+    </SettingSelect>
+  ) : null
+}
 
 // Toggles the menus already offer (halos, genes, color) stay out of here.
 // `children` is the host's own part of the subgraph group.
 const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
   model: GraphPaneModel
-  open: boolean
   onClose: () => void
   children?: ReactNode
 }) {
-  const { model, open, onClose, children } = props
+  const { model, onClose, children } = props
   const { classes } = useStyles()
 
   return (
-    <Dialog open={open} onClose={onClose} title="Graph settings">
+    <Dialog open onClose={onClose} title="Graph settings">
       <DialogContent>
         <Group title="Subgraph">
           {children}
@@ -206,35 +246,33 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
             ) : null}
           </SettingSwitch>
 
-          {model.geneTrackChoices.length > 1 ? (
-            <SettingSelect
-              label="Gene track"
-              value={model.geneTrack?.trackId ?? ''}
-              options={trackOptions(model.geneTrackChoices)}
-              testId="graph-gene-track-select"
-              onChange={trackId => {
-                model.setGeneTrackId(trackId)
-              }}
-            >
-              <Caption>Where genes on the backbone come from</Caption>
-            </SettingSelect>
-          ) : null}
+          <TrackPickSetting
+            label="Gene track"
+            choices={model.geneTrackChoices}
+            stored={model.geneTrackId}
+            auto={pickGeneTrack(model.geneTrackChoices, '')}
+            testId="graph-gene-track-select"
+            onChange={trackId => {
+              model.setGeneTrackId(trackId)
+            }}
+          >
+            <Caption>Where genes on the backbone come from</Caption>
+          </TrackPickSetting>
 
-          {model.repeatTrackChoices.length > 1 ? (
-            <SettingSelect
-              label="Repeat track"
-              value={model.repeatTrack?.trackId ?? ''}
-              options={trackOptions(model.repeatTrackChoices)}
-              testId="graph-repeat-track-select"
-              onChange={trackId => {
-                model.setRepeatTrackId(trackId)
-              }}
-            >
-              <Caption>
-                The tandem repeat annotation walk rows measure and tile by
-              </Caption>
-            </SettingSelect>
-          ) : null}
+          <TrackPickSetting
+            label="Repeat track"
+            choices={model.repeatTrackChoices}
+            stored={model.repeatTrackId}
+            auto={pickRepeatTrack(model.repeatTrackChoices, '')}
+            testId="graph-repeat-track-select"
+            onChange={trackId => {
+              model.setRepeatTrackId(trackId)
+            }}
+          >
+            <Caption>
+              The tandem repeat annotation walk rows measure and tile by
+            </Caption>
+          </TrackPickSetting>
         </Group>
 
         <Group title="Force-directed layout">

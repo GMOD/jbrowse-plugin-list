@@ -15,8 +15,8 @@ const GraphGenomeView = observer(function GraphGenomeView({
     return <GraphCanvas model={model} />
   }
   // A launched or restored view has a source of its own, so the import form
-  // has nothing to offer it when that source fails
-  if (model.canRetryLoad && (model.error || model.loadCanceled)) {
+  // has nothing to offer it, including while its assembly loads
+  if (model.canRetryLoad) {
     return <GraphLoadStatus model={model} />
   }
   // Hidden rather than unmounted, so a typed URL survives a failed load
