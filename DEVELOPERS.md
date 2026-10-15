@@ -140,6 +140,7 @@ trusted, and why `dist/` is pruned — is recorded in
 
 Artifacts live at `<packageName>/<version>/...` and are uploaded with a long
 `immutable` cache lifetime; they are written once and never overwritten. Only
-the small manifest files are mutable (`no-cache`). This means a URL handed to a
-client never changes its bytes underneath them — fixing the previous scheme
+the small manifest files are mutable (`latest/` is `no-cache`; `plugins.json` is
+edge-cached until a publish invalidates it, ADR 0010). This means a URL handed
+to a client never changes its bytes underneath them — fixing the previous scheme
 where re-syncing `latest` silently overwrote the bundle at a stable URL.

@@ -31,6 +31,9 @@ run the pipeline, see [DEVELOPERS.md](../../DEVELOPERS.md).
 - [architectural-decision-records/0009-esm-only-plugin-freezes-its-last-umd.md](0009-esm-only-plugin-freezes-its-last-umd.md)
   — why a plugin that goes ESM-only leaves its last UMD under `latest/` for 4.x
   hosts, and what that depends on
+- [architectural-decision-records/0010-the-manifest-is-edge-cached-until-a-publish-invalidates-it.md](0010-the-manifest-is-edge-cached-until-a-publish-invalidates-it.md)
+  — why the edge serves `plugins.json` without asking S3, and why every publish
+  invalidates
 
 ## Incidents
 
