@@ -7,7 +7,6 @@ import { observer } from 'mobx-react'
 
 import { hoverLayerStyle } from './HoverLayer'
 import { LegendRowView } from './Legend'
-import { useWheelZoom } from './usePaneGestures'
 import { facetKeyRows, walkKeyRow } from '../legendSections'
 import { FACET_KEY_ROW_PX } from '../pane/fitViews'
 import { PAPER_CSS } from '../pane/paneBase'
@@ -78,8 +77,6 @@ const FacetPanel = observer(function FacetPanel({
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const [hoverCanvas, setHoverCanvas] = useState<HTMLCanvasElement | null>(null)
   const walk = lift.walks[0]!
-  useWheelZoom(canvas, model)
-
   useEffect(() => {
     if (!canvas || !hoverCanvas) {
       return undefined

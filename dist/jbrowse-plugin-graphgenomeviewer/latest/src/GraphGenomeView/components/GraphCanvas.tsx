@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
 import { ErrorBanner, LoadingOverlay } from '@jbrowse/core/ui'
@@ -264,16 +264,24 @@ const GraphCanvas = observer(function GraphCanvas({
     error: renderError,
     retry: retryRender,
   } = useRenderingBackend(createGraphRenderer, model)
-  const { handlers, canvasStyle, contextMenu, closeContextMenu, hoveredChip } =
-    usePaneGestures(model)
-  useWheelZoom(canvas, model)
+  const {
+    handlers,
+    canvasStyle,
+    surfaceProps,
+    contextMenu,
+    closeContextMenu,
+    hoveredChip,
+  } = usePaneGestures(model)
+  const [area, setArea] = useState<HTMLDivElement | null>(null)
+  useWheelZoom(area, canvas, model)
   const faceted = model.facetPanels !== undefined
 
   return (
-    <div style={wrapperStyle}>
+    <div style={wrapperStyle} {...surfaceProps}>
       {ownChrome ? <GraphToolbar model={model} /> : null}
 
       <div
+        ref={setArea}
         style={canvasAreaStyle}
         onMouseEnter={() => {
           model.setPointerInPane(true)
