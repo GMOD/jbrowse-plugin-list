@@ -128,7 +128,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     colorSchemeName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     customColorScheme: import("@jbrowse/mobx-state-tree").IType<Record<string, string> | undefined, Record<string, string> | undefined, Record<string, string> | undefined>;
     showColumnStats: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("msa-parsers").MSAFormat>>;
+    msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("react-msaview").MSAFormat>>;
 }, "id" | "type" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & {
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     showDomains: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
@@ -543,17 +543,17 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     setDrawNodeBubbles(arg: boolean): void;
     setDrawNodeLabels(arg: boolean): void;
     setShowTreeOverview(arg: boolean): void;
-    setOverviewHeight(n: number): void;
     setDrawLabels(arg: boolean): void;
 } & {
     setColorSchemeName(name: string): void;
     setCustomColorScheme(map?: Record<string, string>): void;
     setBgColor(arg: boolean): void;
     setShowColumnStats(arg: boolean): void;
-    setMSAFormat(arg?: import("msa-parsers").MSAFormat): void;
+    setMSAFormat(arg?: import("react-msaview").MSAFormat): void;
 } & {
     headerHeight: number;
     hideHeader: boolean;
+    importForm: boolean;
     status: {
         msg: string;
         onCancel?: () => void;
@@ -581,7 +581,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     dismissedWarnings: string[];
     resetCount: number;
     hostCarriesData: boolean;
-    annotations: import("msa-parsers").Annotation[];
+    annotations: import("react-msaview").Annotation[];
 } & {
     drawRelativeTo(id: string | undefined): void;
     setHideGaps(arg: boolean): void;
@@ -632,8 +632,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     setGFF(result?: string): void;
 } & {
     readonly hideGapsEffective: boolean;
-    readonly realAllowedGappyness: number;
-    readonly allAnnotations: import("msa-parsers").Annotation[];
+    readonly allAnnotations: import("react-msaview").Annotation[];
     readonly actuallyShowDomains: boolean;
     readonly hostRestoresData: boolean;
     readonly viewInitialized: boolean;
@@ -661,7 +660,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly rowData: Record<string, Record<string, string> | undefined>;
     rowDataOf(name: string): Record<string, string> | undefined;
     readonly rowFields: string[];
-    readonly MSA: import("msa-parsers").MSAParserType | null;
+    readonly MSA: import("react-msaview").MSAParserType | null;
     readonly numColumns: number;
     readonly inputTree: import("react-msaview").NodeWithIds;
     readonly tree: import("react-msaview").NodeWithIds;
@@ -690,7 +689,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly treeNewick: string;
     readonly treeOverviewHeight: number;
     readonly treeOverviewLayout: {
-        root: import("react-msaview").HierarchyNode<import("react-msaview").NodeWithIds>;
+        root: import("react-msaview").LaidOutNode<import("react-msaview").NodeWithIds>;
         numTips: number;
         maxDepthToLeaf: number;
         showBranchLen: boolean;
@@ -713,6 +712,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly rows: [string, string][];
     readonly numRows: number;
     seqPosIndex(rowName: string): Int32Array | undefined;
+    rowSequence(name: string): string | undefined;
     readonly rowMap: Map<string, string>;
     readonly columns: Map<string, string>;
     readonly columns2d: string[];
@@ -736,7 +736,6 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly totalHeight: number;
     readonly leaves: import("react-msaview").HierarchyNode<import("react-msaview").NodeWithIds>[];
     readonly rootToTipLength: number;
-    readonly maxBranchLength: number;
     readonly pxPerBranchLength: number;
     readonly maxDepthToLeaf: number;
     readonly allBranchesLength0: boolean;
@@ -792,9 +791,9 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly topBandHeight: number;
     readonly msaAreaHeight: number;
     readonly totalTrackAreaHeight: number;
-    readonly annotationTypes: Map<string, import("msa-parsers").Annotation>;
-    readonly filteredAnnotations: import("msa-parsers").Annotation[];
-    readonly annotationsByRow: Record<string, import("msa-parsers").Annotation[]>;
+    readonly annotationTypes: Map<string, import("react-msaview").Annotation>;
+    readonly filteredAnnotations: import("react-msaview").Annotation[];
+    readonly annotationsByRow: Record<string, import("react-msaview").Annotation[]>;
 } & {
     readonly showVerticalScrollbar: boolean;
 } & {
@@ -822,17 +821,12 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     replaceTree(newick: string): void;
     resetZoom(): void;
     zoomAtCenter(scaleFactor: number, axis?: "both" | "horizontal" | "vertical"): void;
-    zoomOutHorizontal(): void;
-    zoomInHorizontal(): void;
-    zoomInVertical(): void;
-    zoomOutVertical(): void;
     zoomIn(): void;
     zoomOut(): void;
     zoomToPos(scaleFactor: number, offsetX: number, offsetY: number, axis?: "both" | "horizontal" | "vertical"): void;
     doScrollY(deltaY: number): void;
     setScrollY(n: number): void;
-    setAnnotations(annotations: import("msa-parsers").Annotation[]): void;
-    setDomains(data?: Record<string, import("msa-parsers").InterProScanResults>): void;
+    setAnnotations(annotations: import("react-msaview").Annotation[]): void;
     applyGFFText(gffText: string): void;
     doScrollX(deltaX: number): void;
     setScrollX(n: number): void;
@@ -851,24 +845,24 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly hoveredCell: import("react-msaview").Cell | undefined;
     readonly clickedCell: import("react-msaview").Cell | undefined;
     readonly viewport: import("react-msaview").Viewport | undefined;
-    readonly segmentDomainTypes: import("msa-parsers").Annotation[];
-    readonly categoricalDomainTypes: import("msa-parsers").Annotation[];
+    readonly segmentDomainTypes: import("react-msaview").Annotation[];
+    readonly categoricalDomainTypes: import("react-msaview").Annotation[];
     readonly fillPalette: {
         [x: string]: string;
     };
     readonly featureFillEncoding: import("react-msaview").ResolvedEncoding | undefined;
-    readonly featureColors: Map<import("msa-parsers").Annotation, {
+    readonly featureColors: Map<import("react-msaview").Annotation, {
         fill: string;
         stroke: string;
     }>;
-    readonly featureLabels: Map<import("msa-parsers").Annotation, string> | undefined;
+    readonly featureLabels: Map<import("react-msaview").Annotation, string> | undefined;
     readonly segmentLabels: Map<string, string>;
-    readonly visibleDomainTypes: import("msa-parsers").Annotation[];
+    readonly visibleDomainTypes: import("react-msaview").Annotation[];
     readonly legends: import("react-msaview").Legend[];
     readonly domainUnderline: boolean;
     readonly domainBands: Map<string, import("react-msaview").DomainBand[]>;
     readonly domainBandsByStart: Map<string, import("react-msaview").DomainBand[]>;
-    readonly mouseOverDomains: import("msa-parsers").Annotation[];
+    readonly mouseOverDomains: import("react-msaview").Annotation[];
     readonly referenceRowIndex: number | undefined;
     readonly hoveredRowIndices: number[];
     readonly highlightedColumnRuns: {
@@ -909,13 +903,13 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
         x: "column" | "position";
         kind: "features";
         field?: string | undefined;
-        colors: Map<import("msa-parsers").Annotation, {
+        colors: Map<import("react-msaview").Annotation, {
             fill: string;
             stroke: string;
         }>;
         legend: import("react-msaview").LegendEntry[];
         legendTitle?: string | undefined;
-        labels?: Map<import("msa-parsers").Annotation, string> | undefined;
+        labels?: Map<import("react-msaview").Annotation, string> | undefined;
     })[];
     readonly resolvedRowPanels: import("react-msaview").ResolvedRowPanel[];
     readonly featureAlignShifts: Map<string, Map<string, number>>;
@@ -925,6 +919,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
 } & {
     setHeaderHeight(arg: number): void;
     setHideHeader(arg: boolean): void;
+    setImportForm(arg: boolean): void;
     treeOverviewClick(y: number): void;
     setTrackHeight(heightKey: string, height: number): void;
     reset(): void;
@@ -934,6 +929,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     fit(): void;
     fitVertically(): void;
     zoomToRegion(region: import("react-msaview").Region): void;
+    revealRegion(region: import("react-msaview").Region): void;
     zoomToSelection(): void;
     selectBlock(anchor: {
         col: number;
@@ -1144,7 +1140,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     colorSchemeName: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     customColorScheme: import("@jbrowse/mobx-state-tree").IType<Record<string, string> | undefined, Record<string, string> | undefined, Record<string, string> | undefined>;
     showColumnStats: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
-    msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("msa-parsers").MSAFormat>>;
+    msaFormat: import("@jbrowse/mobx-state-tree").IMaybe<import("@jbrowse/mobx-state-tree").ISimpleType<import("react-msaview").MSAFormat>>;
 }, "id" | "type" | "allowedGappyness" | "clades" | "colWidth" | "collapsed" | "columnTracks" | "currentAlignment" | "data" | "drawMsaLetters" | "encodings" | "features" | "gffFilehandle" | "height" | "hideGaps" | "highlightColumns" | "highlights" | "msaFilehandle" | "region" | "relativeTo" | "residueMappings" | "rotated" | "rowHeight" | "rowPanels" | "scrollX" | "scrollY" | "scrollZoom" | "scrollZoomAxis" | "selection" | "showDomainLegend" | "showDomains" | "showOnly" | "subFeatureRows" | "trackHeights" | "treeFilehandle" | "treeMetadataFilehandle" | "treeRoot" | "turnedOffFeatures" | "turnedOffTracks"> & {
     id: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<string>, [undefined]>;
     showDomains: import("@jbrowse/mobx-state-tree").IOptionalIType<import("@jbrowse/mobx-state-tree").ISimpleType<boolean>, [undefined]>;
@@ -1532,7 +1528,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     colorSchemeName: string;
     customColorScheme: Record<string, string> | undefined;
     showColumnStats: boolean;
-    msaFormat: import("msa-parsers").MSAFormat | undefined;
+    msaFormat: import("react-msaview").MSAFormat | undefined;
     drawLabels: boolean;
     labelsAlignRight: boolean;
     treeAreaWidth: number | undefined;
@@ -1669,7 +1665,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     colorSchemeName: string;
     customColorScheme: Record<string, string> | undefined;
     showColumnStats: boolean;
-    msaFormat: import("msa-parsers").MSAFormat | undefined;
+    msaFormat: import("react-msaview").MSAFormat | undefined;
     drawLabels: boolean;
     labelsAlignRight: boolean;
     treeAreaWidth: number | undefined;
