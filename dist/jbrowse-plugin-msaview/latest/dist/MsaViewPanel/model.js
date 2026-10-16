@@ -99,6 +99,13 @@ export default function stateModelFactory() {
          * #property
          */
         mafRegion: types.frozen(),
+        /**
+         * #property
+         * react-msaview draws the toolbar's menus and Settings as icons, since
+         * a JBrowse view shares its row with other panels. A session spec sets
+         * it false for the labeled toolbar.
+         */
+        embeddedMode: true,
     }))
         .volatile(() => ({
         /**
