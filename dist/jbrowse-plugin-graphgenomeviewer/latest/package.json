@@ -1,6 +1,6 @@
 {
   "name": "jbrowse-plugin-graphgenomeviewer",
-  "version": "7.1.10",
+  "version": "7.1.11",
   "description": "JBrowse 2 graph genome (pangenome) view: rGFA reference-anchored layouts, the Bandage force-directed engine, and haplotype lanes read from a gbz-base database",
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -25,9 +25,9 @@
   ],
   "private": false,
   "dependencies": {
-    "@gmod/bgzf-filehandle": "^6.7.0",
+    "@gmod/bgzf-filehandle": "^6.8.0",
     "@gmod/gbz-base": "^7.4.1",
-    "@gmod/tabix": "^3.10.2",
+    "@gmod/tabix": "^3.11.0",
     "@jbrowse/cigar-utils": "5.0.0-beta.11",
     "@jbrowse/core": "5.0.0-beta.11",
     "@jbrowse/display-kit": "5.0.0-beta.11",
@@ -42,7 +42,7 @@
     "@eslint/js": "^10.0.1",
     "@jbrowse/bandage-core": "^11.0.0",
     "@jbrowse/cli": "^4.3.0",
-    "@jbrowse/mobx-state-tree": "^6.7.0",
+    "@jbrowse/mobx-state-tree": "^6.9.0",
     "@jbrowse/plugin-linear-genome-view": "5.0.0-beta.11",
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
@@ -59,14 +59,14 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "git-cliff": "^2.14.2",
     "globals": "^17.13.0",
-    "jsdom": "^30.1.2",
+    "jsdom": "^30.1.3",
     "mobx": "^7.0.6",
     "mobx-react": "^10.0.2",
     "prettier": "^3.9.10",
     "pretty-bytes": "^7.2.0",
-    "puppeteer": "^25.13.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "puppeteer": "^25.14.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "rimraf": "^6.1.3",
     "rxjs": "^7.8.2",
     "serve": "^14.2.6",
@@ -74,7 +74,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
     "typescript7": "npm:typescript@^7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.5"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

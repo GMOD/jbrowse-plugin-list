@@ -308,14 +308,14 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png",
-      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.3/dist/jbrowse-plugin-apollo.umd.production.min.js",
-      "integrity": "sha384-Tu81n7zoU5hFCzRtBjwUBYgfDaQoSyYxL6xrHHxHixFQj5zVky20FGfeI0WLNCVB",
+      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.2.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
+      "integrity": "sha384-Tu8DtNjaIsIEenkC6UNEpOjhZO53tAqGE4PEHqITDRdjAS/vLI7MWgHgbX6Uno3u",
       "versions": [
         {
-          "pluginVersion": "1.1.3",
+          "pluginVersion": "1.2.0",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.1.3/dist/jbrowse-plugin-apollo.umd.production.min.js",
-          "integrity": "sha384-Tu81n7zoU5hFCzRtBjwUBYgfDaQoSyYxL6xrHHxHixFQj5zVky20FGfeI0WLNCVB"
+          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.2.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
+          "integrity": "sha384-Tu8DtNjaIsIEenkC6UNEpOjhZO53tAqGE4PEHqITDRdjAS/vLI7MWgHgbX6Uno3u"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/latest/dist/jbrowse-plugin-apollo.umd.production.min.js"
@@ -359,12 +359,12 @@
       ],
       "license": "GPL-3.0-or-later",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/7.1.10/dist/jbrowse-plugin-graphgenomeviewer.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/7.1.11/dist/jbrowse-plugin-graphgenomeviewer.esm.js",
       "versions": [
         {
-          "pluginVersion": "7.1.10",
+          "pluginVersion": "7.1.11",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/7.1.10/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/7.1.11/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/latest/dist/jbrowse-plugin-graphgenomeviewer.esm.js"

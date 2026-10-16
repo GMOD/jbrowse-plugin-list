@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { DisplayChromeOverlayProvider } from '@jbrowse/display-ui'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import GraphStatusChrome from './GraphStatusChrome'
 
@@ -80,4 +81,84 @@ test('a window past the bp cap replaces the graph with the zoom-in notice', () =
   expect(screen.queryByTestId('graph-canvas')).toBeNull()
   expect(screen.getByText(/Region too large for a graph cut/)).toBeTruthy()
   expect(screen.getByText('Force load')).toBeTruthy()
+})
+
+// What a host after jbrowse-components 3a5393f5a6 provides: overlays that read
+// plain values and callbacks, and print whatever `error` they are handed.
+const plainOverlays = {
+  ErrorBar: ({ error, onRetry }: { error: unknown; onRetry?: () => void }) => (
+    <button onClick={onRetry} disabled={!onRetry}>
+      {`error: ${String(error)}`}
+    </button>
+  ),
+  TooLarge: ({
+    message,
+    onForceLoad,
+  }: {
+    message: string
+    onForceLoad: () => void
+  }) => <button onClick={onForceLoad}>{message}</button>,
+  Loading: () => null,
+  BackgroundProgress: ({ message }: { message: string }) => <i>{message}</i>,
+  RenderError: () => null,
+}
+
+function renderWithPlainOverlays(
+  m: LinearGraphDisplayModel,
+  phase: 'ready' | 'error' | 'tooLarge',
+) {
+  render(
+    <DisplayChromeOverlayProvider value={plainOverlays as never}>
+      <GraphStatusChrome
+        model={m}
+        phase={phase}
+        drawn={phase === 'ready'}
+        testid="linear-graph-display"
+      >
+        <canvas />
+      </GraphStatusChrome>
+    </DisplayChromeOverlayProvider>,
+  )
+}
+
+test('a plain-props host sees no error bar while the graph is fine', () => {
+  renderWithPlainOverlays(model(), 'ready')
+  expect(screen.queryByText(/error:/)).toBeNull()
+})
+
+test('a plain-props host gets the error and a retry that reloads', () => {
+  const m = model({ error: new Error('walk fetch failed') })
+  renderWithPlainOverlays(m, 'error')
+  fireEvent.click(screen.getByText('error: Error: walk fetch failed'))
+  expect(m.reload).toHaveBeenCalledOnce()
+})
+
+test('a plain-props host gets no retry for a refused cut', () => {
+  const error = Object.assign(new Error('Zoom in to see the graph'), {
+    regionTooLarge: true,
+  })
+  renderWithPlainOverlays(model({ error }), 'error')
+  expect(
+    screen.getByText('error: Error: Zoom in to see the graph'),
+  ).toHaveProperty('disabled', true)
+})
+
+test('a plain-props host gets the zoom-in notice text and a force load', () => {
+  const forceLoad = vi.fn()
+  renderWithPlainOverlays(
+    model({
+      regionTooLargeReason: 'Region too large for a graph cut (6 Mb, max 5 Mb)',
+      forceLoad,
+    }),
+    'tooLarge',
+  )
+  fireEvent.click(
+    screen.getByText(/^Region too large for a graph cut.*Zoom in/),
+  )
+  expect(forceLoad).toHaveBeenCalledOnce()
+})
+
+test('a plain-props host sees the background chip only with a status message', () => {
+  renderWithPlainOverlays(model({ statusMessage: 'Laying out' }), 'ready')
+  expect(screen.getByText('Laying out')).toBeTruthy()
 })
