@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../node_modules/.pnpm/react-msaview@9.1.0_3e54acfe76b6ad0d26e91cd532b7f775/node_modules/react-msaview/src/version.ts"],
-  "sourcesContent": ["export const version = '9.1.0'\n"],
-  "mappings": "AAAO,IAAMA,EAAU",
-  "names": ["version"]
-}

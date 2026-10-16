@@ -163,3 +163,6 @@ describe('returning to the import form', () => {
         expect(model.dataStoreId).toBeUndefined();
     });
 });
+test('the view asks react-msaview for its icon toolbar', () => {
+    expect(view().embeddedMode).toBe(true);
+});

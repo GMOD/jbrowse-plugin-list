@@ -1,3 +1,4 @@
+import { gapParts, stopAt } from '@jbrowse/bandage-core/gfa/walkStops'
 import {
   panSNContig,
   panSNHaplotype,
@@ -5,6 +6,7 @@ import {
 } from '@jbrowse/bandage-core/pansn'
 
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
+import type { GapCause, GapPart } from '@jbrowse/bandage-core/gfa/walkStops'
 import type {
   WalkAxis,
   WalkRow,
@@ -12,10 +14,17 @@ import type {
   WalkRun,
   WalkStop,
 } from '@jbrowse/bandage-core/layout/walkRows'
+import type { PathStop, StopChunk } from '@jbrowse/bandage-core/types'
 
 const RUN_ON_REFERENCE = 1
 const RUN_REVERSED = 2
 const RUN_GAP = 4
+// a gap's cause, by index from bit 3
+const GAP_CAUSES = [undefined, 'missing', 'elsewhere', 'unknown'] as const
+const CAUSE_SHIFT = 3
+
+const causeFlags = (cause: GapCause | undefined) =>
+  GAP_CAUSES.indexOf(cause) << CAUSE_SHIFT
 
 type WalkRowMeta = Omit<WalkRow, 'runs'>
 
@@ -48,6 +57,9 @@ export interface WalkRowRuns {
   bp: Float64Array
   referenceStart: Float64Array
   flags: Uint8Array
+  // a gap's chunk elsewhere, as an index into `chunks`, -1 for none
+  chunk: Int32Array
+  chunks: StopChunk[]
 }
 
 /**
@@ -70,6 +82,8 @@ type Path = ReturnType<typeof walkPath> & {
   start: number
   from: number
   to: number
+  before?: PathStop
+  after?: PathStop
 }
 
 class RunWriter {
@@ -77,17 +91,38 @@ class RunWriter {
   bp: number[] = []
   referenceStart: number[] = []
   flags: number[] = []
+  chunk: number[] = []
+  chunks: StopChunk[] = []
   offsets = [0]
+  private chunkIndex = new Map<string, number>()
 
   get length() {
     return this.bp.length
   }
 
-  push(start: number, bp: number, flags: number, referenceStart: number) {
+  push(
+    start: number,
+    bp: number,
+    flags: number,
+    referenceStart: number,
+    chunk?: StopChunk,
+  ) {
     this.start.push(start)
     this.bp.push(bp)
     this.flags.push(flags)
     this.referenceStart.push(referenceStart)
+    this.chunk.push(chunk ? this.chunkOf(chunk) : -1)
+  }
+
+  private chunkOf(chunk: StopChunk) {
+    const key = `${chunk.refName}:${chunk.start}`
+    let i = this.chunkIndex.get(key)
+    if (i === undefined) {
+      i = this.chunks.length
+      this.chunkIndex.set(key, i)
+      this.chunks.push(chunk)
+    }
+    return i
   }
 
   endRow() {
@@ -99,7 +134,8 @@ class RunWriter {
  * `walkRows(graphFromTables(tables), region)` for a cut whose first walk is
  * the reference, which every walk-file and GBZ cut is, in as many pieces as
  * the cut breaks it into; a step is a node index. A gap between two pieces of
- * one haplotype is a step of `-bp`. One difference: a walk reaching only one
+ * one haplotype is a step of `-bp`, split into its parts by the pieces' stops
+ * as walkRows splits it. One difference: a walk reaching only one
  * of the region's flanks measures from that flank, where walkRows takes the
  * whole walk the cut holds, so its length is a lower bound that no longer
  * grows with the cut's context.
@@ -113,11 +149,15 @@ export function walkRowRuns(
   const paths: Path[] = []
   for (let p = 0; p < w.names.length; p++) {
     if (w.offsets[p + 1]! > w.offsets[p]!) {
+      const before = w.before && stopAt(w.before, p)
+      const after = w.after && stopAt(w.after, p)
       paths.push({
         ...walkPath(w.names[p]!),
         start: w.starts[p]!,
         from: w.offsets[p]!,
         to: w.offsets[p + 1]!,
+        ...(before ? { before } : {}),
+        ...(after ? { after } : {}),
       })
     }
   }
@@ -180,11 +220,18 @@ export function walkRowRuns(
     let length = 0
     let overlaps = false
     let end: number | undefined
+    let previous: Path | undefined
+    // each gap step's parts, by step index
+    const partsAt = new Map<number, GapPart[]>()
     for (const piece of ordered) {
       if (end !== undefined && piece.start < end) {
         overlaps = true
       }
       if (end !== undefined && piece.start > end) {
+        partsAt.set(
+          length,
+          gapParts(piece.start - end, previous?.after, piece.before),
+        )
         steps[length] = -(piece.start - end)
         stepStart[length++] = end
       }
@@ -196,6 +243,7 @@ export function walkRowRuns(
         pos += node < declared ? n.lengths[node]! : 0
       }
       end = pos
+      previous = piece
     }
     // A walk with one flank, whose contig ends inside the window: the steps
     // past that flank, read in the reference's direction. Which side is
@@ -309,13 +357,24 @@ export function walkRowRuns(
     let lastFlags = 0
     let lastRef = Number.NaN
     for (let k = lo; k < hi; k++) {
-      const id = steps[backward ? hi - 1 - (k - lo) : k]!
+      const index = backward ? hi - 1 - (k - lo) : k
+      const id = steps[index]!
       if (id < 0) {
-        out.push(bp, -id, RUN_GAP, Number.NaN)
+        const parts = partsAt.get(index) ?? [{ bp: -id }]
+        // a row read backwards meets a gap's parts last first
+        for (const part of backward ? [...parts].reverse() : parts) {
+          out.push(
+            bp,
+            part.bp,
+            RUN_GAP | causeFlags(part.cause),
+            Number.NaN,
+            part.chunk,
+          )
+          bp += part.bp
+        }
         lastAt = out.length - 1
         lastFlags = RUN_GAP
         lastRef = Number.NaN
-        bp += -id
         gapBp += -id
         step = 0
         continue
@@ -393,6 +452,7 @@ export function walkRowRuns(
   const bpOut = new Float64Array(total)
   const referenceStart = new Float64Array(total)
   const flags = new Uint8Array(total)
+  const chunk = new Int32Array(total)
   let at = 0
   order.forEach((row, i) => {
     const a = out.offsets[row]!
@@ -402,6 +462,7 @@ export function walkRowRuns(
       bpOut[at] = out.bp[k]!
       referenceStart[at] = out.referenceStart[k]!
       flags[at] = out.flags[k]!
+      chunk[at] = out.chunk[k]!
     }
     offsets[i + 1] = at
   })
@@ -413,6 +474,8 @@ export function walkRowRuns(
     bp: bpOut,
     referenceStart,
     flags,
+    chunk,
+    chunks: out.chunks,
   }
 }
 
@@ -425,6 +488,14 @@ function runAt(t: WalkRowRuns, k: number): WalkRun {
   }
   if (f & RUN_GAP) {
     run.gap = true
+    const cause = GAP_CAUSES[(f >> CAUSE_SHIFT) & 3]
+    if (cause) {
+      run.cause = cause
+    }
+    const chunk = t.chunks[t.chunk[k]!]
+    if (chunk) {
+      run.chunk = chunk
+    }
   } else {
     run.referenceStart = Number.isNaN(t.referenceStart[k]!)
       ? undefined

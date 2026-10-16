@@ -9,7 +9,6 @@ import {
   BAR_PX as WALK_ROW_BAR_PX,
   CALL_TICK,
   DISAGREES,
-  GAP_PX,
   GENE_INK,
   UNBACKED_TICK,
   walkRowsKey,
@@ -402,7 +401,7 @@ export function walkRowSwatch(swatch: KeySwatch): LegendSwatch {
           swatch.kind === 'bar' && swatch.ramp
             ? RAMP_GRADIENT_STOPS
             : flat(swatch.fill),
-        height: swatch.kind === 'gap' ? GAP_PX : WALK_ROW_SWATCH_PX,
+        height: swatch.kind === 'gap' ? swatch.px : WALK_ROW_SWATCH_PX,
       }
 }
 
@@ -453,7 +452,7 @@ export function walkKeyRow(model: GraphPaneModel, walk: LiftedWalk): LegendRow {
   return {
     key: `walk-${walk.name}`,
     strong: model.walkLabel(walk.name),
-    label: key.delta + key.outside + key.reversed,
+    label: key.delta + key.gaps + key.reversed,
     swatch: {
       kind: 'fill',
       stops: encodingStops(walk.encoding),

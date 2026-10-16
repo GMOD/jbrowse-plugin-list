@@ -128,24 +128,17 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
   const bars = model.walkRowBars
   const place = model.walkRowPlacement
   const pitch = model.walkRowPitch
-  const bare = useMemo(
-    () =>
-      bars && {
-        ...bars,
-        reference: { ...bars.reference, runs: [] },
-        rows: bars.rows.map(r => ({ ...r, runs: [] })),
-      },
-    [bars],
-  )
-  if (!bars || !bare || !place || !pitch) {
+  if (!bars || !place || !pitch) {
     return null
   }
   const { paneWidth: width, canvasHeight } = model
+  // the canvas paints the bars, except in a vector export
   const frame = {
     ...model.screenTransform,
     width,
     height: canvasHeight,
     ...pitch,
+    bars: vector,
   }
   return (
     <>
@@ -157,7 +150,7 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
         testId="graph-walk-rows"
       >
         {walkRowTrees(
-          vector ? bars : bare,
+          bars,
           model.walkRowGroups?.sections ?? [],
           place.rowY,
           frame,

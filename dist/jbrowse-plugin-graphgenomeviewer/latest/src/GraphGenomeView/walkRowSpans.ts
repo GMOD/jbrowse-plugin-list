@@ -1,6 +1,8 @@
 import {
   GAP_PX,
+  MISSING_PX,
   coalesceRuns,
+  gapStyle,
   runPaint,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { hslToRgb } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
@@ -80,9 +82,12 @@ export function runPieces(
 export interface WalkRowSpans {
   bars: SpanChannels & { color: Uint32Array }
   gaps: SpanChannels & { color: Uint32Array }
-  // where each drawn row's spans start in `bars` and `gaps`
+  // gaps of bases the graph lacks, which draw as a hairline
+  hairlines: SpanChannels & { color: Uint32Array }
+  // where each drawn row's spans start in `bars`, `gaps` and `hairlines`
   barRows: Uint32Array
   gapRows: Uint32Array
+  hairlineRows: Uint32Array
   // the furthest any span reaches along its row, in bp, and at least 1
   longest: number
 }
@@ -114,7 +119,8 @@ function slice<T extends SpanChannels & { color: Uint32Array }>(
 /**
  * Each row's runs as `walkRowsTree` coalesces and colours them at
  * `pxPerBp`, as span channels: `x`/`x2` in bp along the row, `row` its index
- * among `rows`. Gaps go apart, since they draw thinner.
+ * among `rows`. Gaps go apart, since they draw thinner, and gaps of bases the
+ * graph lacks apart again, as a hairline.
  */
 export function walkRowSpans(
   rows: WalkRow[],
@@ -124,6 +130,7 @@ export function walkRowSpans(
   const pieces = rows.map(r =>
     coalesceRuns(r.runs, pxPerBp).map(run => ({
       gap: run.gap,
+      hairline: run.gap && gapStyle(run.cause).px === MISSING_PX,
       pieces: runPieces(run, ramp, pxPerBp),
     })),
   )
@@ -135,12 +142,14 @@ export function walkRowSpans(
   }
   const bars = channels(total)
   const gaps = channels(total)
+  const hairlines = channels(total)
   const barRows = new Uint32Array(rows.length + 1)
   const gapRows = new Uint32Array(rows.length + 1)
+  const hairlineRows = new Uint32Array(rows.length + 1)
   let longest = 1
   pieces.forEach((runs, row) => {
     for (const run of runs) {
-      const c = run.gap ? gaps : bars
+      const c = run.hairline ? hairlines : run.gap ? gaps : bars
       for (const [x, x2, color] of run.pieces) {
         const i = c.count++
         c.x[i] = x
@@ -152,12 +161,15 @@ export function walkRowSpans(
     }
     barRows[row + 1] = bars.count
     gapRows[row + 1] = gaps.count
+    hairlineRows[row + 1] = hairlines.count
   })
   return {
     bars: slice(bars, 0, bars.count),
     gaps: slice(gaps, 0, gaps.count),
+    hairlines: slice(hairlines, 0, hairlines.count),
     barRows,
     gapRows,
+    hairlineRows,
     longest,
   }
 }
@@ -209,6 +221,7 @@ export function paintWalkRowSpans(
     for (const [c, starts, barPx] of [
       [spans.bars, spans.barRows, f.barPx],
       [spans.gaps, spans.gapRows, Math.min(GAP_PX, f.barPx)],
+      [spans.hairlines, spans.hairlineRows, Math.min(MISSING_PX, f.barPx)],
     ] as const) {
       spanMark.paintBlock(
         ctx,

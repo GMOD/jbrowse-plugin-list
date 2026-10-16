@@ -1,3 +1,4 @@
+import { gfaTables } from '@jbrowse/bandage-core/gfa/gfaTables'
 import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 
@@ -151,4 +152,41 @@ test('a reference cut into pieces is one reference row, as walkRows reads it', (
   expect(fields(ours.reference)).toEqual(fields(theirs.reference))
   expect(ours.rows.map(r => r.label)).toEqual(['A#1'])
   expect(ours.rows[0]).toMatchObject({ bp: 1000, complete: true })
+})
+
+test("a gap's parts cross from the worker with their causes, as walkRows splits them", () => {
+  const S = [1, 2, 3, 4, 5, 6, 7].map(id => `S\t${id}\t*\tLN:i:1000`)
+  const L = [1, 2, 3, 4, 5, 6].map(id => `L\t${id}\t+\t${id + 1}\t+\t0M`)
+  const text = [
+    'H\tVN:Z:1.1',
+    ...S,
+    ...L,
+    'W\tGRCh38\t0\tchr1\t0\t7000\t>1>2>3>4>5>6>7\tws:Z:end\twe:Z:end',
+    'W\tA\t1\ta\t0\t3000\t>1>2>3\tws:Z:end\twe:Z:break,bp=600,trimmed=400',
+    'W\tA\t1\ta\t4000\t7000\t>5>6>7\tws:Z:break,bp=600\twe:Z:end',
+    'W\tB\t1\tb\t0\t3000\t<7<6<5\tws:Z:end\twe:Z:elsewhere,chunk=GRCh38#0#chr1:20316160',
+    'W\tB\t1\tb\t4000\t7000\t<3<2<1\tws:Z:break,bp=300\twe:Z:end',
+  ].join('\n')
+  const region = { start: 1000, end: 6000 }
+  const gaps = (rows: WalkRow[]) =>
+    rows.map(r => [
+      r.label,
+      r.runs
+        .filter(run => run.gap)
+        .map(({ bp, cause, chunk }) => ({ bp, cause, chunk })),
+    ])
+  const ours = walkRowsOf(walkRowRuns(gfaTables(text)!, region)!).rows
+  const graph = loadGraph(text, 'cut', { referencePath: 'GRCh38#0#chr1' })
+  expect(gaps(ours)).toEqual(gaps(walkRows(graph, region)!.rows))
+  const chunk = { refName: 'GRCh38#0#chr1', start: 20316160 }
+  expect(Object.fromEntries(gaps(ours))).toEqual({
+    'A#1': [
+      { bp: 400, cause: undefined, chunk: undefined },
+      { bp: 600, cause: 'missing', chunk: undefined },
+    ],
+    'B#1': [
+      { bp: 300, cause: 'missing', chunk: undefined },
+      { bp: 700, cause: 'elsewhere', chunk },
+    ],
+  })
 })

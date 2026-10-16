@@ -28,7 +28,7 @@ const fixture = (name: string) =>
 
 function makeAdapter(
   slots: Record<string, unknown> = {},
-  name = 'walks2_header',
+  name = 'walks3_header',
 ) {
   const local = (path: string) => ({
     localPath: path,
@@ -105,7 +105,7 @@ test('a fetch for some haplotypes answers those lanes in the order asked, named 
 })
 
 test('a fetch for some haplotypes reads them against a reference walk named without a haplotype', async () => {
-  const found = await feats(makeAdapter({}, 'walks2_twopart'), {
+  const found = await feats(makeAdapter({}, 'walks3_twopart'), {
     haplotypes: ['HG002#1'],
   })
   expect(found.map(summary)).toEqual([
@@ -322,10 +322,13 @@ const repeatNodes = new Map(
 )
 const fragment = (name: string, steps: [number, number][]) => ({
   name,
+  fragStart: 0,
   hapStart: 0,
   hapEnd: 0,
   ids: Int32Array.from(steps, ([id]) => id),
   rev: Uint8Array.from(steps, ([, rev]) => rev),
+  before: { kind: 'end' as const },
+  after: { kind: 'end' as const },
 })
 const cigar = (edits: [string, number][]) =>
   edits.map(([op, len]) => `${len}${op}`).join('')

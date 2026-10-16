@@ -17,9 +17,9 @@ import type { WalkCut } from './walkRowRuns.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 
 // chr22 of HPRC v2.1 at base level, one walk file per reference in walk
-// format 2, built under ~/work/scratch/walks-20261008/f2. Skipped where the
+// format 3, built under ~/work/scratch/walks-20261008/f3. Skipped where the
 // files are absent.
-const chr22 = '/home/cdiesh/work/scratch/walks-20261008/f2/chr22'
+const chr22 = '/home/cdiesh/work/scratch/walks-20261008/f3/chr22'
 const present = ['GRCh38', 'CHM13'].every(sample =>
   existsSync(`${chr22}.${sample}.walks.bed.gz`),
 )
@@ -34,27 +34,27 @@ const fixture = (name: string) =>
 //   W HG002   1 chr1 >1>2>7>4>5>6   7 replaces 3
 //   W HG002   2 chr1 >1>2>3>4>8>6   8 replaces 5
 //   W HG00097 1 chr1 >1>2>3>4>5>6
-const headerPrefix = fixture('walks2_header')
+const headerPrefix = fixture('walks3_header')
 
-// walks2_header's walks with the reference named as pggb names a P-line,
+// walks3_header's walks with the reference named as pggb names a P-line,
 // GRCh38#chr1
-const twoPartPrefix = fixture('walks2_twopart')
+const twoPartPrefix = fixture('walks3_twopart')
 
 // An unchopped graph, node 1 spanning 0-2600 and filed under chunk 0 alone:
 //   W GRCh38 0 chr1 >1>2>4
 //   W HG002  1 chr1 >1>3>4   3 replaces 2
-const maxNodePrefix = fixture('walks2_maxnode')
+const maxNodePrefix = fixture('walks3_maxnode')
 
 // Twelve 500 bp reference nodes over chr1:0-6000 in one 10 kb chunk:
 //   W GRCh38  0 chr1 >1>2>3>4>5>6>7>8>9>10>11>12
 //   W HG002   1 chr1 >1>2>3>20>21>9>10>11>12   20 and 21, 2 kb each, replace 4-8
 //   W HG002   2 chr1 >1>2>3>4>5>6>7>8>9>10>11>12
 //   W HG003   1 chr1 >1>2>3>22                 the contig ends on 22, 300 bp
-const rejoinPrefix = fixture('walks2_rejoin')
+const rejoinPrefix = fixture('walks3_rejoin')
 
 // The same graph in 1 kb chunks, whose rows name the chunks their path goes on
 // in: HG002#1 leaves chunk 1000 for 20 and 21 and rejoins at 9, in chunk 4000
-const followPrefix = fixture('walks2_follow')
+const followPrefix = fixture('walks3_follow')
 
 function makeAdapter(prefix: string, slots = {}) {
   const local = (path: string) => ({
@@ -215,7 +215,7 @@ test('a cut for some haplotypes keeps a reference walk named without a haplotype
 
 test('a format 1 walk file is refused, with what to rebuild it with', async () => {
   const cut = makeAdapter(fixture('walks1_header')).getSubgraph(chr1(0, 600))
-  await expect(cut).rejects.toThrow(/rebuild it with gfa-to-tabix 1.0/)
+  await expect(cut).rejects.toThrow(/rebuild it with gfa-to-tabix 1.1/)
 })
 
 test('a cut over walkByteBudget reads no row', async () => {
@@ -266,7 +266,7 @@ test("a node longer than a chunk is read back as far as the header's maxnode rea
   expect(features.map(f => f.get('name'))).toContain('1')
   const gfa = await gfaOf(adapter.getSubgraph(region))
   expect(gfa).toMatch(/^S\t1\t/m)
-  expect(gfa).toMatch(/^W\tGRCh38\t0\tchr1\t0\t3800\t>1>2>4$/m)
+  expect(gfa).toMatch(/^W\tGRCh38\t0\tchr1\t0\t3800\t>1>2>4(\t|$)/m)
   expect(walkNames(gfa)).toEqual(['GRCh38#0#chr1', 'HG002#1#chr1'])
 })
 
