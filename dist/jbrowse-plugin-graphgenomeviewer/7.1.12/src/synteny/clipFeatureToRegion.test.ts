@@ -366,3 +366,26 @@ test('the two regions are fetched at once and emitted in region order', async ()
   expect(adapter.completed).toEqual([1, 0])
   expect(features.map(f => f.id())).toEqual(['region0', 'region1'])
 })
+
+test('the runs of one record share its recordId, and two records do not', () => {
+  const runs = clipFeatureToRegion(
+    record({ CIGAR: '100M50D100M50I150M' }),
+    { start: 1000, end: 1400 },
+    40,
+  )
+  expect(runs.length).toBeGreaterThan(1)
+  expect(new Set(runs.map(r => r.get('recordId')))).toEqual(new Set(['r1']))
+  const other = clipFeatureToRegion(record({ uniqueId: 'r2', CIGAR }), {
+    start: 1000,
+    end: 1400,
+  })[0]!
+  expect(other.get('recordId')).toBe('r2')
+})
+
+test('a recordId the source already carries stays', () => {
+  const [piece] = clipFeatureToRegion(record({ recordId: 919 }), {
+    start: 1000,
+    end: 1400,
+  })
+  expect(piece!.get('recordId')).toBe(919)
+})

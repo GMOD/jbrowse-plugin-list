@@ -125,6 +125,7 @@ function clippedFeature(
   const data: SimpleFeatureSerialized = {
     ...source,
     uniqueId: `${feature.id()}${suffix}`,
+    recordId: source.recordId ?? feature.id(),
     start: clipped.start,
     end: clipped.end,
     mate: { ...mate, start: clipped.mateStart, end: clipped.mateEnd },
@@ -146,7 +147,9 @@ function clippedFeature(
  * the record misses the window, one otherwise, and with `splitAtGapBp` one per
  * gap-free run of its alignment, numbered after the window suffix so each run
  * is its own feature and its own `syntenyId` group. A piece keeps every field
- * of the record except the alignment strings; `keepAlignment` hands back its
+ * of the record except the alignment strings, and a `recordId` that names the
+ * record the piece was cut from, so a display can tell two runs of one record
+ * from two records; `keepAlignment` hands back its
  * own stretch of them as packed ops in `alignmentOps`. A feature with no
  * `mate` is not a pairwise record and passes through whole.
  *
