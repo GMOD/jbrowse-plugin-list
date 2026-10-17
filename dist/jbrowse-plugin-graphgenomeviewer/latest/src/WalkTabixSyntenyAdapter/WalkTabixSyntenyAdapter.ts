@@ -10,9 +10,8 @@ import { updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import { walksKept } from '@jbrowse/graph-walks'
 
-import { chainFeature, referenceAligner, walkAligner } from './walkLanes.ts'
+import { chainFeature, lanePairAligner, referenceAligner } from './walkLanes.ts'
 import { WalkIndex } from '../RgfaTabixAdapter/walkReader.ts'
-import { isNodeLimitError } from '../nodeLimitError.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { ComparativeAdapterBase } from '../synteny/ComparativeAdapterBase.ts'
 import {
@@ -20,6 +19,7 @@ import {
   lanePairsStatus,
   requestedPairs,
 } from '../synteny/lanePairs.ts'
+import { laneZoomNotice } from '../synteny/laneZoomNotice.ts'
 
 import type { WalkTabixSyntenyAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
@@ -128,13 +128,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
           links: false,
         })
         .catch((error: unknown) => {
-          if (isNodeLimitError(error) && error instanceof Error) {
-            error.message = error.message.replace(
-              'to see the graph',
-              'to see lanes',
-            )
-          }
-          throw error
+          throw laneZoomNotice(error, region.end - region.start)
         }),
     )
   }
@@ -228,7 +222,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       opts,
       lanePairsStatus(pairs),
     )
-    const align = walkAligner(graph.nodes)
+    const align = lanePairAligner(graph.nodes)
     const walksOf = (prefix: string) =>
       fragments.filter(f => panSNMatchesPrefix(f.name, prefix))
     return sides.flatMap(({ pair, featurePrefix, matePrefix }) =>

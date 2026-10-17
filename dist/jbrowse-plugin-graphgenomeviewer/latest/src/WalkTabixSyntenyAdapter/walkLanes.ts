@@ -156,6 +156,66 @@ export function referenceAligner(nodes: Map<number, WalkNode>) {
   }
 }
 
+// Each node a walk visits once, with the direction it passes it
+function singleVisits(fragment: WalkFragment) {
+  const rev = new Map<number, number>()
+  const twice = new Set<number>()
+  fragment.ids.forEach((id, i) => {
+    if (rev.has(id)) {
+      twice.add(id)
+    } else {
+      rev.set(id, fragment.rev[i]!)
+    }
+  })
+  for (const id of twice) {
+    rev.delete(id)
+  }
+  return rev
+}
+
+/**
+ * Aligns one lane's walk fragment to another's. The weighted subsequence
+ * (`referenceAligner`) is the fast route and matches through copy-number
+ * arrays, but it reads one direction per pair, so an inversion between the
+ * lanes comes out as an insertion beside a deletion. A pair sharing 100 bp
+ * (MIN_MATCH_BP) or more of singly visited nodes in each direction goes to
+ * pair chaining (`walkAligner`) instead, which answers the inverted stretch as
+ * a reverse-strand record of its own. Chaining leaves out every node a walk
+ * passes twice, so counting singly visited nodes misses no inversion it could
+ * draw.
+ */
+export function lanePairAligner(nodes: Map<number, WalkNode>) {
+  const subsequence = referenceAligner(nodes)
+  const chained = walkAligner(nodes)
+  const visits = new Map<WalkFragment, Map<number, number>>()
+  const visitsOf = (fragment: WalkFragment) => {
+    let found = visits.get(fragment)
+    if (found === undefined) {
+      found = singleVisits(fragment)
+      visits.set(fragment, found)
+    }
+    return found
+  }
+  const inverted = (query: WalkFragment, target: WalkFragment) => {
+    const theirs = visitsOf(target)
+    let same = 0
+    let opposite = 0
+    for (const [id, rev] of visitsOf(query)) {
+      const other = theirs.get(id)
+      if (other === rev) {
+        same += nodeLength(nodes, id)
+      } else if (other !== undefined) {
+        opposite += nodeLength(nodes, id)
+      }
+    }
+    return same >= MIN_MATCH_BP && opposite >= MIN_MATCH_BP
+  }
+  return (query: WalkFragment, target: WalkFragment) =>
+    inverted(query, target)
+      ? chained(query, target)
+      : subsequence(query, target)
+}
+
 /**
  * One record of a walk aligned to another, with its short balanced bubbles as
  * mismatches

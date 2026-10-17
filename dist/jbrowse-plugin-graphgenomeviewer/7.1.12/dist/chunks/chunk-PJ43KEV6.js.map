@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../src/nodeLimitError.ts"],
-  "sourcesContent": ["// The GBZ adapter's own refusal, marked regionTooLarge so core shows it as a\n// zoom-in notice, or gbz-base's when it reaches the display unwrapped\nexport function isNodeLimitError(error: unknown) {\n  return (\n    error instanceof Error &&\n    (error.name === 'NodeLimitError' ||\n      (error as { regionTooLarge?: unknown }).regionTooLarge === true ||\n      /reads more than nodeLimit|^Subgraph size limit of \\d+ nodes exceeded/.test(\n        error.message,\n      ))\n  )\n}\n"],
-  "mappings": "AAEO,SAASA,EAAiBC,EAAgB,CAC/C,OACEA,aAAiB,QAChBA,EAAM,OAAS,kBACbA,EAAuC,iBAAmB,IAC3D,uEAAuE,KACrEA,EAAM,OACR,EAEN",
-  "names": ["isNodeLimitError", "error"]
-}

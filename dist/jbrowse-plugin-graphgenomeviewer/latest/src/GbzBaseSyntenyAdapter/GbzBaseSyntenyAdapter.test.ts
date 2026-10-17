@@ -366,15 +366,13 @@ test('the graph lists its haplotypes with their contigs, and a fetch can be narr
   )
 })
 
-test('the node limit fails lanes and a graph cut as a zoom-in notice naming a span that fits', async () => {
+test('the node limit fails lanes as a zoom-in notice naming how far to zoom, and a graph cut naming a span that fits', async () => {
   const adapter = makeAdapter({ nodeLimit: 2 })
   const lanes: unknown = await feats(adapter, window).catch((e: unknown) => e)
   expect(lanes).toMatchObject({
     name: 'NodeLimitError',
     regionTooLarge: true,
-    message: expect.stringMatching(
-      /^Zoom in to about [\d.]+[KM]?bp to see lanes$/,
-    ),
+    message: expect.stringMatching(/^Zoom in about [\d.]+× to see lanes$/),
   })
   const graph: unknown = await adapter
     .getSubgraph(window)

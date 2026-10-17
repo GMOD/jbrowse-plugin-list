@@ -31,6 +31,7 @@ import {
   lanePairsStatus,
   requestedPairs,
 } from '../synteny/lanePairs.ts'
+import { laneZoomNotice } from '../synteny/laneZoomNotice.ts'
 import { matchFeature } from '../synteny/matchFeature.ts'
 
 import type { GbzBaseSyntenyAdapterConfig } from './configSchema.ts'
@@ -222,6 +223,12 @@ function zoomInNotice(error: unknown, what: string) {
   }
   return error
 }
+
+const laneLimitNotice = (error: unknown, nodeLimit: number, windowBp: number) =>
+  laneZoomNotice(
+    zoomInNotice(nodeLimitError(error, nodeLimit, windowBp) ?? error, 'lanes'),
+    windowBp,
+  )
 
 // gbz-base reads whole bp; a view asks at fractional ones
 const wholeBp = (region: Region) => ({
@@ -489,10 +496,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
                 keep,
               })
               .catch((error: unknown) => {
-                throw zoomInNotice(
-                  nodeLimitError(error, nodeLimit, end - start) ?? error,
-                  'lanes',
-                )
+                throw laneLimitNotice(error, nodeLimit, end - start)
               }),
         )
       : []
@@ -562,10 +566,7 @@ export default class GbzBaseSyntenyAdapter extends ComparativeAdapterBase<GbzBas
     // a cut past the node limit for the wider context keeps the first one
     const bridged = async (path: PathQuery) => {
       const subgraphs = await cut(path, baseContext).catch((error: unknown) => {
-        throw zoomInNotice(
-          nodeLimitError(error, nodeLimit, end - start) ?? error,
-          'lanes',
-        )
+        throw laneLimitNotice(error, nodeLimit, end - start)
       })
       const gap = widestWalkGap(subgraphs, kept)
       const context = Math.ceil(gap / 2) + 2000

@@ -9,10 +9,15 @@ import { toArray } from 'rxjs/operators'
 import Adapter from './WalkTabixSyntenyAdapter.ts'
 import configSchema from './configSchema.ts'
 import WalkTabixSyntenyAdapterF from './index.ts'
-import { bubblesAsMismatches, referenceAligner } from './walkLanes.ts'
+import {
+  bubblesAsMismatches,
+  referenceAligner,
+  walkAligner,
+} from './walkLanes.ts'
 import { walkRowsOf } from '../RgfaTabixAdapter/walkRowRuns.ts'
 import { PairTargetError } from '../synteny/lanePairs.ts'
 
+import type { PairChain } from '@gmod/gbz-base/pairAlignment'
 import type { SyntenyMate } from '@jbrowse/synteny-core'
 
 // Four walks over a 3.6 kb reference of six 600 bp nodes, in 1 kb chunks
@@ -166,6 +171,66 @@ test('a batch of lane pairs answers each pair what it answers alone', async () =
   expect(batch).toHaveLength(2)
 })
 
+// walks3_lanepairs, a 5.5 kb reference of 2 kb flanks around three 500 bp
+// nodes, in 1 kb chunks:
+//   W GRCh38  0 chr1 >1>2>3>4>5
+//   W HG002   1 chr1 >1>2>3>4>5
+//   W HG002   2 chr1 >1<4<3<2>5           the middle three inverted
+//   W HG00097 1 chr1 >1>2>6>2>6>2>3>4>5   2 three times, 6 a 30 bp spacer
+test('a lane pair matches through a copy-number array, and draws an inversion between the lanes as a reverse-strand record', async () => {
+  const found = await firstValueFrom(
+    makeAdapter({}, 'walks3_lanepairs')
+      .getFeatures(
+        { ...window, end: 5500 },
+        {
+          lanePairs: [
+            { queryAssemblyName: 'HG002#1', targetAssemblyName: 'HG002#2' },
+            { queryAssemblyName: 'HG002#1', targetAssemblyName: 'HG00097#1' },
+          ],
+        },
+      )
+      .pipe(toArray()),
+  )
+  expect(
+    found.map(f => ({
+      ...summary(f),
+      strand: f.get('strand'),
+      matches: f.get('numMatches'),
+    })),
+  ).toEqual([
+    {
+      lane: 'HG002#2',
+      refName: 'chr1',
+      start: 0,
+      end: 5500,
+      mate: 'chr1:0-5500',
+      cigar: '2000=1500I1500D2000=',
+      strand: 1,
+      matches: 4000,
+    },
+    {
+      lane: 'HG002#2',
+      refName: 'chr1',
+      start: 2000,
+      end: 3500,
+      mate: 'chr1:2000-3500',
+      cigar: '1500=',
+      strand: -1,
+      matches: 1500,
+    },
+    {
+      lane: 'HG00097#1',
+      refName: 'chr1',
+      start: 0,
+      end: 5500,
+      mate: 'chr1:0-6560',
+      cigar: '2500=1060I3000=',
+      strand: 1,
+      matches: 5500,
+    },
+  ])
+})
+
 test('a lane pair without its target lane is refused', async () => {
   await expect(
     feats(makeAdapter(), { queryAssemblyName: 'HG002#1' }),
@@ -228,12 +293,12 @@ test('getSubgraph cuts the window with the reference walk first', async () => {
   expect(walks).toEqual(['GRCh38#0#chr1', 'HG002#1#chr1'])
 })
 
-test('a window past the step budget fails as a zoom-in notice for lanes', async () => {
+test('a window past the step budget fails as a zoom-in notice for lanes naming how far to zoom', async () => {
   await expect(
     feats(makeAdapter({ walkStepBudget: 20 })),
   ).rejects.toMatchObject({
     name: 'NodeLimitError',
-    message: expect.stringMatching(/to see lanes$/),
+    message: expect.stringMatching(/^Zoom in about [\d.]+×.* to see lanes$/),
   })
 })
 
@@ -385,6 +450,66 @@ test('a haplotype running against the reference is a reverse-strand record', () 
     strand: '-',
   })
   expect(cigar(chain!.edits)).toBe('1000=30I500=')
+})
+
+// Two lanes over 2 kb flanks and three 500 bp nodes, the second lane running
+// the middle three backwards: >1>2>3>4>5 against >1<4<3<2>5
+const inversionNodes = new Map(
+  [1, 2, 3, 4, 5].map(id => [
+    id,
+    {
+      refName: 'ref',
+      start: id * 10_000,
+      end: id * 10_000 + (id === 1 || id === 5 ? 2000 : 500),
+      rank: 0,
+      onWindow: true,
+    },
+  ]),
+)
+const upperLane = fragment('HG002#1#chr1', [
+  [1, 0],
+  [2, 0],
+  [3, 0],
+  [4, 0],
+  [5, 0],
+])
+const invertedLane = fragment('HG002#2#chr1', [
+  [1, 0],
+  [4, 1],
+  [3, 1],
+  [2, 1],
+  [5, 0],
+])
+const drawn = (chains: PairChain[]) =>
+  chains.map(
+    ({ queryStart, queryEnd, targetStart, targetEnd, strand, edits }) => ({
+      query: `${queryStart}-${queryEnd}`,
+      target: `${targetStart}-${targetEnd}`,
+      strand,
+      cigar: cigar(edits),
+    }),
+  )
+
+test('an inversion between two lanes is a reverse-strand record of its own when chained, and an insertion beside a deletion in the subsequence', () => {
+  expect(drawn(walkAligner(inversionNodes)(invertedLane, upperLane))).toEqual([
+    {
+      query: '0-5500',
+      target: '0-5500',
+      strand: '+',
+      cigar: '2000=1500I1500D2000=',
+    },
+    { query: '2000-3500', target: '2000-3500', strand: '-', cigar: '1500=' },
+  ])
+  expect(
+    drawn(referenceAligner(inversionNodes)(invertedLane, upperLane)),
+  ).toEqual([
+    {
+      query: '0-5500',
+      target: '0-5500',
+      strand: '+',
+      cigar: '2000=1500I1500D2000=',
+    },
+  ])
 })
 
 test.each([
