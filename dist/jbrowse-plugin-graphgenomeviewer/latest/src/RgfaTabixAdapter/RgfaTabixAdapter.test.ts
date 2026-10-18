@@ -5,18 +5,24 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { TabixIndexedFile } from '@gmod/tabix'
+import { convertGFAToGraph } from '@jbrowse/bandage-core/gfa/gfaConverter'
 import { parseGFA } from '@jbrowse/bandage-core/gfa-core/index'
 import PluginManager from '@jbrowse/core/PluginManager'
 import { readConfObject } from '@jbrowse/core/configuration'
+import {
+  formatSubgraph,
+  linkKey,
+  parseLinkLine,
+  parseSegmentLine,
+} from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
 import RgfaTabixAdapterF from './index.ts'
-import { linkKey, parseLinkLine } from './rgfaBed.ts'
 
-import type { WalkCut } from './walkRowRuns.ts'
+import type { WalkCut } from './walkCut.ts'
 
 // Built by `gfa-to-tabix --layout contig` from the minigraph rGFA of four E. coli
 // strains at jbrowse.org/demos/ecoli_pangenome/ecoli_rgfa_slice.gfa (the
@@ -333,13 +339,26 @@ test('getFeatures carries SM:Z: onto the feature', async () => {
 })
 
 // The other half of the same fixture: the graph route reads the samples off the
-// synthesized S-line, and rgfaBed.test.ts asserts that from a hand-written row.
-// This is the same claim against a real indexed file.
+// synthesized S-line
 test('getSubgraph keeps the tag on the S-line it synthesizes', async () => {
   const gfa = gfaText(await makePggbAdapter().getSubgraph(is5))
   expect(gfa.split('\n')).toContain(
     'S\t196827\t*\tLN:i:1199\tSN:Z:K12#1#chr\tSO:i:1299498\tSR:i:0\tSM:Z:K12.1',
   )
+})
+
+// An indexed cut has no P/W lines, so this tag is its only record of which
+// haplotypes visit a segment, and the node popup shows GraphNode.samples
+test('SM:Z: on a segs row reaches GraphNode.samples', () => {
+  const segment = parseSegmentLine(
+    'K12#1#chr\t1004477\t1004500\ts119690\t0\tSM:Z:K12.1,Sakai.1,NCTC86.1',
+  )
+  const gfa = formatSubgraph(new Map([[segment.id, segment]]), new Map())
+  expect(convertGFAToGraph(parseGFA(gfa)).nodes[0]!.samples).toEqual([
+    'K12.1',
+    'Sakai.1',
+    'NCTC86.1',
+  ])
 })
 
 // An rGFA has no sixth column, so the attribute is absent rather than 0: a

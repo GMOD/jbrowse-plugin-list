@@ -12,7 +12,7 @@ import { lenientOptionalEnum } from '../lenientEnum'
 
 import type { MorphEntering } from './morph'
 import type { SubgraphRegion } from '../../GetSubgraph'
-import type { WalkCut } from '../../RgfaTabixAdapter/walkRowRuns.ts'
+import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
 import type { RepeatArray } from '../repeats/repeatFeatures'
 import type { PaneLayout } from '../tubeMapPanels'
 import type { SampleRow } from '../walkRowGroups'

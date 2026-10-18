@@ -5,15 +5,15 @@ import {
   graphFromTables,
   graphTablesGFA,
 } from '@jbrowse/bandage-core/gfa/graphTables'
+import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
-import { walkRowsOf } from './walkRowRuns.ts'
 
-import type { WalkCut } from './walkRowRuns.ts'
+import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 
 // chr22 of HPRC v2.1 at base level, one walk file per reference in walk

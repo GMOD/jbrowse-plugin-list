@@ -107,12 +107,14 @@ export const withRenderingActions = withLoadActions
             { fireImmediately: true },
           ),
         )
-        // A host fits the rows once, when it takes the pane over, which is
-        // before the legend measures the room it needs above them
+        // A host fits the rows when it takes the pane over, which is before
+        // the legend measures the room it needs above them and before a split
+        // into panels changes how tall the drawing is
         addDisposer(
           self,
           reaction(
-            () => self.fitPadTop,
+            () =>
+              `${self.fitPadTop} ${self.layoutBounds?.h} ${self.usableHeight}`,
             () => {
               if (self.viewportOwner === 'host') {
                 self.zoomToFit()

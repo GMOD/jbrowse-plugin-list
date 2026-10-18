@@ -1,20 +1,9 @@
-import {
-  backboneNodes,
-  backbonePositions,
-  overlapsWindow,
-} from '@jbrowse/bandage-core/anchoredNodes'
-import {
-  walkRowLabels,
-  walkRowsExtent,
-} from '@jbrowse/bandage-core/layout/walkRowLayout'
+import { tablePath } from '@jbrowse/bandage-core/gfa/graphTables'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 
-import { walkPath } from '../RgfaTabixAdapter/walkRowRuns.ts'
-
-import type { WalkCut } from '../RgfaTabixAdapter/walkRowRuns.ts'
+import type { WalkCut } from '../RgfaTabixAdapter/walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
-import type { WalkRows } from '@jbrowse/bandage-core/layout/walkRows'
-import type { Graph, LayoutResult } from '@jbrowse/bandage-core/types'
+import type { Graph } from '@jbrowse/bandage-core/types'
 
 /**
  * The Graph a walk-rows cut parses to: nodes with their depth over every
@@ -49,36 +38,13 @@ export function walkRowsGraph(
   graph.nodes.forEach((node, i) => {
     node.depth = Math.max(depth[i]!, 1)
   })
-  const stubs = w.names.slice(1).flatMap((walk, i) => {
-    if (w.offsets[i + 2]! <= w.offsets[i + 1]!) {
-      return []
-    }
-    return [{ ...walkPath(walk), nodeIds: [], start: w.starts[i + 1]! }]
-  })
+  const stubs = w.names
+    .slice(1)
+    .flatMap((_, i) =>
+      w.offsets[i + 2]! > w.offsets[i + 1]!
+        ? [{ ...tablePath(w, i + 1), nodeIds: [] }]
+        : [],
+    )
   graph.paths = [...(graph.paths ?? []), ...stubs]
   return graph
-}
-
-/** bandage-core's walkRowLayout, over rows already made */
-export function walkRowLayoutOf(
-  graph: Graph,
-  walks: WalkRows,
-  region?: { start: number; end: number },
-): LayoutResult | undefined {
-  const backbone = backboneNodes(graph)
-  if (backbone.length === 0) {
-    return undefined
-  }
-  const overWindow = region
-    ? backbone.filter(n => overlapsWindow(n, region))
-    : backbone
-  return {
-    nodePositions: backbonePositions(
-      overWindow.length > 0 ? overWindow : backbone,
-    ),
-    rowLabels: walkRowLabels(walks),
-    referenceAxis: true,
-    pixelRows: true,
-    extent: walkRowsExtent(walks),
-  }
 }

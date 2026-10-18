@@ -232,8 +232,26 @@ test('exons land on the backbone stretch they cover, and the name at the midpoin
   const [pin] = genePins(graph, geneModelsFrom([gene]), positions)
   expect(pin!.exons).toBe('M20,0L60,0M100,20L100,80')
   expect(pin!.exonsByNode).toEqual([
-    { nodeId: 'v1+', d: 'M20,0L60,0' },
-    { nodeId: 'v2+', d: 'M100,20L100,80' },
+    {
+      nodeId: 'v1+',
+      d: 'M20,0L60,0',
+      stretches: [
+        [
+          { x: 20, y: 0 },
+          { x: 60, y: 0 },
+        ],
+      ],
+    },
+    {
+      nodeId: 'v2+',
+      d: 'M100,20L100,80',
+      stretches: [
+        [
+          { x: 100, y: 20 },
+          { x: 100, y: 80 },
+        ],
+      ],
+    },
   ])
   expect(pin!.at).toEqual({ x: 100, y: 0 })
   expect(pin!.covered).toBe(1)

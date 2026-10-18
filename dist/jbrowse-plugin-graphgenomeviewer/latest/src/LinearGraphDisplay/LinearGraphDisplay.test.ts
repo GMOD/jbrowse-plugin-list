@@ -1,3 +1,4 @@
+import { fittedTranslateY } from '@jbrowse/bandage-core/pipeline'
 import PluginManager from '@jbrowse/core/PluginManager'
 import {
   ConfigurationReference,
@@ -768,6 +769,20 @@ test('a tube map on its own axis ties each reference box to its bp in the linear
   // on the reference axis the boxes already sit on their bp
   await pane.switchLayout('tubemapref')
   expect(pane.tubeMapConnectors).toEqual([])
+})
+
+test('a hosted drawing whose height changes after the host took the pane is placed again', async () => {
+  const { pane } = await shownGraph({ paths: true })
+  await pane.switchLayout('tubemapref')
+  await wait(SETTLE_MS)
+  const expected = fittedTranslateY(
+    pane.layoutBounds!,
+    pane.usableHeight,
+    pane.scaleY,
+    pane.fitPads.top,
+  )
+  expect(pane.viewportOwner).toBe('host')
+  expect(pane.translateY).toBeCloseTo(expected, 6)
 })
 
 test("a folded tube map draws the cut's reference as merged nodes, and the rest as ticks or routes", async () => {

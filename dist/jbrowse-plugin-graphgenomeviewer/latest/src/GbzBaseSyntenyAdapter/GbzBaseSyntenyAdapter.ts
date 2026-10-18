@@ -20,7 +20,7 @@ import { openLocation } from '@jbrowse/core/util/io'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
 import { findCompanion } from './companion.ts'
-import { walkCutFor } from '../RgfaTabixAdapter/walkRowRuns.ts'
+import { walkCutFor } from '../RgfaTabixAdapter/walkCut.ts'
 import { GafFile } from '../gaf/gafFile.ts'
 import { locationIsSet } from '../locationName.ts'
 import { openTabixSlot } from '../panSNTabix.ts'

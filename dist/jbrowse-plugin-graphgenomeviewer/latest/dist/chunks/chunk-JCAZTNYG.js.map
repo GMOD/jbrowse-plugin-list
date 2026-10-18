@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/RgfaTabixAdapter/walkCut.ts"],
+  "sourcesContent": ["import { walkRowRuns } from '@jbrowse/bandage-core/layout/walkRowRuns'\n\nimport type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'\nimport type { WalkRowRuns } from '@jbrowse/bandage-core/layout/walkRowRuns'\n\n/**\n * A cut for walk rows: the tables, and the rows' runs over the window, which\n * the main thread draws without a Graph of the walks' steps\n */\nexport type WalkCut = GraphTables & { walkRowRuns?: WalkRowRuns }\n\nexport function walkCutFor(\n  tables: GraphTables,\n  region: { start: number; end: number },\n  walkRows: boolean | undefined,\n): WalkCut {\n  return walkRows\n    ? { ...tables, walkRowRuns: walkRowRuns(tables, region) }\n    : tables\n}\n"],
+  "mappings": "wCAWO,SAASA,EACdC,EACAC,EACAC,EACS,CACT,OAAOA,EACH,CAAE,GAAGF,EAAQ,YAAaG,EAAYH,EAAQC,CAAM,CAAE,EACtDD,CACN",
+  "names": ["walkCutFor", "tables", "region", "walkRows", "walkRowRuns"]
+}

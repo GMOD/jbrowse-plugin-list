@@ -1,4 +1,5 @@
 import { graphTablesGFA } from '@jbrowse/bandage-core/gfa/graphTables'
+import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 import PluginManager from '@jbrowse/core/PluginManager'
@@ -14,7 +15,6 @@ import {
   referenceAligner,
   walkAligner,
 } from './walkLanes.ts'
-import { walkRowsOf } from '../RgfaTabixAdapter/walkRowRuns.ts'
 import { PairTargetError } from '../synteny/lanePairs.ts'
 
 import type { PairChain } from '@gmod/gbz-base/pairAlignment'

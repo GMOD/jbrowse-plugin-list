@@ -6,6 +6,8 @@ import {
   clipToWindow,
   trimToWindow,
 } from '@jbrowse/bandage-core/layout/trimToWindow'
+import { walkRowLayoutOf } from '@jbrowse/bandage-core/layout/walkRowLayout'
+import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
 import {
   anchorFromPaths,
@@ -33,7 +35,6 @@ import {
 } from './paneBase'
 import { withSettingActions } from './settingActions'
 import { namesReads } from '../../GetGraphReads'
-import { walkRowsOf } from '../../RgfaTabixAdapter/walkRowRuns.ts'
 import { geneModelsFrom } from '../genes/geneFeatures'
 import { gfaText } from '../gfaText'
 import { repeatArraysFrom } from '../repeats/repeatFeatures'
@@ -43,10 +44,10 @@ import {
   withTubeMapPanels,
 } from '../tubeMapPanels'
 import { parseSamplesTsv } from '../walkRowGroups'
-import { walkRowLayoutOf, walkRowsGraph } from '../walkRowsCut.ts'
+import { walkRowsGraph } from '../walkRowsCut.ts'
 
 import type { SubgraphCutOptions, SubgraphRegion } from '../../GetSubgraph'
-import type { WalkCut } from '../../RgfaTabixAdapter/walkRowRuns.ts'
+import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
 import type { GafReads } from '../../gaf/gafFile'
 import type { PaneLayout } from '../tubeMapPanels'
 import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'

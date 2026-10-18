@@ -1,6 +1,7 @@
 import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
+import { parseSegmentRow, rgfaCut, segmentSamples } from '@jbrowse/graph-walks'
 
 import { locationIsSet } from '../locationName.ts'
 import {
@@ -9,13 +10,11 @@ import {
   unmappedRegionMessage,
 } from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
-import { parseSegmentRow, segmentSamples } from './rgfaBed.ts'
-import { rgfaCut } from './rgfaCut.ts'
 import { WalkIndex } from './walkReader.ts'
 
 import type { RgfaTabixAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions, SubgraphTier } from '../GetSubgraph.ts'
-import type { WalkCut } from './walkRowRuns.ts'
+import type { WalkCut } from './walkCut.ts'
 import type { TabixIndexedFile } from '@gmod/tabix'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature } from '@jbrowse/core/util'

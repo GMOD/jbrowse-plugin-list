@@ -4,7 +4,7 @@ import { rpcResultWithArrayBuffers } from '@jbrowse/core/util/librpc'
 
 import { adapterImplementing } from './adapterImplementing'
 
-import type { WalkCut } from './RgfaTabixAdapter/walkRowRuns.ts'
+import type { WalkCut } from './RgfaTabixAdapter/walkCut.ts'
 import type { RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry'
 import type { Region } from '@jbrowse/core/util'
 

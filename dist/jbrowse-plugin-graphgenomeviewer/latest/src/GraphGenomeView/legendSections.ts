@@ -39,8 +39,6 @@ import type { LiftedWalk } from '@jbrowse/bandage-core/walkHighlight'
 export const SWATCH_PX = 18
 const BAR_PX = 48
 
-// getNodeColor's grey for a node the ramp cannot place
-const UNPLACED_SWATCH = 'rgb(160, 160, 160)'
 // LIFT_BACKDROP_CSS reads paler alone than faded strokes do where they
 // overlap, so the key samples it darker
 const FADED_SWATCH = 'rgba(160, 160, 160, 0.45)'
@@ -147,18 +145,14 @@ function rampRows(model: GraphPaneModel): LegendRow[] {
   // a measured domain runs between node midpoints, which can fall on a half bp
   const start = Math.round(domain.start)
   const end = Math.round(domain.end)
-  const { offReference, unplaced } = model.referenceRampOffKeys
   return [
     {
       key: 'ramp',
       label: `${start.toLocaleString('en-US')}-${end.toLocaleString('en-US')} (${formatBp(end - start)})`,
       swatch: { kind: 'fill', stops: RAMP_GRADIENT_STOPS, width: BAR_PX },
     },
-    ...(offReference
+    ...(model.referenceRampDrawsOffReference
       ? [fillRow('off', REFERENCE_RAMP_ALT_CSS, 'off the reference', BAR_PX)]
-      : []),
-    ...(unplaced
-      ? [fillRow('unplaced', UNPLACED_SWATCH, 'no reference position', BAR_PX)]
       : []),
   ]
 }

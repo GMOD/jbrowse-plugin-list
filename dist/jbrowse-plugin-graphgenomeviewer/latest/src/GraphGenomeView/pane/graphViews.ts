@@ -1,3 +1,4 @@
+import { isBackbone } from '@jbrowse/bandage-core/anchoredNodes'
 import { bubbleHalos } from '@jbrowse/bandage-core/bubbles/bubbleHalos'
 import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { bubbleSegmentIds } from '@jbrowse/bandage-core/bubbles/classifyBubble'
@@ -11,6 +12,10 @@ import {
 import { facetSettingOf } from '@jbrowse/bandage-core/facetGrid'
 import { genePins } from '@jbrowse/bandage-core/genes/genePins'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
+import {
+  walkRowRuns,
+  walkRowsOf,
+} from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { filterSamples, walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import {
   layoutModeByValue,
@@ -51,7 +56,6 @@ import {
 import { computed } from 'mobx'
 
 import { TUBE_MAP_MODES, dependOn, geometryPainted, paneBase } from './paneBase'
-import { walkRowRuns, walkRowsOf } from '../../RgfaTabixAdapter/walkRowRuns.ts'
 import {
   canonicalAssemblyName,
   trackAssemblies,
@@ -82,7 +86,7 @@ import {
 import { groupByOf, groupWalkRows, metadataColumns } from '../walkRowGroups'
 
 import type { ScreenTransform } from './keepInView'
-import type { WalkCut } from '../../RgfaTabixAdapter/walkRowRuns.ts'
+import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
 import type { GraphLayers } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
 import type { NodeColor } from '../nodeColor'
@@ -471,16 +475,11 @@ export const withGraphViews = paneBase
     // Whether a lifted lane paints a node charcoal, the colour a lane coloured
     // by reference position gives what is off the reference
     get liftPaintsOffReference() {
-      for (const w of this.walkLift?.walks ?? []) {
-        if (w.encoding.field !== 'walk') {
-          for (const color of w.colors.values()) {
-            if (color === NO_VALUE_COLOR) {
-              return true
-            }
-          }
-        }
-      }
-      return false
+      return !!this.walkLift?.walks.some(
+        w =>
+          w.encoding.field !== 'walk' &&
+          [...w.colors.values()].includes(NO_VALUE_COLOR),
+      )
     },
     // what the faded rest of the drawing is not on
     get liftedWalksLabel() {
@@ -1086,29 +1085,19 @@ export const withGraphViews = paneBase
         ? { start: ramp.start, end: ramp.start + ramp.span }
         : undefined
     },
-    // The ramp's two colours for nodes off it, as getNodeColor paints them:
-    // charcoal where an rGFA rank puts a node off the reference, grey where
-    // a node has no reference position at all. A tube map draws the window
-    // alone (trimToWindow), so there only the boxes it drew count.
-    get referenceRampOffKeys() {
-      const ramp = self.referenceRamp
-      const layout = self.layoutResult
-      const drawn = layout?.tubeMap ? layout.nodePositions : undefined
-      let offReference = false
-      let unplaced = false
-      if (ramp && self.drawnGraph) {
-        for (const node of self.drawnGraph.nodes) {
-          if (drawn && !drawn[node.id]) {
-            continue
-          }
-          if (!ramp.midpoints.has(node.id)) {
-            unplaced = true
-          } else if (node.stable && node.stable.rank > 0) {
-            offReference = true
-          }
-        }
-      }
-      return { offReference, unplaced }
+    // Whether nodes take their scheme's colour: the drawing's own, or a tube
+    // map's boxes. Walk rows draw bars with a key of their own.
+    get paintsNodeColors() {
+      return self.drawsNodes || !!self.layoutResult?.tubeMap
+    },
+    // Whether the ramp paints a drawn node charcoal, as getNodeColor does
+    // every node off the backbone
+    get referenceRampDrawsOffReference() {
+      return (
+        !!self.referenceRamp &&
+        this.paintsNodeColors &&
+        !!self.drawnGraph?.nodes.some(node => !isBackbone(node))
+      )
     },
     // Each tube map box in its node's colour, where the scheme paints one
     get tubeMapNodeColors() {

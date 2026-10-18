@@ -39,7 +39,7 @@ test("the ramp key's bp read the same in every locale", () => {
   const model = {
     walkLift: undefined,
     referenceRampDomain: { start: 999.5, end: 123_456.5 },
-    referenceRampOffKeys: { offReference: false, unplaced: false },
+    referenceRampDrawsOffReference: false,
     bubbleHalos: [],
     genePins: [],
     pathLegend: [],

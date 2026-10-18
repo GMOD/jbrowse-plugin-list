@@ -494,8 +494,48 @@ describe('reads', () => {
     const drawn = model.tubeMapPicture!.nodes.map(n => n.name)
     const h0 = model.graph!.nodes.find(n => n.name === 'h0')!
     expect(drawn).not.toContain(h0.id)
-    expect(model.referenceRampOffKeys.offReference).toBe(false)
+    expect(model.referenceRampDrawsOffReference).toBe(false)
   })
+
+  // a chain of six alleles runs past the flanking walk's reach, which once
+  // keyed its middle as a second, lighter grey
+  const DEEP = [
+    'H\tVN:Z:1.0',
+    'S\ts0\t*\tLN:i:1000\tSN:Z:GRCh38#0#chr6\tSO:i:32000000\tSR:i:0',
+    'S\ts1\t*\tLN:i:1000\tSN:Z:GRCh38#0#chr6\tSO:i:32001000\tSR:i:0',
+    ...Array.from(
+      { length: 6 },
+      (_, i) =>
+        `S\th${i}\t*\tLN:i:50\tSN:Z:NA20809#2#CM094351.1\tSO:i:${i * 50}\tSR:i:1`,
+    ),
+    'L\ts0\t+\ts1\t+\t0M',
+    'L\ts0\t+\th0\t+\t0M',
+    ...Array.from({ length: 5 }, (_, i) => `L\th${i}\t+\th${i + 1}\t+\t0M`),
+    'L\th5\t+\ts1\t+\t0M',
+  ].join('\n')
+
+  test.each([
+    ['force', true],
+    ['walkrows', false],
+  ])(
+    'a %s layout keys deep alleles as off the reference: %s',
+    async (layoutMode, keyed) => {
+      mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+        method === 'GetSubgraph'
+          ? Promise.resolve(DEEP)
+          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+      )
+      const model = createView({
+        layoutMode,
+        color: { field: 'position' },
+        loadedTrackId: TRACK.trackId,
+        loadedRegion: ON_HG38,
+      })
+      await model.load()
+
+      expect(model.referenceRampDrawsOffReference).toBe(keyed)
+    },
+  )
 
   // `flank` walks only s0, before the window, so the tube map draws no tube
   // for it, and the legend and a hover pair names with the tubes drawn

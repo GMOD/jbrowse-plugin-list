@@ -2,7 +2,7 @@ import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { WalkReader, referenceNodes, walksKept } from '@jbrowse/graph-walks'
 
 import { getLines } from '../tabixRange.ts'
-import { walkCutFor } from './walkRowRuns.ts'
+import { walkCutFor } from './walkCut.ts'
 
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
 import type { TabixIndexedFile } from '@gmod/tabix'

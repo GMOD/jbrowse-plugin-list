@@ -38,6 +38,7 @@ export function configSchemaFactory() {
       color: {
         type: 'frozen',
         defaultValue: {},
+        plot: true,
       },
       /**
        * #slot
@@ -48,6 +49,7 @@ export function configSchemaFactory() {
       size: {
         type: 'frozen',
         defaultValue: { field: 'depth', value: 6 },
+        plot: true,
       },
       /**
        * #slot
@@ -61,6 +63,7 @@ export function configSchemaFactory() {
       layers: {
         type: 'frozen',
         defaultValue: {},
+        plot: true,
       },
       /**
        * #slot
@@ -71,6 +74,7 @@ export function configSchemaFactory() {
       facet: {
         type: 'frozen',
         defaultValue: {},
+        plot: true,
       },
       /**
        * #slot
@@ -79,6 +83,7 @@ export function configSchemaFactory() {
       rows: {
         type: 'frozen',
         defaultValue: {},
+        plot: true,
       },
       /**
        * #slot
