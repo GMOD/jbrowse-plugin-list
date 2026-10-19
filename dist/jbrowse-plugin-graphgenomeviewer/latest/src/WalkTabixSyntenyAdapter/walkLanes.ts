@@ -173,6 +173,34 @@ function singleVisits(fragment: WalkFragment) {
   return rev
 }
 
+// The bases on singly visited nodes two walks pass the same way and the
+// opposite way
+function directionShares(nodes: Map<number, WalkNode>) {
+  const visits = new Map<WalkFragment, Map<number, number>>()
+  const visitsOf = (fragment: WalkFragment) => {
+    let found = visits.get(fragment)
+    if (found === undefined) {
+      found = singleVisits(fragment)
+      visits.set(fragment, found)
+    }
+    return found
+  }
+  return (query: WalkFragment, target: WalkFragment) => {
+    const theirs = visitsOf(target)
+    let same = 0
+    let opposite = 0
+    for (const [id, rev] of visitsOf(query)) {
+      const other = theirs.get(id)
+      if (other === rev) {
+        same += nodeLength(nodes, id)
+      } else if (other !== undefined) {
+        opposite += nodeLength(nodes, id)
+      }
+    }
+    return { same, opposite }
+  }
+}
+
 /**
  * Aligns one lane's walk fragment to another's. The weighted subsequence
  * (`referenceAligner`) is the fast route and matches through copy-number
@@ -187,33 +215,42 @@ function singleVisits(fragment: WalkFragment) {
 export function lanePairAligner(nodes: Map<number, WalkNode>) {
   const subsequence = referenceAligner(nodes)
   const chained = walkAligner(nodes)
-  const visits = new Map<WalkFragment, Map<number, number>>()
-  const visitsOf = (fragment: WalkFragment) => {
-    let found = visits.get(fragment)
-    if (found === undefined) {
-      found = singleVisits(fragment)
-      visits.set(fragment, found)
-    }
-    return found
-  }
-  const inverted = (query: WalkFragment, target: WalkFragment) => {
-    const theirs = visitsOf(target)
-    let same = 0
-    let opposite = 0
-    for (const [id, rev] of visitsOf(query)) {
-      const other = theirs.get(id)
-      if (other === rev) {
-        same += nodeLength(nodes, id)
-      } else if (other !== undefined) {
-        opposite += nodeLength(nodes, id)
-      }
-    }
+  const shares = directionShares(nodes)
+  return (query: WalkFragment, target: WalkFragment) => {
+    const { same, opposite } = shares(query, target)
     return same >= MIN_MATCH_BP && opposite >= MIN_MATCH_BP
-  }
-  return (query: WalkFragment, target: WalkFragment) =>
-    inverted(query, target)
       ? chained(query, target)
       : subsequence(query, target)
+  }
+}
+
+// The multi-way display's SPLIT_AT_GAP_BP, under which a turned stretch names
+// no inversion there
+const TURNED_MIN_BP = 10_000
+
+/**
+ * Aligns a haplotype's walk fragment to the reference's as `referenceAligner`
+ * does, then adds the stretches it reads the other way. A walk sharing
+ * TURNED_MIN_BP or more of singly visited nodes in each direction is chained
+ * too, and the chained records on the strand the subsequence did not take are
+ * its turned stretches. The subsequence record stays, so a copy-number array,
+ * which chaining leaves out, still matches one pass alike in every lane.
+ */
+export function anchorAligner(nodes: Map<number, WalkNode>) {
+  const subsequence = referenceAligner(nodes)
+  const chained = walkAligner(nodes)
+  const shares = directionShares(nodes)
+  return (query: WalkFragment, target: WalkFragment) => {
+    const records = subsequence(query, target)
+    const taken = records[0]?.strand
+    const { same, opposite } = shares(query, target)
+    return taken === undefined || Math.min(same, opposite) < TURNED_MIN_BP
+      ? records
+      : [
+          ...records,
+          ...chained(query, target).filter(chain => chain.strand !== taken),
+        ]
+  }
 }
 
 /**

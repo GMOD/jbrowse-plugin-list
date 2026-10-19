@@ -11,6 +11,7 @@ import Adapter from './WalkTabixSyntenyAdapter.ts'
 import configSchema from './configSchema.ts'
 import WalkTabixSyntenyAdapterF from './index.ts'
 import {
+  anchorAligner,
   bubblesAsMismatches,
   referenceAligner,
   walkAligner,
@@ -510,6 +511,81 @@ test('an inversion between two lanes is a reverse-strand record of its own when 
       cigar: '2000=1500I1500D2000=',
     },
   ])
+})
+
+// The same shape at a size the multi-way display names: 20 kb flanks around
+// a 15 kb stretch the haplotype runs backwards
+const largeInversionNodes = new Map(
+  [1, 2, 3, 4, 5].map(id => [
+    id,
+    {
+      refName: 'ref',
+      start: id * 100_000,
+      end: id * 100_000 + (id === 1 || id === 5 ? 20_000 : 5000),
+      rank: 0,
+      onWindow: true,
+    },
+  ]),
+)
+
+test('a walk turned against the reference for 10 kb or more gains a reverse-strand record of the turned stretch beside its own', () => {
+  expect(
+    drawn(anchorAligner(largeInversionNodes)(invertedLane, upperLane)),
+  ).toEqual([
+    {
+      query: '0-55000',
+      target: '0-55000',
+      strand: '+',
+      cigar: '20000=15000I15000D20000=',
+    },
+    {
+      query: '20000-35000',
+      target: '20000-35000',
+      strand: '-',
+      cigar: '15000=',
+    },
+  ])
+})
+
+// gfa-to-tabix --walks --refs GRCh38 --chunk 10000 over 20 kb flanks and three
+// 5 kb nodes:
+//   W GRCh38  0 chr1 >1>2>3>4>5
+//   W HG002   1 chr1 >1<4<3<2>5
+//   W HG00097 1 chr1 >1>2>3>4>5
+test('the anchor window answers a haplotype turned against the reference with a reverse-strand record of the turned stretch', async () => {
+  const records = await firstValueFrom(
+    makeAdapter({}, 'walks3_inversion')
+      .getFeatures({ ...window, end: 55_000 }, {})
+      .pipe(toArray()),
+  )
+  expect(
+    records
+      .filter(f => mateOf(f).assemblyName !== 'HG00097#1')
+      .map(f => ({
+        strand: f.get('strand'),
+        start: f.get('start'),
+        end: f.get('end'),
+      })),
+  ).toEqual([
+    { strand: 1, start: 0, end: 55_000 },
+    { strand: -1, start: 20_000, end: 35_000 },
+  ])
+})
+
+test('a walk turned for under 10 kb, or reversed whole, keeps its one record', () => {
+  expect(drawn(anchorAligner(inversionNodes)(invertedLane, upperLane))).toEqual(
+    drawn(referenceAligner(inversionNodes)(invertedLane, upperLane)),
+  )
+  const reversed = fragment('HG002#3#chr1', [
+    [5, 1],
+    [4, 1],
+    [3, 1],
+    [2, 1],
+    [1, 1],
+  ])
+  expect(
+    drawn(anchorAligner(largeInversionNodes)(reversed, upperLane)),
+  ).toEqual(drawn(referenceAligner(largeInversionNodes)(reversed, upperLane)))
 })
 
 test.each([
