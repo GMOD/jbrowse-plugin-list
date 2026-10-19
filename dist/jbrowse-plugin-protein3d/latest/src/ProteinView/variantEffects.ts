@@ -2,12 +2,6 @@ export const VARIANT_EFFECT_SCHEMES = ['alphamissense', 'clinvar'] as const
 
 export type VariantEffectScheme = (typeof VARIANT_EFFECT_SCHEMES)[number]
 
-export function isVariantEffectScheme(
-  scheme: string | undefined,
-): scheme is VariantEffectScheme {
-  return VARIANT_EFFECT_SCHEMES.some(s => s === scheme)
-}
-
 export const VARIANT_EFFECT_SOURCE_NAMES: Record<VariantEffectScheme, string> =
   {
     alphamissense: 'AlphaMissense scores',

@@ -1,3 +1,4 @@
+import { AlignmentDomainColorThemeProvider } from './alignmentDomainColorTheme'
 import { KyteDoolittleColorThemeProvider } from './kyteDoolittleColorTheme'
 import { MappedChainColorThemeProvider } from './mappedChainColorTheme'
 import {
@@ -13,4 +14,5 @@ export function registerColorThemes(plugin: PluginContext) {
   registry.add(KyteDoolittleColorThemeProvider)
   registry.add(AlphaMissenseColorThemeProvider)
   registry.add(ClinVarColorThemeProvider)
+  registry.add(AlignmentDomainColorThemeProvider)
 }

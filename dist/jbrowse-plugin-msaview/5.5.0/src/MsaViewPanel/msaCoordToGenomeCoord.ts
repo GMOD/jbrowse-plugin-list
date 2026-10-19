@@ -1,0 +1,117 @@
+import { getCodonRanges } from 'g2p_mapper'
+
+import type { MafRegion } from './types'
+
+export interface GenomeRegion {
+  refName: string
+  start: number
+  end: number
+}
+
+export interface SeqPosModel {
+  transcriptToMsaMap:
+    | {
+        refName: string
+        p2gCodon: Record<number, number[]>
+      }
+    | undefined
+  mafRegion?: MafRegion
+  /** transcript residues before the query row's first residue */
+  querySeqOffset?: number
+}
+
+interface CoordModel extends SeqPosModel {
+  querySeqName: string
+  /**
+   * react-msaview's converter, which is the only thing that knows which columns
+   * are on screen. `rows` carries the whole gapped alignment, so counting
+   * residues along one of them answers for a column index the user cannot
+   * produce once `hideGaps` drops columns -- and it drops them as soon as a
+   * clade collapses or allowedGappyness falls below 100.
+   */
+  visibleColToSeqPos: (
+    rowName: string,
+    visibleCol: number,
+  ) => number | undefined
+}
+
+/**
+ * The genome regions under residue `ungappedPos` (0-based) of the query row,
+ * 0-based half-open: the codon, one region per contiguous piece, or one base
+ * in a MAF alignment.
+ */
+export function seqPosToGenomeRegions(
+  model: SeqPosModel,
+  ungappedPos: number,
+): GenomeRegion[] {
+  const { transcriptToMsaMap, mafRegion } = model
+  if (mafRegion) {
+    const genomePos = mafRegion.start + ungappedPos
+    return genomePos < mafRegion.end
+      ? [{ refName: mafRegion.refName, start: genomePos, end: genomePos + 1 }]
+      : []
+  }
+
+  if (transcriptToMsaMap) {
+    const { refName, p2gCodon } = transcriptToMsaMap
+    // the row is often only the aligned region of the transcript's protein, so
+    // its residues are the transcript's shifted by querySeqOffset
+    const proteinPos = ungappedPos + (model.querySeqOffset ?? 0)
+    // p2gCodon holds every genomic base of the codon, so the range is exact on
+    // either strand. Deriving it from consecutive p2g entries instead
+    // (p2g[pos]..p2g[pos+1]) was off by one base on the reverse strand -- where
+    // p2g stores the codon's *highest* coordinate -- dropped the final residue,
+    // whose successor has no p2g entry, and spanned the whole intron for a
+    // codon split across an exon boundary.
+    return (
+      getCodonRanges(p2gCodon, proteinPos)?.map(([start, end]) => ({
+        refName,
+        start,
+        end,
+      })) ?? []
+    )
+  }
+
+  return []
+}
+
+/**
+ * The genome regions covered by MSA column `coord` of the query row, in 0-based
+ * half-open coordinates (what bpToPx and navTo take).
+ *
+ * `coord` is a VISIBLE column -- what mouseCol and mouseClickCol carry.
+ *
+ * Usually one region -- one codon, or one base in a MAF alignment -- but a
+ * codon split across an exon boundary yields one region per contiguous piece,
+ * which is why this returns a list.
+ */
+export function msaCoordToGenomeRegions({
+  model,
+  coord: mouseCol,
+}: {
+  model: CoordModel
+  coord: number
+}): GenomeRegion[] {
+  const ungappedPos = model.visibleColToSeqPos(model.querySeqName, mouseCol)
+  return ungappedPos === undefined
+    ? []
+    : seqPosToGenomeRegions(model, ungappedPos)
+}
+
+/**
+ * A single region spanning the codon at MSA column `coord`, for navigation. For
+ * a codon split across an exon boundary this spans the intervening intron.
+ */
+export function msaCoordToGenomeCoord(args: {
+  model: CoordModel
+  coord: number
+}): GenomeRegion | undefined {
+  const regions = msaCoordToGenomeRegions(args)
+  const first = regions[0]
+  const last = regions.at(-1)
+  // getCodonRanges returns ranges sorted ascending, so first.start..last.end
+  // bounds the codon
+  return first && last
+    ? { refName: first.refName, start: first.start, end: last.end }
+    : undefined
+}

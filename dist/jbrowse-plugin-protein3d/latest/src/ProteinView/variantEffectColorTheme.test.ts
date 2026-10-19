@@ -10,11 +10,10 @@ import { expect, test } from 'vitest'
 
 import { applyColorTheme, colorSchemeLegend } from './applyColorTheme'
 import { registerColorThemes } from './colorThemes'
+import { NO_VALUE_COLOR, registerPlacedValues } from './placedValueRegistry'
 import {
   AlphaMissenseColorThemeProvider,
   ClinVarColorThemeProvider,
-  NO_VALUE_COLOR,
-  registerPlacedValues,
 } from './variantEffectColorTheme'
 import { alphaMissenseRgb, clinVarRgb } from './variantEffects'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'

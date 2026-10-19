@@ -1,7 +1,8 @@
 import loadMolstar from './loadMolstar'
 import { structureRootCell } from './structureCells'
-import { isVariantEffectScheme } from './variantEffects'
+import { VARIANT_EFFECT_SCHEMES } from './variantEffects'
 
+import type { DomainStyle } from './alignmentDomains'
 import type { PlacedValues } from './variantEffects'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -12,8 +13,8 @@ import type { Legend } from 'molstar/lib/mol-util/legend'
  * sessions, so it names the scheme rather than the Mol* theme; `theme`, where
  * given, is the Mol* color-theme that draws it. `plddt-confidence` comes from
  * the MAQualityAssessment behavior, `mapped-chain`, `kyte-doolittle`,
- * `alphamissense` and `clinvar` from registerColorThemes, the rest are built
- * in.
+ * `alphamissense`, `clinvar` and `alignment-domains` from registerColorThemes,
+ * the rest are built in.
  */
 export const COLOR_SCHEMES = [
   { value: 'default', label: 'Default (element/chain)' },
@@ -31,6 +32,7 @@ export const COLOR_SCHEMES = [
   { value: 'mapped-chain', label: 'Mapped chain' },
   { value: 'alphamissense', label: 'AlphaMissense pathogenicity' },
   { value: 'clinvar', label: 'ClinVar pathogenic variants' },
+  { value: 'alignment-domains', label: 'Domains from the alignment' },
 ] as const
 
 export type ProteinColorScheme = (typeof COLOR_SCHEMES)[number]['value']
@@ -47,6 +49,44 @@ export function molstarThemeName(colorScheme: ProteinColorScheme) {
   return scheme && 'theme' in scheme ? scheme.theme : colorScheme
 }
 
+/**
+ * The schemes that colour by values placed on each structure's residues, which
+ * their themes read from a registry (see placedValueRegistry)
+ */
+export const PLACED_VALUE_SCHEMES = [
+  ...VARIANT_EFFECT_SCHEMES,
+  'alignment-domains',
+] as const
+
+export type PlacedValueScheme = (typeof PLACED_VALUE_SCHEMES)[number]
+
+function isPlacedValueScheme(
+  scheme: ProteinColorScheme,
+): scheme is PlacedValueScheme {
+  return PLACED_VALUE_SCHEMES.some(s => s === scheme)
+}
+
+function themeParams(
+  colorScheme: ProteinColorScheme,
+  {
+    entityId,
+    domains,
+    revision,
+  }: {
+    entityId?: string
+    domains?: readonly DomainStyle[]
+    revision?: number
+  },
+) {
+  return colorScheme === 'mapped-chain'
+    ? { entityId: entityId ?? '' }
+    : colorScheme === 'alignment-domains'
+      ? { revision, domains: domains ?? [] }
+      : isPlacedValueScheme(colorScheme)
+        ? { revision }
+        : undefined
+}
+
 let revision = 0
 
 /**
@@ -56,9 +96,9 @@ let revision = 0
  * snapshot (see structureRootCell). The non-ghost ones are what that call
  * reached: each component's, the focus representation's included.
  *
- * A variant-effect scheme's values reach its theme through the registry its
- * theme reads (see variantEffectColorTheme), registered for each structure
- * before the update; a structure without values is drawn grey.
+ * A placed-value scheme's values reach its theme through the registry its
+ * theme reads (see placedValueRegistry), registered for each structure before
+ * the update; a structure without values is drawn grey.
  */
 export async function applyColorTheme({
   plugin,
@@ -71,6 +111,7 @@ export async function applyColorTheme({
     molstarStructure: Structure
     entityId?: string
     placedValues?: PlacedValues
+    domains?: readonly DomainStyle[]
   }[]
 }) {
   const molstar = await loadMolstar()
@@ -82,14 +123,19 @@ export async function applyColorTheme({
   } = molstar
   const theme =
     colorScheme === 'default' ? undefined : molstarThemeName(colorScheme)
-  const variantEffects = isVariantEffectScheme(colorScheme)
-  if (variantEffects) {
+  const placed = isPlacedValueScheme(colorScheme)
+  if (placed) {
     revision++
   }
   const update = plugin.state.data.build()
   let recolored = 0
-  for (const { molstarStructure, entityId, placedValues } of structures) {
-    if (variantEffects) {
+  for (const {
+    molstarStructure,
+    entityId,
+    placedValues,
+    domains,
+  } of structures) {
+    if (placed) {
       registerPlacedValues(colorScheme, molstarStructure, placedValues)
     }
     const cell = structureRootCell(plugin, molstar, molstarStructure)
@@ -101,12 +147,7 @@ export async function applyColorTheme({
           ),
         )
       : []
-    const params =
-      colorScheme === 'mapped-chain'
-        ? { entityId: entityId ?? '' }
-        : variantEffects
-          ? { revision }
-          : undefined
+    const params = themeParams(colorScheme, { entityId, domains, revision })
     for (const representation of representations) {
       if (!representation.state.isGhost) {
         update.to(representation).update(prev => {
@@ -137,17 +178,19 @@ export function colorSchemeLegend({
   colorScheme,
   structure,
   entityId,
+  domains,
 }: {
   plugin: PluginContext
   colorScheme: ProteinColorScheme
   structure: Structure
   entityId?: string
+  domains?: readonly DomainStyle[]
 }): Legend | undefined {
   return colorScheme === 'default'
     ? undefined
     : plugin.representation.structure.themes.colorThemeRegistry.create(
         molstarThemeName(colorScheme),
         { structure },
-        colorScheme === 'mapped-chain' ? { entityId: entityId ?? '' } : {},
+        themeParams(colorScheme, { entityId, domains }) ?? {},
       ).legend
 }

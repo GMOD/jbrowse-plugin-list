@@ -298,14 +298,15 @@ function stateModelFactory() {
             // Apply the chosen color theme whenever it changes, a structure
             // finishes loading (structureSequences is set after its molstar
             // representation is built, so the theme has something to recolor),
-            // the mapped chain changes, or a variant-effect source answers.
+            // the mapped chain changes, or a placed-value source answers.
             addDisposer(self, autorun(() => {
                 const { molstarPluginContext, colorScheme } = self;
                 const structures = self.structures.flatMap(s => s.structureSequences
                     ? s.molstarStructures.map(molstarStructure => ({
                         molstarStructure,
                         entityId: s.mappedEntity?.entityId,
-                        placedValues: s.placedVariantEffects,
+                        placedValues: s.placedValues,
+                        domains: s.alignmentDomainStatus?.domains,
                     }))
                     : []);
                 if (molstarPluginContext && structures.length > 0) {
@@ -405,6 +406,7 @@ function stateModelFactory() {
                     colorScheme: self.colorScheme,
                     structure,
                     entityId: loaded.mappedEntity?.entityId,
+                    domains: loaded.alignmentDomainStatus?.domains,
                 })
                 : undefined;
         },

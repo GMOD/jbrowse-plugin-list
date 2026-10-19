@@ -1,10 +1,9 @@
-import { StructureProperties } from 'molstar/lib/mol-model/structure'
 import { ColorThemeCategory } from 'molstar/lib/mol-theme/color/categories'
 import { Color } from 'molstar/lib/mol-util/color'
 import { ScaleLegend, TableLegend } from 'molstar/lib/mol-util/legend'
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
 
-import { atomicLocationReader } from './themeLocation'
+import { NO_VALUE_COLOR, placedValueReader } from './placedValueRegistry'
 import {
   ALPHAMISSENSE_MID,
   CLINVAR_COLORS,
@@ -12,35 +11,9 @@ import {
   clinVarRgb,
 } from './variantEffects'
 
-import type { PlacedValues, VariantEffectScheme } from './variantEffects'
-import type { Model, Structure } from 'molstar/lib/mol-model/structure'
+import type { VariantEffectScheme } from './variantEffects'
 import type { ColorTheme } from 'molstar/lib/mol-theme/color'
 import type { ThemeDataContext } from 'molstar/lib/mol-theme/theme'
-
-export const NO_VALUE_COLOR = Color(0xcccccc)
-
-// Per-residue arrays do not belong in a theme's serialized params, so the
-// theme looks its values up here by the Mol* model a residue belongs to. A
-// superposed structure keeps its units' models, and an ensemble has one model
-// per structure, so each model of every load is registered on its own.
-const registry: Record<VariantEffectScheme, WeakMap<Model, PlacedValues>> = {
-  alphamissense: new WeakMap(),
-  clinvar: new WeakMap(),
-}
-
-export function registerPlacedValues(
-  scheme: VariantEffectScheme,
-  structure: Structure,
-  values: PlacedValues | undefined,
-) {
-  for (const model of structure.models) {
-    if (values) {
-      registry[scheme].set(model, values)
-    } else {
-      registry[scheme].delete(model)
-    }
-  }
-}
 
 // `revision` only changes, so a recolour after the values arrive is not
 // deduplicated by Mol* as an update to identical params
@@ -96,20 +69,13 @@ function variantEffectTheme(scheme: VariantEffectScheme) {
     ctx: ThemeDataContext,
     props: PD.Values<Params>,
   ): ColorTheme<Params> {
-    const atomicLocation = atomicLocationReader(ctx.structure)
+    const placedValue = placedValueReader(scheme, ctx.structure)
     return {
       factory: VariantEffectColorTheme,
       granularity: 'group',
       preferSmoothing: true,
       color: location => {
-        const l = atomicLocation(location)
-        const placed = l ? registry[scheme].get(l.unit.model) : undefined
-        const value =
-          l && placed?.entityId === StructureProperties.chain.label_entity_id(l)
-            ? placed.byLabelSeqId.get(
-                StructureProperties.residue.label_seq_id(l),
-              )
-            : undefined
+        const value = placedValue(location)
         return value === undefined ? NO_VALUE_COLOR : color(value)
       },
       props,

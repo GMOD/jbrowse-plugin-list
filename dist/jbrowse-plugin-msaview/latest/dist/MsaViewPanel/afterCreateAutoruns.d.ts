@@ -57,3 +57,4 @@ export declare function syncGenomeHoverToMsaColumn(self: JBrowsePluginMsaViewMod
  */
 export declare function observeProteinHighlights(self: JBrowsePluginMsaViewModel): () => void;
 export declare function runCleanup(): void;
+export declare function showDomainsOnGenomeIfAsked(self: JBrowsePluginMsaViewModel): void;

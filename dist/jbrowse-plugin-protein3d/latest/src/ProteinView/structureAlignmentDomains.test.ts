@@ -1,0 +1,174 @@
+import { types } from '@jbrowse/mobx-state-tree'
+import { autorun, observable, runInAction } from 'mobx'
+import { expect, test, vi } from 'vitest'
+
+import Structure from './structureModel'
+
+import type { ConnectedDomain } from './alignmentDomains'
+import type { ProteinColorScheme } from './applyColorTheme'
+import type { PlacedValues } from './variantEffects'
+import type * as JBrowseCoreUtil from '@jbrowse/core/util'
+
+const testSession = vi.hoisted(() => ({ views: [] as unknown[] }))
+
+// hg19 spells chr11 as 11, as the alignment's regions do
+vi.mock('@jbrowse/core/util', async importActual => {
+  const actual = await importActual<typeof JBrowseCoreUtil>()
+  return {
+    ...actual,
+    getSession: () => ({
+      hovered: undefined,
+      views: testSession.views,
+      assemblyManager: {
+        get: (name: string) =>
+          name === 'hg19'
+            ? {
+                name,
+                initialized: true,
+                getCanonicalRefName: (r: string) => r.replace(/^chr/, ''),
+              }
+            : undefined,
+      },
+    }),
+  }
+})
+
+const TestParent = types
+  .model({ structures: types.array(Structure) })
+  .volatile((): { colorScheme: ProteinColorScheme } => ({
+    colorScheme: 'alignment-domains',
+  }))
+  .views(() => ({
+    get alignmentAlgorithm() {
+      return 'needleman_wunsch' as const
+    },
+    get molstarPluginContext() {
+      return undefined
+    },
+  }))
+  .actions(self => ({
+    setColorScheme(scheme: ProteinColorScheme) {
+      self.colorScheme = scheme
+    },
+    setError(e: unknown) {
+      throw e
+    },
+  }))
+
+// minus strand: residues 0-3 on bases 211..200, residues 4-6 on 108..100
+const feature = {
+  uniqueId: 'tx1',
+  refName: 'chr11',
+  start: 100,
+  end: 212,
+  strand: -1,
+  type: 'mRNA',
+  name: 'NM_HBB_TEST',
+  subfeatures: [
+    { uniqueId: 'c1', refName: 'chr11', start: 100, end: 109, type: 'CDS' },
+    { uniqueId: 'c2', refName: 'chr11', start: 200, end: 212, type: 'CDS' },
+  ],
+}
+
+const outer: ConnectedDomain = {
+  name: 'Hb beta-like',
+  accession: 'cd08925',
+  color: '#F8766D',
+  regions: [
+    { refName: '11', start: 103, end: 109 },
+    { refName: '11', start: 200, end: 206 },
+  ],
+}
+const site: ConnectedDomain = {
+  name: 'heme binding site',
+  accession: 'site',
+  color: '#00BFC4',
+  regions: [{ refName: '11', start: 106, end: 109 }],
+}
+
+function setup() {
+  const msa = observable({
+    id: 'msa',
+    type: 'MsaView',
+    connectedViewId: 'lgv',
+    connectedDomains: [outer, site] as ConnectedDomain[],
+  })
+  testSession.views = observable([
+    { id: 'lgv', type: 'LinearGenomeView', assemblyNames: ['hg19'] },
+    msa,
+  ])
+  const parent = TestParent.create({
+    structures: [
+      {
+        url: 'x.cif',
+        connectedViewId: 'lgv',
+        feature,
+        // the crystal lacks the initiator methionine
+        pairwiseAlignment: {
+          consensus: ' ||||||',
+          alns: [
+            { id: 'transcript', seq: 'MVHLTPE' },
+            { id: 'structure', seq: '-VHLTPE' },
+          ],
+        },
+      },
+    ],
+  })
+  const structure = parent.structures[0]!
+  structure.setStructureData({
+    entities: [
+      {
+        entityId: '1',
+        seq: 'VHLTPE',
+        seqIds: [1, 2, 3, 4, 5, 6],
+        chains: ['A'],
+      },
+    ],
+  })
+  structure.setLoadedToMolstar(true)
+  return { parent, structure, msa }
+}
+
+test("a structure takes the connected alignment's domains, and follows them as they change", () => {
+  const { structure, msa } = setup()
+  const seen: (PlacedValues | undefined)[] = []
+  const dispose = autorun(() => {
+    seen.push(structure.placedValues)
+  })
+  expect(structure.statusMessage).toBeUndefined()
+  expect(structure.alignmentDomainStatus?.domains).toEqual([
+    { name: 'Hb beta-like', color: 0xf8766d },
+    { name: 'heme binding site', color: 0x00bfc4 },
+  ])
+  expect(seen.at(-1)).toEqual({
+    entityId: '1',
+    byLabelSeqId: new Map([
+      [2, 0],
+      [3, 0],
+      [4, 1],
+      [5, 0],
+    ]),
+  })
+
+  runInAction(() => {
+    msa.connectedDomains = [outer]
+  })
+  expect(seen.at(-1)?.byLabelSeqId.get(4)).toBe(0)
+
+  runInAction(() => {
+    msa.connectedDomains = []
+  })
+  expect(seen.at(-1)).toBeUndefined()
+  expect(structure.statusMessage).toBe(
+    'The connected alignment shows no domains',
+  )
+  dispose()
+})
+
+test('another scheme reads no domains and says nothing about them', () => {
+  const { parent, structure } = setup()
+  parent.setColorScheme('chain-id')
+  expect(structure.alignmentDomainStatus).toBeUndefined()
+  expect(structure.placedValues).toBeUndefined()
+  expect(structure.statusMessage).toBeUndefined()
+})

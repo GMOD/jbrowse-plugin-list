@@ -1,20 +1,11 @@
 import { getCodonRanges } from 'g2p_mapper';
 /**
- * The genome regions covered by MSA column `coord` of the query row, in 0-based
- * half-open coordinates (what bpToPx and navTo take).
- *
- * `coord` is a VISIBLE column -- what mouseCol and mouseClickCol carry.
- *
- * Usually one region -- one codon, or one base in a MAF alignment -- but a
- * codon split across an exon boundary yields one region per contiguous piece,
- * which is why this returns a list.
+ * The genome regions under residue `ungappedPos` (0-based) of the query row,
+ * 0-based half-open: the codon, one region per contiguous piece, or one base
+ * in a MAF alignment.
  */
-export function msaCoordToGenomeRegions({ model, coord: mouseCol, }) {
-    const { querySeqName, transcriptToMsaMap, mafRegion } = model;
-    const ungappedPos = model.visibleColToSeqPos(querySeqName, mouseCol);
-    if (ungappedPos === undefined) {
-        return [];
-    }
+export function seqPosToGenomeRegions(model, ungappedPos) {
+    const { transcriptToMsaMap, mafRegion } = model;
     if (mafRegion) {
         const genomePos = mafRegion.start + ungappedPos;
         return genomePos < mafRegion.end
@@ -39,6 +30,22 @@ export function msaCoordToGenomeRegions({ model, coord: mouseCol, }) {
         })) ?? []);
     }
     return [];
+}
+/**
+ * The genome regions covered by MSA column `coord` of the query row, in 0-based
+ * half-open coordinates (what bpToPx and navTo take).
+ *
+ * `coord` is a VISIBLE column -- what mouseCol and mouseClickCol carry.
+ *
+ * Usually one region -- one codon, or one base in a MAF alignment -- but a
+ * codon split across an exon boundary yields one region per contiguous piece,
+ * which is why this returns a list.
+ */
+export function msaCoordToGenomeRegions({ model, coord: mouseCol, }) {
+    const ungappedPos = model.visibleColToSeqPos(model.querySeqName, mouseCol);
+    return ungappedPos === undefined
+        ? []
+        : seqPosToGenomeRegions(model, ungappedPos);
 }
 /**
  * A single region spanning the codon at MSA column `coord`, for navigation. For

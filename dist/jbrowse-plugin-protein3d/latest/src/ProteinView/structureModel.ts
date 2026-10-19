@@ -32,6 +32,7 @@ import {
 } from 'p2s_mapper'
 
 import { alignOffThread, isIdentical } from './alignOffThread'
+import { alignmentDomainStatus } from './alignmentDomains'
 import { connectedHoverTranscriptPos } from './connectedHover'
 import {
   CHAR_WIDTH,
@@ -66,6 +67,7 @@ import { variantEffectStatus } from './variantEffectStatus'
 import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings'
 
 import type { AlignmentMethod } from './alignOffThread'
+import type { AlignmentDomainStatus } from './alignmentDomains'
 import type { ProteinColorScheme } from './applyColorTheme'
 import type { EntityConfidence, StructureData } from './loadStructureData'
 import type { ProteinStructureSpec } from './proteinViewSpec'
@@ -1235,14 +1237,47 @@ const Structure = types
         transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
       })
     },
+    /**
+     * #getter
+     * The connected alignment's domains and each residue's domain, undefined
+     * while the view colours by something else; see alignmentDomainStatus
+     */
+    get alignmentDomainStatus(): AlignmentDomainStatus | undefined {
+      if (self.parentView.colorScheme !== 'alignment-domains') {
+        return undefined
+      }
+      const { views, assemblyManager } = getSession(self)
+      return alignmentDomainStatus({
+        views,
+        connectedViewId: self.connectedViewId,
+        mapping: self.genomeToTranscriptSeqMapping,
+        naming: assemblyNaming(
+          assemblyManager,
+          self.connectedView?.assemblyNames[0],
+        ),
+        entity: self.mappedEntity,
+        transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
+      })
+    },
   }))
   .views(self => ({
     /**
      * #getter
-     * The scheme's values on the mapped entity's residues, by label_seq_id
+     * The variant-effect scheme's values on the mapped entity's residues, by
+     * label_seq_id
      */
     get placedVariantEffects(): PlacedValues | undefined {
       return self.variantEffectStatus.placed
+    },
+    /**
+     * #getter
+     * What the view's placed-value scheme colours this structure's mapped
+     * entity by, by label_seq_id
+     */
+    get placedValues(): PlacedValues | undefined {
+      return (
+        self.alignmentDomainStatus?.placed ?? self.variantEffectStatus.placed
+      )
     },
     /**
      * #getter
@@ -1263,7 +1298,9 @@ const Structure = types
     get statusMessage() {
       const { error } = self
       return error === undefined
-        ? (self.alignmentSkipped ?? self.variantEffectStatus.message)
+        ? (self.alignmentSkipped ??
+            self.variantEffectStatus.message ??
+            self.alignmentDomainStatus?.message)
         : errorMessage(error)
     },
   }))

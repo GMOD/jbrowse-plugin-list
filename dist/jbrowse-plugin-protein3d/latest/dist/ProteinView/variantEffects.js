@@ -1,7 +1,4 @@
 export const VARIANT_EFFECT_SCHEMES = ['alphamissense', 'clinvar'];
-export function isVariantEffectScheme(scheme) {
-    return VARIANT_EFFECT_SCHEMES.some(s => s === scheme);
-}
 export const VARIANT_EFFECT_SOURCE_NAMES = {
     alphamissense: 'AlphaMissense scores',
     clinvar: 'ClinVar variants',

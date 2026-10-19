@@ -1,11 +1,10 @@
 import type { MafRegion } from './types';
-interface GenomeRegion {
+export interface GenomeRegion {
     refName: string;
     start: number;
     end: number;
 }
-interface CoordModel {
-    querySeqName: string;
+export interface SeqPosModel {
     transcriptToMsaMap: {
         refName: string;
         p2gCodon: Record<number, number[]>;
@@ -13,6 +12,9 @@ interface CoordModel {
     mafRegion?: MafRegion;
     /** transcript residues before the query row's first residue */
     querySeqOffset?: number;
+}
+interface CoordModel extends SeqPosModel {
+    querySeqName: string;
     /**
      * react-msaview's converter, which is the only thing that knows which columns
      * are on screen. `rows` carries the whole gapped alignment, so counting
@@ -22,6 +24,12 @@ interface CoordModel {
      */
     visibleColToSeqPos: (rowName: string, visibleCol: number) => number | undefined;
 }
+/**
+ * The genome regions under residue `ungappedPos` (0-based) of the query row,
+ * 0-based half-open: the codon, one region per contiguous piece, or one base
+ * in a MAF alignment.
+ */
+export declare function seqPosToGenomeRegions(model: SeqPosModel, ungappedPos: number): GenomeRegion[];
 /**
  * The genome regions covered by MSA column `coord` of the query row, in 0-based
  * half-open coordinates (what bpToPx and navTo take).
