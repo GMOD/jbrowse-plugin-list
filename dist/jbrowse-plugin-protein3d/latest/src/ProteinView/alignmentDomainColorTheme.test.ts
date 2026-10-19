@@ -10,7 +10,7 @@ import { Color } from 'molstar/lib/mol-util/color'
 import { expect, test } from 'vitest'
 
 import { AlignmentDomainColorThemeProvider } from './alignmentDomainColorTheme'
-import { applyColorTheme, colorSchemeLegend } from './applyColorTheme'
+import { applyColorTheme, colorLegendOf } from './applyColorTheme'
 import { registerColorThemes } from './colorThemes'
 import { NO_VALUE_COLOR } from './placedValueRegistry'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
@@ -80,7 +80,7 @@ test("paints each residue its domain's color, and recolors when the domains move
     const apply = (byLabelSeqId: Map<number, number>) =>
       applyColorTheme({
         plugin,
-        colorScheme: 'alignment-domains',
+        color: { field: 'domain' },
         structures: [
           {
             molstarStructure: structure,
@@ -137,7 +137,7 @@ test("an atom mark draws a site's residue in the site's color, the backbone in i
     await update.commit()
     await applyColorTheme({
       plugin,
-      colorScheme: 'alignment-domains',
+      color: { field: 'domain' },
       structures: [
         {
           molstarStructure: structure,
@@ -173,9 +173,9 @@ test('the legend names each accession by its label in its color, then the grey',
     if (!structure) {
       throw new Error('no structure loaded')
     }
-    const legend = colorSchemeLegend({
+    const legend = colorLegendOf({
       plugin,
-      colorScheme: 'alignment-domains',
+      color: { field: 'domain' },
       structure,
       domainColor,
     })

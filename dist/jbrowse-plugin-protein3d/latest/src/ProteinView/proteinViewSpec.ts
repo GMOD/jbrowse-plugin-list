@@ -1,6 +1,6 @@
 import { resolveStructureUrl, structureDisplayLabel } from 'p2s_mapper'
 
-import type { ProteinColorScheme } from './applyColorTheme'
+import type { ProteinColor } from './proteinColor'
 import type { ResidueRanges } from './residueRanges'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
@@ -62,7 +62,7 @@ export interface ProteinViewSpec {
   showAllFeatureTracks?: boolean
   zoomToBaseLevel?: boolean
   autoScrollAlignment?: boolean
-  colorScheme?: ProteinColorScheme
+  color?: ProteinColor
   alignmentAlgorithm?: AlignmentAlgorithm
 }
 

@@ -15,13 +15,19 @@ import { ColorKey, MolstarLegendKey } from './ColorKey';
 import HeaderStructureRows from './HeaderStructureRow';
 import ProteinAlignment from './ProteinAlignment';
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton';
-import { COLOR_SCHEMES } from '../applyColorTheme';
-// An icon rather than a select showing the scheme's name, which took the
+import { COLOR_FIELDS, DEFAULT_COLOR_LABEL, colorLabelOf, } from '../proteinColor';
+const COLOR_CHOICES = [
+    { label: DEFAULT_COLOR_LABEL },
+    ...Object.entries(COLOR_FIELDS).map(([field, { label }]) => ({
+        field: field,
+        label,
+    })),
+];
+// An icon rather than a select showing the field's name, which took the
 // width of a structure's coverage line on every row beside it
-const ColorSchemeMenu = observer(function ColorSchemeMenu({ model, }) {
+const ColorMenu = observer(function ColorMenu({ model, }) {
     const [anchorEl, setAnchorEl] = useState(null);
-    const current = COLOR_SCHEMES.find(s => s.value === model.colorScheme);
-    const title = `Color scheme: ${current?.label ?? model.colorScheme}`;
+    const title = `Color by: ${colorLabelOf(model.color)}`;
     return (React.createElement(React.Fragment, null,
         React.createElement(Tooltip, { title: title },
             React.createElement(IconButton, { size: "small", "aria-label": title, onClick: event => {
@@ -30,10 +36,12 @@ const ColorSchemeMenu = observer(function ColorSchemeMenu({ model, }) {
                 React.createElement(PaletteIcon, { fontSize: "small" }))),
         React.createElement(Menu, { anchorEl: anchorEl, open: Boolean(anchorEl), onClose: () => {
                 setAnchorEl(null);
-            } }, COLOR_SCHEMES.map(scheme => (React.createElement(MenuItem, { key: scheme.value, dense: true, selected: scheme.value === model.colorScheme, onClick: () => {
-                model.setColorScheme(scheme.value);
+            } }, COLOR_CHOICES.map(({ field, label }) => (React.createElement(MenuItem, { key: label, dense: true, selected: field === model.color.field, onClick: () => {
+                if (field !== model.color.field) {
+                    model.setColor(field ? { field } : {});
+                }
                 setAnchorEl(null);
-            } }, scheme.label))))));
+            } }, label))))));
 });
 function ToggleMenuItem({ checked, label, disabled, onToggle, }) {
     return (React.createElement(MenuItem, { onClick: () => {
@@ -73,7 +81,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
                     flexShrink: 0,
                     minHeight: 24,
                 } },
-                React.createElement(ColorSchemeMenu, { model: model }),
+                React.createElement(ColorMenu, { model: model }),
                 React.createElement(DisplaySettingsMenu, { model: model }),
                 React.createElement(ProteinAlignmentHelpButton, { model: model }))),
         domainLegend ? (domainLegend.map(group => (React.createElement(ColorKey, { key: group.title, title: group.title, entries: group.entries, testId: "structure-legend" })))) : colorLegend ? (React.createElement(MolstarLegendKey, { title: "Structure colors", legend: colorLegend })) : null,

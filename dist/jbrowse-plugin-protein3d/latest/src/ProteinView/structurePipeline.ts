@@ -92,7 +92,7 @@ function presetOutput(
 /**
  * Build the trajectory's models, structures and representations. One load is
  * one Mol* structure per model, so an NMR ensemble is twenty of them, and the
- * load returns every one: a colour, a highlight or a superposition that
+ * load returns every one: a color, a highlight or a superposition that
  * addresses only the first leaves the other nineteen behind. They come from
  * the preset rather than `hierarchy.current.structures`, which also holds every
  * other load's.

@@ -16,7 +16,7 @@ const Cells = observer(function Cells({
   model,
 }: {
   cells: ResidueCell[]
-  colorFor: (value: number) => string
+  colorFor: (value: number) => string | undefined
   model: JBrowsePluginProteinStructureModel
 }) {
   const { columnWidth, trackGap } = model
@@ -51,7 +51,7 @@ const ResidueValueTrack = observer(function ResidueValueTrack({
   model,
 }: {
   cells: ResidueCell[]
-  colorFor: (value: number) => string
+  colorFor: (value: number) => string | undefined
   formatValue: (value: number) => string
   model: JBrowsePluginProteinStructureModel
 }) {

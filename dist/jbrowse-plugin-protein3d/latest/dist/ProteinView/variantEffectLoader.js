@@ -1,6 +1,6 @@
 /**
  * Builds the body of the autorun that fetches the values the view's
- * variant-effect scheme colours a structure by, once the structure can say
+ * variant-effect scheme colors a structure by, once the structure can say
  * what to ask for. An answer that arrives after the request changed, or after
  * the structure left the view, is dropped.
  *

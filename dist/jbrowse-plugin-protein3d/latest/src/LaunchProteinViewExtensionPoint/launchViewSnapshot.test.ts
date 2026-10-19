@@ -32,11 +32,26 @@ test('every view setting a launch names reaches the snapshot', () => {
   })
 })
 
-test('untrusted enumeration text is coerced, and absent stays absent', () => {
+test('an old colorScheme name lifts to a color object, an unknown one to the default', () => {
   expect(
-    launchViewSnapshot({ colorScheme: 'no-such-scheme' }, []).colorScheme,
-  ).toBe('default')
+    launchViewSnapshot({ colorScheme: 'alphamissense' }, []).color,
+  ).toEqual({ field: 'alphaMissense' })
+  expect(
+    launchViewSnapshot({ colorScheme: 'no-such-scheme' }, []).color,
+  ).toEqual({})
+  expect(
+    launchViewSnapshot(
+      { color: { field: 'domain' }, colorScheme: 'clinvar' },
+      [],
+    ).color,
+  ).toEqual({ field: 'domain' })
   const bare = launchViewSnapshot({}, [])
-  expect(bare.colorScheme).toBeUndefined()
+  expect(bare.color).toBeUndefined()
   expect(bare.alignmentAlgorithm).toBeUndefined()
+})
+
+test('a color object with a member its field cannot take is refused', () => {
+  expect(() =>
+    launchViewSnapshot({ color: { field: 'chain', range: ['red'] } }, []),
+  ).toThrow("color.range is refused: chain paints in Mol*'s palette")
 })

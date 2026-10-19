@@ -15,10 +15,13 @@ import ProteinFeatureTrack from './ProteinFeatureTrack';
 import ResidueValueTrack from './ResidueValueTrack';
 import SplitString from './SplitString';
 import { followHover, offScreenCenterTarget } from '../autoScroll';
+import { cssScaleOf, keyEntriesOf } from '../colorScale';
 import { LABEL_WIDTH, ROW_HEIGHT } from '../constants';
 import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData';
-import { HYDROPHOBICITY_KEY_SCORES, PLDDT_BANDS, hydrophobicityColor, plddtColor, } from '../residueTracks';
+import { RESIDUE_COLORS } from '../residueColors';
 import { errorMessage } from '../util';
+const plddtColor = cssScaleOf(RESIDUE_COLORS.plddt);
+const plddtKey = keyEntriesOf(RESIDUE_COLORS.plddt);
 // The alignment is drawn on its own panel rather than the page background, so
 // it needs the theme's paper color explicitly — hardcoding white left the
 // residue letters (theme text color) invisible under the dark theme.
@@ -170,10 +173,10 @@ const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
             trackRow(`feature-${group.type}`, model.expandedFeatureTypes.has(group.type) ? group.laneCount : 1, React.createElement(FeatureTypeLabel, { type: group.type, laneCount: group.laneCount, model: model }), React.createElement(ProteinFeatureTrack, { group: group, model: model }));
         }
         if (confidenceCells.length > 0) {
-            trackRow('plddt', 1, React.createElement(GutterLabel, { label: "pLDDT", title: React.createElement(ColorKey, { title: "AlphaFold per-residue confidence (pLDDT)", entries: PLDDT_BANDS, color: "inherit" }) }), React.createElement(ResidueValueTrack, { cells: confidenceCells, colorFor: plddtColor, formatValue: v => `pLDDT ${v.toFixed(0)}`, model: model }));
+            trackRow('plddt', 1, React.createElement(GutterLabel, { label: "pLDDT", title: React.createElement(ColorKey, { title: RESIDUE_COLORS.plddt.title, entries: plddtKey, color: "inherit" }) }), React.createElement(ResidueValueTrack, { cells: confidenceCells, colorFor: plddtColor, formatValue: v => `pLDDT ${v.toFixed(0)}`, model: model }));
         }
         if (hydrophobicityCells.length > 0) {
-            trackRow('hydrophobicity', 1, React.createElement(GutterLabel, { label: "hydro", title: React.createElement(GradientKey, { title: "Kyte-Doolittle hydrophobicity", testId: "hydrophobicity-legend", minLabel: "hydrophilic", maxLabel: "hydrophobic", colors: HYDROPHOBICITY_KEY_SCORES.map(score => hydrophobicityColor(score)), color: "inherit" }) }), React.createElement(ResidueValueTrack, { cells: hydrophobicityCells, colorFor: hydrophobicityColor, formatValue: v => `Kyte-Doolittle ${v.toFixed(1)}`, model: model }));
+            trackRow('hydrophobicity', 1, React.createElement(GutterLabel, { label: "hydro", title: React.createElement(GradientKey, { title: model.hydrophobicityScale.title, testId: "hydrophobicity-legend", ...model.hydrophobicityScale.key, color: "inherit" }) }), React.createElement(ResidueValueTrack, { cells: hydrophobicityCells, colorFor: model.hydrophobicityScale.paint, formatValue: v => `Kyte-Doolittle ${v.toFixed(1)}`, model: model }));
         }
     }
     const columnAt = (event) => {

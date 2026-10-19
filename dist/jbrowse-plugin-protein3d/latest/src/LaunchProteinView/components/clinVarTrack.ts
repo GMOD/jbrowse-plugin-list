@@ -1,4 +1,4 @@
-import { clinVarCategory } from '../../ProteinView/clinVar'
+import { CLINVAR_CATEGORIES, clinVarCategory } from '../../ProteinView/clinVar'
 
 import type { ProteinTrackConf } from './proteinTrackSetup'
 import type {
@@ -6,19 +6,35 @@ import type {
   ClinVarMissense,
   PlacedMissense,
 } from '../../ProteinView/clinVar'
+import type { CategoricalColor } from '../../ProteinView/colorScale'
 
-// The structure's clinvar scheme counts pathogenic calls in reds; the track
+// The structure's ClinVar coloring counts pathogenic calls in reds; the track
 // shows every classification, so the reds are kept for the pathogenic end,
 // greens for the benign end, and greys for what ClinVar cannot decide.
-export const CLINVAR_CATEGORY_COLORS: Record<ClinVarCategory, string> = {
-  pathogenic: '#a50f15',
-  'likely pathogenic': '#de2d26',
-  conflicting: '#fd8d3c',
-  uncertain: '#969696',
-  'likely benign': '#74c476',
-  benign: '#238b45',
-  other: '#bdbdbd',
-}
+export const CLINVAR_CATEGORY_COLOR = {
+  field: 'category',
+  scale: 'categorical',
+  domain: CLINVAR_CATEGORIES,
+  range: [
+    '#a50f15',
+    '#de2d26',
+    '#fd8d3c',
+    '#969696',
+    '#74c476',
+    '#238b45',
+    '#bdbdbd',
+  ],
+  labels: [
+    'Pathogenic',
+    'Likely pathogenic',
+    'Conflicting',
+    'Uncertain significance',
+    'Likely benign',
+    'Benign',
+    'Other',
+  ],
+  title: 'ClinVar classification',
+} as const satisfies CategoricalColor
 
 export interface ClinVarTrackFeature {
   uniqueId: string
@@ -28,7 +44,6 @@ export interface ClinVarTrackFeature {
   name: string
   type: 'missense_variant'
   category: ClinVarCategory
-  color: string
   significance: string
   clinvarId?: string
   /** the change on the transcript it was read from, where that is another
@@ -69,7 +84,6 @@ export function clinVarTrackFeatures({
           name,
           type: 'missense_variant' as const,
           category,
-          color: CLINVAR_CATEGORY_COLORS[category],
           significance: variant.significance.join(', ').replaceAll('_', ' '),
           ...(variant.id === undefined ? {} : { clinvarId: variant.id }),
           ...(onTranscript === name ? {} : { transcriptChange: onTranscript }),
@@ -103,10 +117,7 @@ export function clinVarTrackConf({
       {
         type: 'LinearBasicDisplay',
         displayId: `${trackId}-LinearBasicDisplay`,
-        renderer: {
-          type: 'SvgFeatureRenderer',
-          color1: "jexl:get(feature,'color')",
-        },
+        color: CLINVAR_CATEGORY_COLOR,
       },
     ],
   }

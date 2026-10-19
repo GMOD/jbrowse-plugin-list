@@ -1,6 +1,8 @@
 import { expect, test } from 'vitest'
 
 import { proteinTrackConfs } from './proteinTrackSetup'
+import { cssScaleOf } from '../../ProteinView/colorScale'
+import { UNIPROT_FEATURE_COLOR } from '../../ProteinView/uniprotFeatureTypes'
 
 const GFF = 'https://rest.uniprot.org/uniprotkb/P04637.gff'
 
@@ -43,7 +45,7 @@ const antigen = {
   assemblyNames: ['P04637'],
 }
 
-function featureTrack(domain: string[], height: number) {
+function featureTrack(height: number) {
   return {
     type: 'FeatureTrack',
     trackId: 'P04637-UniProt-features',
@@ -54,7 +56,8 @@ function featureTrack(domain: string[], height: number) {
       {
         displayId: 'P04637-UniProt-features-LinearBasicDisplay',
         type: 'LinearBasicDisplay',
-        facet: { field: 'type', domain },
+        color: UNIPROT_FEATURE_COLOR,
+        facet: { field: 'type', domain: UNIPROT_FEATURE_COLOR.domain },
         height,
       },
     ],
@@ -70,7 +73,7 @@ test('prefixed by the accession, the configs are the ones the session used to ho
       idPrefix: 'P04637',
     }),
   ).toEqual([
-    featureTrack(['DNA binding', 'Chain'], 112),
+    featureTrack(112),
     antigen,
     {
       type: 'QuantitativeTrack',
@@ -88,7 +91,7 @@ test('prefixed by the accession, the configs are the ones the session used to ho
           color: {
             field: 'score',
             scale: 'threshold',
-            domain: [50.000001, 70.000001, 90.000001],
+            domain: [50, 70, 90],
             range: ['#ff7d45', '#ffdb13', '#65cbf3', '#0053d6'],
             labels: [
               'very low <50',
@@ -96,6 +99,7 @@ test('prefixed by the accession, the configs are the ones the session used to ho
               'confident 70-90',
               'very high >90',
             ],
+            title: 'AlphaFold per-residue confidence (pLDDT)',
           },
         },
       ],
@@ -112,24 +116,37 @@ test('an entry with no confidence url gets no confidence track', () => {
       confidenceUrl: undefined,
       idPrefix: 'P04637',
     }),
-  ).toEqual([featureTrack([], 60), antigen, alphaMissense])
+  ).toEqual([featureTrack(60), antigen, alphaMissense])
 })
 
 // TP53's fifteen types drew nineteen GPU tracks, three past the page's
 // WebGL2 contexts, and the page wedged blank
-test('every feature type is a section of one track, in UniProt order', () => {
+test('every feature type is a section of one track, ordered and colored by one object', () => {
   const [features] = proteinTrackConfs({
     uniprotId: 'P04637',
     featureTypes: ['Turn', 'Novel type', 'Chain', 'Domain', 'Another type'],
     confidenceUrl: undefined,
     idPrefix: 'P04637',
   })
-  expect(features).toEqual(
-    featureTrack(
-      ['Domain', 'Chain', 'Turn', 'Another type', 'Novel type'],
-      190,
-    ),
-  )
+  expect(features).toEqual(featureTrack(190))
+})
+
+// The 3D bars colored Zinc finger red and Region green while the 1D track,
+// which named no color, painted every type the host's default
+test("the 1D track paints a type the 3D bar's color, and an unlisted one grey", () => {
+  const [features] = proteinTrackConfs({
+    uniprotId: 'P04637',
+    featureTypes: [],
+    confidenceUrl: undefined,
+    idPrefix: 'P04637',
+  })
+  const display = (
+    features?.displays as { color: typeof UNIPROT_FEATURE_COLOR }[]
+  )[0]!
+  const paint = cssScaleOf(display.color)
+  expect(paint('Zinc finger')).toBe('#d62728')
+  expect(paint('Region')).toBe('#2ca02c')
+  expect(paint('Novel type')).toBe('#999999')
 })
 
 test('the prefix reaches every track and display id, and nothing else', () => {

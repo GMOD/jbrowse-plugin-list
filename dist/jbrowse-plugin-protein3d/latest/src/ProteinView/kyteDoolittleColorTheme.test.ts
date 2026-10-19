@@ -5,11 +5,12 @@ import {
 import { Color } from 'molstar/lib/mol-util/color'
 import { beforeAll, expect, test } from 'vitest'
 
+import { rgbScaleOf } from './colorScale'
 import {
   KyteDoolittleColorThemeProvider,
   NON_AMINO_ACID_COLOR,
 } from './kyteDoolittleColorTheme'
-import { hydrophobicityColor } from './residueTracks'
+import { RESIDUE_COLORS } from './residueColors'
 import { parseStructure } from '../test_data/molstarStructure'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
@@ -40,7 +41,10 @@ beforeAll(async () => {
 })
 
 function colorByResidue(structure: Structure) {
-  const theme = KyteDoolittleColorThemeProvider.factory({ structure }, {})
+  const theme = KyteDoolittleColorThemeProvider.factory(
+    { structure },
+    { color: RESIDUE_COLORS.hydrophobicity },
+  )
   if (!('color' in theme)) {
     throw new Error(`expected a location theme, got ${theme.granularity}`)
   }
@@ -56,7 +60,12 @@ function colorByResidue(structure: Structure) {
   return byResidue
 }
 
-test('paints each residue the colour the alignment strip gives its score', () => {
+function hydrophobicityColor(score: number) {
+  const [r, g, b] = rgbScaleOf(RESIDUE_COLORS.hydrophobicity)(score)!
+  return Color.toStyle(Color.fromRgb(r, g, b))
+}
+
+test('paints each residue the color the alignment strip gives its score', () => {
   expect(colorByResidue(structure)).toEqual({
     ILE: hydrophobicityColor(4.5),
     ARG: hydrophobicityColor(-4.5),

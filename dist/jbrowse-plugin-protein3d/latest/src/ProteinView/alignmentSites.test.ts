@@ -106,7 +106,7 @@ test("a site's residues get sticks in the site's color, which a recolor leaves a
 
     await applyColorTheme({
       plugin,
-      colorScheme: 'chain-id',
+      color: { field: 'chain' },
       structures: [{ molstarStructure: structure }],
     })
     expect(stickColors(plugin).byResidue).toEqual({

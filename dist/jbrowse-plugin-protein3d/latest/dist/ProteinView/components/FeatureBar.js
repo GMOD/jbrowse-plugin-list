@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Tooltip } from '@mui/material';
 import { observer } from 'mobx-react';
+import { cssScaleOf } from '../colorScale';
 import { HOVERED_BORDER, SELECTED_BORDER } from '../constants';
-import { getFeatureColor } from '../uniprotFeatureTypes';
+import { UNIPROT_FEATURE_COLOR } from '../uniprotFeatureTypes';
+const featureTypeColor = cssScaleOf(UNIPROT_FEATURE_COLOR);
 // UniProt numbers a feature on the full-length protein. For a crystal fragment
 // the ruler under the bar counts the authors' way, so name both when they
 // differ rather than leave the reader to reconcile two numberings.
@@ -58,7 +60,7 @@ const FeatureBar = observer(function FeatureBar({ layout, top, height, selected,
                 top,
                 width: (alignmentEnd - alignmentStart + 1) * columnWidth,
                 height,
-                backgroundColor: getFeatureColor(feature.type),
+                backgroundColor: featureTypeColor(feature.type),
                 opacity: isHovered || selected ? 0.9 : 0.6,
                 cursor: 'pointer',
                 borderRadius: 2,

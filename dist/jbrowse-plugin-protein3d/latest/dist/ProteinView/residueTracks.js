@@ -23,52 +23,12 @@ const KYTE_DOOLITTLE = {
     K: -3.9,
     R: -4.5,
 };
-const KYTE_DOOLITTLE_MIN = -4.5;
-const KYTE_DOOLITTLE_MAX = 4.5;
 export function kyteDoolittle(aa) {
     return KYTE_DOOLITTLE[aa];
 }
 export function kyteDoolittleScores(seq) {
     return Array.from(seq, kyteDoolittle);
 }
-/**
- * AlphaFold's pLDDT bands, as Mol*'s plddt-confidence theme paints them. The
- * alignment strip, its legend and the linear confidence track all read these.
- */
-export const PLDDT_BANDS = [
-    { upTo: 50, color: '#ff7d45', label: 'very low <50' },
-    { upTo: 70, color: '#ffdb13', label: 'low 50-70' },
-    { upTo: 90, color: '#65cbf3', label: 'confident 70-90' },
-    { upTo: Infinity, color: '#0053d6', label: 'very high >90' },
-];
-export function bandColor(bands, value) {
-    return bands.find(band => value <= band.upTo)?.color;
-}
-export function plddtColor(score) {
-    return (score < 0 ? undefined : bandColor(PLDDT_BANDS, score)) ?? '#cccccc';
-}
-const HYDROPHILIC_RGB = [51, 102, 204];
-const NEUTRAL_RGB = [247, 247, 247];
-const HYDROPHOBIC_RGB = [230, 140, 40];
-/**
- * Diverging Kyte-Doolittle palette shared by the alignment strip and the 3D
- * theme: hydrophilic blue, neutral (0) near-white, hydrophobic orange.
- */
-export function hydrophobicityRgb(score) {
-    const t = Math.max(-1, Math.min(1, score / KYTE_DOOLITTLE_MAX));
-    const end = t < 0 ? HYDROPHILIC_RGB : HYDROPHOBIC_RGB;
-    const mix = (i) => Math.round(NEUTRAL_RGB[i] + (end[i] - NEUTRAL_RGB[i]) * Math.abs(t));
-    return [mix(0), mix(1), mix(2)];
-}
-export function hydrophobicityColor(score) {
-    const [r, g, b] = hydrophobicityRgb(score);
-    return `rgb(${r}, ${g}, ${b})`;
-}
-export const HYDROPHOBICITY_KEY_SCORES = [
-    KYTE_DOOLITTLE_MIN,
-    0,
-    KYTE_DOOLITTLE_MAX,
-];
 /**
  * Maps per-structure-residue values (indexed by 0-based structure sequence
  * position) onto alignment columns via structurePositionToAlignmentMap.

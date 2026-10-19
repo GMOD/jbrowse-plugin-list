@@ -12,12 +12,7 @@ import {
 
 import { domainLegend } from './alignmentDomains'
 import { syncSiteSticks } from './alignmentSites'
-import {
-  COLOR_SCHEME_VALUES,
-  type ProteinColorScheme,
-  applyColorTheme,
-  colorSchemeLegend,
-} from './applyColorTheme'
+import { applyColorTheme, colorLegendOf } from './applyColorTheme'
 import {
   MAX_TRACK_HEIGHT,
   MIN_TRACK_HEIGHT,
@@ -26,6 +21,7 @@ import {
 } from './constants'
 import { makeSelectionFramer, structuresSettled } from './frameSelection'
 import { makeLociChannel } from './lociChannel'
+import { checkedColor, colorOfScheme } from './proteinColor'
 import { defaultDisplayName } from './proteinViewSpec'
 import { removeMolstarStructure } from './removeStructure'
 import { showLoading } from './showLoading'
@@ -42,6 +38,7 @@ import { makeStructureSuperposer } from './structureSuperposer'
 import { setStructuresHidden } from './structureVisibility'
 import { attachViewInteractions } from './viewInteractions'
 
+import type { ProteinColor } from './proteinColor'
 import type { ProteinStructureSpec } from './proteinViewSpec'
 import type { JBrowsePluginProteinStructureModel } from './structureModel'
 import type { Instance } from '@jbrowse/mobx-state-tree'
@@ -148,15 +145,11 @@ function stateModelFactory() {
         autoScrollAlignment: false,
         /**
          * #property
-         * color scheme applied to all loaded structures (see COLOR_SCHEMES)
+         * the color object every loaded structure is colored by: a `field`
+         * (see COLOR_FIELDS), and for a field whose scale is the plugin's the
+         * scale's members; `{}` is Mol*'s default
          */
-        colorScheme: types.optional(
-          types.enumeration<ProteinColorScheme>(
-            'ColorScheme',
-            COLOR_SCHEME_VALUES,
-          ),
-          'default',
-        ),
+        color: types.optional(types.frozen<ProteinColor>(), {}),
         /**
          * #property
          */
@@ -172,7 +165,7 @@ function stateModelFactory() {
         compactTracks: true,
         /**
          * #property
-         * px height of one feature-track lane once the tracks' resize handle
+         * px height of one feature-track row once the tracks' resize handle
          * has been dragged; unset, `compactTracks` decides
          */
         trackHeight: types.maybe(types.number),
@@ -201,18 +194,25 @@ function stateModelFactory() {
       }),
     )
     .preProcessSnapshot(
-      (
-        snapshot: PersistedSettings & {
-          displayName?: string
-          structures?: ProteinStructureSpec[]
-        } & Record<string, unknown>,
-      ) =>
+      ({
+        colorScheme,
+        ...snapshot
+      }: PersistedSettings & {
+        displayName?: string
+        structures?: ProteinStructureSpec[]
+        color?: unknown
+        colorScheme?: string
+      } & Record<string, unknown>) =>
         withStoredSettings(
           {
             ...snapshot,
             displayName:
               snapshot.displayName ??
               defaultDisplayName(snapshot.structures ?? []),
+            color: checkedColor(
+              snapshot.color ??
+                (colorScheme === undefined ? {} : colorOfScheme(colorScheme)),
+            ),
           },
           readStoredSettings(),
         ),
@@ -262,8 +262,8 @@ function stateModelFactory() {
       /**
        * #action
        */
-      setColorScheme(scheme: ProteinColorScheme) {
-        self.colorScheme = scheme
+      setColor(color: ProteinColor) {
+        self.color = checkedColor(color)
       },
       /**
        * #action
@@ -383,7 +383,7 @@ function stateModelFactory() {
         addDisposer(
           self,
           autorun(() => {
-            const { molstarPluginContext, colorScheme } = self
+            const { molstarPluginContext, color } = self
             const structures = self.structures.flatMap(s =>
               s.structureSequences
                 ? s.molstarStructures.map(molstarStructure => ({
@@ -398,7 +398,7 @@ function stateModelFactory() {
             if (molstarPluginContext && structures.length > 0) {
               applyColorTheme({
                 plugin: molstarPluginContext,
-                colorScheme,
+                color,
                 structures,
               }).catch((e: unknown) => {
                 console.error(e)
@@ -520,16 +520,16 @@ function stateModelFactory() {
       },
       /**
        * #getter
-       * The color scheme's key, from the first structure that has loaded.
+       * The color object's key, from the first structure that has loaded.
        */
       get colorLegend() {
         const plugin = self.molstarPluginContext
         const loaded = self.structures.find(s => s.structureSequences)
         const structure = loaded?.molstarStructures[0]
         return plugin && structure
-          ? colorSchemeLegend({
+          ? colorLegendOf({
               plugin,
-              colorScheme: self.colorScheme,
+              color: self.color,
               structure,
               entityId: loaded.mappedEntity?.entityId,
               domainColor: loaded.alignmentDomainStatus?.domains?.color,
@@ -543,7 +543,7 @@ function stateModelFactory() {
        */
       get domainLegend() {
         const domains =
-          self.colorScheme === 'alignment-domains'
+          self.color.field === 'domain'
             ? self.structures.find(s => s.alignmentDomains)?.alignmentDomains
             : undefined
         return domains ? domainLegend(domains) : undefined

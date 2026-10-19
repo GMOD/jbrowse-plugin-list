@@ -82,7 +82,7 @@ test('a removal that fails reports through the error action', async () => {
   logged.mockRestore()
 })
 
-// The view menu used to repeat the header's four toggles, the colour scheme and
+// The view menu used to repeat the header's four toggles, the color menu and
 // a third copy of "restore hidden tracks", then bury the rest under "Advanced".
 test('the view menu carries actions and the Tune menu carries toggles', () => {
   const view = makeView()
@@ -338,4 +338,30 @@ test('the canvas height has a floor', () => {
   const view = makeView()
   view.setHeight(-200)
   expect(view.height).toBe(100)
+})
+
+// Sessions and urls written before `color` carry a `colorScheme` name
+test('a session that saved a colorScheme loads its color object', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [],
+    // @ts-expect-error the key `color` replaced, which the model no longer declares
+    colorScheme: 'clinvar',
+  })
+  expect(view.color).toEqual({ field: 'clinvarPathogenicCount' })
+})
+
+test('the hydrophobicity row follows a range the view color sets', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }],
+    color: { field: 'hydrophobicity', range: ['#000000', '#ffffff'] },
+  })
+  const [structure] = view.structures
+  expect(structure!.hydrophobicityScale.paint(4.5)).toBe('rgb(255, 255, 255)')
+  view.setColor({ field: 'chain' })
+  expect(structure!.hydrophobicityScale.paint(4.5)).toBe('rgb(230, 140, 40)')
+  expect(() => {
+    view.setColor({ field: 'chain', range: ['red'] })
+  }).toThrow('color.range is refused')
 })

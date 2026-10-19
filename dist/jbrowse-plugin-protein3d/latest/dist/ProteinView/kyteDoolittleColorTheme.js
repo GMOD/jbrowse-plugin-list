@@ -4,12 +4,17 @@ import { StructureProperties } from 'molstar/lib/mol-model/structure';
 import { MmcifFormat } from 'molstar/lib/mol-model-formats/structure/mmcif';
 import { ColorThemeCategory } from 'molstar/lib/mol-theme/color/categories';
 import { Color } from 'molstar/lib/mol-util/color';
-import { ScaleLegend } from 'molstar/lib/mol-util/legend';
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition';
-import { HYDROPHOBICITY_KEY_SCORES, hydrophobicityRgb, kyteDoolittle, } from './residueTracks';
+import { molstarLegendOf, molstarScaleOf } from './molstarColorScale';
+import { RESIDUE_COLORS } from './residueColors';
+import { kyteDoolittle } from './residueTracks';
 import { atomicLocationReader } from './themeLocation';
 export const NON_AMINO_ACID_COLOR = Color(0xcccccc);
-const KyteDoolittleColorThemeParams = {};
+const KyteDoolittleColorThemeParams = {
+    color: PD.Value(RESIDUE_COLORS.hydrophobicity, {
+        isHidden: true,
+    }),
+};
 const canonicalByModel = new WeakMap();
 function canonicalSequences(model) {
     let byEntity = canonicalByModel.get(model);
@@ -45,26 +50,22 @@ function oneLetterCode(l) {
             code)
         : code;
 }
-function scoreColor(score) {
-    const [r, g, b] = hydrophobicityRgb(score);
-    return Color.fromRgb(r, g, b);
-}
-// Mol*'s own `hydrophobicity` theme is Wimley-White with the opposite colour
+// Mol*'s own `hydrophobicity` theme is Wimley-White with the opposite color
 // direction, so the 3D view and the alignment strip disagreed under one label.
 function KyteDoolittleColorTheme(ctx, props) {
     const atomicLocation = atomicLocationReader(ctx.structure);
+    const scoreColor = molstarScaleOf(props.color, NON_AMINO_ACID_COLOR);
     return {
         factory: KyteDoolittleColorTheme,
         granularity: 'group',
         preferSmoothing: true,
         color: location => {
             const l = atomicLocation(location);
-            const score = l ? kyteDoolittle(oneLetterCode(l)) : undefined;
-            return score === undefined ? NON_AMINO_ACID_COLOR : scoreColor(score);
+            return scoreColor(l ? kyteDoolittle(oneLetterCode(l)) : undefined);
         },
         props,
         description: 'Colors amino acids by Kyte-Doolittle hydropathy: hydrophobic orange, hydrophilic blue. Everything else is grey.',
-        legend: ScaleLegend('Hydrophilic', 'Hydrophobic', HYDROPHOBICITY_KEY_SCORES.map(score => scoreColor(score))),
+        legend: molstarLegendOf(props.color),
     };
 }
 export const KyteDoolittleColorThemeProvider = {

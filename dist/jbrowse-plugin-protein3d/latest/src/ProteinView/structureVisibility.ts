@@ -7,7 +7,7 @@ import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 /**
  * Shows or hides every Mol* structure of one load, each model of an NMR
  * ensemble included, by the subtree visibility the Mol* state tree's eye icon
- * sets. The cells come from the live tree, like colour and removal, so a load
+ * sets. The cells come from the live tree, like color and removal, so a load
  * that landed an instant ago is reached too.
  */
 export async function setStructuresHidden({

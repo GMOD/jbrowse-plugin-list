@@ -5,7 +5,7 @@ import { expect, test, vi } from 'vitest'
 import Structure from './structureModel'
 
 import type { ConnectedDomain } from './alignmentDomains'
-import type { ProteinColorScheme } from './applyColorTheme'
+import type { ProteinColor } from './proteinColor'
 import type { PlacedValues } from './variantEffects'
 import type * as JBrowseCoreUtil from '@jbrowse/core/util'
 
@@ -35,8 +35,8 @@ vi.mock('@jbrowse/core/util', async importActual => {
 
 const TestParent = types
   .model({ structures: types.array(Structure) })
-  .volatile((): { colorScheme: ProteinColorScheme } => ({
-    colorScheme: 'alignment-domains',
+  .volatile((): { color: ProteinColor } => ({
+    color: { field: 'domain' },
   }))
   .views(() => ({
     get alignmentAlgorithm() {
@@ -47,8 +47,8 @@ const TestParent = types
     },
   }))
   .actions(self => ({
-    setColorScheme(scheme: ProteinColorScheme) {
-      self.colorScheme = scheme
+    setColor(color: ProteinColor) {
+      self.color = color
     },
     setError(e: unknown) {
       throw e
@@ -195,9 +195,9 @@ test("msaview 5.5.0's array, with no kind, draws every entry on the cartoon", ()
   ])
 })
 
-test('the overview rows show whatever the color scheme', () => {
+test('the overview rows show whatever the view colors by', () => {
   const { parent, structure } = setup()
-  parent.setColorScheme('chain-id')
+  parent.setColor({ field: 'chain' })
   expect(structure.domainRows.map(r => [r.label, r.kind])).toEqual([
     ['Hb beta-like', 'domain'],
     ['heme binding site', 'site'],
@@ -206,7 +206,7 @@ test('the overview rows show whatever the color scheme', () => {
 
 test('another scheme reads no domains and says nothing about them', () => {
   const { parent, structure } = setup()
-  parent.setColorScheme('chain-id')
+  parent.setColor({ field: 'chain' })
   expect(structure.alignmentDomainStatus).toBeUndefined()
   expect(structure.placedValues).toBeUndefined()
   expect(structure.statusMessage).toBeUndefined()

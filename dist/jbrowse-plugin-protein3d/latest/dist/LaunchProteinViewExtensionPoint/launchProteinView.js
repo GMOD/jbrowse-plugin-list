@@ -4,15 +4,23 @@ import { connectGenomeView, resolveTranscriptLinkage, } from './transcriptLinkag
 import { describeMissingStructure } from '../LaunchProteinView/resolveGeneLaunch';
 import { maybeLaunchSideBySide } from '../LaunchProteinView/utils/sideBySide';
 import { addProteinView } from '../ProteinView/addProteinView';
-import { coerceColorScheme } from '../ProteinView/applyColorTheme';
+import { checkedColor, colorOfScheme } from '../ProteinView/proteinColor';
 import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec';
-export function launchViewSnapshot({ alignmentAlgorithm, colorScheme, ...settings }, structures) {
+/** The launch's color object, a `colorScheme` name lifted to one. */
+export function launchColor({ color, colorScheme, }) {
+    return color !== undefined
+        ? checkedColor(color)
+        : colorScheme === undefined
+            ? undefined
+            : colorOfScheme(colorScheme);
+}
+export function launchViewSnapshot({ alignmentAlgorithm, color, colorScheme, ...settings }, structures) {
     return proteinViewSnapshot({
         ...settings,
         alignmentAlgorithm: alignmentAlgorithm === undefined
             ? undefined
             : coerceAlignmentAlgorithm(alignmentAlgorithm),
-        colorScheme: colorScheme === undefined ? undefined : coerceColorScheme(colorScheme),
+        color: launchColor({ color, colorScheme }),
         structures,
     });
 }
@@ -35,6 +43,12 @@ export async function launchProteinView(args) {
     }
     if ('error' in normalized) {
         return fail(normalized.error);
+    }
+    try {
+        launchColor(settings);
+    }
+    catch (e) {
+        return fail(e);
     }
     const { geneModel } = normalized;
     // A gene name alone: the host's text search finds the gene, and the

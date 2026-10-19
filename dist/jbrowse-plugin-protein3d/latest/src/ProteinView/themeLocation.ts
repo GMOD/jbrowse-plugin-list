@@ -4,7 +4,7 @@ import type { Location } from 'molstar/lib/mol-model/location'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 
 /**
- * Reads the atomic residue a theme is asked to colour: an element directly,
+ * Reads the atomic residue a theme is asked to color: an element directly,
  * or a bond by its first end. A coarse or non-structure location reads as
  * undefined. The returned location is reused between calls.
  */

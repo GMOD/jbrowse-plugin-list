@@ -20,7 +20,7 @@ function Layer({ zIndex, children, }) {
 }
 /**
  * The persistent state, drawn beneath every row: a band on top would tint the
- * pLDDT cells and feature bars inside it, and those colours are data. The
+ * pLDDT cells and feature bars inside it, and those colors are data. The
  * aligned portion (`showHighlight`) lights the sequence rows, `matchHeight`
  * tall, and the selection's fill goes over it; ColumnOverlays draws the
  * selection's outline over the rows.

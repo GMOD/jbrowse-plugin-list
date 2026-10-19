@@ -17,20 +17,32 @@ import { ColorKey, MolstarLegendKey } from './ColorKey'
 import HeaderStructureRows from './HeaderStructureRow'
 import ProteinAlignment from './ProteinAlignment'
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton'
-import { COLOR_SCHEMES } from '../applyColorTheme'
+import {
+  COLOR_FIELDS,
+  DEFAULT_COLOR_LABEL,
+  colorLabelOf,
+} from '../proteinColor'
 
 import type { JBrowsePluginProteinViewModel } from '../model'
+import type { ColorField } from '../proteinColor'
 
-// An icon rather than a select showing the scheme's name, which took the
+const COLOR_CHOICES: { field?: ColorField; label: string }[] = [
+  { label: DEFAULT_COLOR_LABEL },
+  ...Object.entries(COLOR_FIELDS).map(([field, { label }]) => ({
+    field: field as ColorField,
+    label,
+  })),
+]
+
+// An icon rather than a select showing the field's name, which took the
 // width of a structure's coverage line on every row beside it
-const ColorSchemeMenu = observer(function ColorSchemeMenu({
+const ColorMenu = observer(function ColorMenu({
   model,
 }: {
   model: JBrowsePluginProteinViewModel
 }) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
-  const current = COLOR_SCHEMES.find(s => s.value === model.colorScheme)
-  const title = `Color scheme: ${current?.label ?? model.colorScheme}`
+  const title = `Color by: ${colorLabelOf(model.color)}`
   return (
     <>
       <Tooltip title={title}>
@@ -51,17 +63,19 @@ const ColorSchemeMenu = observer(function ColorSchemeMenu({
           setAnchorEl(null)
         }}
       >
-        {COLOR_SCHEMES.map(scheme => (
+        {COLOR_CHOICES.map(({ field, label }) => (
           <MenuItem
-            key={scheme.value}
+            key={label}
             dense
-            selected={scheme.value === model.colorScheme}
+            selected={field === model.color.field}
             onClick={() => {
-              model.setColorScheme(scheme.value)
+              if (field !== model.color.field) {
+                model.setColor(field ? { field } : {})
+              }
               setAnchorEl(null)
             }}
           >
-            {scheme.label}
+            {label}
           </MenuItem>
         ))}
       </Menu>
@@ -169,7 +183,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
             minHeight: 24,
           }}
         >
-          <ColorSchemeMenu model={model} />
+          <ColorMenu model={model} />
           <DisplaySettingsMenu model={model} />
           <ProteinAlignmentHelpButton model={model} />
         </div>

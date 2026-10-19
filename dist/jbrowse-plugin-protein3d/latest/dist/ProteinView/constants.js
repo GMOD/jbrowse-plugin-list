@@ -33,7 +33,7 @@ export const MINOR_FEATURE_TYPES = new Set([
     'Sequence conflict',
     'Initiator methionine',
 ]);
-// one colour per interaction state, drawn across every row of the panel
+// one color per interaction state, drawn across every row of the panel
 export const HOVER_COLOR = 'rgba(255, 105, 180, 0.5)';
 export const HOVER_RANGE_COLOR = 'rgba(255, 165, 0, 0.35)';
 export const SELECTION_COLOR = 'rgba(0, 120, 255, 0.25)';

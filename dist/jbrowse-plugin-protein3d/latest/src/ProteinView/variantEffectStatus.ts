@@ -15,7 +15,7 @@ import type { MapUniProtPosition } from 'p2s_mapper'
 export interface VariantEffectStatus {
   /**
    * Whether the values are still on their way. Kept out of a structure's
-   * `loading`: colour arriving late only recolours, so selection, framing and
+   * `loading`: color arriving late only recolors, so selection, framing and
    * the ready marker do not wait on it.
    */
   pending: boolean

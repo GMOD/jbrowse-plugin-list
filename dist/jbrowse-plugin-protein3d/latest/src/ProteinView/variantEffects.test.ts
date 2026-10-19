@@ -1,13 +1,7 @@
 import { identityUniProtPositionMap, makeUniProtPositionMap } from 'p2s_mapper'
 import { expect, test } from 'vitest'
 
-import {
-  CLINVAR_COLORS,
-  alphaMissenseRgb,
-  clinVarRgb,
-  meanScoreByPosition,
-  placeValues,
-} from './variantEffects'
+import { meanScoreByPosition, placeValues } from './variantEffects'
 import { parseAlphaMissense } from '../AlphaMissensePathogenicityAdapter/parseAlphaMissense'
 
 test('averages every substitution at a residue, keyed by 1-based position', () => {
@@ -104,22 +98,4 @@ test("places by the entity's own label_seq_ids, not position + 1", () => {
     [95, 0.2],
     [97, 0.3],
   ])
-})
-
-test('the AlphaMissense ramp runs blue through white at 0.5 to red', () => {
-  expect(alphaMissenseRgb(0)).toEqual([0x2c, 0x7b, 0xb6])
-  expect(alphaMissenseRgb(0.5)).toEqual([255, 255, 255])
-  expect(alphaMissenseRgb(1)).toEqual([0xd7, 0x19, 0x1c])
-  expect(alphaMissenseRgb(0.75)).toEqual([235, 140, 142])
-  expect(alphaMissenseRgb(-1)).toEqual(alphaMissenseRgb(0))
-  expect(alphaMissenseRgb(2)).toEqual(alphaMissenseRgb(1))
-})
-
-test('the ClinVar ramp darkens per substitution and caps at four', () => {
-  const steps = [0, 1, 2, 3, 4].map(clinVarRgb)
-  expect(new Set(steps.map(String)).size).toBe(CLINVAR_COLORS.length)
-  expect(clinVarRgb(9)).toEqual(clinVarRgb(4))
-  // each step darker than the last
-  const lightness = steps.map(([r, g, b]) => r + g + b)
-  expect(lightness).toEqual([...lightness].sort((a, b) => b - a))
 })

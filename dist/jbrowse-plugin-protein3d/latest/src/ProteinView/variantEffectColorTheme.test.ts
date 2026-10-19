@@ -8,14 +8,15 @@ import { StateSelection } from 'molstar/lib/mol-state'
 import { Color } from 'molstar/lib/mol-util/color'
 import { expect, test } from 'vitest'
 
-import { applyColorTheme, colorSchemeLegend } from './applyColorTheme'
+import { applyColorTheme, colorLegendOf } from './applyColorTheme'
+import { rgbScaleOf } from './colorScale'
 import { registerColorThemes } from './colorThemes'
 import { NO_VALUE_COLOR, registerPlacedValues } from './placedValueRegistry'
+import { RESIDUE_COLORS } from './residueColors'
 import {
   AlphaMissenseColorThemeProvider,
   ClinVarColorThemeProvider,
 } from './variantEffectColorTheme'
-import { alphaMissenseRgb, clinVarRgb } from './variantEffects'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
 import { loadCaOnly } from '../test_data/molstarPlugin'
 import { parseStructure } from '../test_data/molstarStructure'
@@ -31,7 +32,20 @@ function css([r, g, b]: readonly [number, number, number]) {
   return Color.toStyle(Color.fromRgb(r, g, b))
 }
 
-// `${asym}${label_seq_id}` → the colour the theme gives that residue
+const alphaMissenseRgb = (score: number) =>
+  rgbScaleOf(RESIDUE_COLORS.alphaMissense)(score)!
+const clinVarRgb = (count: number) =>
+  rgbScaleOf(RESIDUE_COLORS.clinvarPathogenicCount)(count)!
+const alphaMissenseProps = {
+  revision: 0,
+  color: RESIDUE_COLORS.alphaMissense,
+}
+const clinVarProps = {
+  revision: 0,
+  color: RESIDUE_COLORS.clinvarPathogenicCount,
+}
+
+// `${asym}${label_seq_id}` → the color the theme gives that residue
 function colorByResidue(
   structure: Structure,
   theme: ReturnType<(typeof AlphaMissenseColorThemeProvider)['factory']>,
@@ -54,7 +68,7 @@ function colorByResidue(
 
 const grey = Color.toStyle(NO_VALUE_COLOR)
 
-test("colours the mapped entity's placed residues and greys the rest", async () => {
+test("colors the mapped entity's placed residues and greys the rest", async () => {
   const structure = await parseStructure(chains)
   registerPlacedValues('alphamissense', structure, {
     entityId: '1',
@@ -65,7 +79,7 @@ test("colours the mapped entity's placed residues and greys the rest", async () 
   })
   const theme = AlphaMissenseColorThemeProvider.factory(
     { structure },
-    { revision: 0 },
+    alphaMissenseProps,
   )
   expect(colorByResidue(structure, theme)).toEqual({
     A1: css(alphaMissenseRgb(0)),
@@ -84,28 +98,25 @@ test('each scheme reads its own values, and a model nobody registered is grey', 
     entityId: '1',
     byLabelSeqId: new Map([[2, 3]]),
   })
-  const clinvar = ClinVarColorThemeProvider.factory(
-    { structure },
-    { revision: 0 },
-  )
+  const clinvar = ClinVarColorThemeProvider.factory({ structure }, clinVarProps)
   expect(colorByResidue(structure, clinvar).A2).toBe(css(clinVarRgb(3)))
   const alphamissense = AlphaMissenseColorThemeProvider.factory(
     { structure },
-    { revision: 0 },
+    alphaMissenseProps,
   )
   expect(
     new Set(Object.values(colorByResidue(structure, alphamissense))),
   ).toEqual(new Set([grey]))
   const unregistered = ClinVarColorThemeProvider.factory(
     { structure: other },
-    { revision: 0 },
+    clinVarProps,
   )
   expect(new Set(Object.values(colorByResidue(other, unregistered)))).toEqual(
     new Set([grey]),
   )
 })
 
-// every representation in the plugin, as the colour theme it carries
+// every representation in the plugin, as the color theme it carries
 function themes(plugin: Parameters<typeof registerColorThemes>[0]) {
   return plugin.state.data
     .select(
@@ -116,7 +127,7 @@ function themes(plugin: Parameters<typeof registerColorThemes>[0]) {
     .map(cell => cell.transform.params?.colorTheme)
 }
 
-test('reaches every model of an ensemble, and recolours when values change', async () => {
+test('reaches every model of an ensemble, and recolors when values change', async () => {
   await withTemporaryMolstarPlugin(async plugin => {
     registerColorThemes(plugin)
     const { structures } = await loadCaOnly(plugin, chains, { models: 3 })
@@ -124,7 +135,7 @@ test('reaches every model of an ensemble, and recolours when values change', asy
     const apply = (score: number) =>
       applyColorTheme({
         plugin,
-        colorScheme: 'alphamissense',
+        color: { field: 'alphaMissense' },
         structures: structures.map(molstarStructure => ({
           molstarStructure,
           entityId: '1',
@@ -141,7 +152,7 @@ test('reaches every model of an ensemble, and recolours when values change', asy
     for (const structure of structures) {
       const theme = AlphaMissenseColorThemeProvider.factory(
         { structure },
-        { revision: 0 },
+        alphaMissenseProps,
       )
       expect(colorByResidue(structure, theme).A4).toBe(
         css(alphaMissenseRgb(0.1)),
@@ -164,15 +175,15 @@ test('the legends are the scales the themes paint with', async () => {
       throw new Error('no structure loaded')
     }
     expect(
-      colorSchemeLegend({ plugin, colorScheme: 'alphamissense', structure }),
+      colorLegendOf({ plugin, color: { field: 'alphaMissense' }, structure }),
     ).toMatchObject({
       kind: 'scale-legend',
       minLabel: 'Likely benign 0',
       maxLabel: 'Likely pathogenic 1',
     })
-    const clinvar = colorSchemeLegend({
+    const clinvar = colorLegendOf({
       plugin,
-      colorScheme: 'clinvar',
+      color: { field: 'clinvarPathogenicCount' },
       structure,
     })
     expect(clinvar).toMatchObject({ kind: 'table-legend' })

@@ -3,7 +3,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 
 import Structure from './structureModel'
 
-import type { ProteinColorScheme } from './applyColorTheme'
+import type { ProteinColor } from './proteinColor'
 import type * as JBrowseCoreUtil from '@jbrowse/core/util'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
@@ -87,8 +87,8 @@ beforeEach(() => {
 
 const TestParent = types
   .model({ structures: types.array(Structure) })
-  .volatile((): { colorScheme: ProteinColorScheme } => ({
-    colorScheme: 'default',
+  .volatile((): { color: ProteinColor } => ({
+    color: {},
   }))
   .views(() => ({
     get alignmentAlgorithm(): AlignmentAlgorithm {
@@ -99,8 +99,8 @@ const TestParent = types
     },
   }))
   .actions(self => ({
-    setColorScheme(scheme: ProteinColorScheme) {
-      self.colorScheme = scheme
+    setColor(color: ProteinColor) {
+      self.color = color
     },
     setError(e: unknown) {
       throw e
@@ -116,11 +116,11 @@ function loaded(
     feature?: SimpleFeatureSerialized
     pairwiseAlignment?: PairwiseAlignment
   },
-  colorScheme: ProteinColorScheme,
+  color: ProteinColor,
   entity: { entityId: string; seq: string },
 ) {
   const parent = TestParent.create({ structures: [snapshot] })
-  parent.setColorScheme(colorScheme)
+  parent.setColor(color)
   const structure = parent.structures[0]!
   structure.setStructureData({
     entities: [
@@ -136,11 +136,15 @@ function loaded(
 }
 
 test("an AlphaFold model takes the entry's values one to one", async () => {
-  const { structure } = loaded({ uniprotId: 'P0AF01' }, 'alphamissense', {
-    entityId: '1',
-    seq: 'MKVA',
-  })
-  // colour arriving later only recolours, so nothing else waits on it
+  const { structure } = loaded(
+    { uniprotId: 'P0AF01' },
+    { field: 'alphaMissense' },
+    {
+      entityId: '1',
+      seq: 'MKVA',
+    },
+  )
+  // color arriving later only recolors, so nothing else waits on it
   expect(structure.loading).toBe(false)
   expect(structure.variantEffectsPending).toBe(true)
   await vi.waitFor(() => {
@@ -155,10 +159,14 @@ test("an AlphaFold model takes the entry's values one to one", async () => {
 })
 
 test('a PDB entry takes them through SIFTS, on the mapped entity only', async () => {
-  const { structure } = loaded({ pdbId: '9XYZ' }, 'alphamissense', {
-    entityId: '2',
-    seq: 'GLMN',
-  })
+  const { structure } = loaded(
+    { pdbId: '9XYZ' },
+    { field: 'alphaMissense' },
+    {
+      entityId: '2',
+      seq: 'GLMN',
+    },
+  )
   expect(structure.loadingMessage).toBe('Mapping 9XYZ to UniProt')
   structure.setUniProtMappings([
     {
@@ -193,7 +201,7 @@ test('a source that fails says so beside the structure, and is asked again once 
     'https://alphafold.ebi.ac.uk/files/AF-P0LATE-F1-aa-substitutions.csv'
   const { parent, structure } = loaded(
     { uniprotId: 'P0LATE' },
-    'alphamissense',
+    { field: 'alphaMissense' },
     { entityId: '1', seq: 'M' },
   )
   await vi.waitFor(() => {
@@ -210,8 +218,8 @@ test('a source that fails says so beside the structure, and is asked again once 
   expect(asked()).toHaveLength(1)
 
   responses[url] = 'protein_variant,am_pathogenicity,am_class\nM1A,0.7,LPath'
-  parent.setColorScheme('default')
-  parent.setColorScheme('alphamissense')
+  parent.setColor({})
+  parent.setColor({ field: 'alphaMissense' })
   await vi.waitFor(() => {
     expect(structure.placedVariantEffects?.byLabelSeqId.get(1)).toBe(0.7)
   })
@@ -220,10 +228,14 @@ test('a source that fails says so beside the structure, and is asked again once 
 })
 
 test('a model folded from another revision of the entry stays grey', async () => {
-  const { structure } = loaded({ uniprotId: 'P0OLD1' }, 'alphamissense', {
-    entityId: '1',
-    seq: 'MKVA',
-  })
+  const { structure } = loaded(
+    { uniprotId: 'P0OLD1' },
+    { field: 'alphaMissense' },
+    {
+      entityId: '1',
+      seq: 'MKVA',
+    },
+  )
   await vi.waitFor(() => {
     expect(structure.variantEffectsPending).toBe(false)
   })
@@ -234,15 +246,19 @@ test('a model folded from another revision of the entry stays grey', async () =>
 })
 
 test('a structure with no UniProt entry asks nothing and says why', () => {
-  const { parent, structure } = loaded({ url: 'x.cif' }, 'alphamissense', {
-    entityId: '1',
-    seq: 'MKVA',
-  })
+  const { parent, structure } = loaded(
+    { url: 'x.cif' },
+    { field: 'alphaMissense' },
+    {
+      entityId: '1',
+      seq: 'MKVA',
+    },
+  )
   expect(structure.loading).toBe(false)
   expect(structure.statusMessage).toBe(
     'No UniProt entry to place AlphaMissense scores on',
   )
-  parent.setColorScheme('chain-id')
+  parent.setColor({ field: 'chain' })
   expect(structure.statusMessage).toBeUndefined()
   expect(fetch).not.toHaveBeenCalled()
 })
@@ -278,7 +294,7 @@ test("ClinVar lands on a crystal through its alignment to the transcript, not Un
         ],
       },
     },
-    'clinvar',
+    { field: 'clinvarPathogenicCount' },
     { entityId: '2', seq: 'GMKAL' },
   )
   // SIFTS never answers, and ClinVar does not wait for it
@@ -303,10 +319,14 @@ test("ClinVar lands on a crystal through its alignment to the transcript, not Un
 })
 
 test('ClinVar on a structure with no transcript says why', () => {
-  const { structure } = loaded({ uniprotId: 'P0AF01' }, 'clinvar', {
-    entityId: '1',
-    seq: 'MKVA',
-  })
+  const { structure } = loaded(
+    { uniprotId: 'P0AF01' },
+    { field: 'clinvarPathogenicCount' },
+    {
+      entityId: '1',
+      seq: 'MKVA',
+    },
+  )
   expect(structure.variantEffectsPending).toBe(false)
   expect(structure.statusMessage).toBe(
     'No transcript to place ClinVar variants on',

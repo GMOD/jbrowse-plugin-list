@@ -1,10 +1,6 @@
 import { expect, test } from 'vitest'
 
-import {
-  CLINVAR_CATEGORY_COLORS,
-  clinVarTrackConf,
-  clinVarTrackFeatures,
-} from './clinVarTrack'
+import { clinVarTrackConf, clinVarTrackFeatures } from './clinVarTrack'
 
 const r248q = {
   variant: {
@@ -58,7 +54,6 @@ test('one feature per variant on the entry residue, named by the entry numbering
     name: 'R248Q',
     type: 'missense_variant',
     category: 'pathogenic',
-    color: CLINVAR_CATEGORY_COLORS.pathogenic,
     significance: 'Pathogenic',
     clinvarId: '12356',
   })
@@ -90,7 +85,7 @@ test('an isoform transcript places its residues where the entry numbers them, or
   })
 })
 
-test('the track carries its features inline, coloured by category', () => {
+test('the track carries its features inline, colored by category', () => {
   const features = clinVarTrackFeatures({
     placed: [r248q],
     uniprotId: 'P04637',
@@ -116,9 +111,37 @@ test('the track carries its features inline, coloured by category', () => {
       {
         type: 'LinearBasicDisplay',
         displayId: 'view1-P04637-ClinVar-LinearBasicDisplay',
-        renderer: {
-          type: 'SvgFeatureRenderer',
-          color1: "jexl:get(feature,'color')",
+        color: {
+          field: 'category',
+          scale: 'categorical',
+          domain: [
+            'pathogenic',
+            'likely pathogenic',
+            'conflicting',
+            'uncertain',
+            'likely benign',
+            'benign',
+            'other',
+          ],
+          range: [
+            '#a50f15',
+            '#de2d26',
+            '#fd8d3c',
+            '#969696',
+            '#74c476',
+            '#238b45',
+            '#bdbdbd',
+          ],
+          labels: [
+            'Pathogenic',
+            'Likely pathogenic',
+            'Conflicting',
+            'Uncertain significance',
+            'Likely benign',
+            'Benign',
+            'Other',
+          ],
+          title: 'ClinVar classification',
         },
       },
     ],

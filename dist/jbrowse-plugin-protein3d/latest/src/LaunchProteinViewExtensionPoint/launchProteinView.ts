@@ -8,7 +8,7 @@ import {
 import { describeMissingStructure } from '../LaunchProteinView/resolveGeneLaunch'
 import { maybeLaunchSideBySide } from '../LaunchProteinView/utils/sideBySide'
 import { addProteinView } from '../ProteinView/addProteinView'
-import { coerceColorScheme } from '../ProteinView/applyColorTheme'
+import { checkedColor, colorOfScheme } from '../ProteinView/proteinColor'
 import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec'
 
 import type { LaunchStructure } from './normalizeLaunch'
@@ -24,15 +24,30 @@ import type { AbstractSessionModel } from '@jbrowse/core/util'
 // Listing them was how `showAllFeatureTracks` came to be dropped.
 interface LaunchViewSettings extends Omit<
   ProteinViewSpec,
-  'structures' | 'colorScheme' | 'alignmentAlgorithm'
+  'structures' | 'color' | 'alignmentAlgorithm'
 > {
-  // untrusted text from a URL, coerced to the model's enumerations
+  // untrusted text from a URL: the algorithm is coerced to the model's
+  // enumeration, and a color object refused with its problems
   alignmentAlgorithm?: string
+  color?: unknown
+  // the name `color` replaced, still read from older urls
   colorScheme?: string
 }
 
+/** The launch's color object, a `colorScheme` name lifted to one. */
+export function launchColor({
+  color,
+  colorScheme,
+}: Pick<LaunchViewSettings, 'color' | 'colorScheme'>) {
+  return color !== undefined
+    ? checkedColor(color)
+    : colorScheme === undefined
+      ? undefined
+      : colorOfScheme(colorScheme)
+}
+
 export function launchViewSnapshot(
-  { alignmentAlgorithm, colorScheme, ...settings }: LaunchViewSettings,
+  { alignmentAlgorithm, color, colorScheme, ...settings }: LaunchViewSettings,
   structures: ProteinStructureSpec[],
 ) {
   return proteinViewSnapshot({
@@ -41,8 +56,7 @@ export function launchViewSnapshot(
       alignmentAlgorithm === undefined
         ? undefined
         : coerceAlignmentAlgorithm(alignmentAlgorithm),
-    colorScheme:
-      colorScheme === undefined ? undefined : coerceColorScheme(colorScheme),
+    color: launchColor({ color, colorScheme }),
     structures,
   })
 }
@@ -106,6 +120,11 @@ export async function launchProteinView(args: LaunchArgs) {
   }
   if ('error' in normalized) {
     return fail(normalized.error)
+  }
+  try {
+    launchColor(settings)
+  } catch (e) {
+    return fail(e)
   }
   const { geneModel } = normalized
 

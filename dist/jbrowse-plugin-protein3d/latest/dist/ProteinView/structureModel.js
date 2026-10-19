@@ -4,11 +4,14 @@ import { autorun, when } from 'mobx';
 import { alignTranscriptToEntity, alignmentCol, alignmentQuality, chooseMappedEntity, entityLabel, fetchUniProtStructureMappings, fusionPartnerPositions, getPdbIdFromUrl, getUniprotIdFromAlphaFoldTarget, looksLikePlddt, makeCoordinateMapper, makeLabelSeqIdIndex, mappedStructureIdentity, rangeToLabelSeqIds, residueNumber, resolveStructureUrl, stripStopCodon, structureDisplayLabel, structurePos, toLabelSeqIds, unmapStructurePositions, } from 'p2s_mapper';
 import { alignOffThread, isIdentical } from './alignOffThread';
 import { alignmentDomainStatus, connectedAlignmentDomains, domainRows, } from './alignmentDomains';
+import { cssScaleOf, rampKeyOf } from './colorScale';
 import { connectedHoverTranscriptPos } from './connectedHover';
 import { CHAR_WIDTH, MINOR_FEATURE_TYPES, trackGapOf, trackHeightOf, } from './constants';
 import { entityAlignedTo } from './entityAlignedTo';
 import { frameResidues } from './frameSelection';
+import { resolvedColor } from './proteinColor';
 import { clickProteinToGenome, navigateToProteinPosition, structureRangesToGenomeRegions, } from './proteinToGenomeMapping';
+import { RESIDUE_COLORS } from './residueColors';
 import { positionRangeRuns, rangeList, residueRuns, transcriptRuns, } from './residueRanges';
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks';
 import { structureUniProt } from './structureUniProt';
@@ -242,7 +245,7 @@ const Structure = types
     uniProtMappingsError: undefined,
     /**
      * #volatile
-     * The key of what the view's variant-effect colour scheme asked for this
+     * The key of what the view's variant-effect color field asked for this
      * structure, and the values once they arrive
      */
     variantEffects: undefined,
@@ -1023,16 +1026,32 @@ const Structure = types
     .views(self => ({
     /**
      * #getter
+     * The hydrophobicity row's color: the view's color object while the view
+     * colors by hydrophobicity, so a member it sets reaches the row too
+     */
+    get hydrophobicityScale() {
+        const { color } = self.parentView;
+        const scale = (color.field === 'hydrophobicity'
+            ? resolvedColor(color)
+            : undefined) ?? RESIDUE_COLORS.hydrophobicity;
+        return {
+            title: scale.title ?? '',
+            paint: cssScaleOf(scale),
+            key: rampKeyOf(scale),
+        };
+    },
+    /**
+     * #getter
      * What this structure can ask the view's variant-effect source for,
-     * undefined while the view colours by none. ClinVar reads the genome on
+     * undefined while the view colors by none. ClinVar reads the genome on
      * the connected view's assembly.
      */
     get variantEffectAsk() {
-        const { colorScheme } = self.parentView;
-        if (colorScheme === 'alphamissense') {
+        const { field } = self.parentView.color;
+        if (field === 'alphaMissense') {
             return alphaMissenseAsk(self.uniProtEntry);
         }
-        if (colorScheme === 'clinvar') {
+        if (field === 'clinvarPathogenicCount') {
             const assemblyName = self.connectedView?.assemblyNames[0];
             const assembly = assemblyName
                 ? getSession(self).assemblyManager.get(assemblyName)
@@ -1076,7 +1095,7 @@ const Structure = types
     /**
      * #getter
      * The connected alignment's domains, data plus its color object, whatever
-     * the color scheme; see alignmentDomains
+     * the view colors by; see alignmentDomains
      */
     get alignmentDomains() {
         return connectedAlignmentDomains(getSession(self).views, self.connectedViewId).domains;
@@ -1090,7 +1109,7 @@ const Structure = types
      * alignmentDomainStatus
      */
     get alignmentDomainStatus() {
-        return self.parentView.colorScheme === 'alignment-domains'
+        return self.parentView.color.field === 'domain'
             ? alignmentDomainStatus({
                 views: getSession(self).views,
                 connectedViewId: self.connectedViewId,
@@ -1104,7 +1123,7 @@ const Structure = types
     /**
      * #getter
      * The overview's "From the alignment" rows, one per accession, whatever
-     * the color scheme
+     * the view colors by
      */
     get domainRows() {
         const { alignmentDomains: domains, genomeToTranscriptSeqMapping: mapping, transcriptSeqToStructureSeqPosition: transcriptToStructure, structurePositionToAlignmentMap: structureToAlignment, } = self;
@@ -1122,7 +1141,7 @@ const Structure = types
     .views(self => ({
     /**
      * #getter
-     * The variant-effect scheme's values on the mapped entity's residues, by
+     * The variant-effect field's values on the mapped entity's residues, by
      * label_seq_id
      */
     get placedVariantEffects() {
@@ -1130,7 +1149,7 @@ const Structure = types
     },
     /**
      * #getter
-     * What the view's placed-value scheme colors this structure's mapped
+     * What the view's placed-value field colors this structure's mapped
      * entity by, by label_seq_id: for the alignment domains, layer 1's
      * cartoon
      */
@@ -1139,7 +1158,7 @@ const Structure = types
     },
     /**
      * #getter
-     * Whether the scheme's values are still on their way, which the ready
+     * Whether the field's values are still on their way, which the ready
      * marker does not wait for
      */
     get variantEffectsPending() {
@@ -1149,7 +1168,7 @@ const Structure = types
      * #getter
      * What went wrong with this structure, for the line beside its label in
      * the header: a failed load, a structure with no chain the transcript
-     * can be aligned to, or a color scheme that leaves it grey. One line per
+     * can be aligned to, or a color field that leaves it grey. One line per
      * structure, rather than a view-wide banner that names neither which
      * structure nor what it was doing.
      */

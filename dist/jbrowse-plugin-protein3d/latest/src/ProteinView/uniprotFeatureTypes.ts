@@ -1,61 +1,90 @@
+import type { CategoricalColor } from './colorScale'
+
 /**
  * UniProt's feature types in its entry page's order (function, topology,
- * processing, PTMs, family, sequence, structure), each with the color the 3D
- * feature bar paints it. The 1D view stacks its sections in this order.
+ * processing, PTMs, family, sequence, structure), each with its color. The 3D
+ * view's feature bars and the 1D view's UniProt features track both paint
+ * through this object, and the 1D view stacks its sections in `domain` order.
  * Signal, Calcium binding and Nucleotide binding are types older entries
  * still carry.
  */
-export const UNIPROT_FEATURE_TYPES = [
-  { type: 'Domain', color: '#1f77b4' },
-  { type: 'Repeat', color: '#7f7f7f' },
-  { type: 'Zinc finger', color: '#d62728' },
-  { type: 'DNA binding', color: '#ff7f0e' },
-  { type: 'Calcium binding', color: '#fd8d3c' },
-  { type: 'Nucleotide binding', color: '#74c476' },
-  { type: 'Region', color: '#2ca02c' },
-  { type: 'Coiled coil', color: '#9467bd' },
-  { type: 'Motif', color: '#8c564b' },
-  { type: 'Compositional bias', color: '#e377c2' },
-  { type: 'Active site', color: '#f7b6d2' },
-  { type: 'Binding site', color: '#c7c7c7' },
-  { type: 'Site', color: '#dbdb8d' },
-  { type: 'Topological domain', color: '#aec7e8' },
-  { type: 'Transmembrane', color: '#bcbd22' },
-  { type: 'Intramembrane', color: '#17becf' },
-  { type: 'Signal', color: '#ffbb78' },
-  { type: 'Signal peptide', color: '#ffbb78' },
-  { type: 'Transit peptide', color: '#ff9896' },
-  { type: 'Propeptide', color: '#98df8a' },
-  { type: 'Peptide', color: '#6baed6' },
-  { type: 'Initiator methionine', color: '#ce6dbd' },
-  { type: 'Chain', color: '#c5b0d5' },
-  { type: 'Modified residue', color: '#9edae5' },
-  { type: 'Lipidation', color: '#637939' },
-  { type: 'Glycosylation', color: '#393b79' },
-  { type: 'Disulfide bond', color: '#c49c94' },
-  { type: 'Cross-link', color: '#8c6d31' },
-  { type: 'Natural variant', color: '#de9ed6' },
-  { type: 'Mutagenesis', color: '#ad494a' },
-  { type: 'Alternative sequence', color: '#e7969c' },
-  { type: 'Sequence conflict', color: '#b5cf6b' },
-  { type: 'Helix', color: '#e7ba52' },
-  { type: 'Beta strand', color: '#6b6ecf' },
-  { type: 'Turn', color: '#d6616b' },
-]
-
-const UNLISTED_COLOR = '#999999'
-
-export function getFeatureColor(type: string) {
-  return (
-    UNIPROT_FEATURE_TYPES.find(t => t.type === type)?.color ?? UNLISTED_COLOR
-  )
-}
-
-/** `types` in UniProt's order, any it does not list last and sorted. */
-export function inUniProtOrder(types: readonly string[]) {
-  const rank = (type: string) => {
-    const i = UNIPROT_FEATURE_TYPES.findIndex(t => t.type === type)
-    return i === -1 ? UNIPROT_FEATURE_TYPES.length : i
-  }
-  return types.toSorted((a, b) => rank(a) - rank(b) || a.localeCompare(b))
-}
+export const UNIPROT_FEATURE_COLOR = {
+  field: 'type',
+  scale: 'categorical',
+  domain: [
+    'Domain',
+    'Repeat',
+    'Zinc finger',
+    'DNA binding',
+    'Calcium binding',
+    'Nucleotide binding',
+    'Region',
+    'Coiled coil',
+    'Motif',
+    'Compositional bias',
+    'Active site',
+    'Binding site',
+    'Site',
+    'Topological domain',
+    'Transmembrane',
+    'Intramembrane',
+    'Signal',
+    'Signal peptide',
+    'Transit peptide',
+    'Propeptide',
+    'Peptide',
+    'Initiator methionine',
+    'Chain',
+    'Modified residue',
+    'Lipidation',
+    'Glycosylation',
+    'Disulfide bond',
+    'Cross-link',
+    'Natural variant',
+    'Mutagenesis',
+    'Alternative sequence',
+    'Sequence conflict',
+    'Helix',
+    'Beta strand',
+    'Turn',
+  ],
+  range: [
+    '#1f77b4',
+    '#7f7f7f',
+    '#d62728',
+    '#ff7f0e',
+    '#fd8d3c',
+    '#74c476',
+    '#2ca02c',
+    '#9467bd',
+    '#8c564b',
+    '#e377c2',
+    '#f7b6d2',
+    '#c7c7c7',
+    '#dbdb8d',
+    '#aec7e8',
+    '#bcbd22',
+    '#17becf',
+    '#ffbb78',
+    '#ffbb78',
+    '#ff9896',
+    '#98df8a',
+    '#6baed6',
+    '#ce6dbd',
+    '#c5b0d5',
+    '#9edae5',
+    '#637939',
+    '#393b79',
+    '#c49c94',
+    '#8c6d31',
+    '#de9ed6',
+    '#ad494a',
+    '#e7969c',
+    '#b5cf6b',
+    '#e7ba52',
+    '#6b6ecf',
+    '#d6616b',
+  ],
+  unknown: '#999999',
+  title: 'UniProt feature type',
+} as const satisfies CategoricalColor

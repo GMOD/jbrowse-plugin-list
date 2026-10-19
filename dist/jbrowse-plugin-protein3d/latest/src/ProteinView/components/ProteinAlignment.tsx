@@ -21,17 +21,16 @@ import ProteinFeatureTrack from './ProteinFeatureTrack'
 import ResidueValueTrack from './ResidueValueTrack'
 import SplitString from './SplitString'
 import { followHover, offScreenCenterTarget } from '../autoScroll'
+import { cssScaleOf, keyEntriesOf } from '../colorScale'
 import { LABEL_WIDTH, ROW_HEIGHT } from '../constants'
 import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData'
-import {
-  HYDROPHOBICITY_KEY_SCORES,
-  PLDDT_BANDS,
-  hydrophobicityColor,
-  plddtColor,
-} from '../residueTracks'
+import { RESIDUE_COLORS } from '../residueColors'
 import { errorMessage } from '../util'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
+
+const plddtColor = cssScaleOf(RESIDUE_COLORS.plddt)
+const plddtKey = keyEntriesOf(RESIDUE_COLORS.plddt)
 
 // The alignment is drawn on its own panel rather than the page background, so
 // it needs the theme's paper color explicitly — hardcoding white left the
@@ -316,8 +315,8 @@ const ProteinAlignment = observer(function ProteinAlignment({
           label="pLDDT"
           title={
             <ColorKey
-              title="AlphaFold per-residue confidence (pLDDT)"
-              entries={PLDDT_BANDS}
+              title={RESIDUE_COLORS.plddt.title}
+              entries={plddtKey}
               color="inherit"
             />
           }
@@ -338,20 +337,16 @@ const ProteinAlignment = observer(function ProteinAlignment({
           label="hydro"
           title={
             <GradientKey
-              title="Kyte-Doolittle hydrophobicity"
+              title={model.hydrophobicityScale.title}
               testId="hydrophobicity-legend"
-              minLabel="hydrophilic"
-              maxLabel="hydrophobic"
-              colors={HYDROPHOBICITY_KEY_SCORES.map(score =>
-                hydrophobicityColor(score),
-              )}
+              {...model.hydrophobicityScale.key}
               color="inherit"
             />
           }
         />,
         <ResidueValueTrack
           cells={hydrophobicityCells}
-          colorFor={hydrophobicityColor}
+          colorFor={model.hydrophobicityScale.paint}
           formatValue={v => `Kyte-Doolittle ${v.toFixed(1)}`}
           model={model}
         />,
