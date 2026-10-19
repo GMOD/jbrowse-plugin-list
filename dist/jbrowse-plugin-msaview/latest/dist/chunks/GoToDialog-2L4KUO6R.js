@@ -1,0 +1,2 @@
+import{b as r}from"./chunk-UVY5VU6U.js";import"./chunk-CVLB4VFP.js";import{a}from"./chunk-DNFD5II2.js";import{a as u}from"./chunk-BX4Z274Q.js";import{a as i}from"./chunk-J6KYLXRD.js";import{b as t}from"./chunk-FY3BTKY4.js";var o=t(i(),1),l=t(a(),1),m=t(u(),1);function f({model:n,onClose:e}){return o.default.createElement(l.Dialog,{open:!0,onClose:e,title:"Go to row or column",maxWidth:"xs",fullWidth:!0},o.default.createElement(m.DialogContent,null,o.default.createElement(r,{model:n,onFound:e})))}export{f as default};
+//# sourceMappingURL=GoToDialog-2L4KUO6R.js.map
