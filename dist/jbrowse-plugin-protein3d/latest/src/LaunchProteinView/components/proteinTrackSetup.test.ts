@@ -43,18 +43,19 @@ const antigen = {
   assemblyNames: ['P04637'],
 }
 
-function featureTrack(type: string) {
+function featureTrack(domain: string[], height: number) {
   return {
     type: 'FeatureTrack',
-    trackId: `P04637-${type}`,
-    name: type,
+    trackId: 'P04637-UniProt-features',
+    name: 'UniProt features',
     adapter: { type: 'Gff3Adapter', gffLocation: { uri: GFF } },
     assemblyNames: ['P04637'],
     displays: [
       {
-        displayId: `P04637-${type}-LinearBasicDisplay`,
+        displayId: 'P04637-UniProt-features-LinearBasicDisplay',
         type: 'LinearBasicDisplay',
-        jexlFilters: [`get(feature,'type')=='${type}'`],
+        facet: { field: 'type', domain },
+        height,
       },
     ],
   }
@@ -69,8 +70,7 @@ test('prefixed by the accession, the configs are the ones the session used to ho
       idPrefix: 'P04637',
     }),
   ).toEqual([
-    featureTrack('Chain'),
-    featureTrack('DNA binding'),
+    featureTrack(['DNA binding', 'Chain'], 112),
     antigen,
     {
       type: 'QuantitativeTrack',
@@ -112,7 +112,24 @@ test('an entry with no confidence url gets no confidence track', () => {
       confidenceUrl: undefined,
       idPrefix: 'P04637',
     }),
-  ).toEqual([antigen, alphaMissense])
+  ).toEqual([featureTrack([], 60), antigen, alphaMissense])
+})
+
+// TP53's fifteen types drew nineteen GPU tracks, three past the page's
+// WebGL2 contexts, and the page wedged blank
+test('every feature type is a section of one track, in UniProt order', () => {
+  const [features] = proteinTrackConfs({
+    uniprotId: 'P04637',
+    featureTypes: ['Turn', 'Novel type', 'Chain', 'Domain', 'Another type'],
+    confidenceUrl: undefined,
+    idPrefix: 'P04637',
+  })
+  expect(features).toEqual(
+    featureTrack(
+      ['Domain', 'Chain', 'Turn', 'Another type', 'Novel type'],
+      190,
+    ),
+  )
 })
 
 test('the prefix reaches every track and display id, and nothing else', () => {

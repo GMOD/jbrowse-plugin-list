@@ -11,48 +11,6 @@ export interface UniProtFeature {
   uniqueId: string
 }
 
-const featureColors: Record<string, string> = {
-  Domain: '#1f77b4',
-  'DNA binding': '#ff7f0e',
-  Region: '#2ca02c',
-  'Zinc finger': '#d62728',
-  'Coiled coil': '#9467bd',
-  Motif: '#8c564b',
-  'Compositional bias': '#e377c2',
-  Repeat: '#7f7f7f',
-  Transmembrane: '#bcbd22',
-  Intramembrane: '#17becf',
-  'Topological domain': '#aec7e8',
-  Signal: '#ffbb78',
-  'Signal peptide': '#ffbb78',
-  Propeptide: '#98df8a',
-  'Transit peptide': '#ff9896',
-  Chain: '#c5b0d5',
-  'Disulfide bond': '#c49c94',
-  'Active site': '#f7b6d2',
-  'Binding site': '#c7c7c7',
-  Site: '#dbdb8d',
-  'Modified residue': '#9edae5',
-  Glycosylation: '#393b79',
-  Lipidation: '#637939',
-  'Cross-link': '#8c6d31',
-  'Alternative sequence': '#e7969c',
-  'Natural variant': '#de9ed6',
-  Mutagenesis: '#ad494a',
-  'Sequence conflict': '#b5cf6b',
-  Helix: '#e7ba52',
-  'Beta strand': '#6b6ecf',
-  Turn: '#d6616b',
-  'Initiator methionine': '#ce6dbd',
-  Peptide: '#6baed6',
-  'Calcium binding': '#fd8d3c',
-  'Nucleotide binding': '#74c476',
-}
-
-export function getFeatureColor(type: string) {
-  return featureColors[type] ?? '#999999'
-}
-
 async function fetchUniProtFeatures(url: string): Promise<UniProtFeature[]> {
   const text = await (await myfetch(url)).text()
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Tooltip } from '@mui/material';
 import { observer } from 'mobx-react';
 import { HOVERED_BORDER, SELECTED_BORDER } from '../constants';
-import { getFeatureColor } from '../hooks/useUniProtFeatures';
+import { getFeatureColor } from '../uniprotFeatureTypes';
 // UniProt numbers a feature on the full-length protein. For a crystal fragment
 // the ruler under the bar counts the authors' way, so name both when they
 // differ rather than leave the reader to reconcile two numberings.

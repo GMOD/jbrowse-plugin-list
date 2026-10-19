@@ -2,6 +2,7 @@ import { myfetch, uniprotGffUrl } from 'p2s_mapper'
 
 import { thresholdBandColor } from './wiggleBandColors'
 import { PLDDT_BANDS } from '../../ProteinView/residueTracks'
+import { inUniProtOrder } from '../../ProteinView/uniprotFeatureTypes'
 import {
   ALPHAMISSENSE_MID,
   ALPHAMISSENSE_RANGE,
@@ -32,7 +33,9 @@ export async function fetchUniProtFeatureTypes(
   ]
 }
 
-function uniProtFeatureTrackConfs({
+// One track sectioned by type rather than a track per type: an entry carries
+// up to ~20 types, and a page gets 16 WebGL2 contexts, one per GPU track
+function uniProtFeatureTrackConf({
   uniprotId,
   featureTypes,
   idPrefix,
@@ -40,29 +43,29 @@ function uniProtFeatureTrackConfs({
   uniprotId: string
   featureTypes: string[]
   idPrefix: string
-}): ProteinTrackConf[] {
-  return featureTypes.map(type => {
-    const trackId = `${idPrefix}-${type}`
-    return {
-      type: 'FeatureTrack',
-      trackId,
-      name: type,
-      adapter: {
-        type: 'Gff3Adapter',
-        gffLocation: {
-          uri: uniprotGffUrl(uniprotId),
-        },
+}): ProteinTrackConf {
+  const trackId = `${idPrefix}-UniProt-features`
+  const domain = inUniProtOrder(featureTypes)
+  return {
+    type: 'FeatureTrack',
+    trackId,
+    name: 'UniProt features',
+    adapter: {
+      type: 'Gff3Adapter',
+      gffLocation: {
+        uri: uniprotGffUrl(uniprotId),
       },
-      assemblyNames: [uniprotId],
-      displays: [
-        {
-          displayId: `${trackId}-LinearBasicDisplay`,
-          type: 'LinearBasicDisplay',
-          jexlFilters: [`get(feature,'type')=='${type}'`],
-        },
-      ],
-    }
-  })
+    },
+    assemblyNames: [uniprotId],
+    displays: [
+      {
+        displayId: `${trackId}-LinearBasicDisplay`,
+        type: 'LinearBasicDisplay',
+        facet: { field: 'type', domain },
+        height: Math.min(450, 60 + 26 * domain.length),
+      },
+    ],
+  }
 }
 
 function antigenTrackConf(
@@ -163,7 +166,7 @@ export function proteinTrackConfs({
   idPrefix: string
 }): ProteinTrackConf[] {
   return [
-    ...uniProtFeatureTrackConfs({ uniprotId, featureTypes, idPrefix }),
+    uniProtFeatureTrackConf({ uniprotId, featureTypes, idPrefix }),
     antigenTrackConf(uniprotId, idPrefix),
     ...(confidenceUrl
       ? [alphaFoldConfidenceTrackConf({ uniprotId, confidenceUrl, idPrefix })]

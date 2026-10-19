@@ -4,7 +4,7 @@ import { Tooltip } from '@mui/material'
 import { observer } from 'mobx-react'
 
 import { HOVERED_BORDER, SELECTED_BORDER } from '../constants'
-import { getFeatureColor } from '../hooks/useUniProtFeatures'
+import { getFeatureColor } from '../uniprotFeatureTypes'
 
 import type { FeatureLayout } from '../hooks/useProteinFeatureTrackData'
 import type { UniProtFeature } from '../hooks/useUniProtFeatures'

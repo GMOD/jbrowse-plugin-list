@@ -108,7 +108,7 @@ test('every track config goes to the view, under ids the view prefixes', async (
     confidenceUrl: 'https://example.org/confidence.json',
     idPrefix: 'view1-P04637',
   })
-  expect(confs).toHaveLength(5)
+  expect(confs).toHaveLength(4)
   expect(s.launched).toEqual(
     confs.map(conf => ({ viewId: 'view1', trackId: conf.trackId, conf })),
   )
@@ -137,11 +137,11 @@ test('a second view of an entry reuses its assembly and opens its own tracks', a
   expect(s.addView).toHaveBeenCalledTimes(2)
   const idsOf = (viewId: string) =>
     s.launched.filter(l => l.viewId === viewId).map(l => l.trackId)
-  expect(idsOf('view1')).toHaveLength(4)
+  expect(idsOf('view1')).toHaveLength(3)
   expect(idsOf('view2')).toEqual(
     idsOf('view1').map(id => id.replace('view1-', 'view2-')),
   )
-  expect(new Set(s.launched.map(l => l.trackId)).size).toBe(8)
+  expect(new Set(s.launched.map(l => l.trackId)).size).toBe(6)
 })
 
 // `get` on an unknown name sends the Hubs plugin to probe jbrowse.org/ucsc/
@@ -204,8 +204,7 @@ test('a track that fails to open is reported by name and the rest still open', a
     'Could not open the Antigen track: Error: no such adapter',
   )
   expect(s.views[0]?.events).toEqual([
-    'view1-P04637-Chain',
-    'view1-P04637-DNA binding',
+    'view1-P04637-UniProt-features',
     'view1-P04637-Antigen',
     'view1-P04637-AlphaMissense-scores',
     'nav P04637 P04637',
