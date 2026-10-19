@@ -1,17 +1,18 @@
-import type { ConnectedDomain } from './connectedDomains';
+import type { ConnectedDomains } from './connectedDomains';
 export declare function domainTrackId(viewId: string): string;
 /**
  * A session FeatureTrack drawing `domains` on the genome: one feature per
  * domain, one subfeature per region, so a domain spanning exons draws as boxes
- * joined across the intron. Each feature paints the `color` it carries, and
- * the key names each color with its domain.
+ * joined across the intron. The display's color is the domains' color object,
+ * a categorical scale over each feature's `accession`, so its key names each
+ * color with its domain.
  */
 export declare function domainTrackConf({ viewId, assemblyName, name, strand, domains, }: {
     viewId: string;
     assemblyName: string;
     name: string;
     strand?: number;
-    domains: ConnectedDomain[];
+    domains: ConnectedDomains;
 }): {
     type: string;
     trackId: string;
@@ -23,7 +24,6 @@ export declare function domainTrackConf({ viewId, assemblyName, name, strand, do
             type: string;
             name: string;
             accession: string;
-            color: string;
             subfeatures: ({
                 type: string;
                 strand?: undefined;
@@ -48,7 +48,6 @@ export declare function domainTrackConf({ viewId, assemblyName, name, strand, do
             type: string;
             name: string;
             accession: string;
-            color: string;
             subfeatures: ({
                 type: string;
                 strand?: undefined;
@@ -75,11 +74,11 @@ export declare function domainTrackConf({ viewId, assemblyName, name, strand, do
         type: string;
         displayId: string;
         color: {
-            field: string;
+            title: string;
+            field: "accession";
             domain: string[];
             range: string[];
             labels: string[];
-            title: string;
         };
     }[];
 };

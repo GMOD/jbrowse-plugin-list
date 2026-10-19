@@ -14,9 +14,12 @@ export const NO_VALUE_COLOR = Color(0xcccccc)
 // theme looks its values up here by the Mol* model a residue belongs to. A
 // superposed structure keeps its units' models, and an ensemble has one model
 // per structure, so each model of every load is registered on its own.
-const registry = new Map<PlacedValueScheme, WeakMap<Model, PlacedValues>>()
+/** a placed-value scheme, or the alignment domains' second layer */
+export type PlacedValueKey = PlacedValueScheme | 'alignment-sites'
 
-function schemeRegistry(scheme: PlacedValueScheme) {
+const registry = new Map<PlacedValueKey, WeakMap<Model, PlacedValues>>()
+
+function schemeRegistry(scheme: PlacedValueKey) {
   let byModel = registry.get(scheme)
   if (!byModel) {
     byModel = new WeakMap()
@@ -26,7 +29,7 @@ function schemeRegistry(scheme: PlacedValueScheme) {
 }
 
 export function registerPlacedValues(
-  scheme: PlacedValueScheme,
+  scheme: PlacedValueKey,
   structure: Structure,
   values: PlacedValues | undefined,
 ) {
@@ -46,7 +49,7 @@ export function registerPlacedValues(
  * registered.
  */
 export function placedValueReader(
-  scheme: PlacedValueScheme,
+  scheme: PlacedValueKey,
   structure: Structure | undefined,
 ) {
   const atomicLocation = atomicLocationReader(structure)

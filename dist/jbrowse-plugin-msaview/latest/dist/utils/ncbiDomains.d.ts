@@ -1,5 +1,8 @@
 import type { InterProScanResults } from 'react-msaview';
-export type DomainMatch = InterProScanResults['matches'][number];
+/** a CDD match, under the GenPept feature key it came from */
+export type DomainMatch = InterProScanResults['matches'][number] & {
+    featureType: 'Region' | 'Site';
+};
 /**
  * Parse a GenPept (efetch db=protein&rettype=gp&retmode=xml) document into CDD
  * domain and site annotations, keyed by both the versioned and primary

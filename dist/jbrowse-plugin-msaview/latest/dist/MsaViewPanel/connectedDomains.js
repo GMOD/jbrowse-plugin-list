@@ -1,4 +1,24 @@
+/**
+ * The query row's domains on the genome, as data plus one color object. A
+ * cross-plugin contract: jbrowse-plugin-protein3d reads it off the view.
+ *
+ * In grammar-of-graphics terms, `features` is the data and `kind` the field a
+ * consumer filters its layers on (protein3d draws `domain` as cartoon and
+ * `site` as side chains). `color` is the color channel: a categorical scale
+ * over `accession`, whose `domain` lists the accessions, `range` the fills
+ * the alignment draws them in, and `labels` what a guide (a legend) names
+ * them. Every surface reads that one object: the genome track's display, the
+ * structure's layers, its overview rows and each legend.
+ */
 import { seqPosToGenomeRegions } from './msaCoordToGenomeCoord';
+/**
+ * `site` for CDD's GenPept `Site` key, a Sequence Ontology `*_site` type,
+ * InterPro's `Binding_site`, `Active_site` and `Conserved_site`, and UniProt's
+ * spelled-out `Binding site`
+ */
+export function annotationKind(featureType) {
+    return featureType && /(^|[_ ])site$/i.test(featureType) ? 'site' : 'domain';
+}
 function mergeAdjacent(regions) {
     const merged = [];
     for (const region of regions.toSorted((a, b) => a.start - b.start)) {
@@ -25,25 +45,23 @@ export function residuesToGenomeRegions(model, positions) {
 }
 /**
  * The query row's domains as the alignment shows them, one per accession, so
- * a CDD site's scattered residues are one entry. Largest first by residues
- * covered, so a site painted later lands on the domain it sits in. Empty
- * while the domain overlay is off.
+ * a CDD site's scattered residues are one feature. Empty while the domain
+ * overlay is off.
  */
 export function connectedDomains(model) {
-    if (!model.showDomains) {
-        return [];
-    }
     const byAccession = new Map();
-    for (const annotation of model.annotationsByRow[model.querySeqName] ?? []) {
-        const list = byAccession.get(annotation.accession);
-        if (list) {
-            list.push(annotation);
-        }
-        else {
-            byAccession.set(annotation.accession, [annotation]);
+    if (model.showDomains) {
+        for (const annotation of model.annotationsByRow[model.querySeqName] ?? []) {
+            const list = byAccession.get(annotation.accession);
+            if (list) {
+                list.push(annotation);
+            }
+            else {
+                byAccession.set(annotation.accession, [annotation]);
+            }
         }
     }
-    return [...byAccession]
+    const placed = [...byAccession]
         .flatMap(([accession, annotations]) => {
         // annotations count residues 1-based inclusive
         const positions = new Set();
@@ -53,22 +71,31 @@ export function connectedDomains(model) {
             }
         }
         const first = annotations[0];
-        const color = model.featureColors.get(first)?.fill;
+        const fill = model.featureColors.get(first)?.fill;
         const regions = residuesToGenomeRegions(model, positions);
-        return color && regions.length > 0
+        return fill && regions.length > 0
             ? [
                 {
-                    domain: {
+                    feature: {
                         name: model.annotationTypes.get(accession)?.name ?? first.name,
                         accession,
-                        color,
+                        kind: annotationKind(first.featureType),
                         regions,
                     },
+                    fill,
                     residues: positions.size,
                 },
             ]
             : [];
     })
-        .toSorted((a, b) => b.residues - a.residues)
-        .map(({ domain }) => domain);
+        .toSorted((a, b) => b.residues - a.residues);
+    return {
+        features: placed.map(p => p.feature),
+        color: {
+            field: 'accession',
+            domain: placed.map(p => p.feature.accession),
+            range: placed.map(p => p.fill),
+            labels: placed.map(p => p.feature.name),
+        },
+    };
 }

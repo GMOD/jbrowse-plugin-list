@@ -216,9 +216,9 @@ export default function stateModelFactory() {
         },
         /**
          * #getter
-         * cross-plugin contract: jbrowse-plugin-protein3d reads this to paint the
-         * domains the alignment shows on the query row onto the structure, in
-         * the alignment's colors
+         * cross-plugin contract: the query row's domains on the genome, with
+         * the color object every surface paints them through.
+         * jbrowse-plugin-protein3d reads it to draw them on the structure
          */
         get connectedDomains() {
             return connectedDomains(self);
@@ -431,7 +431,7 @@ export default function stateModelFactory() {
             const assemblyName = connectedView?.assemblyNames[0];
             if (!connectedView ||
                 !assemblyName ||
-                connectedDomains.length === 0 ||
+                connectedDomains.features.length === 0 ||
                 !isSessionWithAddSessionTrack(session)) {
                 return;
             }
@@ -535,7 +535,7 @@ export default function stateModelFactory() {
                             self.setZoomToBaseLevel(!self.zoomToBaseLevel);
                         },
                     },
-                    ...(self.connectedView && self.connectedDomains.length > 0
+                    ...(self.connectedView && self.connectedDomains.features.length > 0
                         ? [
                             {
                                 label: 'Show domains on the genome',

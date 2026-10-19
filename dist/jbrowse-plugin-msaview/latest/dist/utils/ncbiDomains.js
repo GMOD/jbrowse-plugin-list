@@ -68,6 +68,7 @@ function parseFeature(featureXml) {
                 entry: { name, description: quals.note ?? name, accession },
             },
             locations,
+            featureType: key,
         };
     }
     return undefined;

@@ -11,7 +11,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
 import { observer } from 'mobx-react';
-import { MolstarLegendKey } from './ColorKey';
+import { ColorKey, MolstarLegendKey } from './ColorKey';
 import HeaderStructureRows from './HeaderStructureRow';
 import ProteinAlignment from './ProteinAlignment';
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton';
@@ -62,7 +62,7 @@ const DisplaySettingsMenu = observer(function DisplaySettingsMenu({ model, }) {
             model.behaviorToggles.map(toggle => (React.createElement(ToggleMenuItem, { key: toggle.label, checked: toggle.checked, label: toggle.label, onToggle: toggle.toggle }))))));
 });
 const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
-    const { alignmentStructure, showAlignment, colorLegend } = model;
+    const { alignmentStructure, showAlignment, colorLegend, domainLegend } = model;
     return (React.createElement("div", null,
         React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start', gap: 8 } },
             React.createElement(HeaderStructureRows, { model: model }),
@@ -76,7 +76,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
                 React.createElement(ColorSchemeMenu, { model: model }),
                 React.createElement(DisplaySettingsMenu, { model: model }),
                 React.createElement(ProteinAlignmentHelpButton, { model: model }))),
-        colorLegend ? (React.createElement(MolstarLegendKey, { title: "Structure colors", legend: colorLegend })) : null,
+        domainLegend ? (domainLegend.map(group => (React.createElement(ColorKey, { key: group.title, title: group.title, entries: group.entries, testId: "structure-legend" })))) : colorLegend ? (React.createElement(MolstarLegendKey, { title: "Structure colors", legend: colorLegend })) : null,
         showAlignment && alignmentStructure?.pairwiseAlignment ? (React.createElement(ProteinAlignment, { model: alignmentStructure })) : showAlignment && alignmentStructure?.alignmentPending ? (React.createElement(LoadingEllipses, { message: "Loading pairwise alignment" })) : null));
 });
 export default ProteinViewHeader;

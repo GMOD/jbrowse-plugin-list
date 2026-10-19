@@ -1,15 +1,16 @@
 import type { GenomeRegion, SeqPosModel } from './msaCoordToGenomeCoord';
 import type { Annotation } from 'react-msaview';
-/**
- * One accession the alignment draws on the query row, on the genome. A
- * cross-plugin contract: jbrowse-plugin-protein3d reads it off the view.
- */
+export type DomainKind = 'domain' | 'site';
+/** One accession the alignment draws on the query row. */
 export interface ConnectedDomain {
-    /** the label the alignment's legend shows for the domain's accession */
+    /** the label the alignment's legend shows for the accession */
     name: string;
     accession: string;
-    /** the fill the alignment draws the domain in */
-    color: string;
+    /**
+     * `site` for a set of functional residues (a CDD Site, a GFF `*_site`),
+     * `domain` for anything else
+     */
+    kind: DomainKind;
     /**
      * 0-based half-open, ascending, contiguous bases merged: one region per exon
      * piece of a domain, or per run of a site's scattered residues, in the
@@ -17,6 +18,24 @@ export interface ConnectedDomain {
      */
     regions: GenomeRegion[];
 }
+/** A categorical color object, spelt as a JBrowse display's `color` config. */
+export interface DomainColor {
+    field: 'accession';
+    domain: string[];
+    range: string[];
+    labels: string[];
+}
+export interface ConnectedDomains {
+    /** largest first by residues covered */
+    features: ConnectedDomain[];
+    color: DomainColor;
+}
+/**
+ * `site` for CDD's GenPept `Site` key, a Sequence Ontology `*_site` type,
+ * InterPro's `Binding_site`, `Active_site` and `Conserved_site`, and UniProt's
+ * spelled-out `Binding site`
+ */
+export declare function annotationKind(featureType: string | undefined): DomainKind;
 export interface DomainSource extends SeqPosModel {
     showDomains: boolean;
     querySeqName: string;
@@ -33,8 +52,7 @@ export interface DomainSource extends SeqPosModel {
 export declare function residuesToGenomeRegions(model: SeqPosModel, positions: Iterable<number>): GenomeRegion[];
 /**
  * The query row's domains as the alignment shows them, one per accession, so
- * a CDD site's scattered residues are one entry. Largest first by residues
- * covered, so a site painted later lands on the domain it sits in. Empty
- * while the domain overlay is off.
+ * a CDD site's scattered residues are one feature. Empty while the domain
+ * overlay is off.
  */
-export declare function connectedDomains(model: DomainSource): ConnectedDomain[];
+export declare function connectedDomains(model: DomainSource): ConnectedDomains;

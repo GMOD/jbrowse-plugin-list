@@ -5,6 +5,8 @@ import { ElementId } from '@jbrowse/core/util/types/mst';
 import { addDisposer, getPath, types } from '@jbrowse/mobx-state-tree';
 import { autorun } from 'mobx';
 import { ALIGNMENT_ALGORITHM_VALUES, DEFAULT_ALIGNMENT_ALGORITHM, } from 'p2s_mapper';
+import { domainLegend } from './alignmentDomains';
+import { syncSiteSticks } from './alignmentSites';
 import { COLOR_SCHEME_VALUES, applyColorTheme, colorSchemeLegend, } from './applyColorTheme';
 import { MAX_TRACK_HEIGHT, MIN_TRACK_HEIGHT, NORMAL_TRACK_HEIGHT, trackHeightOf, } from './constants';
 import { makeSelectionFramer, structuresSettled } from './frameSelection';
@@ -306,7 +308,8 @@ function stateModelFactory() {
                         molstarStructure,
                         entityId: s.mappedEntity?.entityId,
                         placedValues: s.placedValues,
-                        domains: s.alignmentDomainStatus?.domains,
+                        placedSites: s.alignmentDomainStatus?.placedSites,
+                        domainColor: s.alignmentDomainStatus?.domains?.color,
                     }))
                     : []);
                 if (molstarPluginContext && structures.length > 0) {
@@ -315,6 +318,24 @@ function stateModelFactory() {
                         colorScheme,
                         structures,
                     }).catch((e) => {
+                        console.error(e);
+                        self.setError(e);
+                    });
+                }
+            }));
+            // The alignment sites' sticks, layer 2 of the alignment domains,
+            // follow the scheme, the alignment's domains and each load.
+            addDisposer(self, autorun(() => {
+                const plugin = self.molstarPluginContext;
+                const structures = self.structures.flatMap(s => s.structureSequences
+                    ? s.molstarStructures.map(molstarStructure => ({
+                        molstarStructure,
+                        sites: s.alignmentDomainStatus?.placedSites,
+                        color: s.alignmentDomainStatus?.domains?.color,
+                    }))
+                    : []);
+                if (plugin && structures.length > 0) {
+                    syncSiteSticks({ plugin, structures }).catch((e) => {
                         console.error(e);
                         self.setError(e);
                     });
@@ -394,7 +415,7 @@ function stateModelFactory() {
         },
         /**
          * #getter
-         * The colour scheme's key, from the first structure that has loaded.
+         * The color scheme's key, from the first structure that has loaded.
          */
         get colorLegend() {
             const plugin = self.molstarPluginContext;
@@ -406,9 +427,20 @@ function stateModelFactory() {
                     colorScheme: self.colorScheme,
                     structure,
                     entityId: loaded.mappedEntity?.entityId,
-                    domains: loaded.alignmentDomainStatus?.domains,
+                    domainColor: loaded.alignmentDomainStatus?.domains?.color,
                 })
                 : undefined;
+        },
+        /**
+         * #getter
+         * The alignment domains' legend, one group per layer, while the view
+         * colors by them
+         */
+        get domainLegend() {
+            const domains = self.colorScheme === 'alignment-domains'
+                ? self.structures.find(s => s.alignmentDomains)?.alignmentDomains
+                : undefined;
+            return domains ? domainLegend(domains) : undefined;
         },
         /**
          * #getter

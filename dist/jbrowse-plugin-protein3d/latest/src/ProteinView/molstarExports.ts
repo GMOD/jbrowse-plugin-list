@@ -7,6 +7,7 @@ export {
   StructureProperties,
   StructureSelection,
 } from 'molstar/lib/mol-model/structure'
+export { ProteinBackboneAtoms } from 'molstar/lib/mol-model/structure/model/types'
 export { tmAlign } from 'molstar/lib/mol-model/structure/structure/util/tm-align'
 export { MmcifFormat } from 'molstar/lib/mol-model-formats/structure/mmcif'
 export { PdbFormat } from 'molstar/lib/mol-model-formats/structure/pdb'
@@ -18,11 +19,15 @@ export { DefaultPluginSpec, PluginSpec } from 'molstar/lib/mol-plugin/spec'
 export { createPluginUI } from 'molstar/lib/mol-plugin-ui'
 export { renderReact18 } from 'molstar/lib/mol-plugin-ui/react18'
 export { DefaultPluginUISpec } from 'molstar/lib/mol-plugin-ui/spec'
-export { createStructureColorThemeParams } from 'molstar/lib/mol-plugin-state/helpers/structure-representation-params'
+export {
+  createStructureColorThemeParams,
+  createStructureRepresentationParams,
+} from 'molstar/lib/mol-plugin-state/helpers/structure-representation-params'
 export { StructureSelectionQueries } from 'molstar/lib/mol-plugin-state/helpers/structure-selection-query'
 export { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
 export { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 export { StateObjectRef, StateSelection } from 'molstar/lib/mol-state'
+export { MolScriptBuilder } from 'molstar/lib/mol-script/language/builder'
 export { Script } from 'molstar/lib/mol-script/script'
 export { Color } from 'molstar/lib/mol-util/color'
 export { registerColorThemes } from './colorThemes'

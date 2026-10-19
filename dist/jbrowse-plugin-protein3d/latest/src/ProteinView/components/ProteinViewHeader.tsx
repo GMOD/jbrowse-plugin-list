@@ -13,7 +13,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
 import { observer } from 'mobx-react'
 
-import { MolstarLegendKey } from './ColorKey'
+import { ColorKey, MolstarLegendKey } from './ColorKey'
 import HeaderStructureRows from './HeaderStructureRow'
 import ProteinAlignment from './ProteinAlignment'
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton'
@@ -152,7 +152,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
 }: {
   model: JBrowsePluginProteinViewModel
 }) {
-  const { alignmentStructure, showAlignment, colorLegend } = model
+  const { alignmentStructure, showAlignment, colorLegend, domainLegend } = model
   return (
     <div>
       {/* The view's controls share the first structure row's line rather than
@@ -174,7 +174,16 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
           <ProteinAlignmentHelpButton model={model} />
         </div>
       </div>
-      {colorLegend ? (
+      {domainLegend ? (
+        domainLegend.map(group => (
+          <ColorKey
+            key={group.title}
+            title={group.title}
+            entries={group.entries}
+            testId="structure-legend"
+          />
+        ))
+      ) : colorLegend ? (
         <MolstarLegendKey title="Structure colors" legend={colorLegend} />
       ) : null}
       {showAlignment && alignmentStructure?.pairwiseAlignment ? (

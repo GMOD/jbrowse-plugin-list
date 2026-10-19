@@ -10,6 +10,8 @@ import {
   DEFAULT_ALIGNMENT_ALGORITHM,
 } from 'p2s_mapper'
 
+import { domainLegend } from './alignmentDomains'
+import { syncSiteSticks } from './alignmentSites'
 import {
   COLOR_SCHEME_VALUES,
   type ProteinColorScheme,
@@ -388,7 +390,8 @@ function stateModelFactory() {
                     molstarStructure,
                     entityId: s.mappedEntity?.entityId,
                     placedValues: s.placedValues,
-                    domains: s.alignmentDomainStatus?.domains,
+                    placedSites: s.alignmentDomainStatus?.placedSites,
+                    domainColor: s.alignmentDomainStatus?.domains?.color,
                   }))
                 : [],
             )
@@ -398,6 +401,30 @@ function stateModelFactory() {
                 colorScheme,
                 structures,
               }).catch((e: unknown) => {
+                console.error(e)
+                self.setError(e)
+              })
+            }
+          }),
+        )
+
+        // The alignment sites' sticks, layer 2 of the alignment domains,
+        // follow the scheme, the alignment's domains and each load.
+        addDisposer(
+          self,
+          autorun(() => {
+            const plugin = self.molstarPluginContext
+            const structures = self.structures.flatMap(s =>
+              s.structureSequences
+                ? s.molstarStructures.map(molstarStructure => ({
+                    molstarStructure,
+                    sites: s.alignmentDomainStatus?.placedSites,
+                    color: s.alignmentDomainStatus?.domains?.color,
+                  }))
+                : [],
+            )
+            if (plugin && structures.length > 0) {
+              syncSiteSticks({ plugin, structures }).catch((e: unknown) => {
                 console.error(e)
                 self.setError(e)
               })
@@ -493,7 +520,7 @@ function stateModelFactory() {
       },
       /**
        * #getter
-       * The colour scheme's key, from the first structure that has loaded.
+       * The color scheme's key, from the first structure that has loaded.
        */
       get colorLegend() {
         const plugin = self.molstarPluginContext
@@ -505,9 +532,21 @@ function stateModelFactory() {
               colorScheme: self.colorScheme,
               structure,
               entityId: loaded.mappedEntity?.entityId,
-              domains: loaded.alignmentDomainStatus?.domains,
+              domainColor: loaded.alignmentDomainStatus?.domains?.color,
             })
           : undefined
+      },
+      /**
+       * #getter
+       * The alignment domains' legend, one group per layer, while the view
+       * colors by them
+       */
+      get domainLegend() {
+        const domains =
+          self.colorScheme === 'alignment-domains'
+            ? self.structures.find(s => s.alignmentDomains)?.alignmentDomains
+            : undefined
+        return domains ? domainLegend(domains) : undefined
       },
       /**
        * #getter

@@ -73,7 +73,7 @@ const feature = {
 const outer: ConnectedDomain = {
   name: 'Hb beta-like',
   accession: 'cd08925',
-  color: '#F8766D',
+  kind: 'domain',
   regions: [
     { refName: '11', start: 103, end: 109 },
     { refName: '11', start: 200, end: 206 },
@@ -82,16 +82,23 @@ const outer: ConnectedDomain = {
 const site: ConnectedDomain = {
   name: 'heme binding site',
   accession: 'site',
-  color: '#00BFC4',
+  kind: 'site',
   regions: [{ refName: '11', start: 106, end: 109 }],
+}
+const color = {
+  field: 'accession' as const,
+  domain: ['cd08925', 'site'],
+  range: ['#F8766D', '#00BFC4'],
+  labels: ['Hb beta-like', 'heme binding site'],
 }
 
 function setup() {
+  const connectedDomains: unknown = { features: [outer, site], color }
   const msa = observable({
     id: 'msa',
     type: 'MsaView',
     connectedViewId: 'lgv',
-    connectedDomains: [outer, site] as ConnectedDomain[],
+    connectedDomains,
   })
   testSession.views = observable([
     { id: 'lgv', type: 'LinearGenomeView', assemblyNames: ['hg19'] },
@@ -129,40 +136,72 @@ function setup() {
   return { parent, structure, msa }
 }
 
-test("a structure takes the connected alignment's domains, and follows them as they change", () => {
+test("a structure takes the connected alignment's domains, one layer per kind, and follows them as they change", () => {
   const { structure, msa } = setup()
   const seen: (PlacedValues | undefined)[] = []
+  const seenSites: (PlacedValues | undefined)[] = []
   const dispose = autorun(() => {
     seen.push(structure.placedValues)
+    seenSites.push(structure.alignmentDomainStatus?.placedSites)
   })
   expect(structure.statusMessage).toBeUndefined()
-  expect(structure.alignmentDomainStatus?.domains).toEqual([
-    { name: 'Hb beta-like', color: 0xf8766d },
-    { name: 'heme binding site', color: 0x00bfc4 },
-  ])
+  expect(structure.alignmentDomainStatus?.domains?.color).toEqual(color)
+  // the site is layer 2's, so the cartoon keeps the domain under it
   expect(seen.at(-1)).toEqual({
     entityId: '1',
     byLabelSeqId: new Map([
       [2, 0],
       [3, 0],
-      [4, 1],
+      [4, 0],
       [5, 0],
     ]),
   })
+  expect(seenSites.at(-1)).toEqual({
+    entityId: '1',
+    byLabelSeqId: new Map([[4, 1]]),
+  })
 
   runInAction(() => {
-    msa.connectedDomains = [outer]
+    msa.connectedDomains = { features: [outer], color }
   })
   expect(seen.at(-1)?.byLabelSeqId.get(4)).toBe(0)
+  expect(seenSites.at(-1)?.byLabelSeqId.size).toBe(0)
 
   runInAction(() => {
-    msa.connectedDomains = []
+    msa.connectedDomains = { features: [], color }
   })
   expect(seen.at(-1)).toBeUndefined()
   expect(structure.statusMessage).toBe(
     'The connected alignment shows no domains',
   )
   dispose()
+})
+
+test("msaview 5.5.0's array, with no kind, draws every entry on the cartoon", () => {
+  const { structure, msa } = setup()
+  runInAction(() => {
+    msa.connectedDomains = [
+      { ...outer, kind: undefined, color: '#F8766D' },
+      { ...site, kind: undefined, color: '#00BFC4' },
+    ]
+  })
+  expect(structure.placedValues?.byLabelSeqId.get(4)).toBe(1)
+  expect(structure.alignmentDomainStatus?.placedSites?.byLabelSeqId.size).toBe(
+    0,
+  )
+  expect(structure.alignmentDomainStatus?.domains?.color.range).toEqual([
+    '#F8766D',
+    '#00BFC4',
+  ])
+})
+
+test('the overview rows show whatever the color scheme', () => {
+  const { parent, structure } = setup()
+  parent.setColorScheme('chain-id')
+  expect(structure.domainRows.map(r => [r.label, r.kind])).toEqual([
+    ['Hb beta-like', 'domain'],
+    ['heme binding site', 'site'],
+  ])
 })
 
 test('another scheme reads no domains and says nothing about them', () => {

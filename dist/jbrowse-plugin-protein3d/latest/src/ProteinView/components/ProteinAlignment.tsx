@@ -14,6 +14,7 @@ import { makeStyles } from 'tss-react/mui'
 import AlignmentRuler from './AlignmentRuler'
 import { ColorKey, GradientKey } from './ColorKey'
 import ColumnOverlays, { SelectionBackdrop } from './ColumnOverlays'
+import DomainRowTrack from './DomainRowTrack'
 import FeatureTypeLabel from './FeatureTypeLabel'
 import MismatchShading from './MismatchShading'
 import ProteinFeatureTrack from './ProteinFeatureTrack'
@@ -106,6 +107,7 @@ const ProteinAlignment = observer(function ProteinAlignment({
     confidenceCells,
     columnWidth,
     laneHeight,
+    domainRows,
   } = model
   const hydrophobicityCells = showAllFeatureTracks
     ? model.hydrophobicityCells
@@ -253,7 +255,30 @@ const ProteinAlignment = observer(function ProteinAlignment({
     trackLanes += lanes
     rows.push({ key, height: lanes * laneHeight, label: rowLabel, content })
   }
+  const sectionTitle = (key: string, title: string) => {
+    rows.push({
+      key,
+      height: ROW_HEIGHT,
+      label: null,
+      content: <span className={classes.trackMessage}>{title}</span>,
+    })
+  }
   if (showProteinTracks) {
+    if (domainRows.length > 0) {
+      sectionTitle('alignment-section', 'From the alignment')
+      for (const row of domainRows) {
+        trackRow(
+          `alignment-${row.accession}`,
+          1,
+          <GutterLabel
+            label={row.label}
+            title={`${row.label} (${row.accession}), a ${row.kind} the connected alignment draws on its query row`}
+          />,
+          <DomainRowTrack row={row} model={model} />,
+        )
+      }
+      sectionTitle('uniprot-section', 'From UniProt')
+    }
     if (featureStatus) {
       rows.push({
         key: 'uniprot-status',

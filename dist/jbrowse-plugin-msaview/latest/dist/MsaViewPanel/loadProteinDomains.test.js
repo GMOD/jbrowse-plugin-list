@@ -7,6 +7,7 @@ const MATCH = {
         entry: { accession: 'cd00093', name: 'HTH_XRE', description: 'a domain' },
     },
     locations: [{ start: 5, end: 40 }],
+    featureType: 'Region',
 };
 function model(treeMetadata) {
     return {
@@ -27,6 +28,7 @@ test('an accession row becomes one annotation per location, keyed by row name', 
             accession: 'cd00093',
             name: 'HTH_XRE',
             description: 'a domain',
+            featureType: 'Region',
             start: 5,
             end: 40,
         },

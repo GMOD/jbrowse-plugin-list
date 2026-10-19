@@ -11,12 +11,13 @@ export async function loadProteinDomains(self, signal) {
         throw new Error('No NCBI accessions found in alignment rows');
     }
     const byAccession = await fetchProteinDomains(rowAccessions.map(r => r.accession), signal);
-    const annotations = rowAccessions.flatMap(({ rowName, accession }) => (byAccession.get(accession) ?? []).flatMap(({ signature, locations }) => signature.entry
+    const annotations = rowAccessions.flatMap(({ rowName, accession }) => (byAccession.get(accession) ?? []).flatMap(({ signature, locations, featureType }) => signature.entry
         ? locations.map(({ start, end }) => ({
             id: rowName,
             accession: signature.entry.accession,
             name: signature.entry.name,
             description: signature.entry.description,
+            featureType,
             start,
             end,
         }))

@@ -1,3 +1,5 @@
+import { EMPTY_DOMAIN_COLOR, domainMarkOf } from './alignmentDomains';
+import { SITES_TAG } from './alignmentSites';
 import loadMolstar from './loadMolstar';
 import { structureRootCell } from './structureCells';
 import { VARIANT_EFFECT_SCHEMES } from './variantEffects';
@@ -37,7 +39,7 @@ export function molstarThemeName(colorScheme) {
     return scheme && 'theme' in scheme ? scheme.theme : colorScheme;
 }
 /**
- * The schemes that colour by values placed on each structure's residues, which
+ * The schemes that color by values placed on each structure's residues, which
  * their themes read from a registry (see placedValueRegistry)
  */
 export const PLACED_VALUE_SCHEMES = [
@@ -47,11 +49,15 @@ export const PLACED_VALUE_SCHEMES = [
 function isPlacedValueScheme(scheme) {
     return PLACED_VALUE_SCHEMES.some(s => s === scheme);
 }
-function themeParams(colorScheme, { entityId, domains, revision, }) {
+function themeParams(colorScheme, { entityId, domainColor, revision, representationType = '', }) {
     return colorScheme === 'mapped-chain'
         ? { entityId: entityId ?? '' }
         : colorScheme === 'alignment-domains'
-            ? { revision, domains: domains ?? [] }
+            ? {
+                revision,
+                color: domainColor ?? EMPTY_DOMAIN_COLOR,
+                mark: domainMarkOf(representationType),
+            }
             : isPlacedValueScheme(colorScheme)
                 ? { revision }
                 : undefined;
@@ -62,7 +68,8 @@ let revision = 0;
  * The representations are found in the live state tree rather than through
  * `updateRepresentationsTheme`, whose components come from the hierarchy
  * snapshot (see structureRootCell). The non-ghost ones are what that call
- * reached: each component's, the focus representation's included.
+ * reached: each component's, the focus representation's included. The
+ * alignment sites' sticks keep their own theme (see alignmentSites).
  *
  * A placed-value scheme's values reach its theme through the registry its
  * theme reads (see placedValueRegistry), registered for each structure before
@@ -78,19 +85,27 @@ export async function applyColorTheme({ plugin, colorScheme, structures, }) {
     }
     const update = plugin.state.data.build();
     let recolored = 0;
-    for (const { molstarStructure, entityId, placedValues, domains, } of structures) {
+    for (const { molstarStructure, entityId, placedValues, placedSites, domainColor, } of structures) {
         if (placed) {
             registerPlacedValues(colorScheme, molstarStructure, placedValues);
+        }
+        if (colorScheme === 'alignment-domains') {
+            registerPlacedValues('alignment-sites', molstarStructure, placedSites);
         }
         const cell = structureRootCell(plugin, molstar, molstarStructure);
         const representations = cell
             ? plugin.state.data.select(StateSelection.Generators.ofTransformer(StateTransforms.Representation.StructureRepresentation3D, cell.transform.ref))
             : [];
-        const params = themeParams(colorScheme, { entityId, domains, revision });
         for (const representation of representations) {
-            if (!representation.state.isGhost) {
+            if (!representation.state.isGhost &&
+                !representation.transform.tags?.includes(SITES_TAG)) {
                 update.to(representation).update(prev => {
-                    prev.colorTheme = createStructureColorThemeParams(plugin, molstarStructure, prev.type.name, theme, params);
+                    prev.colorTheme = createStructureColorThemeParams(plugin, molstarStructure, prev.type.name, theme, themeParams(colorScheme, {
+                        entityId,
+                        domainColor,
+                        revision,
+                        representationType: prev.type.name,
+                    }));
                 });
                 recolored++;
             }
@@ -105,8 +120,8 @@ export async function applyColorTheme({ plugin, colorScheme, structures, }) {
  * and its hidden-by-default controls panel buries. Built on one structure, so a
  * data-dependent table (chain ids) names that structure's entries.
  */
-export function colorSchemeLegend({ plugin, colorScheme, structure, entityId, domains, }) {
+export function colorSchemeLegend({ plugin, colorScheme, structure, entityId, domainColor, }) {
     return colorScheme === 'default'
         ? undefined
-        : plugin.representation.structure.themes.colorThemeRegistry.create(molstarThemeName(colorScheme), { structure }, themeParams(colorScheme, { entityId, domains }) ?? {}).legend;
+        : plugin.representation.structure.themes.colorThemeRegistry.create(molstarThemeName(colorScheme), { structure }, themeParams(colorScheme, { entityId, domainColor }) ?? {}).legend;
 }

@@ -3,7 +3,7 @@ import { addDisposer, getParent, isAlive, types, } from '@jbrowse/mobx-state-tre
 import { autorun, when } from 'mobx';
 import { alignTranscriptToEntity, alignmentCol, alignmentQuality, chooseMappedEntity, entityLabel, fetchUniProtStructureMappings, fusionPartnerPositions, getPdbIdFromUrl, getUniprotIdFromAlphaFoldTarget, looksLikePlddt, makeCoordinateMapper, makeLabelSeqIdIndex, mappedStructureIdentity, rangeToLabelSeqIds, residueNumber, resolveStructureUrl, stripStopCodon, structureDisplayLabel, structurePos, toLabelSeqIds, unmapStructurePositions, } from 'p2s_mapper';
 import { alignOffThread, isIdentical } from './alignOffThread';
-import { alignmentDomainStatus } from './alignmentDomains';
+import { alignmentDomainStatus, connectedAlignmentDomains, domainRows, } from './alignmentDomains';
 import { connectedHoverTranscriptPos } from './connectedHover';
 import { CHAR_WIDTH, MINOR_FEATURE_TYPES, trackGapOf, trackHeightOf, } from './constants';
 import { entityAlignedTo } from './entityAlignedTo';
@@ -1067,22 +1067,56 @@ const Structure = types
     },
     /**
      * #getter
-     * The connected alignment's domains and each residue's domain, undefined
-     * while the view colours by something else; see alignmentDomainStatus
+     * The connected genome view's assembly naming, for comparing a genome
+     * region's refName with the transcript's
+     */
+    get genomeNaming() {
+        return assemblyNaming(getSession(self).assemblyManager, self.connectedView?.assemblyNames[0]);
+    },
+    /**
+     * #getter
+     * The connected alignment's domains, data plus its color object, whatever
+     * the color scheme; see alignmentDomains
+     */
+    get alignmentDomains() {
+        return connectedAlignmentDomains(getSession(self).views, self.connectedViewId).domains;
+    },
+}))
+    .views(self => ({
+    /**
+     * #getter
+     * The alignment domains placed on the mapped entity, one layer per kind,
+     * undefined while the view colors by something else; see
+     * alignmentDomainStatus
      */
     get alignmentDomainStatus() {
-        if (self.parentView.colorScheme !== 'alignment-domains') {
-            return undefined;
-        }
-        const { views, assemblyManager } = getSession(self);
-        return alignmentDomainStatus({
-            views,
-            connectedViewId: self.connectedViewId,
-            mapping: self.genomeToTranscriptSeqMapping,
-            naming: assemblyNaming(assemblyManager, self.connectedView?.assemblyNames[0]),
-            entity: self.mappedEntity,
-            transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
-        });
+        return self.parentView.colorScheme === 'alignment-domains'
+            ? alignmentDomainStatus({
+                views: getSession(self).views,
+                connectedViewId: self.connectedViewId,
+                mapping: self.genomeToTranscriptSeqMapping,
+                naming: self.genomeNaming,
+                entity: self.mappedEntity,
+                transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
+            })
+            : undefined;
+    },
+    /**
+     * #getter
+     * The overview's "From the alignment" rows, one per accession, whatever
+     * the color scheme
+     */
+    get domainRows() {
+        const { alignmentDomains: domains, genomeToTranscriptSeqMapping: mapping, transcriptSeqToStructureSeqPosition: transcriptToStructure, structurePositionToAlignmentMap: structureToAlignment, } = self;
+        return domains && mapping && transcriptToStructure && structureToAlignment
+            ? domainRows({
+                domains,
+                mapping,
+                naming: self.genomeNaming,
+                transcriptToStructure,
+                structureToAlignment,
+            })
+            : [];
     },
 }))
     .views(self => ({
@@ -1096,8 +1130,9 @@ const Structure = types
     },
     /**
      * #getter
-     * What the view's placed-value scheme colours this structure's mapped
-     * entity by, by label_seq_id
+     * What the view's placed-value scheme colors this structure's mapped
+     * entity by, by label_seq_id: for the alignment domains, layer 1's
+     * cartoon
      */
     get placedValues() {
         return (self.alignmentDomainStatus?.placed ?? self.variantEffectStatus.placed);
@@ -1114,7 +1149,7 @@ const Structure = types
      * #getter
      * What went wrong with this structure, for the line beside its label in
      * the header: a failed load, a structure with no chain the transcript
-     * can be aligned to, or a colour scheme that leaves it grey. One line per
+     * can be aligned to, or a color scheme that leaves it grey. One line per
      * structure, rather than a view-wide banner that names neither which
      * structure nor what it was doing.
      */
@@ -1389,6 +1424,24 @@ const Structure = types
             self.setClickedStructureRanges([]);
         }
     },
+    /**
+     * #action
+     * A click on an overview row from the alignment: selects every residue of
+     * the row's accession, a site's scattered ones included, or puts the
+     * selection down when the row already holds it.
+     */
+    toggleDomainRow(row) {
+        const id = `alignment:${row.accession}`;
+        if (self.selectedFeatureId === id) {
+            self.setSelectedFeatureId(undefined);
+            self.setClickedStructureRanges([]);
+        }
+        else {
+            self.parentView.clearSelection();
+            self.setClickedStructureRanges(row.bars.map(b => ({ start: b.structureStart, end: b.structureEnd })));
+            self.setSelectedFeatureId(id);
+        }
+    },
 }))
     .actions(self => ({
     /**
@@ -1558,14 +1611,14 @@ const Structure = types
             }
         }));
         addDisposer(self, autorun(() => {
-            const { hovered, views, assemblyManager } = getSession(self);
+            const { hovered, views } = getSession(self);
             const hover = connectedHoverTranscriptPos({
                 hovered,
                 views,
                 mapping: self.genomeToTranscriptSeqMapping,
                 connectedViewId: self.connectedViewId,
                 genomeViewReady: !!self.connectedView?.initialized,
-                naming: assemblyNaming(assemblyManager, self.connectedView?.assemblyNames[0]),
+                naming: self.genomeNaming,
             });
             if (hover) {
                 self.setConnectedHoveredPosition(self.transcriptSeqToStructureSeqPosition?.[hover.transcriptPos], hover.source);
