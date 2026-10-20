@@ -20,7 +20,7 @@ import { viewAssemblyName } from '../ProteinView/util'
 import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 
-export interface FoundGene {
+interface FoundGene {
   feature: Feature
   trackId: string
 }

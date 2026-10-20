@@ -6,8 +6,8 @@ import useAlphaFoldData from './useAlphaFoldData'
 import useTranscriptIsoformSelection from './useTranscriptIsoformSelection'
 
 import type { UniProtIdLookup } from './useUniProtIdLookup'
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 export default function useAlphaFoldDBSearch({
   feature,
@@ -16,7 +16,7 @@ export default function useAlphaFoldDBSearch({
   preferredTranscriptId,
 }: {
   feature: Feature
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   lookup: UniProtIdLookup
   preferredTranscriptId?: string
 }) {
@@ -25,7 +25,7 @@ export default function useAlphaFoldDBSearch({
   const {
     isLoading: isAlphaFoldLoading,
     isValidating: isAlphaFoldValidating,
-    error: alphaFoldError,
+    modelsUnreachable,
     model,
     noModel,
   } = useAlphaFoldData({ uniprotId, feature, view })
@@ -66,7 +66,7 @@ export default function useAlphaFoldDBSearch({
   const isLoading = loadingStatuses.length > 0
 
   // errors wait for loading to finish, so a lookup in flight doesn't flash one
-  const rawError = isoformError ?? lookup.lookupError ?? alphaFoldError
+  const rawError = isoformError ?? lookup.lookupError
   const error = isLoading ? undefined : rawError
 
   return {
@@ -86,6 +86,7 @@ export default function useAlphaFoldDBSearch({
     modelAccession: model?.accession,
     structureSequence,
     noModel,
+    modelsUnreachable: isLoading ? undefined : modelsUnreachable,
 
     error,
     loadingStatuses,

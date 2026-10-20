@@ -12,9 +12,9 @@ import { removeMolstarStructure } from './removeStructure';
  * each structure that is neither loaded nor already loading. The guards handle
  * the lifecycle hazards of an external GPU resource:
  *
- *   - a non-observable in-flight Set stops a re-entrant run (a new structure
- *     pushed, or the plugin swapped mid-load) from starting a duplicate load of
- *     the same structure;
+ *   - a non-observable in-flight map, from each structure to the plugin it is
+ *     loading into, stops a re-entrant run from starting a duplicate load into
+ *     the same plugin, while a plugin swapped in mid-load starts at once;
  *   - a load whose plugin was replaced or whose model was destroyed while
  *     awaiting has its result discarded rather than written into a torn-down
  *     plugin;
@@ -22,7 +22,7 @@ import { removeMolstarStructure } from './removeStructure';
  *     reloaded into the current plugin so it isn't left stranded unloaded.
  */
 export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
-    const loadingStructures = new Set();
+    const loadingIn = new Map();
     const failedIn = new WeakMap();
     /** The accession a structure still has to turn into a file, if any. */
     function unresolvedAccession(structure) {
@@ -60,8 +60,18 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
         }
         structure.setUrl(picked.url);
     }
+    function settle(structure, plugin) {
+        if (loadingIn.get(structure) === plugin) {
+            loadingIn.delete(structure);
+        }
+    }
+    function retryIn(structure, current) {
+        if (loadingIn.get(structure) !== current) {
+            loadInto(structure, current);
+        }
+    }
     function loadInto(structure, plugin) {
-        loadingStructures.add(structure);
+        loadingIn.set(structure, plugin);
         // A retry — a plugin swap, a remount — starts over, so the last attempt's
         // failure goes with it. Left in place it also reported the structure as
         // settled for the whole of the retry, since `loading` reads it.
@@ -77,7 +87,7 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
         loaded
             .then(data => {
             if (!data) {
-                loadingStructures.delete(structure);
+                settle(structure, plugin);
                 return;
             }
             if (!isAlive(structure)) {
@@ -85,7 +95,7 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
                 // Mol*, and no model owns it any more, so it would stay on the
                 // canvas and join the next superposition as a structure the view
                 // does not know it has.
-                loadingStructures.delete(structure);
+                settle(structure, plugin);
                 removeMolstarStructure({
                     plugin,
                     molstarStructure: data.molstarStructures?.[0],
@@ -99,13 +109,13 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
                 structure.setStructureData(data);
                 structure.setLoadedToMolstar(true);
             }
-            loadingStructures.delete(structure);
+            settle(structure, plugin);
             if (current && current !== plugin && !structure.loadedToMolstar) {
-                loadInto(structure, current);
+                retryIn(structure, current);
             }
         })
             .catch((e) => {
-            loadingStructures.delete(structure);
+            settle(structure, plugin);
             if (!isAlive(host) || !isAlive(structure)) {
                 return;
             }
@@ -113,7 +123,7 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
             if (current && current !== plugin) {
                 // a plugin torn down mid-load rejects too; the structure belongs in
                 // the current one, not in an error
-                loadInto(structure, current);
+                retryIn(structure, current);
             }
             else {
                 // the structure carries its own failure: a view-wide "Failed to
@@ -129,7 +139,7 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
         if (molstarPluginContext) {
             for (const structure of structures) {
                 if (!structure.loadedToMolstar &&
-                    !loadingStructures.has(structure) &&
+                    loadingIn.get(structure) !== molstarPluginContext &&
                     failedIn.get(structure) !== molstarPluginContext) {
                     loadInto(structure, molstarPluginContext);
                 }

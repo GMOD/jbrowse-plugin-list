@@ -4,7 +4,7 @@ import useAlphaFoldData from './useAlphaFoldData';
 import useTranscriptIsoformSelection from './useTranscriptIsoformSelection';
 export default function useAlphaFoldDBSearch({ feature, view, lookup, preferredTranscriptId, }) {
     const { uniprotId, isLookupLoading } = lookup;
-    const { isLoading: isAlphaFoldLoading, isValidating: isAlphaFoldValidating, error: alphaFoldError, model, noModel, } = useAlphaFoldData({ uniprotId, feature, view });
+    const { isLoading: isAlphaFoldLoading, isValidating: isAlphaFoldValidating, modelsUnreachable, model, noModel, } = useAlphaFoldData({ uniprotId, feature, view });
     // a stable array, or the isoform picker realigns on every render
     const modelSequence = model?.sequence;
     const structureSequences = useMemo(() => (modelSequence ? [modelSequence] : undefined), [modelSequence]);
@@ -23,7 +23,7 @@ export default function useAlphaFoldDBSearch({ feature, view, lookup, preferredT
     ].filter(s => typeof s === 'string');
     const isLoading = loadingStatuses.length > 0;
     // errors wait for loading to finish, so a lookup in flight doesn't flash one
-    const rawError = isoformError ?? lookup.lookupError ?? alphaFoldError;
+    const rawError = isoformError ?? lookup.lookupError;
     const error = isLoading ? undefined : rawError;
     return {
         ...lookup,
@@ -40,6 +40,7 @@ export default function useAlphaFoldDBSearch({ feature, view, lookup, preferredT
         modelAccession: model?.accession,
         structureSequence,
         noModel,
+        modelsUnreachable: isLoading ? undefined : modelsUnreachable,
         error,
         loadingStatuses,
         // While the structure is refetched, structureSequence is still the previous

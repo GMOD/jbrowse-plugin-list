@@ -29,7 +29,7 @@ export interface LociMarks {
 export interface ResidueTarget {
   structure: Structure
   /** Confines the residues to this mmCIF entity, so a residue number doesn't
-   * light up on a binding partner or the other half of a homodimer. */
+   * light up on a binding partner. */
   entityId?: string
   labelSeqIds: number[]
 }

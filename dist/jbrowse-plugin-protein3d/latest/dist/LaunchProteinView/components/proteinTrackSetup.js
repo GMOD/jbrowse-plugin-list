@@ -2,15 +2,13 @@ import { myfetch, uniprotGffUrl } from 'p2s_mapper';
 import { RESIDUE_COLORS } from '../../ProteinView/residueColors';
 import { UNIPROT_FEATURE_COLOR } from '../../ProteinView/uniprotFeatureTypes';
 // A quantitative display's color reads only `score`, and a linear one ramps
-// across the plot's y domain, so it takes the ramp's stops and middle alone.
-// Hosts before 2026-09-26 refuse a wiggle color's `title` and `labels`; the
-// threshold needs its labels, and the ramp leaves both off to load there too.
+// across the plot's y domain, so it takes the ramp's stops, middle and title
 function wiggleColor(color) {
     if (color.scale === 'threshold') {
         return { ...color, field: 'score' };
     }
-    const { scale, range, domainMid } = color;
-    return { field: 'score', scale, range, domainMid };
+    const { scale, range, domainMid, title } = color;
+    return { field: 'score', scale, range, domainMid, title };
 }
 export async function fetchUniProtFeatureTypes(uniprotId) {
     const data = await (await myfetch(uniprotGffUrl(uniprotId))).text();

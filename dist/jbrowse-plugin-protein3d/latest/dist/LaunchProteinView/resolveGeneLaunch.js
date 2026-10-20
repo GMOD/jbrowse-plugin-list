@@ -5,6 +5,17 @@ import { rankIsoforms, rankedTranscriptId, } from '../AlignTranscriptRpc/isoform
 import { fetchTranscriptProteinSeqs } from './utils/translateTranscripts';
 import { extractFeatureIdentifiers, extractTaxonId } from './utils/util';
 import { alignOffThread } from '../ProteinView/alignOffThread';
+/**
+ * The AlphaFold file a launch opens, `models` undefined when the API did not
+ * answer. That says nothing about the accession, so the spelled canonical
+ * filename is worth a try; an API answering with no models has said there is
+ * nothing to open. The structure loader draws the same line.
+ */
+export function launchAlphaFoldModel(uniprotId, models, isoformSequences) {
+    return models
+        ? pickAlphaFoldModel(models, isoformSequences)
+        : { accession: uniprotId, url: getAlphaFoldStructureUrl(uniprotId) };
+}
 /** Why a resolved gene has no structure to open. */
 export function describeMissingStructure(geneName, { uniprotId, lookupError }) {
     return uniprotId
@@ -101,19 +112,11 @@ export async function resolveGeneLaunch({ host, feature, preferredTranscriptId, 
         id: t.transcript.id(),
         seq: t.seq,
     }));
-    // An unreachable API says nothing about the accession, so the spelled
-    // canonical filename is worth a try; an API answering with no models has
-    // said there is nothing to open. The structure loader draws the same line.
-    const models = uniprotId
-        ? await host.fetchAlphaFoldModels(uniprotId).catch(() => undefined)
-        : [];
-    const model = models
-        ? pickAlphaFoldModel(models, Object.fromEntries(isoforms.map(i => [i.id, { seq: i.seq ?? '' }])))
+    const model = uniprotId
+        ? launchAlphaFoldModel(uniprotId, await host.fetchAlphaFoldModels(uniprotId).catch(() => undefined), Object.fromEntries(isoforms.map(i => [i.id, { seq: i.seq ?? '' }])))
         : undefined;
-    const url = uniprotId && models === undefined
-        ? getAlphaFoldStructureUrl(uniprotId)
-        : model?.url;
-    const structureSequences = model ? [model.sequence] : [];
+    const url = model?.url;
+    const structureSequences = model?.sequence ? [model.sequence] : [];
     const preferred = translated.find(t => t.transcript.id() === preferredTranscriptId);
     const ranking = preferred
         ? undefined

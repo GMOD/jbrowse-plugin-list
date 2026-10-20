@@ -16,9 +16,9 @@ import {
   launch3DProteinView,
 } from '../utils/launchViewUtils'
 
-import type { FoldseekAlignment } from '../services/foldseekApi'
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
+import type { FoldseekAlignment } from 'p2s_mapper'
 
 export interface FlattenedHit extends FoldseekAlignment {
   db: string
@@ -36,7 +36,7 @@ export default function FoldseekActionMenu({
 }: {
   hit: FlattenedHit
   session: AbstractSessionModel
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   feature: Feature
   selectedTranscript?: Feature
   userProvidedTranscriptSequence?: string

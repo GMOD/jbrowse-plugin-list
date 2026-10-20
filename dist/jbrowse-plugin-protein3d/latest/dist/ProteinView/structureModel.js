@@ -3,12 +3,14 @@ import { addDisposer, getParent, isAlive, types, } from '@jbrowse/mobx-state-tre
 import { autorun, when } from 'mobx';
 import { alignTranscriptToEntity, alignmentCol, alignmentQuality, chooseMappedEntity, entityLabel, fetchUniProtStructureMappings, fusionPartnerPositions, getPdbIdFromUrl, getUniprotIdFromAlphaFoldTarget, looksLikePlddt, makeCoordinateMapper, makeLabelSeqIdIndex, mappedStructureIdentity, rangeToLabelSeqIds, residueNumber, resolveStructureUrl, stripStopCodon, structureDisplayLabel, structurePos, toLabelSeqIds, unmapStructurePositions, } from 'p2s_mapper';
 import { alignOffThread, isIdentical } from './alignOffThread';
+import { decideAlignment } from './alignmentDecision';
 import { alignmentDomainStatus, connectedAlignmentDomains, domainRows, } from './alignmentDomains';
 import { cssScaleOf, rampKeyOf } from './colorScale';
 import { connectedHoverTranscriptPos } from './connectedHover';
 import { CHAR_WIDTH, MINOR_FEATURE_TYPES, trackGapOf, trackHeightOf, } from './constants';
 import { entityAlignedTo } from './entityAlignedTo';
 import { frameResidues } from './frameSelection';
+import { codonLocus, hoverReadout } from './hoverReadout';
 import { resolvedColor } from './proteinColor';
 import { clickProteinToGenome, navigateToProteinPosition, structureRangesToGenomeRegions, } from './proteinToGenomeMapping';
 import { RESIDUE_COLORS } from './residueColors';
@@ -19,7 +21,7 @@ import { assemblyNaming, errorMessage } from './util';
 import { makeVariantEffectLoader } from './variantEffectLoader';
 import { alphaMissenseAsk, clinVarAsk, fetchVariantEffects, } from './variantEffectSource';
 import { variantEffectStatus } from './variantEffectStatus';
-import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings';
+import { genomeToTranscriptSeqMapping } from '../mappings';
 // `connectedViewId` comes from a spec, which can name any view of the session
 function isGenomeView(view) {
     return 'assemblyNames' in view;
@@ -465,14 +467,6 @@ const Structure = types
     .views(self => ({
     /**
      * #getter
-     * Sequence strings of every polymer entity (back-compat for the alignment
-     * autorun and presence checks).
-     */
-    get structureSequences() {
-        return self.entities?.map(e => e.seq);
-    },
-    /**
-     * #getter
      * The entity that maps to the transcript: the chosen one when
      * `mappedEntityId` is set, else the first protein chain, so a standalone
      * structure with no transcript still has a chain to read hovers from.
@@ -605,50 +599,20 @@ const Structure = types
         return this.coordinateMapper?.maps.alignmentToStructurePosition;
     },
     /**
-     * #method
-     * What the mapped entity's residue at a 0-based position is called: its
-     * author number where the file has one (R248 of p53 in 1TUP, where the
-     * position is 154), so the ruler and hover read like the literature.
-     */
-    residueNumber(pos) {
-        return residueNumber(this.mappedEntity, pos);
-    },
-    /**
      * #getter
-     * The hovered residue, read out for the header: its author number first,
-     * then the transcript residue it aligns to when that differs (a crystal
-     * whose construct was renumbered from one), letters, chain and codon locus.
+     * The hovered residue, read out for the header; see hoverReadout
      */
     get hoverString() {
-        const r = self.hoverPosition;
-        if (r === undefined) {
-            return '';
-        }
-        const structureLetter = this.hoverStructureLetter;
-        const genomeLetter = this.hoverGenomeLetter;
-        const parts = [];
-        if (r.structureSeqPos !== undefined) {
-            const residue = this.residueNumber(r.structureSeqPos);
-            parts.push(`${residue}`);
-            const transcriptPos = this.structureSeqToTranscriptSeqPosition?.[r.structureSeqPos];
-            if (transcriptPos !== undefined && transcriptPos + 1 !== residue) {
-                parts.push(`Transcript residue: ${transcriptPos + 1}`);
-            }
-        }
-        if (structureLetter) {
-            parts.push(`Structure: ${structureLetter}`);
-        }
-        if (genomeLetter && structureLetter && genomeLetter !== structureLetter) {
-            parts.push(`Genome: ${genomeLetter}`);
-        }
-        if (r.chain) {
-            parts.push(`Chain: ${r.chain}`);
-        }
-        const locus = this.hoverGenomeLocus;
-        if (locus) {
-            parts.push(locus);
-        }
-        return parts.join(', ');
+        const hover = self.hoverPosition;
+        return hover
+            ? hoverReadout({
+                hover,
+                entity: this.mappedEntity,
+                structureToTranscript: this.structureSeqToTranscriptSeqPosition,
+                transcript: self.userProvidedTranscriptSequence,
+                locus: this.hoverGenomeLocus,
+            })
+            : '';
     },
     /**
      * #getter
@@ -657,19 +621,9 @@ const Structure = types
      */
     get hoverGenomeLocus() {
         const pos = this.structureSeqHoverPos;
-        const mapping = this.genomeToTranscriptSeqMapping;
-        const transcriptPos = pos === undefined
+        return codonLocus(this.genomeToTranscriptSeqMapping, pos === undefined
             ? undefined
-            : this.structureSeqToTranscriptSeqPosition?.[pos];
-        if (!mapping || transcriptPos === undefined) {
-            return undefined;
-        }
-        const spans = codingSpans(mapping.p2gCodon, [transcriptPos]);
-        const start = spans[0]?.[0];
-        const end = spans.at(-1)?.[1];
-        return start === undefined || end === undefined
-            ? undefined
-            : `${mapping.refName}:${start + 1}-${end}`;
+            : this.structureSeqToTranscriptSeqPosition?.[pos]);
     },
     /**
      * #getter
@@ -733,20 +687,6 @@ const Structure = types
         return makeLabelSeqIdIndex(this.mappedEntity);
     },
     /**
-     * #method
-     * The 0-based position a Mol* hover or click names on this structure, or
-     * undefined when it landed on another structure of the view, on a chain
-     * other than the mapped one, or on a residue the entity lacks. The
-     * position comes from the entity's own label_seq_ids rather than `- 1`, so
-     * a PDB numbered from its author residues maps to the right residue.
-     */
-    interactionPosition(info) {
-        return self.molstarModelIds.includes(info.modelId) &&
-            info.entityId === this.mappedEntity?.entityId
-            ? this.labelSeqIdIndex.get(info.labelSeqId)
-            : undefined;
-    },
-    /**
      * #getter
      * The residues the molstar 'select' channel should light, as label_seq_ids:
      * a clicked/declarative domain range takes priority, else the whole
@@ -808,67 +748,6 @@ const Structure = types
             : [];
     },
     /**
-     * #method
-     * The genome regions structure-residue ranges cover, one per stretch of
-     * contiguous coding bases.
-     */
-    structureRangesToGenomeHighlight(ranges) {
-        return structureRangesToGenomeRegions({
-            ranges,
-            assemblyName: self.connectedView?.assemblyNames[0],
-            model: {
-                genomeToTranscriptSeqMapping: this.genomeToTranscriptSeqMapping,
-                structureSeqToTranscriptSeqPosition: this.structureSeqToTranscriptSeqPosition,
-            },
-        });
-    },
-    /**
-     * #getter
-     * Genome regions to highlight in the LGV from the current hover, for a
-     * hover in this view only: the genome view and a connected MSA already
-     * mark their own pointer there, and echoing it doubles the band.
-     */
-    get hoverGenomeHighlights() {
-        const source = self.hoverPosition?.source;
-        return source === 'genome' || source === 'msa'
-            ? NO_REGIONS
-            : this.structureRangesToGenomeHighlight(rangeList(this.hoverHighlightRange));
-    },
-    /**
-     * #getter
-     * Genome regions to highlight in the LGV from the persistent click
-     * selection, one per run of coding bases across every selected range.
-     */
-    get clickGenomeHighlights() {
-        return this.structureRangesToGenomeHighlight(self.clickedStructureRanges);
-    },
-    /**
-     * #getter
-     * The hovered residue's one-letter code, read from the entity's sequence
-     * so a modified residue (MSE, TPO) shows its parent's letter.
-     */
-    get hoverStructureLetter() {
-        const structurePos = this.structureSeqHoverPos;
-        return structurePos === undefined
-            ? undefined
-            : this.mappedStructureSeq?.[structurePos];
-    },
-    /**
-     * #getter
-     * Returns the single-letter amino acid code from the genome/transcript at hover position
-     */
-    get hoverGenomeLetter() {
-        const structurePos = this.structureSeqHoverPos;
-        if (structurePos === undefined) {
-            return undefined;
-        }
-        const transcriptPos = this.structureSeqToTranscriptSeqPosition?.[structurePos];
-        if (transcriptPos === undefined) {
-            return undefined;
-        }
-        return self.userProvidedTranscriptSequence[transcriptPos];
-    },
-    /**
      * #getter
      */
     get alignmentMatchSet() {
@@ -897,7 +776,7 @@ const Structure = types
             (!self.pairwiseAlignment &&
                 !self.alignmentSkipped &&
                 !!self.userProvidedTranscriptSequence &&
-                !!this.structureSequences?.length));
+                !!self.entities?.length));
     },
     /**
      * #getter
@@ -1021,6 +900,68 @@ const Structure = types
     },
     get molstarPluginContext() {
         return this.parentView.molstarPluginContext;
+    },
+}))
+    .views(self => ({
+    /**
+     * #method
+     * What the mapped entity's residue at a 0-based position is called: its
+     * author number where the file has one (R248 of p53 in 1TUP, where the
+     * position is 154), so the ruler and hover read like the literature.
+     */
+    residueNumber(pos) {
+        return residueNumber(self.mappedEntity, pos);
+    },
+    /**
+     * #method
+     * The 0-based position a Mol* hover or click names on this structure, or
+     * undefined when it landed on another structure of the view, on a chain
+     * other than the mapped one, or on a residue the entity lacks. The
+     * position comes from the entity's own label_seq_ids rather than `- 1`, so
+     * a PDB numbered from its author residues maps to the right residue.
+     */
+    interactionPosition(info) {
+        return self.molstarModelIds.includes(info.modelId) &&
+            info.entityId === self.mappedEntity?.entityId
+            ? self.labelSeqIdIndex.get(info.labelSeqId)
+            : undefined;
+    },
+    /**
+     * #method
+     * The genome regions structure-residue ranges cover, one per stretch of
+     * contiguous coding bases.
+     */
+    structureRangesToGenomeHighlight(ranges) {
+        return structureRangesToGenomeRegions({
+            ranges,
+            assemblyName: self.connectedView?.assemblyNames[0],
+            model: {
+                genomeToTranscriptSeqMapping: self.genomeToTranscriptSeqMapping,
+                structureSeqToTranscriptSeqPosition: self.structureSeqToTranscriptSeqPosition,
+            },
+        });
+    },
+}))
+    .views(self => ({
+    /**
+     * #getter
+     * Genome regions to highlight in the LGV from the current hover, for a
+     * hover in this view only: the genome view and a connected MSA already
+     * mark their own pointer there, and echoing it doubles the band.
+     */
+    get hoverGenomeHighlights() {
+        const source = self.hoverPosition?.source;
+        return source === 'genome' || source === 'msa'
+            ? NO_REGIONS
+            : self.structureRangesToGenomeHighlight(rangeList(self.hoverHighlightRange));
+    },
+    /**
+     * #getter
+     * Genome regions to highlight in the LGV from the persistent click
+     * selection, one per run of coding bases across every selected range.
+     */
+    get clickGenomeHighlights() {
+        return self.structureRangesToGenomeHighlight(self.clickedStructureRanges);
     },
 }))
     .views(self => ({
@@ -1216,19 +1157,36 @@ const Structure = types
     // user picked, supersedes whatever is still running in the worker. The
     // worker finishes a superseded DP regardless; only its answer is dropped.
     let latestRequest = 0;
+    function supersedeAlignment() {
+        latestRequest++;
+        self.setAligning(false);
+    }
     return {
         actions: {
-            supersedeAlignment() {
-                latestRequest++;
-                self.setAligning(false);
-            },
+            supersedeAlignment,
             redecideAlignment() {
                 latestRequest++;
                 self.aligning = false;
                 self.pendingEntityId = undefined;
                 self.alignmentRedecisions++;
             },
-            alignInWorker({ name, args, inPlace, apply, fail, pendingEntityId, }) {
+            /**
+             * #action
+             * Applies an identical sequence's free alignment at once, superseding
+             * whatever is still running, and sends any other to the worker.
+             */
+            runAlignment({ identical, name, args, inPlace, apply, fail, pendingEntityId, }) {
+                if (identical) {
+                    supersedeAlignment();
+                    try {
+                        apply(inPlace());
+                    }
+                    catch (e) {
+                        console.error(e);
+                        self.setError(e);
+                    }
+                    return;
+                }
                 const request = ++latestRequest;
                 const current = () => request === latestRequest && isAlive(self);
                 self.setAligning(true, pendingEntityId);
@@ -1390,27 +1348,22 @@ const Structure = types
                 self.redecideAlignment();
             }
         };
-        if (isIdentical(transcript, entity.seq)) {
-            self.supersedeAlignment();
-            apply(align());
-        }
-        else {
-            self.alignInWorker({
-                name: 'ProteinAlignTranscriptToEntity',
-                args: {
-                    transcript,
-                    entitySeq: entity.seq,
-                    algorithm: self.alignmentAlgorithm,
-                },
-                inPlace: align,
-                apply,
-                fail: e => {
-                    self.parentView.setError(e);
-                    self.redecideAlignment();
-                },
-                pendingEntityId: entityId,
-            });
-        }
+        self.runAlignment({
+            identical: isIdentical(transcript, entity.seq),
+            name: 'ProteinAlignTranscriptToEntity',
+            args: {
+                transcript,
+                entitySeq: entity.seq,
+                algorithm: self.alignmentAlgorithm,
+            },
+            inPlace: align,
+            apply,
+            fail: e => {
+                self.parentView.setError(e);
+                self.redecideAlignment();
+            },
+            pendingEntityId: entityId,
+        });
     },
     /**
      * #action
@@ -1432,15 +1385,15 @@ const Structure = types
     .actions(self => ({
     /**
      * #action
+     * A gap puts the whole view's selection down, as Mol*'s background does.
      */
     clickAlignmentPosition(alignmentPos) {
         const structureSeqPos = self.coordinateMapper?.alignmentToStructure(alignmentCol(alignmentPos));
-        self.setSelectedFeatureId(undefined);
-        if (structureSeqPos !== undefined) {
-            self.selectResidues(structureSeqPos);
+        if (structureSeqPos === undefined) {
+            self.parentView.clearSelection();
         }
         else {
-            self.setClickedStructureRanges([]);
+            self.selectResidues(structureSeqPos);
         }
     },
     /**
@@ -1552,42 +1505,46 @@ const Structure = types
                 self.applySeed(self.resolveSelection(seed) ?? []);
             }));
         }
+        let realigning;
         addDisposer(self, autorun(() => {
             try {
-                const { userProvidedTranscriptSequence: transcript, entities, alignmentAlgorithm: algorithm, pairwiseAlignment, } = self;
+                const { alignmentAlgorithm: algorithm } = self;
                 // read only so that a redecision reruns this
                 // eslint-disable-next-line @typescript-eslint/no-meaningless-void-operator
                 void self.alignmentRedecisions;
-                // Every branch that decides the alignment anew supersedes what is
-                // still running. One that keeps the alignment held does not, or a
-                // reload of the same entities would drop a chain pick in flight.
-                if (!transcript || !entities?.length) {
-                    self.supersedeAlignment();
-                    return;
-                }
-                if (pairwiseAlignment) {
-                    if (!self.alignmentImported) {
-                        self.setEntityChosen();
-                        return;
-                    }
-                    const fit = entityAlignedTo(pairwiseAlignment, transcript, entities, self.mappedEntityId);
-                    if ('entityId' in fit) {
-                        self.setMappedEntityId(fit.entityId);
-                        self.setEntityChosen();
-                        return;
-                    }
-                    self.setViewError(new Error(`The alignment stored for ${self.label} no longer matches its chain and was recomputed: ${fit.problem}`));
-                    const saved = entities.find(e => e.entityId === self.mappedEntityId && !e.nucleicAcid);
-                    const realign = (seq) => () => alignTranscriptToEntity(transcript, seq, algorithm);
-                    if (!saved || isIdentical(transcript, saved.seq)) {
+                const decision = decideAlignment(self);
+                const reportStale = (problem) => {
+                    self.setViewError(new Error(`The alignment stored for ${self.label} no longer matches its chain and was recomputed: ${problem}`));
+                };
+                switch (decision.kind) {
+                    case 'nothingToAlign':
                         self.supersedeAlignment();
-                        self.applyRealignment(saved && realign(saved.seq)());
-                    }
-                    else {
-                        self.alignInWorker({
+                        break;
+                    case 'keep':
+                        self.setEntityChosen();
+                        break;
+                    case 'adopt':
+                        self.setMappedEntityId(decision.entityId);
+                        self.setEntityChosen();
+                        break;
+                    case 'discard':
+                        reportStale(decision.problem);
+                        self.supersedeAlignment();
+                        self.applyRealignment(undefined);
+                        break;
+                    case 'realign': {
+                        const { transcript, entity: { seq }, } = decision;
+                        const key = `${algorithm}:${transcript}:${seq}`;
+                        if (key === realigning && self.aligning) {
+                            break;
+                        }
+                        realigning = key;
+                        reportStale(decision.problem);
+                        self.runAlignment({
+                            identical: decision.identical,
                             name: 'ProteinAlignTranscriptToEntity',
-                            args: { transcript, entitySeq: saved.seq, algorithm },
-                            inPlace: realign(saved.seq),
+                            args: { transcript, entitySeq: seq, algorithm },
+                            inPlace: () => alignTranscriptToEntity(transcript, seq, algorithm),
                             apply: realigned => {
                                 self.applyRealignment(realigned);
                             },
@@ -1595,33 +1552,31 @@ const Structure = types
                                 self.setError(e);
                             },
                         });
+                        break;
                     }
-                    return;
-                }
-                const choose = () => chooseMappedEntity(transcript, entities, algorithm);
-                if (entities.some(e => !e.nucleicAcid && isIdentical(transcript, e.seq))) {
-                    self.supersedeAlignment();
-                    self.applyEntitySelection(choose());
-                }
-                else {
-                    self.alignInWorker({
-                        name: 'ProteinChooseMappedEntity',
-                        args: {
-                            transcript,
-                            entities: entities.map(({ seq, nucleicAcid }) => ({
-                                seq,
-                                nucleicAcid,
-                            })),
-                            algorithm,
-                        },
-                        inPlace: choose,
-                        apply: selection => {
-                            self.applyEntitySelection(selection);
-                        },
-                        fail: e => {
-                            self.setError(e);
-                        },
-                    });
+                    case 'choose': {
+                        const { transcript, entities } = decision;
+                        self.runAlignment({
+                            identical: decision.identical,
+                            name: 'ProteinChooseMappedEntity',
+                            args: {
+                                transcript,
+                                entities: entities.map(({ seq, nucleicAcid }) => ({
+                                    seq,
+                                    nucleicAcid,
+                                })),
+                                algorithm,
+                            },
+                            inPlace: () => chooseMappedEntity(transcript, entities, algorithm),
+                            apply: selection => {
+                                self.applyEntitySelection(selection);
+                            },
+                            fail: e => {
+                                self.setError(e);
+                            },
+                        });
+                        break;
+                    }
                 }
             }
             catch (e) {

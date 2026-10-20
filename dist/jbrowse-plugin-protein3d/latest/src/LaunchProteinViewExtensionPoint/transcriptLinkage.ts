@@ -7,7 +7,7 @@ import type {
 } from './resolveShortLaunch'
 import type { AbstractSessionModel } from '@jbrowse/core/util'
 
-export interface TranscriptLinkageSpec {
+interface TranscriptLinkageSpec {
   gene?: string
   transcriptId?: string
   uniprotId?: string
@@ -59,23 +59,43 @@ export async function resolveTranscriptLinkage(
   return { named, resolved, connectedView }
 }
 
+interface GenomeViewHost<V extends { id: string }> {
+  views: V[]
+  addView(typeName: string, initialState: Record<string, unknown>): V
+  removeView(view: V): void
+}
+
 /**
- * The genome view a launch links to. A session spec launches each view with
- * an auto-generated id, so it cannot cross-reference one by id; given a
- * `connectedView` instead, the launch creates the LinearGenomeView itself.
+ * Opens a view linked to a genome view, which is `connectedViewId` or, given
+ * a `connectedView` instead, a LinearGenomeView the launch creates itself: a
+ * session spec launches each view with an auto-generated id, so it cannot
+ * cross-reference one by id. When `open` throws, the launch removes a genome
+ * view it created, so a failed launch leaves the session as it found it.
  */
-export function connectGenomeView(
-  session: AbstractSessionModel,
-  connectedViewId: string | undefined,
-  connectedView: ConnectedViewSpec | undefined,
+export async function withConnectedGenomeView<V extends { id: string }, T>(
+  session: GenomeViewHost<V>,
+  {
+    connectedViewId,
+    connectedView,
+  }: { connectedViewId?: string; connectedView?: ConnectedViewSpec },
+  open: (
+    connectedViewId: string | undefined,
+    ownsConnectedView: boolean,
+  ) => Promise<T>,
 ) {
-  return (
-    connectedViewId ??
-    (connectedView
-      ? session.addView('LinearGenomeView', {
+  const created =
+    connectedViewId || !connectedView
+      ? undefined
+      : session.addView('LinearGenomeView', {
           ...connectedView,
           type: 'LinearGenomeView',
-        }).id
-      : undefined)
-  )
+        })
+  try {
+    return await open(connectedViewId ?? created?.id, !!created)
+  } catch (e) {
+    if (created && session.views.includes(created)) {
+      session.removeView(created)
+    }
+    throw e
+  }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { predict3Di, submitFoldseekSearch, waitForFoldseekResults, } from '../services/foldseekApi';
+import { predict3Di, submitFoldseekSearch, waitForFoldseekResults, } from 'p2s_mapper';
 export default function useFoldseekSearch() {
     const [results, setResults] = useState();
     const [predictData, setPredictData] = useState();
@@ -28,7 +28,7 @@ export default function useFoldseekSearch() {
         setError(undefined);
         setStatusMessage('Predicting 3Di structure...');
         try {
-            const result = await predict3Di({ aaSequence, signal });
+            const result = await predict3Di(aaSequence, { signal });
             setPredictData(result);
             return result;
         }
@@ -52,15 +52,9 @@ export default function useFoldseekSearch() {
         setError(undefined);
         setStatusMessage('Submitting search...');
         try {
-            const ticket = await submitFoldseekSearch({
-                aaSequence: aaSeq,
-                di3Sequence: di3Seq,
-                databases,
-                signal,
-            });
-            const result = await waitForFoldseekResults({
-                ticketId: ticket.id,
-                onStatusChange: setStatusMessage,
+            const ticket = await submitFoldseekSearch({ aaSequence: aaSeq, di3Sequence: di3Seq, databases }, { signal });
+            const result = await waitForFoldseekResults(ticket.id, {
+                onStatus: setStatusMessage,
                 signal,
             });
             setResults(result);

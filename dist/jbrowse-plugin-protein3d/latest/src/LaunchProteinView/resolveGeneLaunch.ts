@@ -19,7 +19,7 @@ import type { IsoformRanking } from '../AlignTranscriptRpc/isoformRanking'
 import type { TranscriptTranslation } from './utils/translateTranscripts'
 import type { FeatureIdentifiers } from './utils/util'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { Isoform, UniProtEntry } from 'p2s_mapper'
+import type { AlphaFoldModel, Isoform, UniProtEntry } from 'p2s_mapper'
 
 export interface GeneLaunch {
   transcript: Feature
@@ -35,6 +35,25 @@ export interface GeneLaunch {
 interface EntryLookup {
   uniprotId?: string
   lookupError?: unknown
+}
+
+export type LaunchAlphaFoldModel = Pick<AlphaFoldModel, 'accession' | 'url'> &
+  Partial<Pick<AlphaFoldModel, 'sequence' | 'confidenceUrl'>>
+
+/**
+ * The AlphaFold file a launch opens, `models` undefined when the API did not
+ * answer. That says nothing about the accession, so the spelled canonical
+ * filename is worth a try; an API answering with no models has said there is
+ * nothing to open. The structure loader draws the same line.
+ */
+export function launchAlphaFoldModel(
+  uniprotId: string,
+  models: AlphaFoldModel[] | undefined,
+  isoformSequences: Record<string, { seq: string }> | undefined,
+): LaunchAlphaFoldModel | undefined {
+  return models
+    ? pickAlphaFoldModel(models, isoformSequences)
+    : { accession: uniprotId, url: getAlphaFoldStructureUrl(uniprotId) }
 }
 
 /** Why a resolved gene has no structure to open. */
@@ -179,24 +198,16 @@ export async function resolveGeneLaunch({
     seq: t.seq,
   }))
 
-  // An unreachable API says nothing about the accession, so the spelled
-  // canonical filename is worth a try; an API answering with no models has
-  // said there is nothing to open. The structure loader draws the same line.
-  const models = uniprotId
-    ? await host.fetchAlphaFoldModels(uniprotId).catch(() => undefined)
-    : []
-  const model = models
-    ? pickAlphaFoldModel(
-        models,
+  const model = uniprotId
+    ? launchAlphaFoldModel(
+        uniprotId,
+        await host.fetchAlphaFoldModels(uniprotId).catch(() => undefined),
         Object.fromEntries(isoforms.map(i => [i.id, { seq: i.seq ?? '' }])),
       )
     : undefined
-  const url =
-    uniprotId && models === undefined
-      ? getAlphaFoldStructureUrl(uniprotId)
-      : model?.url
+  const url = model?.url
 
-  const structureSequences = model ? [model.sequence] : []
+  const structureSequences = model?.sequence ? [model.sequence] : []
   const preferred = translated.find(
     t => t.transcript.id() === preferredTranscriptId,
   )

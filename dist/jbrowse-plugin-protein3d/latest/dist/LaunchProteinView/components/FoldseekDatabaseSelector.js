@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Checkbox, FormControlLabel, FormGroup, Typography, } from '@mui/material';
+import { FOLDSEEK_DATABASES } from 'p2s_mapper';
 import { makeStyles } from 'tss-react/mui';
-import { FOLDSEEK_DATABASES, } from '../services/foldseekApi';
 const useStyles = makeStyles()({
     root: {
         display: 'flex',

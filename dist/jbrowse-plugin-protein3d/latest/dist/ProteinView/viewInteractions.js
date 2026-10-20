@@ -1,6 +1,7 @@
 import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree';
 import { autorun } from 'mobx';
 import { clickProteinToGenome } from './proteinToGenomeMapping';
+import { reportPluginFailure } from './reportPluginFailure';
 import subscribeMolstarInteraction from './subscribeMolstarInteraction';
 function forStructure(structure, info) {
     const structureSeqPos = info && structure.interactionPosition(info);
@@ -47,23 +48,24 @@ export function attachViewInteractions(view) {
         addDisposer(view, () => {
             unsubscribe?.();
         });
-        addDisposer(view, autorun(async () => {
+        addDisposer(view, autorun(() => {
             const { molstarPluginContext } = view;
             unsubscribe?.();
             unsubscribe = undefined;
             if (molstarPluginContext) {
-                const dispose = await subscribeMolstarInteraction({
+                subscribeMolstarInteraction({
                     plugin: molstarPluginContext,
                     kind,
                     onUpdate,
-                });
-                if (isAlive(view) &&
-                    view.molstarPluginContext === molstarPluginContext) {
-                    unsubscribe = dispose;
-                }
-                else {
-                    dispose();
-                }
+                }).then(dispose => {
+                    if (isAlive(view) &&
+                        view.molstarPluginContext === molstarPluginContext) {
+                        unsubscribe = dispose;
+                    }
+                    else {
+                        dispose();
+                    }
+                }, reportPluginFailure(view, molstarPluginContext));
             }
         }));
     };

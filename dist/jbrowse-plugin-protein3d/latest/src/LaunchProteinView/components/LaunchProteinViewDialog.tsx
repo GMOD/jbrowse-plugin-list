@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 
 import { Dialog } from '@jbrowse/core/ui'
-import { getContainingView, getSession } from '@jbrowse/core/util'
+import { getSession } from '@jbrowse/core/util'
 import { Tab, Tabs } from '@mui/material'
 
 import AlphaFoldDBSearch from './AlphaFoldDBSearch'
@@ -13,24 +13,25 @@ import UserProvidedStructure from './UserProvidedStructure'
 import useUniProtIdLookup from '../hooks/useUniProtIdLookup'
 import { getLaunchSideBySide, setLaunchSideBySide } from '../utils/sideBySide'
 
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 export default function LaunchProteinViewDialog({
   handleClose,
   feature,
   preferredTranscriptId,
   model,
+  view,
 }: {
   handleClose: () => void
   feature: Feature
   // the isoform the user right-clicked, preselected in every tab's picker
   preferredTranscriptId?: string
   model: AbstractTrackModel
+  view: LaunchingGenomeView
 }) {
   const [choice, setChoice] = useState(0)
   const session = getSession(model)
-  const view = getContainingView(model) as LinearGenomeViewModel
   // One lookup for the whole dialog: the tabs stay mounted once visited, so a
   // lookup per tab meant the same UniProt search ran twice and a row picked on
   // one tab left the other pointing at a different gene.

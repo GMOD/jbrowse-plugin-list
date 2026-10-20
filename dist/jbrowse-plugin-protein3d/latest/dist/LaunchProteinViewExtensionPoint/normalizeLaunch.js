@@ -33,6 +33,9 @@ export function isString(value) {
 function isBoolean(value) {
     return typeof value === 'boolean';
 }
+function isNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
 function isFeature(value) {
     return isRecord(value);
 }
@@ -60,19 +63,50 @@ export function isPairwiseAlignment(value) {
 }
 const RANGES = '{ start, end } numbers or an array of them';
 /**
- * A structure spec out of untyped fields. Launch text comes from a url, and
- * the structure model throws on a wrongly typed property, so a value of the
- * wrong type is reported under the name `at` gives it and left out.
+ * Launch text comes from a url, and the view model throws on a wrongly typed
+ * property, so the reader reports a value of the wrong type under the name
+ * `at` gives it and leaves it out.
  */
-function readStructure(fields, at, warnings) {
-    function read(key, accepts, expected) {
+function fieldReader(fields, at, warnings) {
+    return function read(key, accepts, expected) {
         const value = fields.get(key);
         if (value === undefined || accepts(value)) {
             return value;
         }
         warnings.push(`${at(key)} is not ${expected} and was ignored`);
         return undefined;
-    }
+    };
+}
+const LAUNCH_KEYS = [
+    'structures',
+    'gene',
+    'transcriptId',
+    'connectedView',
+    'sideBySide',
+];
+function readViewSettings(fields, warnings) {
+    const read = fieldReader(fields, key => `\`${key}\``, warnings);
+    const flag = (key) => read(key, isBoolean, 'true or false');
+    return {
+        id: read('id', isString, 'a string'),
+        displayName: read('displayName', isString, 'a string'),
+        height: read('height', isNumber, 'a number'),
+        trackHeight: read('trackHeight', isNumber, 'a number'),
+        showControls: flag('showControls'),
+        showAlignment: flag('showAlignment'),
+        showHighlight: flag('showHighlight'),
+        showProteinTracks: flag('showProteinTracks'),
+        compactTracks: flag('compactTracks'),
+        showAllFeatureTracks: flag('showAllFeatureTracks'),
+        zoomToBaseLevel: flag('zoomToBaseLevel'),
+        autoScrollAlignment: flag('autoScrollAlignment'),
+        alignmentAlgorithm: read('alignmentAlgorithm', isString, 'a string'),
+        color: fields.get('color'),
+        colorScheme: read('colorScheme', isString, 'a string'),
+    };
+}
+function readStructure(fields, at, warnings) {
+    const read = fieldReader(fields, at, warnings);
     return {
         url: read('url', isString, 'a string'),
         data: read('data', isString, 'a string'),
@@ -106,6 +140,16 @@ function withUrl(structure) {
 export function normalizeLaunch(launch) {
     const top = new Map(Object.entries(launch));
     const warnings = [];
+    const settings = readViewSettings(top, warnings);
+    const known = new Set([
+        ...Object.keys(settings),
+        ...STRUCTURE_KEYS,
+        ...LAUNCH_KEYS,
+    ]);
+    const unknownKeys = [...top.keys()].filter(key => !known.has(key));
+    if (unknownKeys.length > 0) {
+        warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`);
+    }
     const looksUpGene = !!top.get('gene') && !top.get('userProvidedTranscriptSequence');
     const noStructure = top.get('gene')
         ? 'the launch names no structure, and `gene` is not looked up beside `userProvidedTranscriptSequence`'
@@ -120,6 +164,7 @@ export function normalizeLaunch(launch) {
         if (namesSource(structure)) {
             return {
                 requested: [withUrl(structure)],
+                settings,
                 warnings,
                 geneModel: looksUpGene &&
                     !!structure.uniprotId &&
@@ -130,7 +175,7 @@ export function normalizeLaunch(launch) {
             };
         }
         return looksUpGene
-            ? { requested: [structure], warnings, geneModel: 'required' }
+            ? { requested: [structure], settings, warnings, geneModel: 'required' }
             : { error: noStructure, warnings };
     }
     for (const key of STRUCTURE_KEYS) {
@@ -160,10 +205,10 @@ export function normalizeLaunch(launch) {
         return [withUrl(structure)];
     });
     if (requested.length > 0) {
-        return { requested, warnings };
+        return { requested, settings, warnings };
     }
     return looksUpGene
-        ? { requested: [{}], warnings, geneModel: 'required' }
+        ? { requested: [{}], settings, warnings, geneModel: 'required' }
         : {
             error: top.get('gene')
                 ? noStructure

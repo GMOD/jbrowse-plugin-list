@@ -18,15 +18,11 @@ export async function launchProteinAnnotationView(args) {
 /** The view, once the entry's feature types are in hand. */
 export async function openProteinAnnotationView({ session, feature, selectedTranscript, uniprotId, confidenceUrl, connectedViewId, connectedAssemblyName, featureTypes, clinVar, }) {
     // A second view of an entry, another isoform's say, shares the first's
-    // assembly; adding it again makes the host warn. `has`, where the host has
-    // it, because `get` reports an unknown name to every plugin that resolves
-    // assemblies, and on a jbrowse.org/ucsc config the Hubs plugin then probes
-    // jbrowse.org/ucsc/P04637/ and logs two 404s.
-    const { assemblyManager } = session;
-    const known = assemblyManager.has
-        ? assemblyManager.has(uniprotId)
-        : !!assemblyManager.get(uniprotId);
-    if (!known) {
+    // assembly; adding it again makes the host warn. `has`, because `get` reports
+    // an unknown name to every plugin that resolves assemblies, and on a
+    // jbrowse.org/ucsc config the Hubs plugin then probes jbrowse.org/ucsc/P04637/
+    // and logs two 404s.
+    if (!session.assemblyManager.has(uniprotId)) {
         setupProteinAssembly(session, uniprotId);
     }
     // The linkage drives the 1D<->genome hover highlight. It is a property of

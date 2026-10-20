@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Dialog } from '@jbrowse/core/ui';
-import { getContainingView, getSession } from '@jbrowse/core/util';
+import { getSession } from '@jbrowse/core/util';
 import { Tab, Tabs } from '@mui/material';
 import AlphaFoldDBSearch from './AlphaFoldDBSearch';
 import FoldseekSearch from './FoldseekSearch';
@@ -10,10 +10,9 @@ import TabPanel from './TabPanel';
 import UserProvidedStructure from './UserProvidedStructure';
 import useUniProtIdLookup from '../hooks/useUniProtIdLookup';
 import { getLaunchSideBySide, setLaunchSideBySide } from '../utils/sideBySide';
-export default function LaunchProteinViewDialog({ handleClose, feature, preferredTranscriptId, model, }) {
+export default function LaunchProteinViewDialog({ handleClose, feature, preferredTranscriptId, model, view, }) {
     const [choice, setChoice] = useState(0);
     const session = getSession(model);
-    const view = getContainingView(model);
     // One lookup for the whole dialog: the tabs stay mounted once visited, so a
     // lookup per tab meant the same UniProt search ran twice and a row picked on
     // one tab left the other pointing at a different gene.

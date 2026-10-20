@@ -72,7 +72,7 @@ function stubSession(
     }),
     notifyError: vi.fn(),
     assemblyManager: {
-      get: (name: string) => (assemblies.has(name) ? { name } : undefined),
+      has: (name: string) => assemblies.has(name),
     },
   }
 }
@@ -142,25 +142,6 @@ test('a second view of an entry reuses its assembly and opens its own tracks', a
     idsOf('view1').map(id => id.replace('view1-', 'view2-')),
   )
   expect(new Set(s.launched.map(l => l.trackId)).size).toBe(6)
-})
-
-// `get` on an unknown name sends the Hubs plugin to probe jbrowse.org/ucsc/
-// for it, which logs two 404s on every jbrowse.org/ucsc launch
-test('the assembly is looked for with `has`, which reports nothing', async () => {
-  stubGff()
-  const s = stubSession()
-  const get = vi.fn(s.assemblyManager.get)
-  const session = {
-    ...s,
-    assemblyManager: {
-      get,
-      has: (name: string) => !!s.assemblyManager.get(name),
-    },
-  }
-  await launchProteinAnnotationView({ session, feature, uniprotId: 'P04637' })
-  await launchProteinAnnotationView({ session, feature, uniprotId: 'P04637' })
-  expect(get).not.toHaveBeenCalled()
-  expect(s.addTemporaryAssembly).toHaveBeenCalledOnce()
 })
 
 // a view that lost its confidence track used to hand that gap to every later

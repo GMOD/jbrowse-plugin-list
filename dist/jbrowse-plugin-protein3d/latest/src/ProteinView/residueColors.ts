@@ -58,5 +58,3 @@ export const RESIDUE_COLORS = {
     title: 'ClinVar pathogenic variants',
   },
 } as const satisfies Record<string, LinearColor | ThresholdColor>
-
-export type ResidueField = keyof typeof RESIDUE_COLORS

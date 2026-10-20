@@ -1,5 +1,5 @@
 {
-  "version": "1.13.0",
+  "version": "1.13.1",
   "name": "jbrowse-plugin-protein3d",
   "repository": {
     "type": "git",
@@ -16,7 +16,6 @@
   ],
   "dependencies": {
     "@gmod/tabix": "^3.10.1",
-    "@jbrowse/plugin-linear-genome-view": "5.0.0-beta.9",
     "@mui/icons-material": "^9.5.0",
     "clustal-js": "^2.0.19",
     "g2p_mapper": "^2.2.0",
@@ -31,6 +30,7 @@
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@jbrowse/core": "5.0.0-beta.9",
     "@jbrowse/mobx-state-tree": "^6.7.0",
+    "@jbrowse/plugin-linear-genome-view": "5.0.0-beta.9",
     "@mui/material": "^9.5.0",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.5",
@@ -64,7 +64,6 @@
   "license": "MIT",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest",
     "test:docs": "node scripts/test-docs.mjs",
     "readme-figure": "node scripts/readme-figure.mjs",
     "host-compat": "node scripts/host-compat-probe.mjs",
@@ -77,7 +76,7 @@
     "format:check": "pnpm prettier --check .",
     "prebuild": "pnpm clean",
     "start": "pnpm fetch-molstar-css && node esbuild.mjs --watch",
-    "build": "tsc && NODE_ENV=production node esbuild.mjs && cp distconfig.json dist/config.json",
+    "build": "tsc && NODE_ENV=production node esbuild.mjs && cp harness/public/config.json dist/config.json",
     "build:bundle": "NODE_ENV=production node esbuild.mjs",
     "check-molstar-css": "node scripts/fetch-molstar-css.mjs --check",
     "lint": "eslint src test --report-unused-disable-directives --max-warnings 0 && pnpm check-molstar-css",

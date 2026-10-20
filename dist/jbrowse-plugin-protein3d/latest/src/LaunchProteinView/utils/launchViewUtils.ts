@@ -6,13 +6,13 @@ import { clinVarTrackConfFor } from '../components/clinVarTrackSource'
 import { launchProteinAnnotationView } from '../components/launchProteinAnnotationView'
 import { canAddTemporaryAssembly } from '../components/proteinAssemblySetup'
 
+import type { LaunchingGenomeView } from './genomeView'
 import type { TemporaryAssemblySession } from '../components/proteinAssemblySetup'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 interface LaunchViewParams {
   session: AbstractSessionModel
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   feature: Feature
   selectedTranscript?: Feature
   uniprotId?: string

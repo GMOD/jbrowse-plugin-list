@@ -1,4 +1,4 @@
-export const CLINVAR_BUILDS = ['GRCh38', 'GRCh37'] as const
+const CLINVAR_BUILDS = ['GRCh38', 'GRCh37'] as const
 
 export type ClinVarBuild = (typeof CLINVAR_BUILDS)[number]
 
@@ -136,14 +136,6 @@ export function isPathogenic(significance: readonly string[]) {
   return significance.some(s => s === 'Pathogenic' || s === 'Likely_pathogenic')
 }
 
-/** The pathogenic or likely pathogenic missense substitution a line records */
-export function parseClinVarSnv(line: string): ClinVarSnv | undefined {
-  const variant = parseClinVarMissense(line)
-  return variant && isPathogenic(variant.significance)
-    ? { start: variant.start, ref: variant.ref, alt: variant.alt }
-    : undefined
-}
-
 export const CLINVAR_CATEGORIES = [
   'pathogenic',
   'likely pathogenic',
@@ -274,27 +266,6 @@ export function substitutionCountByResidue(
   return new Map(
     residues.map(residue => [residue, substitutions.get(residue)?.size ?? 0]),
   )
-}
-
-/**
- * How many distinct missense substitutions ClinVar calls pathogenic or likely
- * pathogenic at each 0-based residue of a transcript, given the pathogenic
- * ones.
- */
-export function pathogenicCountByTranscriptPosition(args: {
-  variants: Iterable<ClinVarSnv>
-  p2gCodon: Record<number, number[]>
-  strand: number
-  genomeBase: (position: number) => string | undefined
-  codonTable: Record<string, string>
-}) {
-  const { placed, residues, checked, disagreeing } =
-    placeMissenseOnTranscript(args)
-  return {
-    byPosition: substitutionCountByResidue(placed, residues),
-    checked,
-    disagreeing,
-  }
 }
 
 /**

@@ -11,9 +11,15 @@ export interface UniProtFeature {
   uniqueId: string
 }
 
-async function fetchUniProtFeatures(url: string): Promise<UniProtFeature[]> {
-  const text = await (await myfetch(url)).text()
+function decodedNote(note: string) {
+  try {
+    return decodeURIComponent(note)
+  } catch {
+    return note
+  }
+}
 
+export function parseUniProtGff(text: string) {
   const features: UniProtFeature[] = []
   for (const line of text.split('\n')) {
     if (line.startsWith('#') || !line.trim()) {
@@ -38,13 +44,17 @@ async function fetchUniProtFeatures(url: string): Promise<UniProtFeature[]> {
         type,
         start,
         end,
-        description: decodeURIComponent(note ?? ''),
+        description: decodedNote(note ?? ''),
         uniqueId: `${type}-${start}-${end}-${features.length}`,
       })
     }
   }
 
   return features
+}
+
+async function fetchUniProtFeatures(url: string) {
+  return parseUniProtGff(await (await myfetch(url)).text())
 }
 
 export default function useUniProtFeatures(uniprotId: string | undefined) {

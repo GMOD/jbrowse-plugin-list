@@ -48,10 +48,13 @@ function presetOutput(preset) {
  * the preset rather than `hierarchy.current.structures`, which also holds every
  * other load's.
  */
-async function applyStructurePreset(plugin, trajectory) {
+async function applyStructurePreset(plugin, trajectory, source) {
     const preset = await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', { useDefaultIfSingleModel: true });
     const { models, structures } = presetOutput(preset);
     const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []));
+    if (loaded.length === 0) {
+        throw new Error(`No structure could be built from ${source} by Mol*'s all-models preset`);
+    }
     return {
         model: models[0],
         structures: loaded,
@@ -61,5 +64,5 @@ async function applyStructurePreset(plugin, trajectory) {
 /** Load a structure from its text or its url, as the view shows one. */
 export async function loadStructure({ plugin, data, url, }) {
     const trajectory = await parseStructureTrajectory({ plugin, data, url });
-    return applyStructurePreset(plugin, trajectory);
+    return applyStructurePreset(plugin, trajectory, url ?? 'the structure data');
 }

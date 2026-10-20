@@ -5,6 +5,7 @@ import { linkedGenomeAssemblyName, resolveLinkageAlignment, } from '../../Protei
 import { sessionLinkageHost } from '../../Protein1DLinkage/sessionLinkageHost';
 import { clinVarBuild, isUnnumberedMitochondrion, } from '../../ProteinView/clinVar';
 import { placeClinVarOnTranscript } from '../../ProteinView/clinVarSource';
+import { withTimeout } from '../../ProteinView/variantEffectSource';
 // TP53's slice is under 1 MB; a stalled host should not hold the view open
 // forever on one track
 const CLINVAR_TIMEOUT_MS = 60_000;
@@ -35,13 +36,13 @@ export async function clinVarTrackConfFor({ session, linkage, idPrefix, }) {
     if (!('alignment' in linked)) {
         return undefined;
     }
-    const { placed } = await placeClinVarOnTranscript({
+    const { placed } = await withTimeout(signal => placeClinVarOnTranscript({
         build,
         feature: new SimpleFeature(feature),
         assemblyName,
         session,
-        signal: AbortSignal.timeout(CLINVAR_TIMEOUT_MS),
-    });
+        signal,
+    }), CLINVAR_TIMEOUT_MS);
     const mapper = makeCoordinateMapper(linked.alignment);
     return clinVarTrackConf({
         uniprotId,

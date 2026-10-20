@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { SimpleFeature } from '@jbrowse/core/util'
 import { renderHook, waitFor } from '@testing-library/react'
+import { getAlphaFoldStructureUrl } from 'p2s_mapper'
 import { expect, test, vi } from 'vitest'
 
 import useAlphaFoldData from './useAlphaFoldData'
@@ -12,13 +13,20 @@ vi.mock('./useIsoformProteinSequences', () => ({
 }))
 vi.mock('p2s_mapper', async importActual => ({
   ...(await importActual<typeof P2sMapper>()),
-  fetchAlphaFoldModels: async (accession: string) => [
-    {
-      accession,
-      url: `https://alphafold.ebi.ac.uk/files/AF-${accession}-F1-model_v6.cif`,
-      sequence: 'MEEP',
-    },
-  ],
+  fetchAlphaFoldModels: async (accession: string) => {
+    if (accession === 'UNREACHABLE') {
+      throw new Error('AlphaFold DB did not answer')
+    }
+    return accession === 'UNFOLDED'
+      ? []
+      : [
+          {
+            accession,
+            url: `https://alphafold.ebi.ac.uk/files/AF-${accession}-F1-model_v6.cif`,
+            sequence: 'MEEP',
+          },
+        ]
+  },
 }))
 
 const feature = new SimpleFeature({
@@ -40,5 +48,28 @@ test('clearing the accession clears the model', async () => {
     expect(result.current.model?.accession).toBe('P04637')
   })
   rerender({ uniprotId: undefined })
+  expect(result.current.model).toBeUndefined()
+})
+
+test('an unreachable API falls back to the canonical file, as the quick launch does', async () => {
+  const { result } = renderHook(() =>
+    useAlphaFoldData({ uniprotId: 'UNREACHABLE', feature }),
+  )
+  await waitFor(() => {
+    expect(result.current.model?.url).toBe(
+      getAlphaFoldStructureUrl('UNREACHABLE'),
+    )
+  })
+  expect(result.current.model?.sequence).toBeUndefined()
+  expect(`${result.current.modelsUnreachable}`).toMatch(/did not answer/)
+})
+
+test('an API answering with no models opens nothing', async () => {
+  const { result } = renderHook(() =>
+    useAlphaFoldData({ uniprotId: 'UNFOLDED', feature }),
+  )
+  await waitFor(() => {
+    expect(result.current.noModel).toBe(true)
+  })
   expect(result.current.model).toBeUndefined()
 })

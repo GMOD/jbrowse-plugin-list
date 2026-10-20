@@ -71,3 +71,52 @@ test("a field the plugin scales takes its scale's members over the preset", () =
     'color.domainMid is a number',
   ])
 })
+
+test('every preset passes its own check', () => {
+  for (const field of Object.keys(RESIDUE_COLORS)) {
+    expect(colorProblems({ field })).toEqual([])
+  }
+  for (const preset of [
+    RESIDUE_COLORS.hydrophobicity,
+    RESIDUE_COLORS.alphaMissense,
+    RESIDUE_COLORS.clinvarPathogenicCount,
+  ]) {
+    expect(colorProblems(preset)).toEqual([])
+  }
+})
+
+test('a scale that cannot paint a value is refused before it reaches a painter', () => {
+  expect(
+    colorProblems({ field: 'alphaMissense', domainMin: 1, domainMax: 1 }),
+  ).toEqual([
+    'color.domainMin of alphaMissense is below domainMax; 1 is not below 1',
+  ])
+  expect(
+    colorProblems({ field: 'hydrophobicity', domainMin: 5, domainMid: 4 }),
+  ).toEqual([
+    'color.domainMin of hydrophobicity is below domainMax; 5 is not below 4.5',
+  ])
+  expect(
+    colorProblems({ field: 'alphaMissense', domainMin: 1, domainMax: 0 }),
+  ).toEqual([])
+  expect(colorProblems({ field: 'alphaMissense', domainMid: 2 })).toEqual([
+    'color.domainMid of alphaMissense lies from domainMin to domainMax; 2 is outside 0–1',
+  ])
+  expect(
+    colorProblems({ field: 'alphaMissense', domainMid: 1, domainMax: 1 }),
+  ).toEqual([])
+  expect(colorProblems({ field: 'alphaMissense', range: [] })).toEqual([
+    'color.range of alphaMissense needs at least one color',
+  ])
+  expect(
+    colorProblems({
+      field: 'clinvarPathogenicCount',
+      domain: [1, 4, 2, 5],
+    }),
+  ).toEqual([
+    'color.domain of clinvarPathogenicCount ascends, each cut above the last; [1,4,2,5] does not',
+  ])
+  expect(
+    colorProblems({ field: 'clinvarPathogenicCount', domain: [1, 1, 2, 3] }),
+  ).toHaveLength(1)
+})

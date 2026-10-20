@@ -21,9 +21,14 @@ interface ProteinGenomeMappingModel {
   structureSeqToTranscriptSeqPosition: Record<number, number> | undefined
 }
 
+type GenomeNavigator = Pick<
+  LinearGenomeViewModel,
+  'assemblyNames' | 'navToLocString' | 'centerAt'
+>
+
 type NavigateToProteinPositionModel = IAnyStateTreeNode &
   ProteinGenomeMappingModel & {
-    connectedView: LinearGenomeViewModel | undefined
+    connectedView: GenomeNavigator | undefined
   }
 
 export type ClickProteinToGenomeModel = NavigateToProteinPositionModel & {
@@ -125,7 +130,7 @@ export async function navigateToProteinPosition({
     const { assemblyManager } = session
     const assembly = assemblyManager.get(assemblyName)
     const canonicalRefName = assembly?.getCanonicalRefName(refName) ?? refName
-    connectedView.centerAt(start, canonicalRefName)
+    connectedView.centerAt((start + end) / 2, canonicalRefName)
   }
 }
 

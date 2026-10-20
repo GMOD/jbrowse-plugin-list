@@ -12,6 +12,7 @@ import {
   isUnnumberedMitochondrion,
 } from '../../ProteinView/clinVar'
 import { placeClinVarOnTranscript } from '../../ProteinView/clinVarSource'
+import { withTimeout } from '../../ProteinView/variantEffectSource'
 
 import type { ProteinTrackConf } from './proteinTrackSetup'
 import type { Protein1DLinkage } from '../../Protein1DLinkage/linkage'
@@ -60,13 +61,17 @@ export async function clinVarTrackConfFor({
   if (!('alignment' in linked)) {
     return undefined
   }
-  const { placed } = await placeClinVarOnTranscript({
-    build,
-    feature: new SimpleFeature(feature),
-    assemblyName,
-    session,
-    signal: AbortSignal.timeout(CLINVAR_TIMEOUT_MS),
-  })
+  const { placed } = await withTimeout(
+    signal =>
+      placeClinVarOnTranscript({
+        build,
+        feature: new SimpleFeature(feature),
+        assemblyName,
+        session,
+        signal,
+      }),
+    CLINVAR_TIMEOUT_MS,
+  )
   const mapper = makeCoordinateMapper(linked.alignment)
   return clinVarTrackConf({
     uniprotId,

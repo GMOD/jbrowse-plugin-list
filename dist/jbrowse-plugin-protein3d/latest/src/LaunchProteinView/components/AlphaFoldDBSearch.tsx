@@ -14,8 +14,8 @@ import UniProtLookupResults from './UniProtLookupResults'
 import useAlphaFoldDBSearch from '../hooks/useAlphaFoldDBSearch'
 
 import type { UniProtIdLookup } from '../hooks/useUniProtIdLookup'
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 const useStyles = makeStyles()({
   dialogContent: {
@@ -48,7 +48,7 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
   feature: Feature
   preferredTranscriptId?: string
   session: AbstractSessionModel
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   handleClose: () => void
   lookup: UniProtIdLookup
   sideBySide: boolean
@@ -73,6 +73,13 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
             Foldseek tabs may have a structure.
           </Typography>
         ) : null}
+        {state.modelsUnreachable ? (
+          <Typography>
+            AlphaFold DB&apos;s model list did not answer, so Launch opens the
+            canonical model file for {state.uniprotId}, without comparing its
+            sequence to the isoforms.
+          </Typography>
+        ) : null}
 
         <UniProtLookupControls lookup={lookup} />
 
@@ -86,7 +93,7 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
 
         {state.ranking &&
         state.selectedTranscript &&
-        state.structureSequence &&
+        (state.structureSequence || state.modelsUnreachable) &&
         state.uniprotId ? (
           <>
             <div className={classes.selectorsRow}>

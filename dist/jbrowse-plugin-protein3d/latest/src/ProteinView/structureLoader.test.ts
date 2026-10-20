@@ -166,6 +166,55 @@ test('discards a stale-plugin result and reloads into the current plugin', async
   expect(mockLoad).toHaveBeenCalledTimes(2)
 })
 
+test('a plugin swapped in mid-load loads at once, without waiting on the old load', async () => {
+  const pluginA = { id: 'A' }
+  const pluginB = { id: 'B' }
+  let resolveFirst: (v: StructureData) => void = () => {}
+  mockLoad
+    .mockImplementationOnce(() => new Promise(res => (resolveFirst = res)))
+    .mockResolvedValueOnce({ entities: [entity('B')] })
+
+  const { host, load, structure } = setup(pluginA)
+  load()
+  host.setPlugin(pluginB)
+  load()
+  await tick()
+
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+  expect(mockLoad.mock.calls[1]![0].plugin).toBe(pluginB)
+  expect(structure.entities).toEqual([entity('B')])
+  expect(structure.loadedToMolstar).toBe(true)
+
+  resolveFirst({ entities: [entity('A')] })
+  await tick()
+  expect(structure.entities).toEqual([entity('B')])
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+})
+
+test('an old load landing while the new one is in flight starts no third', async () => {
+  const pluginA = { id: 'A' }
+  const pluginB = { id: 'B' }
+  let resolveFirst: (v: StructureData) => void = () => {}
+  let resolveSecond: (v: StructureData) => void = () => {}
+  mockLoad
+    .mockImplementationOnce(() => new Promise(res => (resolveFirst = res)))
+    .mockImplementationOnce(() => new Promise(res => (resolveSecond = res)))
+
+  const { host, load, structure } = setup(pluginA)
+  load()
+  host.setPlugin(pluginB)
+  load()
+  resolveFirst({ entities: [entity('A')] })
+  await tick()
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+  load()
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+
+  resolveSecond({ entities: [entity('B')] })
+  await tick()
+  expect(structure.entities).toEqual([entity('B')])
+})
+
 // Regression: molstarStructure used to be hierarchy.current.structures[myIndex],
 // but molstar orders that array by load completion while the index came from the
 // model's own array — so with two structures in flight the slower-loading model

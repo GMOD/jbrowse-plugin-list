@@ -30,16 +30,26 @@ export async function resolveTranscriptLinkage(session, { gene, transcriptId, un
     return { named, resolved, connectedView };
 }
 /**
- * The genome view a launch links to. A session spec launches each view with
- * an auto-generated id, so it cannot cross-reference one by id; given a
- * `connectedView` instead, the launch creates the LinearGenomeView itself.
+ * Opens a view linked to a genome view, which is `connectedViewId` or, given
+ * a `connectedView` instead, a LinearGenomeView the launch creates itself: a
+ * session spec launches each view with an auto-generated id, so it cannot
+ * cross-reference one by id. When `open` throws, the launch removes a genome
+ * view it created, so a failed launch leaves the session as it found it.
  */
-export function connectGenomeView(session, connectedViewId, connectedView) {
-    return (connectedViewId ??
-        (connectedView
-            ? session.addView('LinearGenomeView', {
-                ...connectedView,
-                type: 'LinearGenomeView',
-            }).id
-            : undefined));
+export async function withConnectedGenomeView(session, { connectedViewId, connectedView, }, open) {
+    const created = connectedViewId || !connectedView
+        ? undefined
+        : session.addView('LinearGenomeView', {
+            ...connectedView,
+            type: 'LinearGenomeView',
+        });
+    try {
+        return await open(connectedViewId ?? created?.id, !!created);
+    }
+    catch (e) {
+        if (created && session.views.includes(created)) {
+            session.removeView(created);
+        }
+        throw e;
+    }
 }

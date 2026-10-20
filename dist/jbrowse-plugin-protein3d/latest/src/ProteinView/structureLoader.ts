@@ -34,9 +34,9 @@ export type StructureLoaderHost = IAnyStateTreeNode & {
  * each structure that is neither loaded nor already loading. The guards handle
  * the lifecycle hazards of an external GPU resource:
  *
- *   - a non-observable in-flight Set stops a re-entrant run (a new structure
- *     pushed, or the plugin swapped mid-load) from starting a duplicate load of
- *     the same structure;
+ *   - a non-observable in-flight map, from each structure to the plugin it is
+ *     loading into, stops a re-entrant run from starting a duplicate load into
+ *     the same plugin, while a plugin swapped in mid-load starts at once;
  *   - a load whose plugin was replaced or whose model was destroyed while
  *     awaiting has its result discarded rather than written into a torn-down
  *     plugin;
@@ -47,7 +47,7 @@ export function makeStructureLoader(
   host: StructureLoaderHost,
   fetchModels: AlphaFoldModelFetcher = fetchAlphaFoldModels,
 ) {
-  const loadingStructures = new Set<StructureInstance>()
+  const loadingIn = new Map<StructureInstance, PluginContext>()
   const failedIn = new WeakMap<StructureInstance, PluginContext>()
 
   /** The accession a structure still has to turn into a file, if any. */
@@ -91,8 +91,20 @@ export function makeStructureLoader(
     structure.setUrl(picked.url)
   }
 
+  function settle(structure: StructureInstance, plugin: PluginContext) {
+    if (loadingIn.get(structure) === plugin) {
+      loadingIn.delete(structure)
+    }
+  }
+
+  function retryIn(structure: StructureInstance, current: PluginContext) {
+    if (loadingIn.get(structure) !== current) {
+      loadInto(structure, current)
+    }
+  }
+
   function loadInto(structure: StructureInstance, plugin: PluginContext) {
-    loadingStructures.add(structure)
+    loadingIn.set(structure, plugin)
     // A retry — a plugin swap, a remount — starts over, so the last attempt's
     // failure goes with it. Left in place it also reported the structure as
     // settled for the whole of the retry, since `loading` reads it.
@@ -111,7 +123,7 @@ export function makeStructureLoader(
     loaded
       .then(data => {
         if (!data) {
-          loadingStructures.delete(structure)
+          settle(structure, plugin)
           return
         }
         if (!isAlive(structure)) {
@@ -119,7 +131,7 @@ export function makeStructureLoader(
           // Mol*, and no model owns it any more, so it would stay on the
           // canvas and join the next superposition as a structure the view
           // does not know it has.
-          loadingStructures.delete(structure)
+          settle(structure, plugin)
           removeMolstarStructure({
             plugin,
             molstarStructure: data.molstarStructures?.[0],
@@ -133,13 +145,13 @@ export function makeStructureLoader(
           structure.setStructureData(data)
           structure.setLoadedToMolstar(true)
         }
-        loadingStructures.delete(structure)
+        settle(structure, plugin)
         if (current && current !== plugin && !structure.loadedToMolstar) {
-          loadInto(structure, current)
+          retryIn(structure, current)
         }
       })
       .catch((e: unknown) => {
-        loadingStructures.delete(structure)
+        settle(structure, plugin)
         if (!isAlive(host) || !isAlive(structure)) {
           return
         }
@@ -147,7 +159,7 @@ export function makeStructureLoader(
         if (current && current !== plugin) {
           // a plugin torn down mid-load rejects too; the structure belongs in
           // the current one, not in an error
-          loadInto(structure, current)
+          retryIn(structure, current)
         } else {
           // the structure carries its own failure: a view-wide "Failed to
           // fetch" names neither which structure nor what it was fetching
@@ -164,7 +176,7 @@ export function makeStructureLoader(
       for (const structure of structures) {
         if (
           !structure.loadedToMolstar &&
-          !loadingStructures.has(structure) &&
+          loadingIn.get(structure) !== molstarPluginContext &&
           failedIn.get(structure) !== molstarPluginContext
         ) {
           loadInto(structure, molstarPluginContext)

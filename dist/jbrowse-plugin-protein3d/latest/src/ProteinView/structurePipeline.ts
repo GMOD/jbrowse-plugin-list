@@ -100,6 +100,7 @@ function presetOutput(
 async function applyStructurePreset(
   plugin: PluginContext,
   trajectory: StateObjectSelector,
+  source: string,
 ) {
   const preset = await plugin.builders.structure.hierarchy.applyPreset(
     trajectory,
@@ -108,6 +109,11 @@ async function applyStructurePreset(
   )
   const { models, structures } = presetOutput(preset)
   const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []))
+  if (loaded.length === 0) {
+    throw new Error(
+      `No structure could be built from ${source} by Mol*'s all-models preset`,
+    )
+  }
   return {
     model: models[0],
     structures: loaded,
@@ -126,5 +132,5 @@ export async function loadStructure({
   url?: string
 }) {
   const trajectory = await parseStructureTrajectory({ plugin, data, url })
-  return applyStructurePreset(plugin, trajectory)
+  return applyStructurePreset(plugin, trajectory, url ?? 'the structure data')
 }

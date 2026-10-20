@@ -1,6 +1,9 @@
 import { resolveStructureUrl } from 'p2s_mapper'
 
-import type { ProteinStructureSpec } from '../ProteinView/proteinViewSpec'
+import type {
+  ProteinStructureSpec,
+  ProteinViewSpec,
+} from '../ProteinView/proteinViewSpec'
 import type { ResidueRange, ResidueRanges } from '../ProteinView/residueRanges'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { PairwiseAlignment } from 'p2s_mapper'
@@ -59,6 +62,10 @@ function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean'
 }
 
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 function isFeature(value: unknown): value is SimpleFeatureSerialized {
   return isRecord(value)
 }
@@ -102,17 +109,17 @@ export function isPairwiseAlignment(
 const RANGES = '{ start, end } numbers or an array of them'
 
 /**
- * A structure spec out of untyped fields. Launch text comes from a url, and
- * the structure model throws on a wrongly typed property, so a value of the
- * wrong type is reported under the name `at` gives it and left out.
+ * Launch text comes from a url, and the view model throws on a wrongly typed
+ * property, so the reader reports a value of the wrong type under the name
+ * `at` gives it and leaves it out.
  */
-function readStructure(
+function fieldReader<K extends string>(
   fields: ReadonlyMap<string, unknown>,
-  at: (key: StructureKey) => string,
+  at: (key: K) => string,
   warnings: string[],
 ) {
-  function read<T>(
-    key: StructureKey,
+  return function read<T>(
+    key: K,
     accepts: (value: unknown) => value is T,
     expected: string,
   ) {
@@ -123,6 +130,63 @@ function readStructure(
     warnings.push(`${at(key)} is not ${expected} and was ignored`)
     return undefined
   }
+}
+
+/** The view's own settings, untrusted where a url wrote them. */
+export interface LaunchViewSettings extends Omit<
+  ProteinViewSpec,
+  'structures' | 'color' | 'alignmentAlgorithm'
+> {
+  id?: string
+  alignmentAlgorithm?: string
+  color?: unknown
+  colorScheme?: string
+}
+
+const LAUNCH_KEYS = [
+  'structures',
+  'gene',
+  'transcriptId',
+  'connectedView',
+  'sideBySide',
+]
+
+function readViewSettings(
+  fields: ReadonlyMap<string, unknown>,
+  warnings: string[],
+): LaunchViewSettings {
+  const read = fieldReader<keyof LaunchViewSettings>(
+    fields,
+    key => `\`${key}\``,
+    warnings,
+  )
+  const flag = (key: keyof LaunchViewSettings) =>
+    read(key, isBoolean, 'true or false')
+  return {
+    id: read('id', isString, 'a string'),
+    displayName: read('displayName', isString, 'a string'),
+    height: read('height', isNumber, 'a number'),
+    trackHeight: read('trackHeight', isNumber, 'a number'),
+    showControls: flag('showControls'),
+    showAlignment: flag('showAlignment'),
+    showHighlight: flag('showHighlight'),
+    showProteinTracks: flag('showProteinTracks'),
+    compactTracks: flag('compactTracks'),
+    showAllFeatureTracks: flag('showAllFeatureTracks'),
+    zoomToBaseLevel: flag('zoomToBaseLevel'),
+    autoScrollAlignment: flag('autoScrollAlignment'),
+    alignmentAlgorithm: read('alignmentAlgorithm', isString, 'a string'),
+    color: fields.get('color'),
+    colorScheme: read('colorScheme', isString, 'a string'),
+  } satisfies Record<keyof LaunchViewSettings, unknown>
+}
+
+function readStructure(
+  fields: ReadonlyMap<string, unknown>,
+  at: (key: StructureKey) => string,
+  warnings: string[],
+) {
+  const read = fieldReader(fields, at, warnings)
   return {
     url: read('url', isString, 'a string'),
     data: read('data', isString, 'a string'),
@@ -167,6 +231,7 @@ function withUrl(structure: LaunchStructure): LaunchStructure {
 
 export interface NormalizedLaunch {
   requested: LaunchStructure[]
+  settings: LaunchViewSettings
   warnings: string[]
   /**
    * What the `gene` lookup's AlphaFold model is to the one structure in
@@ -192,6 +257,16 @@ export function normalizeLaunch(
 ): NormalizedLaunch | RejectedLaunch {
   const top = new Map<string, unknown>(Object.entries(launch))
   const warnings: string[] = []
+  const settings = readViewSettings(top, warnings)
+  const known = new Set([
+    ...Object.keys(settings),
+    ...STRUCTURE_KEYS,
+    ...LAUNCH_KEYS,
+  ])
+  const unknownKeys = [...top.keys()].filter(key => !known.has(key))
+  if (unknownKeys.length > 0) {
+    warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`)
+  }
   const looksUpGene =
     !!top.get('gene') && !top.get('userProvidedTranscriptSequence')
   const noStructure = top.get('gene')
@@ -218,6 +293,7 @@ export function normalizeLaunch(
     if (namesSource(structure)) {
       return {
         requested: [withUrl(structure)],
+        settings,
         warnings,
         geneModel:
           looksUpGene &&
@@ -229,7 +305,7 @@ export function normalizeLaunch(
       }
     }
     return looksUpGene
-      ? { requested: [structure], warnings, geneModel: 'required' }
+      ? { requested: [structure], settings, warnings, geneModel: 'required' }
       : { error: noStructure, warnings }
   }
 
@@ -273,10 +349,10 @@ export function normalizeLaunch(
     return [withUrl(structure)]
   })
   if (requested.length > 0) {
-    return { requested, warnings }
+    return { requested, settings, warnings }
   }
   return looksUpGene
-    ? { requested: [{}], warnings, geneModel: 'required' }
+    ? { requested: [{}], settings, warnings, geneModel: 'required' }
     : {
         error: top.get('gene')
           ? noStructure

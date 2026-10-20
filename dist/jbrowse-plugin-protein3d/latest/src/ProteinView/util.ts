@@ -16,11 +16,6 @@ export interface GenomeNaming {
   isAssembly: (assemblyName: string | undefined) => boolean
 }
 
-export const literalNaming: GenomeNaming = {
-  canonicalRefName: r => r,
-  isAssembly: () => true,
-}
-
 /** The first assembly of the session's view with this id, if it shows one. */
 export function viewAssemblyName(
   session: { views: { id: string }[] },

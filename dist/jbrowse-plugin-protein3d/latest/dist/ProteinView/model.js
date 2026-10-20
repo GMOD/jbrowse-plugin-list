@@ -14,6 +14,7 @@ import { makeLociChannel } from './lociChannel';
 import { checkedColor, colorOfScheme } from './proteinColor';
 import { defaultDisplayName } from './proteinViewSpec';
 import { removeMolstarStructure } from './removeStructure';
+import { reportPluginFailure } from './reportPluginFailure';
 import { showLoading } from './showLoading';
 import { readStoredSettings, storeSetting, withStoredSettings, } from './storedSettings';
 import { makeStructureLoader } from './structureLoader';
@@ -243,10 +244,6 @@ function stateModelFactory() {
          * count resets so the remaining structures are re-aligned against a
          * pivot that still exists, and every derived highlight follows the
          * structures array, so nothing is left pointing at a removed model.
-         *
-         * A block of its own so the removal's rejection can report through
-         * `setError`: the promise settles after the action returns, and a write
-         * to `self` from there throws inside MST.
          */
         removeStructure(structure) {
             const plugin = self.molstarPluginContext;
@@ -260,10 +257,7 @@ function stateModelFactory() {
             self.structures.remove(structure);
             self.setSuperposedCount(0);
             if (plugin) {
-                removeMolstarStructure({ plugin, molstarStructure }).catch((e) => {
-                    console.error(e);
-                    self.setError(e);
-                });
+                removeMolstarStructure({ plugin, molstarStructure }).catch(reportPluginFailure(self, plugin));
             }
         },
     }))
@@ -303,12 +297,12 @@ function stateModelFactory() {
         .actions(self => ({
         afterAttach() {
             // Apply the chosen color theme whenever it changes, a structure
-            // finishes loading (structureSequences is set after its molstar
+            // finishes loading (entities is set after its molstar
             // representation is built, so the theme has something to recolor),
             // the mapped chain changes, or a placed-value source answers.
             addDisposer(self, autorun(() => {
                 const { molstarPluginContext, color } = self;
-                const structures = self.structures.flatMap(s => s.structureSequences
+                const structures = self.structures.flatMap(s => s.entities
                     ? s.molstarStructures.map(molstarStructure => ({
                         molstarStructure,
                         entityId: s.mappedEntity?.entityId,
@@ -322,17 +316,14 @@ function stateModelFactory() {
                         plugin: molstarPluginContext,
                         color,
                         structures,
-                    }).catch((e) => {
-                        console.error(e);
-                        self.setError(e);
-                    });
+                    }).catch(reportPluginFailure(self, molstarPluginContext));
                 }
             }));
             // The alignment sites' sticks, layer 2 of the alignment domains,
             // follow the scheme, the alignment's domains and each load.
             addDisposer(self, autorun(() => {
                 const plugin = self.molstarPluginContext;
-                const structures = self.structures.flatMap(s => s.structureSequences
+                const structures = self.structures.flatMap(s => s.entities
                     ? s.molstarStructures.map(molstarStructure => ({
                         molstarStructure,
                         sites: s.alignmentDomainStatus?.placedSites,
@@ -340,10 +331,7 @@ function stateModelFactory() {
                     }))
                     : []);
                 if (plugin && structures.length > 0) {
-                    syncSiteSticks({ plugin, structures }).catch((e) => {
-                        console.error(e);
-                        self.setError(e);
-                    });
+                    syncSiteSticks({ plugin, structures }).catch(reportPluginFailure(self, plugin));
                 }
             }));
             addDisposer(self, autorun(() => {
@@ -351,10 +339,7 @@ function stateModelFactory() {
                 for (const s of self.structures) {
                     const { hidden, molstarStructures: structures } = s;
                     if (plugin && structures.length > 0) {
-                        setStructuresHidden({ plugin, structures, hidden }).catch((e) => {
-                            console.error(e);
-                            self.setError(e);
-                        });
+                        setStructuresHidden({ plugin, structures, hidden }).catch(reportPluginFailure(self, plugin));
                     }
                 }
             }));
@@ -424,7 +409,7 @@ function stateModelFactory() {
          */
         get colorLegend() {
             const plugin = self.molstarPluginContext;
-            const loaded = self.structures.find(s => s.structureSequences);
+            const loaded = self.structures.find(s => s.entities);
             const structure = loaded?.molstarStructures[0];
             return plugin && structure
                 ? colorLegendOf({

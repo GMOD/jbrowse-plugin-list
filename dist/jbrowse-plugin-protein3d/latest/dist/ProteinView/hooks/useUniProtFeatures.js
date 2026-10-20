@@ -1,8 +1,15 @@
 import { myfetch, uniprotGffUrl } from 'p2s_mapper';
 import useSWR from 'swr';
 import { STATIC_SWR_OPTIONS } from '../../LaunchProteinView/hooks/swrOptions';
-async function fetchUniProtFeatures(url) {
-    const text = await (await myfetch(url)).text();
+function decodedNote(note) {
+    try {
+        return decodeURIComponent(note);
+    }
+    catch {
+        return note;
+    }
+}
+export function parseUniProtGff(text) {
     const features = [];
     for (const line of text.split('\n')) {
         if (line.startsWith('#') || !line.trim()) {
@@ -25,12 +32,15 @@ async function fetchUniProtFeatures(url) {
                 type,
                 start,
                 end,
-                description: decodeURIComponent(note ?? ''),
+                description: decodedNote(note ?? ''),
                 uniqueId: `${type}-${start}-${end}-${features.length}`,
             });
         }
     }
     return features;
+}
+async function fetchUniProtFeatures(url) {
+    return parseUniProtGff(await (await myfetch(url)).text());
 }
 export default function useUniProtFeatures(uniprotId) {
     const { data, error, isLoading } = useSWR(uniprotId ? uniprotGffUrl(uniprotId) : null, fetchUniProtFeatures, 

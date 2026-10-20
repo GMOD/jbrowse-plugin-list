@@ -3,8 +3,8 @@ import { fetchAlphaFoldModels } from 'p2s_mapper'
 
 import { normalizeAnnotationLaunch } from './normalizeAnnotationLaunch'
 import {
-  connectGenomeView,
   resolveTranscriptLinkage,
+  withConnectedGenomeView,
 } from './transcriptLinkage'
 import { clinVarTrackConfFor } from '../LaunchProteinView/components/clinVarTrackSource'
 import { openProteinAnnotationView } from '../LaunchProteinView/components/launchProteinAnnotationView'
@@ -31,72 +31,65 @@ export interface AnnotationLaunchArgs {
   session: AbstractSessionModel
 }
 
+/** Fails by throwing, as `launchProteinView` does and for the same reason. */
 export async function launchAnnotationView(args: AnnotationLaunchArgs) {
   const { session, ...given } = args
-  const fail = (e: unknown) => {
-    console.error(e)
-    session.notify(`Could not launch protein annotation view: ${e}`, 'error')
-    return args
-  }
   const normalized = normalizeAnnotationLaunch(given)
   for (const warning of normalized.warnings) {
     console.warn(warning)
     session.notify(`Protein annotation view launch: ${warning}`, 'warning')
   }
   if ('error' in normalized) {
-    return fail(normalized.error)
+    throw new Error(normalized.error)
   }
   if (!canAddTemporaryAssembly(session)) {
-    return fail(
+    throw new Error(
       'this session cannot add the temporary assembly the view opens on',
     )
   }
   const { launch } = normalized
-  try {
-    const { named, resolved, connectedView } = await resolveTranscriptLinkage(
-      session,
-      launch,
-      {
-        findStructure: !launch.uniprotId,
-      },
+  const { named, resolved, connectedView } = await resolveTranscriptLinkage(
+    session,
+    launch,
+    {
+      findStructure: !launch.uniprotId,
+    },
+  )
+  const accession = launch.uniprotId ?? named?.uniprotId
+  if (!accession) {
+    throw new Error(
+      launch.gene && named
+        ? `${describeMissingStructure(launch.gene, named)}; name a uniprotId`
+        : 'no UniProt entry to open',
     )
-    const accession = launch.uniprotId ?? named?.uniprotId
-    if (!accession) {
-      throw new Error(
-        launch.gene && named
-          ? `${describeMissingStructure(launch.gene, named)}; name a uniprotId`
-          : 'no UniProt entry to open',
-      )
-    }
-    const uniprotId = uniProtEntry(accession)
-    // fetched before anything is added, so a failure leaves no view
-    const [featureTypes, confidenceUrl] = await Promise.all([
-      fetchUniProtFeatureTypes(uniprotId),
-      entryConfidenceUrl(uniprotId),
-    ])
-    const transcript = resolved
-      ? new SimpleFeature(resolved.feature)
-      : undefined
-    const connectedViewId = transcript
-      ? connectGenomeView(session, launch.connectedViewId, connectedView)
-      : undefined
-    await openProteinAnnotationView({
-      session,
-      feature: transcript,
-      selectedTranscript: transcript,
-      uniprotId,
-      confidenceUrl,
-      connectedViewId,
-      connectedAssemblyName:
-        (launch.connectedViewId
-          ? viewAssemblyName(session, launch.connectedViewId)
-          : undefined) ?? connectedView?.assembly,
-      featureTypes,
-      clinVar: (linkage, idPrefix) =>
-        clinVarTrackConfFor({ session, linkage, idPrefix }),
-    })
-  } catch (e) {
-    return fail(e)
   }
+  const uniprotId = uniProtEntry(accession)
+  const [featureTypes, confidenceUrl] = await Promise.all([
+    fetchUniProtFeatureTypes(uniprotId),
+    entryConfidenceUrl(uniprotId),
+  ])
+  const transcript = resolved ? new SimpleFeature(resolved.feature) : undefined
+  await withConnectedGenomeView(
+    session,
+    transcript
+      ? { connectedViewId: launch.connectedViewId, connectedView }
+      : {},
+    connectedViewId =>
+      openProteinAnnotationView({
+        session,
+        feature: transcript,
+        selectedTranscript: transcript,
+        uniprotId,
+        confidenceUrl,
+        connectedViewId,
+        connectedAssemblyName:
+          (launch.connectedViewId
+            ? viewAssemblyName(session, launch.connectedViewId)
+            : undefined) ?? connectedView?.assembly,
+        featureTypes,
+        clinVar: (linkage, idPrefix) =>
+          clinVarTrackConfFor({ session, linkage, idPrefix }),
+      }),
+  )
   return args
 }

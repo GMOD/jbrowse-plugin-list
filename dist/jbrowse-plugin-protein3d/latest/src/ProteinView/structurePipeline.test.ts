@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 
 import { parseStructureTrajectory } from './structurePipeline'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
@@ -27,6 +27,18 @@ test('an ensemble load returns every model it made', async () => {
     expect(plugin.managers.structure.hierarchy.current.models).toHaveLength(4)
     expect(loaded.structures).toHaveLength(4)
     expect(new Set(loaded.modelIds).size).toBe(4)
+  })
+})
+
+test('a preset that builds no structure says so, and names the preset', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    vi.spyOn(
+      plugin.builders.structure.hierarchy,
+      'applyPreset',
+    ).mockImplementation(async () => undefined)
+    await expect(loadCaOnly(plugin, [chain])).rejects.toThrow(
+      "No structure could be built from the structure data by Mol*'s all-models preset",
+    )
   })
 })
 

@@ -165,16 +165,49 @@ export function colorProblems(color: unknown): string[] {
     return accepts(value) ? [] : [`color.${key} is ${kind}`]
   })
   const resolved = resolvedColor(color)
-  if (
-    problems.length === 0 &&
-    resolved?.scale === 'threshold' &&
-    resolved.range.length !== resolved.domain.length + 1
-  ) {
-    problems.push(
-      `color.range of ${field} needs ${resolved.domain.length + 1} colors, one more than domain's cuts`,
-    )
+  return problems.length > 0 || !resolved
+    ? problems
+    : scaleProblems(field, resolved)
+}
+
+function scaleProblems(field: string, color: LinearColor | ThresholdColor) {
+  if (color.scale === 'threshold') {
+    const { domain, range } = color
+    return [
+      ...(domain.every((cut, i) => i === 0 || cut > domain[i - 1]!)
+        ? []
+        : [
+            `color.domain of ${field} ascends, each cut above the last; ${JSON.stringify(domain)} does not`,
+          ]),
+      ...(range.length === domain.length + 1
+        ? []
+        : [
+            `color.range of ${field} needs ${domain.length + 1} colors, one more than domain's cuts`,
+          ]),
+    ]
   }
-  return problems
+  const { domainMin, domainMax, domainMid, range } = color
+  const reversed =
+    domainMin > domainMax &&
+    (domainMid === undefined ||
+      (domainMid >= domainMax && domainMid <= domainMin))
+  return [
+    ...(domainMin < domainMax || reversed
+      ? []
+      : [
+          `color.domainMin of ${field} is below domainMax; ${domainMin} is not below ${domainMax}`,
+        ]),
+    ...(domainMin < domainMax &&
+    domainMid !== undefined &&
+    (domainMid < domainMin || domainMid > domainMax)
+      ? [
+          `color.domainMid of ${field} lies from domainMin to domainMax; ${domainMid} is outside ${domainMin}–${domainMax}`,
+        ]
+      : []),
+    ...(range.length > 0
+      ? []
+      : [`color.range of ${field} needs at least one color`]),
+  ]
 }
 
 /** `color`, refused with every problem {@link colorProblems} finds. */

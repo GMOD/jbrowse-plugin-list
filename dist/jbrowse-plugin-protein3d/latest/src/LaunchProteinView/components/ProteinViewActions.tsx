@@ -14,8 +14,8 @@ import {
   launch3DProteinView,
 } from '../utils/launchViewUtils'
 
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 interface ProteinViewActionsProps {
   handleClose: () => void
@@ -27,7 +27,7 @@ interface ProteinViewActionsProps {
   pdbId?: string
   confidenceUrl?: string
   feature: Feature
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   session: AbstractSessionModel
   /** owned by the dialog so every tab launches with what the user last chose */
   sideBySide: boolean

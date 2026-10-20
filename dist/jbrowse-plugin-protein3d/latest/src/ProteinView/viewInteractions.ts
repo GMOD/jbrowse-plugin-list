@@ -2,6 +2,7 @@ import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
 import { autorun } from 'mobx'
 
 import { clickProteinToGenome } from './proteinToGenomeMapping'
+import { reportPluginFailure } from './reportPluginFailure'
 import subscribeMolstarInteraction from './subscribeMolstarInteraction'
 
 import type { ClickProteinToGenomeModel } from './proteinToGenomeMapping'
@@ -24,6 +25,7 @@ export type StructureInteractionHost = ClickProteinToGenomeModel & {
 export type ViewInteractionHost = IAnyStateTreeNode & {
   readonly molstarPluginContext: PluginContext | undefined
   readonly structures: readonly StructureInteractionHost[]
+  setError: (e: unknown) => void
 }
 
 function forStructure(
@@ -83,24 +85,28 @@ export function attachViewInteractions(view: ViewInteractionHost) {
     })
     addDisposer(
       view,
-      autorun(async () => {
+      autorun(() => {
         const { molstarPluginContext } = view
         unsubscribe?.()
         unsubscribe = undefined
         if (molstarPluginContext) {
-          const dispose = await subscribeMolstarInteraction({
+          subscribeMolstarInteraction({
             plugin: molstarPluginContext,
             kind,
             onUpdate,
-          })
-          if (
-            isAlive(view) &&
-            view.molstarPluginContext === molstarPluginContext
-          ) {
-            unsubscribe = dispose
-          } else {
-            dispose()
-          }
+          }).then(
+            dispose => {
+              if (
+                isAlive(view) &&
+                view.molstarPluginContext === molstarPluginContext
+              ) {
+                unsubscribe = dispose
+              } else {
+                dispose()
+              }
+            },
+            reportPluginFailure(view, molstarPluginContext),
+          )
         }
       }),
     )

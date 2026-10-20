@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../node_modules/.pnpm/react-msaview@9.5.0_a4121c98828e538e8b3708814bbfe622/node_modules/react-msaview/src/components/dialogs/GoToDialog.tsx"],
+  "sourcesContent": ["import React from 'react'\n\nimport { Dialog } from '@jbrowse/core/ui'\nimport { DialogContent } from '@mui/material'\n\nimport GoToBox from './GoToBox.tsx'\n\nimport type { MsaViewModel } from '../../model.ts'\n\nexport default function GoToDialog({\n  model,\n  onClose,\n}: {\n  model: MsaViewModel\n  onClose: () => void\n}) {\n  return (\n    <Dialog\n      open\n      onClose={onClose}\n      title=\"Go to row or column\"\n      maxWidth=\"xs\"\n      fullWidth\n    >\n      <DialogContent>\n        <GoToBox model={model} onFound={onClose} />\n      </DialogContent>\n    </Dialog>\n  )\n}\n"],
+  "mappings": "+NAAA,IAAAA,EAAkB,SAElBC,EAAuB,SACvBC,EAA8B,SAMhB,SAAPC,EAA4B,CACjC,MAAAC,EACA,QAAAC,CAAO,EAIR,CACC,OACE,EAAAC,QAAA,cAAC,SAAM,CACL,KAAI,GACJ,QAASD,EACT,MAAM,sBACN,SAAS,KACT,UAAS,EAAA,EAET,EAAAC,QAAA,cAAC,gBAAa,KACZ,EAAAA,QAAA,cAACC,EAAO,CAAC,MAAOH,EAAO,QAASC,CAAO,CAAA,CAAI,CAC7B,CAGtB",
+  "names": ["import_react", "import_ui", "import_material", "GoToDialog", "model", "onClose", "React", "GoToBox_default"]
+}

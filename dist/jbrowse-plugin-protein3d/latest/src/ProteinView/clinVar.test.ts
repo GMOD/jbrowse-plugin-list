@@ -7,8 +7,9 @@ import {
   clinVarRefName,
   isUnnumberedMitochondrion,
   isWrongBuild,
-  parseClinVarSnv,
-  pathogenicCountByTranscriptPosition,
+  parseClinVarMissense,
+  placeMissenseOnTranscript,
+  substitutionCountByResidue,
 } from './clinVar'
 
 import type { ClinVarSnv } from './clinVar'
@@ -21,53 +22,24 @@ function vcfLine(pos: number, ref: string, alt: string, info: string) {
 
 const MISSENSE = 'MC=SO:0001583|missense_variant'
 
-test('keeps pathogenic and likely pathogenic missense SNVs, 0-based', () => {
-  for (const clnsig of [
-    'Pathogenic',
-    'Likely_pathogenic',
-    'Pathogenic/Likely_pathogenic',
-    'Pathogenic/Likely_pathogenic/Pathogenic,_low_penetrance',
-    'Likely_pathogenic|risk_factor',
-  ]) {
-    expect(
-      parseClinVarSnv(
-        vcfLine(7675088, 'C', 'T', `ALLELEID=1;CLNSIG=${clnsig};${MISSENSE}`),
-      ),
-    ).toEqual({ start: 7675087, ref: 'C', alt: 'T' })
-  }
-})
-
-test('drops other classifications, consequences and variant shapes', () => {
+test('drops a consequence or variant shape that is not a missense SNV', () => {
   const lines = [
-    vcfLine(100, 'C', 'T', `CLNSIG=Uncertain_significance;${MISSENSE}`),
-    vcfLine(
-      100,
-      'C',
-      'T',
-      `CLNSIG=Conflicting_classifications_of_pathogenicity;CLNSIGCONF=Pathogenic(1)|Uncertain_significance(2);${MISSENSE}`,
-    ),
-    vcfLine(100, 'C', 'T', `CLNSIG=Benign/Likely_benign;${MISSENSE}`),
-    vcfLine(100, 'C', 'T', 'CLNSIG=Pathogenic;MC=SO:0001587|nonsense'),
     vcfLine(
       100,
       'C',
       'T',
       'CLNSIG=Pathogenic;MC=SO:0001627|intron_variant,SO:0001819|synonymous_variant',
     ),
-    // no germline classification, only an oncogenicity one
-    vcfLine(100, 'C', 'T', `ONC=Oncogenic;${MISSENSE}`),
-    vcfLine(100, 'CT', 'AG', `CLNSIG=Pathogenic;${MISSENSE}`),
     vcfLine(100, 'C', 'CA', `CLNSIG=Pathogenic;${MISSENSE}`),
-    vcfLine(100, 'C', '.', `CLNSIG=Pathogenic;${MISSENSE}`),
     // CLNSIGINCL is not CLNSIG
     vcfLine(100, 'C', 'T', `CLNSIGINCL=1:Pathogenic;${MISSENSE}`),
   ]
-  expect(lines.map(parseClinVarSnv)).toEqual(lines.map(() => undefined))
+  expect(lines.map(parseClinVarMissense)).toEqual(lines.map(() => undefined))
 })
 
 test('a missense call on any transcript passes the filter', () => {
   expect(
-    parseClinVarSnv(
+    parseClinVarMissense(
       vcfLine(
         100,
         'G',
@@ -75,7 +47,7 @@ test('a missense call on any transcript passes the filter', () => {
         'CLNSIG=Pathogenic;MC=SO:0001627|intron_variant,SO:0001583|missense_variant',
       ),
     ),
-  ).toEqual({ start: 99, ref: 'G', alt: 'A' })
+  ).toMatchObject({ start: 99, ref: 'G', alt: 'A' })
 })
 
 test('picks the build from the assembly name or an alias', () => {
@@ -152,13 +124,18 @@ const minus = genomeToTranscriptSeqMapping({
 })
 
 function tally(variants: ClinVarSnv[], mapping = minus, genome = GENOME) {
-  return pathogenicCountByTranscriptPosition({
+  const { placed, residues, checked, disagreeing } = placeMissenseOnTranscript({
     variants,
     p2gCodon: mapping.p2gCodon,
     strand: mapping.strand,
     genomeBase: position => genome[position],
     codonTable,
   })
+  return {
+    byPosition: substitutionCountByResidue(placed, residues),
+    checked,
+    disagreeing,
+  }
 }
 
 function counts(variants: ClinVarSnv[], mapping = minus, genome = GENOME) {

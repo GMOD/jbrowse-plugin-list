@@ -10,7 +10,12 @@ import {
   Typography,
 } from '@mui/material'
 import { observer } from 'mobx-react'
-import { stripAllStopCodons } from 'p2s_mapper'
+import {
+  DEFAULT_FOLDSEEK_DATABASES,
+  cleanFoldseekSequence,
+  foldseekLengthProblem,
+  stripAllStopCodons,
+} from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
 import FoldseekDatabaseSelector from './FoldseekDatabaseSelector'
@@ -19,14 +24,9 @@ import PartialFailureNotice from './PartialFailureNotice'
 import TranscriptSelector from './TranscriptSelector'
 import useFoldseekSearch from '../hooks/useFoldseekSearch'
 import useTranscriptIsoformSelection from '../hooks/useTranscriptIsoformSelection'
-import {
-  DEFAULT_DATABASES,
-  cleanFoldseekSequence,
-  foldseekLengthProblem,
-} from '../services/foldseekApi'
 
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 const useStyles = makeStyles()({
   dialogContent: {
@@ -56,7 +56,7 @@ const FoldseekSearch = observer(function FoldseekSearch({
   feature: Feature
   preferredTranscriptId?: string
   session: AbstractSessionModel
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   handleClose: () => void
 }) {
   const { classes } = useStyles()
@@ -64,7 +64,9 @@ const FoldseekSearch = observer(function FoldseekSearch({
   const [userEditedSequence, setUserEditedSequence] = useState<
     string | undefined
   >()
-  const [selectedDatabases, setSelectedDatabases] = useState(DEFAULT_DATABASES)
+  const [selectedDatabases, setSelectedDatabases] = useState(
+    DEFAULT_FOLDSEEK_DATABASES,
+  )
   const [show3Di, setShow3Di] = useState(false)
 
   const {

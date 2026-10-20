@@ -9,7 +9,7 @@ import {
   placeOnTranscript,
   readConnectedDomains,
 } from './alignmentDomains'
-import { literalNaming } from './util'
+import { literalNaming } from '../test_data/naming'
 
 import type { ConnectedDomains } from './alignmentDomains'
 import type { GenomeNaming } from './util'
@@ -177,12 +177,40 @@ describe('readConnectedDomains', () => {
     })
   })
 
+  test('a domain with no color is left out of the fallback labels', () => {
+    const { labels: _labels, ...color } = domains.color
+    const read = readConnectedDomains({
+      ...domains,
+      color: { ...color, range: color.range.slice(0, 2) },
+    })
+    expect(read!.color.domain).toEqual(['cd08925', 'cd08925:tetramer'])
+    expect(read!.color.labels).toEqual(['cd08925', 'cd08925:tetramer'])
+  })
+
   test('a kind it does not know reads as a domain', () => {
     const [feature] = readConnectedDomains({
       ...domains,
       features: [{ ...domains.features[2], kind: 'motif' }],
     })!.features
     expect(feature!.kind).toBe('domain')
+  })
+
+  test('an accession the range gives no color is left out of the domain', () => {
+    const short = {
+      ...domains,
+      color: { ...domains.color, range: domains.color.range.slice(0, 2) },
+    }
+    const read = readConnectedDomains(short)!
+    expect(read.color.domain).toEqual(['cd08925', 'cd08925:tetramer'])
+    expect(
+      domainRows({
+        domains: read,
+        mapping,
+        naming,
+        transcriptToStructure: { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 },
+        structureToAlignment: { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 },
+      }).map(r => r.color),
+    ).toEqual(['#F8766D', '#7CAE00'])
   })
 
   test('no features, or no color object, is nothing', () => {

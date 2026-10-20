@@ -82,6 +82,19 @@ test('a removal that fails reports through the error action', async () => {
   logged.mockRestore()
 })
 
+test('a removal failing after the view unmounts leaves no error banner', async () => {
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const view = makeView()
+  mockRemove.mockRejectedValueOnce(new Error('plugin disposed'))
+  view.setMolstarPluginContext(plugin)
+  view.removeStructure(view.structures[0]!)
+  view.setMolstarPluginContext(undefined)
+  await new Promise(resolve => setTimeout(resolve, 0))
+  expect(view.error).toBeUndefined()
+  expect(logged).toHaveBeenCalledWith(new Error('plugin disposed'))
+  logged.mockRestore()
+})
+
 // The view menu used to repeat the header's four toggles, the color menu and
 // a third copy of "restore hidden tracks", then bury the rest under "Advanced".
 test('the view menu carries actions and the Tune menu carries toggles', () => {
@@ -170,6 +183,20 @@ test('a selection made in one alignment panel puts the other structures down', (
   first!.selectResidues(3, 7)
   expect(first!.clickedStructureRanges).toEqual([{ start: 3, end: 7 }])
   expect(second!.clickedStructureRanges).toEqual([])
+})
+
+test('a click on an alignment gap puts every structure down', () => {
+  const view = makeView()
+  const [first, second] = view.structures
+  first!.setClickedStructureRanges([{ start: 1, end: 2 }])
+  second!.setClickedStructureRanges([{ start: 1, end: 2 }])
+  second!.setSelectedFeatureId('feature-1')
+
+  first!.clickAlignmentPosition(0)
+  for (const structure of view.structures) {
+    expect(structure.clickedStructureRanges).toEqual([])
+    expect(structure.selectedFeatureId).toBeUndefined()
+  }
 })
 
 test('one alignment panel is open: the seeded structure, else the first', () => {

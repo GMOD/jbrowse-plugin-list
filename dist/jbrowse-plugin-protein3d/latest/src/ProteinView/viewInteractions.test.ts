@@ -48,10 +48,13 @@ const TestStructure = types
 
 const TestView = types
   .model('TestView', { structures: types.array(TestStructure) })
-  .volatile(() => ({ molstarPluginContext: {} }))
+  .volatile(() => ({ molstarPluginContext: {}, errors: new Array<unknown>() }))
   .actions(self => ({
     addStructure(modelId: string) {
       self.structures.push({ modelId })
+    },
+    setError(e: unknown) {
+      self.errors.push(e)
     },
   }))
 
@@ -175,4 +178,18 @@ test('a structure added later hears the next hover', async () => {
 
   expect(view.structures[1]!.hovered?.structureSeqPos).toBe(7)
   expect(mockSubscribe).toHaveBeenCalledTimes(2)
+})
+
+// A Mol* chunk that fails to fetch used to reject inside the autorun, where
+// nothing caught it, and the view went on with hover and click dead.
+test('a subscription that fails reaches the view as its error', async () => {
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const failure = new Error('chunk fetch failed')
+  mockSubscribe.mockRejectedValue(failure)
+  const view = TestView.create({ structures: [{ modelId: 'a' }] })
+  attachViewInteractions(asViewHost(view))
+  await tick()
+  expect(view.errors).toEqual([failure, failure])
+  expect(logged).toHaveBeenCalledWith(failure)
+  logged.mockRestore()
 })

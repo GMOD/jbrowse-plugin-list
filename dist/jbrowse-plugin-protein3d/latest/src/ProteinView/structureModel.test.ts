@@ -1,5 +1,5 @@
 import { getSession } from '@jbrowse/core/util'
-import { getSnapshot, types } from '@jbrowse/mobx-state-tree'
+import { destroy, getSnapshot, types } from '@jbrowse/mobx-state-tree'
 import { observable, reaction } from 'mobx'
 import { beforeEach, expect, test, vi } from 'vitest'
 
@@ -1001,6 +1001,17 @@ test('focusResidues rejects when the structure never settles', async () => {
   ).rejects.toThrow(/did not finish loading/)
 })
 
+test('focusResidues stops waiting as soon as its structure is destroyed', async () => {
+  const parent = twoNumberedStructures()
+  const [a] = parent.structures
+  const pending = a!.focusResidues(
+    { residues: { start: 95, end: 95 } },
+    { timeout: 60_000 },
+  )
+  destroy(parent)
+  expect(await pending).toEqual([])
+})
+
 // a standalone structure never gets a coordinate mapper, and focusResidues
 // used to wait for one until its timeout
 test('focusResidues works on a structure opened without a transcript', async () => {
@@ -1264,4 +1275,54 @@ test('a stale stored alignment is recomputed against its stored protein chain', 
   })
   expect(model.mappedEntityId).toBe('4')
   expect(model.pairwiseAlignment?.alns[1].seq.replaceAll('-', '')).toBe(paralog)
+})
+
+test('an identical alignment whose apply throws reaches setError, not the caller', () => {
+  const { model } = loadThreeChains()
+  const boom = new Error('apply failed')
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  expect(() => {
+    model.runAlignment({
+      identical: true,
+      name: 'ProteinAlignTranscriptToEntity',
+      args: {
+        transcript: 'MKAA',
+        entitySeq: 'MKAA',
+        algorithm: 'needleman_wunsch',
+      },
+      inPlace: () => undefined,
+      apply: () => {
+        throw boom
+      },
+      fail: () => {},
+    })
+  }).not.toThrow()
+  expect(model.error).toBe(boom)
+})
+
+test('a rerun while a stale alignment realigns neither reports again nor restarts it', async () => {
+  const paralog = `${P53_CORE.slice(0, 50)}AAAA${P53_CORE.slice(54)}`
+  const entities = [
+    ...ONE_TUP_ENTITIES,
+    { entityId: '4', seq: paralog, seqIds: [], chains: ['D'] },
+  ]
+  const parent = TestParent.create({
+    structures: [
+      {
+        userProvidedTranscriptSequence: P53_CORE,
+        pairwiseAlignment: coreAlignment(`${P53_CORE.slice(0, 100)}(S|P)`),
+        mappedEntityId: '4',
+      },
+    ],
+  })
+  const model = parent.structures[0]!
+  model.setStructureData({ entities })
+  expect(model.alignmentPending).toBe(true)
+  expect(parent.viewErrors).toHaveLength(1)
+  model.setStructureData({ entities: [...entities] })
+  expect(parent.viewErrors).toHaveLength(1)
+  await vi.waitFor(() => {
+    expect(model.alignmentPending).toBe(false)
+  })
+  expect(model.mappedEntityId).toBe('4')
 })

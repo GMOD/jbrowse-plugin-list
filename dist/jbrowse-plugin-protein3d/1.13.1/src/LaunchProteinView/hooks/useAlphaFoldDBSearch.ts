@@ -1,0 +1,104 @@
+import { useMemo } from 'react'
+
+import { stripStopCodon } from 'p2s_mapper'
+
+import useAlphaFoldData from './useAlphaFoldData'
+import useTranscriptIsoformSelection from './useTranscriptIsoformSelection'
+
+import type { UniProtIdLookup } from './useUniProtIdLookup'
+import type { LaunchingGenomeView } from '../utils/genomeView'
+import type { Feature } from '@jbrowse/core/util'
+
+export default function useAlphaFoldDBSearch({
+  feature,
+  view,
+  lookup,
+  preferredTranscriptId,
+}: {
+  feature: Feature
+  view: LaunchingGenomeView
+  lookup: UniProtIdLookup
+  preferredTranscriptId?: string
+}) {
+  const { uniprotId, isLookupLoading } = lookup
+
+  const {
+    isLoading: isAlphaFoldLoading,
+    isValidating: isAlphaFoldValidating,
+    modelsUnreachable,
+    model,
+    noModel,
+  } = useAlphaFoldData({ uniprotId, feature, view })
+  // a stable array, or the isoform picker realigns on every render
+  const modelSequence = model?.sequence
+  const structureSequences = useMemo(
+    () => (modelSequence ? [modelSequence] : undefined),
+    [modelSequence],
+  )
+
+  const {
+    transcripts: transcriptOptions,
+    isoformSequences,
+    structureSequence,
+    ranking,
+    isLoading: isIsoformLoading,
+    isRanking,
+    error: isoformError,
+    partialFailure: isoformPartialFailure,
+    selectedTranscriptId: userSelection,
+    setSelectedTranscriptId: setUserSelection,
+    selectedTranscript,
+    selectedIsoform: userSelectedProteinSequence,
+  } = useTranscriptIsoformSelection({
+    feature,
+    view,
+    structureSequences,
+    preferredTranscriptId,
+    resetKey: model?.url,
+  })
+
+  const loadingStatuses = [
+    isLookupLoading && 'Looking up UniProt ID',
+    isIsoformLoading && 'Loading protein sequences from transcript isoforms',
+    isRanking && 'Aligning isoforms to the structure',
+    isAlphaFoldLoading && 'Asking AlphaFold DB for models',
+  ].filter(s => typeof s === 'string')
+  const isLoading = loadingStatuses.length > 0
+
+  // errors wait for loading to finish, so a lookup in flight doesn't flash one
+  const rawError = isoformError ?? lookup.lookupError
+  const error = isLoading ? undefined : rawError
+
+  return {
+    ...lookup,
+    userSelection,
+    setUserSelection,
+
+    transcriptOptions,
+    selectedTranscript,
+    isoformSequences,
+    ranking,
+    isoformPartialFailure,
+    userSelectedProteinSequence,
+
+    url: model?.url,
+    confidenceUrl: model?.confidenceUrl,
+    modelAccession: model?.accession,
+    structureSequence,
+    noModel,
+    modelsUnreachable: isLoading ? undefined : modelsUnreachable,
+
+    error,
+    loadingStatuses,
+
+    // While the structure is refetched, structureSequence is still the previous
+    // selection's (keepPreviousData), so a match is unknown until it settles.
+    sequencesMatch:
+      !isAlphaFoldValidating &&
+      userSelectedProteinSequence?.seq &&
+      structureSequence
+        ? stripStopCodon(userSelectedProteinSequence.seq) === structureSequence
+        : undefined,
+    isLoading,
+  }
+}

@@ -42,13 +42,17 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({ feature, preferr
                 "AlphaFold DB has no model for ",
                 state.uniprotId,
                 ". The PDB and Foldseek tabs may have a structure.")) : null,
+            state.modelsUnreachable ? (React.createElement(Typography, null,
+                "AlphaFold DB's model list did not answer, so Launch opens the canonical model file for ",
+                state.uniprotId,
+                ", without comparing its sequence to the isoforms.")) : null,
             React.createElement(UniProtLookupControls, { lookup: lookup }),
             state.loadingStatuses.map(status => (React.createElement(LoadingEllipses, { key: status, variant: "subtitle2", message: status }))),
             React.createElement(PartialFailureNotice, { message: state.isoformPartialFailure }),
             React.createElement(UniProtLookupResults, { lookup: lookup }),
             state.ranking &&
                 state.selectedTranscript &&
-                state.structureSequence &&
+                (state.structureSequence || state.modelsUnreachable) &&
                 state.uniprotId ? (React.createElement(React.Fragment, null,
                 React.createElement("div", { className: classes.selectorsRow },
                     React.createElement(TranscriptSelector, { val: state.userSelection, setVal: state.setUserSelection, structureSequence: state.structureSequence, feature: feature, isoforms: state.transcriptOptions, ranking: state.ranking })),

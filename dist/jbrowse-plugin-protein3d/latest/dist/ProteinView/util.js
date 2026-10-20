@@ -1,7 +1,3 @@
-export const literalNaming = {
-    canonicalRefName: r => r,
-    isAssembly: () => true,
-};
 /** The first assembly of the session's view with this id, if it shows one. */
 export function viewAssemblyName(session, viewId) {
     const view = session.views.find(v => v.id === viewId);

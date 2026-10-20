@@ -230,6 +230,61 @@ test('two sources on one structure keep their precedence and say nothing', () =>
   ])
 })
 
+test('the view settings a launch names reach it typed', () => {
+  const { settings, warnings } = accepted({
+    pdbId: '1TUP',
+    id: 'structure',
+    height: 400,
+    showControls: true,
+    trackHeight: 12,
+    color: { field: 'plddt' },
+    colorScheme: 'chain-id',
+    alignmentAlgorithm: 'needleman_wunsch',
+  })
+  expect(warnings).toEqual([])
+  expect(settings).toMatchObject({
+    id: 'structure',
+    height: 400,
+    showControls: true,
+    trackHeight: 12,
+    color: { field: 'plddt' },
+    colorScheme: 'chain-id',
+    alignmentAlgorithm: 'needleman_wunsch',
+  })
+})
+
+test('a view setting of the wrong type is dropped by name', () => {
+  const { settings, warnings } = accepted({
+    pdbId: '1TUP',
+    height: '400',
+    showControls: 'yes',
+  })
+  expect(settings.height).toBeUndefined()
+  expect(settings.showControls).toBeUndefined()
+  expect(warnings).toEqual([
+    '`height` is not a number and was ignored',
+    '`showControls` is not true or false and was ignored',
+  ])
+})
+
+test('an unknown key of the launch is reported', () => {
+  expect(
+    accepted({
+      pdbId: '1TUP',
+      hieght: 400,
+      gene: 'TP53',
+      transcriptId: 'NM_000546',
+      connectedView: {},
+      sideBySide: false,
+      feature: {},
+      connectedViewId: 'genome',
+    }).warnings,
+  ).toEqual(['ignored unknown key(s): hieght'])
+  expect(rejected({ colour: 'red' }).warnings).toEqual([
+    'ignored unknown key(s): colour',
+  ])
+})
+
 test('a malformed selection is dropped by name', () => {
   const { requested, warnings } = accepted({
     pdbId: '1TUP',

@@ -34,8 +34,7 @@ export interface ProteinAnnotationSession extends TemporaryAssemblySession {
   ) => object
   notifyError: (message: string, error?: unknown) => void
   assemblyManager: {
-    get: (name: string) => unknown
-    has?: (name: string) => boolean
+    has: (name: string) => boolean
   }
 }
 
@@ -88,15 +87,11 @@ export async function openProteinAnnotationView({
   clinVar,
 }: AnnotationViewArgs & { featureTypes: string[] }) {
   // A second view of an entry, another isoform's say, shares the first's
-  // assembly; adding it again makes the host warn. `has`, where the host has
-  // it, because `get` reports an unknown name to every plugin that resolves
-  // assemblies, and on a jbrowse.org/ucsc config the Hubs plugin then probes
-  // jbrowse.org/ucsc/P04637/ and logs two 404s.
-  const { assemblyManager } = session
-  const known = assemblyManager.has
-    ? assemblyManager.has(uniprotId)
-    : !!assemblyManager.get(uniprotId)
-  if (!known) {
+  // assembly; adding it again makes the host warn. `has`, because `get` reports
+  // an unknown name to every plugin that resolves assemblies, and on a
+  // jbrowse.org/ucsc config the Hubs plugin then probes jbrowse.org/ucsc/P04637/
+  // and logs two 404s.
+  if (!session.assemblyManager.has(uniprotId)) {
     setupProteinAssembly(session, uniprotId)
   }
 

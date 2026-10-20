@@ -12,7 +12,14 @@ import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
 
 vi.mock('@jbrowse/core/util', async importActual => {
   const actual = await importActual<typeof JBrowseCoreUtil>()
-  return { ...actual, getSession: () => ({ hovered: undefined, views: [] }) }
+  return {
+    ...actual,
+    getSession: () => ({
+      hovered: undefined,
+      views: [],
+      assemblyManager: { get: () => undefined },
+    }),
+  }
 })
 
 // The real TP53 knownCanonical CDS the gene explorer now emits in its .cds
@@ -191,6 +198,38 @@ test('zoomToBaseLevel navigation emits a 1-based locString for the codon', async
   // getCodonRanges yields 0-based half-open [start, end); the locString start
   // must be 1-based (parseLocString subtracts 1), so it reads start+1..end.
   expect(locString).toBe(`chr17:${start + 1}-${end}[rev]`)
+})
+
+test('navigation without base-level zoom centers on the middle of the range', async () => {
+  const model = makeModel()
+  const regions = structureRangesToGenomeRegions({
+    ranges: [{ start: 100, end: 110 }],
+    assemblyName: 'hg38',
+    model: mappingModel(model),
+  })
+  const start = regions[0]!.start
+  const end = regions.at(-1)!.end
+
+  const centered: [number, string][] = []
+  const connectedView = {
+    assemblyNames: ['hg38'],
+    async navToLocString() {
+      return true
+    },
+    centerAt(coord: number, refName: string) {
+      centered.push([coord, refName])
+    },
+  }
+
+  await navigateToProteinPosition({
+    model: { ...mappingModel(model), connectedView },
+    structureSeqPos: 100,
+    structureSeqEndPos: 110,
+    zoomToBaseLevel: false,
+  })
+
+  expect(end - start).toBe(30)
+  expect(centered).toEqual([[(start + end) / 2, 'chr17']])
 })
 
 test('genome<->protein hover directions are mutual inverses', () => {

@@ -1,5 +1,6 @@
 import { isAlive } from '@jbrowse/mobx-state-tree'
 
+import { reportPluginFailure } from './reportPluginFailure'
 import { superposeStructures } from './superposeStructures'
 
 import type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
@@ -64,12 +65,7 @@ export function makeStructureSuperposer(host: StructureSuperposerHost) {
     if (plugin && !superposing && loadedCount >= 2 && changed) {
       superposing = true
       superposeStructures(plugin, loads)
-        .catch((e: unknown) => {
-          console.error(e)
-          if (isAlive(host) && host.molstarPluginContext === plugin) {
-            host.setError(e)
-          }
-        })
+        .catch(reportPluginFailure(host, plugin))
         .finally(() => {
           superposing = false
           if (isAlive(host)) {

@@ -18,8 +18,8 @@ import useTranscriptIsoformSelection from '../hooks/useTranscriptIsoformSelectio
 import { launch3DProteinView } from '../utils/launchViewUtils'
 import { readStructureFile } from '../utils/readStructureFile'
 
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 const useStyles = makeStyles()(theme => ({
   dialogContent: {
@@ -27,8 +27,6 @@ const useStyles = makeStyles()(theme => ({
     width: '80em',
   },
 }))
-
-type LGV = LinearGenomeViewModel
 
 function HelpText() {
   return (
@@ -55,7 +53,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
   feature: Feature
   preferredTranscriptId?: string
   session: AbstractSessionModel
-  view: LGV
+  view: LaunchingGenomeView
   handleClose: () => void
 }) {
   const { classes } = useStyles()

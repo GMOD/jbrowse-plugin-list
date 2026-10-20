@@ -24,8 +24,8 @@ import usePdbEntry from '../hooks/usePdbEntry'
 import useTranscriptIsoformSelection from '../hooks/useTranscriptIsoformSelection'
 
 import type { UniProtIdLookup } from '../hooks/useUniProtIdLookup'
+import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 const useStyles = makeStyles()({
   dialogContent: {
@@ -58,7 +58,7 @@ const PdbSearch = observer(function PdbSearch({
   feature: Feature
   preferredTranscriptId?: string
   session: AbstractSessionModel
-  view: LinearGenomeViewModel
+  view: LaunchingGenomeView
   handleClose: () => void
   lookup: UniProtIdLookup
   sideBySide: boolean

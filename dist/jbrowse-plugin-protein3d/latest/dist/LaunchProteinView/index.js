@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { getContainingTrack, getContainingView, getSession, isGeneLikeType, } from '@jbrowse/core/util';
 import AddIcon from '@mui/icons-material/Add';
 import { isCodingFeature } from './codingFeature';
+import { isLaunchingGenomeView } from './utils/genomeView';
 import { getGeneDisplayName } from './utils/util';
 // the menu items register at boot; what they open loads on the first click
 const LaunchProteinViewDialog = lazy(() => import('./components/LaunchProteinViewDialog'));
@@ -49,11 +50,17 @@ function withCodingFeature(self, target, then) {
     });
 }
 function openDialog(self, target, feature) {
-    const track = getContainingTrack(self);
-    getSession(self).queueDialog(handleClose => [
+    const session = getSession(self);
+    const view = getContainingView(self);
+    if (!isLaunchingGenomeView(view)) {
+        session.notify(`A protein view launches from a genome view, not a ${view.type}`, 'warning');
+        return;
+    }
+    session.queueDialog(handleClose => [
         LaunchProteinViewDialog,
         {
-            model: track,
+            model: getContainingTrack(self),
+            view,
             handleClose,
             feature,
             preferredTranscriptId: target.preferredTranscriptId,
@@ -65,49 +72,57 @@ function launchProteinView(self, target) {
         openDialog(self, target, feature);
     });
 }
-function firstAssemblyName(view) {
-    const names = 'assemblyNames' in view ? view.assemblyNames : undefined;
-    const first = Array.isArray(names) ? names[0] : undefined;
-    return typeof first === 'string' ? first : undefined;
-}
+const lookingUp = new Set();
 // The dialog's defaults without the dialog. Where they name no single
 // structure, a gene two UniProt entries answer to or one AlphaFold has not
 // folded, the dialog opens for the choice only a person can make.
 function openAlphaFoldStructure(self, target) {
     const session = getSession(self);
     const view = getContainingView(self);
-    const assemblyName = firstAssemblyName(view);
     withCodingFeature(self, target, async (feature) => {
         const name = getGeneDisplayName(feature);
-        if (!assemblyName) {
+        const genomeView = isLaunchingGenomeView(view) ? view : undefined;
+        const assemblyName = genomeView?.assemblyNames[0];
+        if (!genomeView || !assemblyName) {
             openDialog(self, target, feature);
             return;
         }
-        session.notify(`Looking up the AlphaFold structure of ${name}`, 'info');
-        const [{ describeMissingStructure, resolveGeneLaunch, sessionGeneLaunchHost }, { launch3DProteinView },] = await Promise.all([
-            import('./resolveGeneLaunch'),
-            import('./utils/launchViewUtils'),
-        ]);
-        const launch = await resolveGeneLaunch({
-            host: sessionGeneLaunchHost(session, assemblyName),
-            feature,
-            preferredTranscriptId: target.preferredTranscriptId,
-        });
-        const { transcript, userProvidedTranscriptSequence, uniprotId, url } = launch;
-        if (url) {
-            await launch3DProteinView({
-                session,
-                view,
-                feature,
-                selectedTranscript: transcript,
-                uniprotId,
-                url,
-                userProvidedTranscriptSequence,
-            });
+        const key = `${genomeView.id}:${feature.id()}:${target.preferredTranscriptId}`;
+        if (lookingUp.has(key)) {
+            session.notify(`Still looking up the AlphaFold structure of ${name}`, 'info');
+            return;
         }
-        else {
-            session.notify(describeMissingStructure(name, launch), launch.lookupError === undefined ? 'info' : 'warning');
-            openDialog(self, target, feature);
+        lookingUp.add(key);
+        try {
+            session.notify(`Looking up the AlphaFold structure of ${name}`, 'info');
+            const [{ describeMissingStructure, resolveGeneLaunch, sessionGeneLaunchHost }, { launch3DProteinView },] = await Promise.all([
+                import('./resolveGeneLaunch'),
+                import('./utils/launchViewUtils'),
+            ]);
+            const launch = await resolveGeneLaunch({
+                host: sessionGeneLaunchHost(session, assemblyName),
+                feature,
+                preferredTranscriptId: target.preferredTranscriptId,
+            });
+            const { transcript, userProvidedTranscriptSequence, uniprotId, url } = launch;
+            if (url) {
+                await launch3DProteinView({
+                    session,
+                    view: genomeView,
+                    feature,
+                    selectedTranscript: transcript,
+                    uniprotId,
+                    url,
+                    userProvidedTranscriptSequence,
+                });
+            }
+            else {
+                session.notify(describeMissingStructure(name, launch), launch.lookupError === undefined ? 'info' : 'warning');
+                openDialog(self, target, feature);
+            }
+        }
+        finally {
+            lookingUp.delete(key);
         }
     });
 }

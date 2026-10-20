@@ -1,4 +1,4 @@
-export const CLINVAR_BUILDS = ['GRCh38', 'GRCh37'];
+const CLINVAR_BUILDS = ['GRCh38', 'GRCh37'];
 const BUILD_NAMES = {
     GRCh38: ['grch38', 'hg38'],
     GRCh37: ['grch37', 'hg19'],
@@ -92,13 +92,6 @@ export function parseClinVarMissense(line) {
 export function isPathogenic(significance) {
     return significance.some(s => s === 'Pathogenic' || s === 'Likely_pathogenic');
 }
-/** The pathogenic or likely pathogenic missense substitution a line records */
-export function parseClinVarSnv(line) {
-    const variant = parseClinVarMissense(line);
-    return variant && isPathogenic(variant.significance)
-        ? { start: variant.start, ref: variant.ref, alt: variant.alt }
-        : undefined;
-}
 export const CLINVAR_CATEGORIES = [
     'pathogenic',
     'likely pathogenic',
@@ -190,19 +183,6 @@ export function substitutionCountByResidue(placed, residues) {
         substitutions.set(residue, seen);
     }
     return new Map(residues.map(residue => [residue, substitutions.get(residue)?.size ?? 0]));
-}
-/**
- * How many distinct missense substitutions ClinVar calls pathogenic or likely
- * pathogenic at each 0-based residue of a transcript, given the pathogenic
- * ones.
- */
-export function pathogenicCountByTranscriptPosition(args) {
-    const { placed, residues, checked, disagreeing } = placeMissenseOnTranscript(args);
-    return {
-        byPosition: substitutionCountByResidue(placed, residues),
-        checked,
-        disagreeing,
-    };
 }
 /**
  * Whether the genome under a transcript is some other build than the VCF's:

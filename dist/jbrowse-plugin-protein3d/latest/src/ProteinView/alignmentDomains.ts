@@ -114,7 +114,8 @@ function featureOf(value: unknown): ConnectedDomain | undefined {
  * install can pair any two versions. Takes the current shape, features plus a
  * color object, and msaview 5.5.0's, an array of features each carrying its
  * own `color` and no `kind`, which it reads as domains. Undefined for anything
- * else and for no features.
+ * else and for no features. An accession past the end of `range` has no color,
+ * so the reader drops it from `domain` and its feature is not drawn.
  */
 export function readConnectedDomains(
   value: unknown,
@@ -153,17 +154,19 @@ export function readConnectedDomains(
   const color = isRecord(value.color) ? value.color : {}
   const domain = strings(color.domain)
   const range = strings(color.range)
-  return features.length > 0 && domain && range
-    ? {
-        features,
-        color: {
-          field: 'accession',
-          domain,
-          range,
-          labels: strings(color.labels) ?? domain,
-        },
-      }
-    : undefined
+  if (features.length === 0 || !domain || !range) {
+    return undefined
+  }
+  const drawn = domain.slice(0, range.length)
+  return {
+    features,
+    color: {
+      field: 'accession',
+      domain: drawn,
+      range,
+      labels: strings(color.labels) ?? drawn,
+    },
+  }
 }
 
 /** The part of msaview's MsaView model read here */

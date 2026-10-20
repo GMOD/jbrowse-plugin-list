@@ -7,12 +7,10 @@ import {
   FormGroup,
   Typography,
 } from '@mui/material'
+import { FOLDSEEK_DATABASES } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
-import {
-  FOLDSEEK_DATABASES,
-  type FoldseekDatabaseId,
-} from '../services/foldseekApi'
+import type { FoldseekDatabaseId } from 'p2s_mapper'
 
 const useStyles = makeStyles()({
   root: {

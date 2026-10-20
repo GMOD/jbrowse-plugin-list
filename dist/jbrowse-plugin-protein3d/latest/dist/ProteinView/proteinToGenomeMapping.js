@@ -66,7 +66,7 @@ export async function navigateToProteinPosition({ model, structureSeqPos, struct
         const { assemblyManager } = session;
         const assembly = assemblyManager.get(assemblyName);
         const canonicalRefName = assembly?.getCanonicalRefName(refName) ?? refName;
-        connectedView.centerAt(start, canonicalRefName);
+        connectedView.centerAt((start + end) / 2, canonicalRefName);
     }
 }
 export async function clickProteinToGenome({ model, structureSeqPos, structureSeqEndPos, }) {
