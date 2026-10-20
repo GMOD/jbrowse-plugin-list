@@ -10,14 +10,10 @@
  * them. Every surface reads that one object: the genome track's display, the
  * structure's layers, its overview rows and each legend.
  */
+import { isSiteType } from 'react-msaview';
 import { seqPosToGenomeRegions } from './msaCoordToGenomeCoord';
-/**
- * `site` for CDD's GenPept `Site` key, a Sequence Ontology `*_site` type,
- * InterPro's `Binding_site`, `Active_site` and `Conserved_site`, and UniProt's
- * spelled-out `Binding site`
- */
 export function annotationKind(featureType) {
-    return featureType && /(^|[_ ])site$/i.test(featureType) ? 'site' : 'domain';
+    return isSiteType(featureType) ? 'site' : 'domain';
 }
 function mergeAdjacent(regions) {
     const merged = [];

@@ -30,11 +30,6 @@ export interface ConnectedDomains {
     features: ConnectedDomain[];
     color: DomainColor;
 }
-/**
- * `site` for CDD's GenPept `Site` key, a Sequence Ontology `*_site` type,
- * InterPro's `Binding_site`, `Active_site` and `Conserved_site`, and UniProt's
- * spelled-out `Binding site`
- */
 export declare function annotationKind(featureType: string | undefined): DomainKind;
 export interface DomainSource extends SeqPosModel {
     showDomains: boolean;
