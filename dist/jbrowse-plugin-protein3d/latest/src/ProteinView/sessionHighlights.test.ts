@@ -7,6 +7,7 @@ import loadMolstar from './loadMolstar'
 import {
   DEFAULT_HIGHLIGHT_COLOR,
   SESSION_HIGHLIGHTS_TAG,
+  copyCenters,
   highlightCameraSnapshot,
   labelAnchors,
   sessionHighlightResidues,
@@ -152,8 +153,8 @@ test('a labelled mark draws spheres and an anchor, an unlabelled one sticks, and
   })
 })
 
-// haemoglobin's four β chains each carry Val6; a label names one of them
-test('a homo-oligomer draws a labelled residue on one chain, an unlabelled one on every chain', async () => {
+// haemoglobin's four β chains each carry Val6, and each copy is the residue
+test('a homo-oligomer draws a highlighted residue on every chain, and its anchor finds each copy', async () => {
   await withTemporaryMolstarPlugin(async plugin => {
     const molstarStructure = await helix(plugin, ['A', 'B'])
     const chainsOf = (cell: { obj?: { data?: unknown } } | undefined) =>
@@ -173,10 +174,16 @@ test('a homo-oligomer draws a labelled residue on one chain, an unlabelled one o
       ],
     })
     const { residues: drawn, anchors } = tagged(plugin)
-    expect(drawn.map(chainsOf)).toEqual([1, 2])
-    const anchored = anchors[0]?.obj?.data as
-      { loci: { elements: unknown[] } }[] | undefined
-    expect(anchored?.[0]?.loci.elements).toHaveLength(1)
+    expect(drawn.map(chainsOf)).toEqual([2, 2])
+    const molstar = await loadMolstar()
+    const loci = (
+      anchors[0]?.obj?.data as
+        { loci: Parameters<typeof copyCenters>[1] }[] | undefined
+    )?.[0]?.loci
+    const centers = copyCenters(molstar, loci!)
+    expect(centers).toHaveLength(2)
+    // the test chains sit 20 Å apart along x
+    expect(centers[1]![0]! - centers[0]![0]!).toBeCloseTo(20)
   })
 })
 

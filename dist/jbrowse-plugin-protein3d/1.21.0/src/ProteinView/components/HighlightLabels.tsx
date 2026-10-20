@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react'
 
 import { observer } from 'mobx-react'
 
-import { placeLabels } from '../labelLayout'
+import { nearestInFront, placeLabels } from '../labelLayout'
 import loadMolstar from '../loadMolstar'
-import { labelAnchors } from '../sessionHighlights'
+import { copyCenters, labelAnchors } from '../sessionHighlights'
 
 import type { JBrowsePluginProteinViewModel } from '../model'
 import type { Vec3, Vec4 } from 'molstar/lib/mol-math/linear-algebra'
@@ -40,8 +40,8 @@ function textWidth(text: string) {
 
 /**
  * The session highlights' labels over the Mol* canvas, in screen pixels: a dot
- * on each labelled residue, a leader, and the label in a box of the
- * highlight's color, placed apart by placeLabels. Mol*'s own text is
+ * on the copy of each labelled residue nearest the viewer, a leader, and the
+ * label in a box of the highlight's color, placed apart by placeLabels. Mol*'s own text is
  * depth-tested, sized in Å and never moves off another label. The residues
  * are projected again on every frame Mol* draws.
  */
@@ -57,13 +57,11 @@ const HighlightLabels = observer(function HighlightLabels({
     if (!plugin || !canvas3d) {
       return
     }
-    let getBoundary:
-      | ((loci: StructureElement.Loci) => { sphere: { center: Vec3 } })
-      | undefined
+    let centersOf: ((loci: StructureElement.Loci) => Vec3[]) | undefined
     let cancelled = false
     const projected = [0, 0, 0, 0] as unknown as Vec4
     const place = () => {
-      if (!getBoundary) {
+      if (!centersOf) {
         return
       }
       const { camera } = canvas3d
@@ -76,19 +74,25 @@ const HighlightLabels = observer(function HighlightLabels({
           plugin.state.data.cells.get(ref)?.obj?.data as
             { loci: StructureElement.Loci }[] | undefined
         )?.[0]?.loci
-        if (loci) {
-          camera.project(projected, getBoundary(loci).sphere.center)
-          const depth = projected[2]!
-          if (depth > 0 && depth < 1) {
-            points.push({
-              ref,
-              label,
-              color,
+        const nearest = nearestInFront(
+          (loci ? centersOf(loci) : []).map(center => {
+            camera.project(projected, center)
+            return {
               x: projected[0]! / pixelRatio,
               y: height - projected[1]! / pixelRatio,
-              width: textWidth(label) + PAD_X * 2,
-            })
-          }
+              depth: projected[2]!,
+            }
+          }),
+        )
+        if (nearest) {
+          points.push({
+            ref,
+            label,
+            color,
+            x: nearest.x,
+            y: nearest.y,
+            width: textWidth(label) + PAD_X * 2,
+          })
         }
       }
       const placed = placeLabels(
@@ -103,7 +107,7 @@ const HighlightLabels = observer(function HighlightLabels({
     loadMolstar()
       .then(molstar => {
         if (!cancelled) {
-          getBoundary = loci => molstar.StructureElement.Loci.getBoundary(loci)
+          centersOf = loci => copyCenters(molstar, loci)
           place()
         }
       })

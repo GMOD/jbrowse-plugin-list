@@ -54,3 +54,19 @@ export function placeLabels(requests, bounds) {
         return { boxX: box.x, boxY: box.y, leaderX, leaderY };
     });
 }
+/**
+ * Of a residue's copies projected to the screen, the one nearest the viewer,
+ * skipping a copy behind the camera or past the far plane (depth outside
+ * 0..1)
+ */
+export function nearestInFront(copies) {
+    let nearest;
+    for (const copy of copies) {
+        if (copy.depth > 0 &&
+            copy.depth < 1 &&
+            copy.depth < (nearest?.depth ?? 1)) {
+            nearest = copy;
+        }
+    }
+    return nearest;
+}

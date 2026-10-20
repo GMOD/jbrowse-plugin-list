@@ -2,11 +2,11 @@
  * The session's highlights on a structure. `session.highlights` is one list of
  * labelled genome regions that every view draws on its own terms: a band on
  * the genome, a column on the alignment, and here the residues the region
- * codes for. An unlabelled highlight draws its residues as sticks on every
- * chain that has them. A labelled one draws them as spheres on one chain, the
- * cartoon around them fades, and HighlightLabels writes the label over the
- * canvas with a leader to the spheres, so a figure or a shared session names
- * the same position in each view.
+ * codes for, on every chain that has them: sticks for an unlabelled
+ * highlight, and spheres for a labelled one, with the cartoon around them
+ * faded and the label written over the canvas by HighlightLabels on the copy
+ * nearest the viewer. A figure or a shared session thus names the same
+ * position in each view.
  *
  * Every Mol* cell this makes is tagged `SESSION_HIGHLIGHTS_TAG`. A change
  * rebuilds all of them, since highlights change by hand and a structure holds
@@ -129,15 +129,38 @@ export function labelAnchors(plugin: PluginContext) {
   return anchors
 }
 
+/**
+ * The centre of each chain's copy of the residues in `loci`, in the order
+ * the structure holds the chains: haemoglobin's four β chains each carry
+ * Val6, and the label goes on the copy nearest the viewer
+ */
+export function copyCenters(
+  molstar: Molstar,
+  loci: Parameters<Molstar['StructureElement']['Loci']['getBoundary']>[0],
+) {
+  const { StructureElement } = molstar
+  const byChain = new Map<number, (typeof loci.elements)[number][]>()
+  for (const element of loci.elements) {
+    const chain = element.unit.chainGroupId
+    byChain.set(chain, [...(byChain.get(chain) ?? []), element])
+  }
+  return [...byChain.values()].map(
+    elements =>
+      StructureElement.Loci.getBoundary(
+        StructureElement.Loci(loci.structure, elements),
+      ).sphere.center,
+  )
+}
+
 // how far around a labelled residue the cartoon fades, and how much
 const FADE_RADIUS = 12
 const FADE_TRANSPARENCY = 0.75
 
 /**
  * Make each structure's highlight marks match `marks`: the old ones go, and
- * each mark gets its residues in its color. A labelled mark also gets an
- * anchor cell, the selection HighlightLabels points its label at, and fades
- * the cartoon around it.
+ * each mark gets its residues in its color on every chain that has them. A
+ * labelled mark also gets an anchor cell, the selection HighlightLabels
+ * points its label at, and fades the cartoon around it.
  */
 export async function syncSessionHighlightMarks({
   plugin,
@@ -156,25 +179,9 @@ export async function syncSessionHighlightMarks({
     Script,
     StateSelection,
     StateTransforms,
-    StructureElement,
-    StructureProperties: SP,
     createStructureRepresentationParams,
     formatMolScript,
   } = molstar
-  // the first chain of an entity: a homo-oligomer such as haemoglobin's four
-  // β chains carries a highlighted residue once per chain, and a label on
-  // each copy would name four places, so the label goes on the first
-  const firstChain = (structure: Structure, entityId: string) => {
-    const l = StructureElement.Location.create(structure)
-    for (const unit of structure.units) {
-      l.unit = unit
-      l.element = unit.elements[0]!
-      if (SP.entity.id(l) === entityId) {
-        return SP.chain.label_asym_id(l)
-      }
-    }
-    return undefined
-  }
   const anchors = labelAnchors(plugin)
   const update = plugin.state.data.build()
   const existing = plugin.state.data.select(
@@ -191,25 +198,13 @@ export async function syncSessionHighlightMarks({
     }
     const labelled = []
     for (const { entityId, labelSeqIds, label, color } of marks) {
-      const chain = label ? firstChain(molstarStructure, entityId) : undefined
-      const residues = MS.core.set.has([
-        MS.set(...labelSeqIds),
-        MS.ammp('label_seq_id'),
-      ])
-      const expression = MS.struct.generator.atomGroups(
-        chain
-          ? {
-              'chain-test': MS.core.rel.eq([MS.ammp('label_asym_id'), chain]),
-              'residue-test': residues,
-            }
-          : {
-              'entity-test': MS.core.rel.eq([
-                MS.ammp('label_entity_id'),
-                entityId,
-              ]),
-              'residue-test': residues,
-            },
-      )
+      const expression = MS.struct.generator.atomGroups({
+        'entity-test': MS.core.rel.eq([MS.ammp('label_entity_id'), entityId]),
+        'residue-test': MS.core.set.has([
+          MS.set(...labelSeqIds),
+          MS.ammp('label_seq_id'),
+        ]),
+      })
       update
         .to(root)
         .apply(
@@ -224,7 +219,7 @@ export async function syncSessionHighlightMarks({
         .apply(
           StateTransforms.Representation.StructureRepresentation3D,
           createStructureRepresentationParams(plugin, molstarStructure, {
-            ...(chain
+            ...(label
               ? { type: 'spacefill', typeParams: { sizeFactor: 1 } }
               : {
                   type: 'ball-and-stick',
@@ -235,7 +230,7 @@ export async function syncSessionHighlightMarks({
           }),
           { tags: [SESSION_HIGHLIGHTS_TAG] },
         )
-      if (label && chain) {
+      if (label) {
         labelled.push(expression)
         const anchor = update.toRoot().apply(
           StateTransforms.Model.MultiStructureSelectionFromExpression,
@@ -295,17 +290,17 @@ export async function syncSessionHighlightMarks({
 }
 
 /**
- * The camera that looks at the whole structure from the side its labelled
- * residues sit on, at the distance Mol* frames the scene from, or undefined
- * when nothing is labelled or the residues average out at the centre. A
- * residue facing away from the camera hides behind the fold, so a label
- * there points at nothing visible.
+ * The camera that looks at the whole structure from the side the first copy
+ * of its labelled residues sits on, at the distance Mol* frames the scene
+ * from, or undefined when nothing is labelled or the residues average out at
+ * the centre. A residue facing away from the camera hides behind the fold,
+ * so a label there points at nothing visible.
  */
 export function highlightCameraSnapshot(
   plugin: PluginContext,
   molstar: Molstar,
 ) {
-  const { StateSelection, StateTransforms, StructureElement, Vec3 } = molstar
+  const { StateSelection, StateTransforms, Vec3 } = molstar
   const anchors = plugin.state.data.select(
     StateSelection.Generators.root
       .subtree()
@@ -320,15 +315,16 @@ export function highlightCameraSnapshot(
   for (const cell of anchors) {
     const loci = (
       cell.obj?.data as
-        | { loci: Parameters<typeof StructureElement.Loci.getBoundary>[0] }[]
+        | {
+            loci: Parameters<
+              Molstar['StructureElement']['Loci']['getBoundary']
+            >[0]
+          }[]
         | undefined
     )?.[0]?.loci
-    if (loci) {
-      Vec3.add(
-        mean,
-        mean,
-        StructureElement.Loci.getBoundary(loci).sphere.center,
-      )
+    const first = loci ? copyCenters(molstar, loci)[0] : undefined
+    if (loci && first) {
+      Vec3.add(mean, mean, first)
       sphere ??= loci.structure.boundary.sphere
       n++
     }

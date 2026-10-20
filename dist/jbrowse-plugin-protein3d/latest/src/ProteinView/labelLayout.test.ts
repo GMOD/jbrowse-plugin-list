@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 
-import { placeLabels } from './labelLayout'
+import { nearestInFront, placeLabels } from './labelLayout'
 
 const bounds = { width: 800, height: 600 }
 const box = { width: 40, height: 20 }
@@ -58,4 +58,17 @@ test("no label box covers another residue's dot", () => {
     boxY < 275 &&
     boxY + box.height > 265
   expect(coversSecondDot).toBe(false)
+})
+
+// haemoglobin's four β chains each carry Val6; the label goes on the one in
+// front
+test('the nearest copy in front of the camera takes the label', () => {
+  const copies = [
+    { chain: 'B', depth: 0.6 },
+    { chain: 'D', depth: 0.4 },
+    { chain: 'F', depth: -0.2 },
+    { chain: 'H', depth: 1.3 },
+  ]
+  expect(nearestInFront(copies)?.chain).toBe('D')
+  expect(nearestInFront([{ chain: 'F', depth: -0.2 }])).toBeUndefined()
 })
