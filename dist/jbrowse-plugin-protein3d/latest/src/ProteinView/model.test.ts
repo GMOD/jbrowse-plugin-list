@@ -4,6 +4,7 @@ import { COMPACT_TRACK_HEIGHT, NORMAL_TRACK_HEIGHT } from './constants'
 import stateModelFactory from './model'
 import { removeMolstarStructure } from './removeStructure'
 import { PERSISTED_SETTINGS } from './storedSettings'
+import { parseStructure } from '../test_data/molstarStructure'
 
 import type { ProteinStructureSpec } from './proteinViewSpec'
 import type { PersistedSetting, PersistedSettings } from './storedSettings'
@@ -119,6 +120,41 @@ test('the view menu carries actions and the Tune menu carries toggles', () => {
   expect(
     labels.some(label => typeof label === 'string' && toggles.includes(label)),
   ).toBe(false)
+})
+
+// Each structure with a choice gets a radio list under its own name
+test('the Assembly menu lists only the structures with a choice', async () => {
+  const view = makeView()
+  const [first, second] = view.structures
+  const molstarStructures = [
+    await parseStructure([{ asym: 'A', entity: '1', residues: ['MET'] }]),
+  ]
+  first!.setStructureData({
+    molstarStructures,
+    assemblies: [{ id: '1', wholeModel: false }],
+  })
+  second!.setStructureData({
+    molstarStructures,
+    assemblies: [{ id: '1', wholeModel: true }],
+  })
+  const menu = view
+    .menuItems()
+    .find(item => 'label' in item && item.label === 'Assembly')
+  expect(menu).toMatchObject({
+    subMenu: [
+      {
+        label: 'a.cif',
+        subMenu: [
+          { label: 'Assembly 1', type: 'radio', checked: true },
+          {
+            label: 'Deposited model (every chain)',
+            type: 'radio',
+            checked: false,
+          },
+        ],
+      },
+    ],
+  })
 })
 
 test('a behavior toggle changes this view and is not remembered', () => {

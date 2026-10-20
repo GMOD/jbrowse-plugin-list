@@ -19,7 +19,10 @@ import { removeMolstarStructure } from './removeStructure';
  *     awaiting has its result discarded rather than written into a torn-down
  *     plugin;
  *   - if the plugin was merely swapped (e.g. a view remount), the structure is
- *     reloaded into the current plugin so it isn't left stranded unloaded.
+ *     reloaded into the current plugin so it isn't left stranded unloaded;
+ *   - a loaded structure whose `assembly` no longer matches the one it was
+ *     built with leaves Mol* and loads again, so every reaction keyed on its
+ *     Mol* structures reaches the new chains.
  */
 export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
     const loadingIn = new Map();
@@ -134,10 +137,21 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
             }
         });
     }
+    function unloadOtherAssembly(structure, plugin) {
+        const { molstarStructure } = structure;
+        structure.setLoadedToMolstar(false);
+        removeMolstarStructure({ plugin, molstarStructure }).catch((e) => {
+            console.error(e);
+        });
+    }
     return function loadPendingStructures() {
         const { structures, molstarPluginContext } = host;
         if (molstarPluginContext) {
             for (const structure of structures) {
+                if (structure.loadedToMolstar &&
+                    structure.assembly !== structure.loadedAssembly) {
+                    unloadOtherAssembly(structure, molstarPluginContext);
+                }
                 if (!structure.loadedToMolstar &&
                     loadingIn.get(structure) !== molstarPluginContext &&
                     failedIn.get(structure) !== molstarPluginContext) {

@@ -34,12 +34,57 @@ ${rows.join('\n')}
     : ''
 }
 
+/** A biological assembly: the listed chains under the identity. */
+export interface TestAssembly {
+  id: string
+  asymIds: string[]
+  oligomericDetails: string
+}
+
+function assemblyLoops(assemblies: TestAssembly[]) {
+  if (assemblies.length === 0) {
+    return ''
+  }
+  const matrix = [1, 2, 3]
+    .flatMap(i =>
+      [1, 2, 3].map(
+        j => `_pdbx_struct_oper_list.matrix[${i}][${j}] ${i === j ? 1 : 0}`,
+      ),
+    )
+    .join('\n')
+  const vector = [1, 2, 3]
+    .map(i => `_pdbx_struct_oper_list.vector[${i}] 0`)
+    .join('\n')
+  return `loop_
+_pdbx_struct_assembly.id
+_pdbx_struct_assembly.details
+_pdbx_struct_assembly.oligomeric_details
+_pdbx_struct_assembly.oligomeric_count
+${assemblies.map(a => `${a.id} author_defined_assembly ${a.oligomericDetails} ${a.asymIds.length}`).join('\n')}
+loop_
+_pdbx_struct_assembly_gen.assembly_id
+_pdbx_struct_assembly_gen.oper_expression
+_pdbx_struct_assembly_gen.asym_id_list
+${assemblies.map(a => `${a.id} 1 ${a.asymIds.join(',')}`).join('\n')}
+_pdbx_struct_oper_list.id 1
+_pdbx_struct_oper_list.type 'identity operation'
+${matrix}
+${vector}
+`
+}
+
 /**
  * A CA-only mmCIF, one atom per residue numbered from label_seq_id 1. Each
  * chain is an α-helix of its own, so a superposition has real geometry to fit,
  * and every model after the first is nudged, as an NMR ensemble's are.
  */
-export function caOnlyMmcif(chains: TestChain[], { models = 1 } = {}) {
+export function caOnlyMmcif(
+  chains: TestChain[],
+  {
+    models = 1,
+    assemblies = [],
+  }: { models?: number; assemblies?: TestAssembly[] } = {},
+) {
   const rows: string[] = []
   for (let model = 1; model <= models; model++) {
     chains.forEach(({ asym, entity, residues }, chainIndex) => {
@@ -55,7 +100,7 @@ export function caOnlyMmcif(chains: TestChain[], { models = 1 } = {}) {
     })
   }
   return `data_TEST
-${entityPolyLoop(chains)}loop_
+${entityPolyLoop(chains)}${assemblyLoops(assemblies)}loop_
 _atom_site.group_PDB
 _atom_site.id
 _atom_site.type_symbol

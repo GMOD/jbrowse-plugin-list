@@ -32,6 +32,7 @@ const STRUCTURE_KEY_ROLES = {
   pairwiseAlignment: 'setting',
   alignmentImported: 'setting',
   hidden: 'setting',
+  assembly: 'setting',
   feature: 'launchWide',
   userProvidedTranscriptSequence: 'launchWide',
   connectedViewId: 'launchWide',
@@ -207,6 +208,7 @@ function readStructure(
     ),
     alignmentImported: read('alignmentImported', isBoolean, 'true or false'),
     hidden: read('hidden', isBoolean, 'true or false'),
+    assembly: read('assembly', isString, 'a string'),
     feature: read('feature', isFeature, 'a feature object'),
     userProvidedTranscriptSequence: read(
       'userProvidedTranscriptSequence',

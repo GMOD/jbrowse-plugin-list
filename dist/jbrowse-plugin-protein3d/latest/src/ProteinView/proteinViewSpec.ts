@@ -42,6 +42,9 @@ export interface ProteinStructureSpec {
   mappedEntityId?: string
   // drawn in Mol* or not; a hidden structure stays mapped and superposed
   hidden?: boolean
+  // what Mol* builds: absent for the first biological assembly, an assembly id
+  // ('2') for another, or 'deposited' for every chain the file holds
+  assembly?: string
 }
 
 /**

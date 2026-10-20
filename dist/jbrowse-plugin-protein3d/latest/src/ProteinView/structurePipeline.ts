@@ -9,6 +9,7 @@ import loadMolstar from './loadMolstar'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory'
+import type { RootStructureDefinition } from 'molstar/lib/mol-plugin-state/helpers/root-structure'
 import type { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
 import type { StateObjectSelector } from 'molstar/lib/mol-state'
 
@@ -71,6 +72,20 @@ export async function parseStructureTrajectory({
   return trajectory
 }
 
+/** The `assembly` value that builds the deposited model, every chain the file
+ * holds, rather than one of the entry's biological assemblies. */
+export const DEPOSITED_MODEL = 'deposited'
+
+function rootStructure(
+  assembly: string | undefined,
+): RootStructureDefinition.Params | undefined {
+  return assembly === undefined
+    ? undefined
+    : assembly === DEPOSITED_MODEL
+      ? { name: 'model', params: {} }
+      : { name: 'assembly', params: { id: assembly } }
+}
+
 type ModelSelector = StateObjectSelector<PluginStateObject.Molecule.Model>
 
 interface StructureSelector {
@@ -125,16 +140,25 @@ async function removeWater(
  * addresses only the first leaves the other nineteen behind. They come from
  * the preset rather than `hierarchy.current.structures`, which also holds every
  * other load's.
+ *
+ * A single-model file falls through to Mol*'s default preset, which takes the
+ * `structure` param: absent, it builds the first assembly. An ensemble builds
+ * each model whole and ignores it.
  */
 async function applyStructurePreset(
   plugin: PluginContext,
   trajectory: StateObjectSelector,
   source: string,
+  assembly: string | undefined,
 ) {
+  const params: {
+    useDefaultIfSingleModel: boolean
+    structure?: RootStructureDefinition.Params
+  } = { useDefaultIfSingleModel: true, structure: rootStructure(assembly) }
   const preset = await plugin.builders.structure.hierarchy.applyPreset(
     trajectory,
     'all-models',
-    { useDefaultIfSingleModel: true },
+    params,
   )
   const { models, structures } = presetOutput(preset)
   await removeWater(plugin, structures)
@@ -156,11 +180,18 @@ export async function loadStructure({
   plugin,
   data,
   url,
+  assembly,
 }: {
   plugin: PluginContext
   data?: string
   url?: string
+  assembly?: string
 }) {
   const trajectory = await parseStructureTrajectory({ plugin, data, url })
-  return applyStructurePreset(plugin, trajectory, url ?? 'the structure data')
+  return applyStructurePreset(
+    plugin,
+    trajectory,
+    url ?? 'the structure data',
+    assembly,
+  )
 }

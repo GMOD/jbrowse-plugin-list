@@ -30,6 +30,37 @@ function experimentalMethods(source, molstar) {
         ...(original ? pdbExperimentalMethods(original, molstar) : []),
     ];
 }
+function oligomericDetails(model, { MmcifFormat }) {
+    const source = model.sourceData;
+    if (!MmcifFormat.is(source)) {
+        return new Map();
+    }
+    const { id, oligomeric_details, _rowCount } = source.data.db.pdbx_struct_assembly;
+    const details = new Map();
+    for (let i = 0; i < _rowCount; i++) {
+        const value = oligomeric_details.value(i);
+        if (value) {
+            details.set(id.value(i), value);
+        }
+    }
+    return details;
+}
+function structureAssemblies(model, molstar) {
+    const details = oligomericDetails(model, molstar);
+    const chains = new Set(Array.from(model.atomicHierarchy.chains.label_asym_id.toArray()));
+    return (molstar.ModelSymmetry.Provider.get(model)?.assemblies ?? []).map(({ id, operatorGroups }) => {
+        const [group, ...rest] = operatorGroups;
+        const asymIds = new Set(group?.asymIds ?? chains);
+        return {
+            id,
+            oligomericDetails: details.get(id),
+            wholeModel: rest.length === 0 &&
+                group?.operators.length === 1 &&
+                group.operators[0].isIdentity &&
+                [...chains].every(c => asymIds.has(c)),
+        };
+    });
+}
 /**
  * Loads a structure (from inline data or a URL) into the given Molstar plugin
  * and pulls out its per-chain sequences and per-residue confidence. Pure with
@@ -37,15 +68,18 @@ function experimentalMethods(source, molstar) {
  * callers own the decision of whether/where to store the result.
  */
 export async function loadStructureData({ structure, plugin, }) {
-    const { data, url } = structure;
-    const { model, structures: molstarStructures, modelIds, } = await loadStructure({ plugin, data: data || undefined, url });
+    const { data, url, assembly } = structure;
+    const { model, structures: molstarStructures, modelIds, } = await loadStructure({ plugin, data: data || undefined, url, assembly });
+    const molstar = await loadMolstar();
     // An experimental entry's B-factors are not confidence: read as pLDDT they
     // invert, drawing a well-ordered residue as "very low".
-    const experimental = experimentalMethods(model?.obj?.data.sourceData, await loadMolstar()).some(m => m !== 'THEORETICAL MODEL');
+    const experimental = experimentalMethods(model?.obj?.data.sourceData, molstar).some(m => m !== 'THEORETICAL MODEL');
     return {
         entities: model ? extractEntities(model) : undefined,
         confidence: model && !experimental ? extractPerResidueConfidence(model) : undefined,
         molstarStructures,
         modelIds,
+        assemblies: model?.obj ? structureAssemblies(model.obj.data, molstar) : [],
+        assembly,
     };
 }

@@ -17,6 +17,7 @@ import { RESIDUE_COLORS } from './residueColors';
 import { positionRangeRuns, rangeList, residueRuns, transcriptRuns, } from './residueRanges';
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks';
 import { sessionHighlightResidues } from './sessionHighlights';
+import { DEPOSITED_MODEL } from './structurePipeline';
 import { structureUniProt } from './structureUniProt';
 import { assemblyNaming, errorMessage } from './util';
 import { makeVariantEffectLoader } from './variantEffectLoader';
@@ -120,6 +121,14 @@ const Structure = types
      * carry on, so showing it again needs no reload.
      */
     hidden: types.optional(types.boolean, false),
+    /**
+     * #property
+     * What Mol* builds from the file: absent for the entry's first biological
+     * assembly (Mol*'s default), an assembly id such as `'2'` for another, or
+     * `'deposited'` for the deposited model, every chain the file holds. An
+     * NMR ensemble builds each model whole whatever this says.
+     */
+    assembly: types.maybe(types.string),
 })
     .volatile(() => ({
     /**
@@ -215,6 +224,17 @@ const Structure = types
     molstarModelIds: new Array(),
     /**
      * #volatile
+     * The biological assemblies the loaded entry lists
+     */
+    assemblies: new Array(),
+    /**
+     * #volatile
+     * The `assembly` the current load was built with; the loader rebuilds the
+     * structure when it differs from `assembly`.
+     */
+    loadedAssembly: undefined,
+    /**
+     * #volatile
      * Range of alignment positions to highlight (e.g., when hovering a protein feature)
      */
     alignmentHoverRange: undefined,
@@ -291,6 +311,8 @@ const Structure = types
         self.structureConfidence = data.confidence;
         self.molstarStructures = data.molstarStructures ?? [];
         self.molstarModelIds = data.modelIds ?? new Array();
+        self.assemblies = data.assemblies ?? [];
+        self.loadedAssembly = data.assembly;
     },
     /**
      * #action
@@ -447,6 +469,15 @@ const Structure = types
     },
     /**
      * #action
+     * Rebuilds the structure from another assembly or the deposited model.
+     * The default, the first assembly, is stored as absent.
+     */
+    setAssembly(assembly) {
+        const first = self.assemblies[0]?.id ?? DEPOSITED_MODEL;
+        self.assembly = assembly === first ? undefined : assembly;
+    },
+    /**
+     * #action
      */
     setMappedEntityId(id) {
         self.mappedEntityId = id;
@@ -483,6 +514,30 @@ const Structure = types
      */
     get mappedStructureSeq() {
         return this.mappedEntity?.seq;
+    },
+    /**
+     * #getter
+     * What `assembly` may be set to, with the entry's assemblies first and
+     * the deposited model last unless an assembly already is it. Empty for an
+     * ensemble, which ignores `assembly`.
+     */
+    get assemblyChoices() {
+        const { assemblies, molstarStructures } = self;
+        if (molstarStructures.length !== 1) {
+            return [];
+        }
+        const current = self.assembly ?? assemblies[0]?.id ?? DEPOSITED_MODEL;
+        const choices = assemblies.map(({ id, oligomericDetails }) => ({
+            value: id,
+            label: `Assembly ${id}${oligomericDetails ? ` (${oligomericDetails})` : ''}`,
+        }));
+        if (!assemblies.some(a => a.wholeModel)) {
+            choices.push({
+                value: DEPOSITED_MODEL,
+                label: 'Deposited model (every chain)',
+            });
+        }
+        return choices.map(c => ({ ...c, checked: c.value === current }));
     },
     /**
      * #getter

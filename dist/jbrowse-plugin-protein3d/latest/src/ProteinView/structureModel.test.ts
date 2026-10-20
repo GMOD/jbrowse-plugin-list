@@ -7,6 +7,7 @@ import { structuresSettled } from './frameSelection'
 import Structure from './structureModel'
 import { parseStructure } from '../test_data/molstarStructure'
 
+import type { StructureAssembly } from './loadStructureData'
 import type * as JBrowseCoreUtil from '@jbrowse/core/util'
 import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
 
@@ -1325,4 +1326,46 @@ test('a rerun while a stale alignment realigns neither reports again nor restart
     expect(model.alignmentPending).toBe(false)
   })
   expect(model.mappedEntityId).toBe('4')
+})
+
+async function loadedWithAssemblies(assemblies: StructureAssembly[]) {
+  const parent = TestParent.create({ structures: [{ url: 'x.cif' }] })
+  const model = parent.structures[0]!
+  model.setStructureData({
+    molstarStructures: [
+      await parseStructure([
+        { asym: 'A', entity: '1', residues: ['MET', 'LYS'] },
+      ]),
+    ],
+    assemblies,
+  })
+  return model
+}
+
+test('an entry with two assemblies offers both and the deposited model, the first checked', async () => {
+  const model = await loadedWithAssemblies([
+    { id: '1', oligomericDetails: 'tetrameric', wholeModel: false },
+    { id: '2', oligomericDetails: 'tetrameric', wholeModel: false },
+  ])
+  expect(model.assemblyChoices).toEqual([
+    { value: '1', label: 'Assembly 1 (tetrameric)', checked: true },
+    { value: '2', label: 'Assembly 2 (tetrameric)', checked: false },
+    {
+      value: 'deposited',
+      label: 'Deposited model (every chain)',
+      checked: false,
+    },
+  ])
+  model.setAssembly('deposited')
+  expect(model.assembly).toBe('deposited')
+  expect(model.assemblyChoices.at(-1)?.checked).toBe(true)
+  model.setAssembly('1')
+  expect(model.assembly).toBeUndefined()
+})
+
+test('an assembly that is the whole model leaves no choice', async () => {
+  const model = await loadedWithAssemblies([{ id: '1', wholeModel: true }])
+  expect(model.assemblyChoices).toEqual([
+    { value: '1', label: 'Assembly 1', checked: true },
+  ])
 })

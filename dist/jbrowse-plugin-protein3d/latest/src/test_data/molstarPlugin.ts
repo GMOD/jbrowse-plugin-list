@@ -1,7 +1,7 @@
 import { caOnlyMmcif } from './molstarStructure'
 import { loadStructure } from '../ProteinView/structurePipeline'
 
-import type { TestChain } from './molstarStructure'
+import type { TestAssembly, TestChain } from './molstarStructure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 /** Load a CA-only mmCIF into a headless plugin the way the view loads one.
@@ -9,7 +9,11 @@ import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 export async function loadCaOnly(
   plugin: PluginContext,
   chains: TestChain[],
-  options?: { models?: number },
+  options?: { models?: number; assemblies?: TestAssembly[]; assembly?: string },
 ) {
-  return loadStructure({ plugin, data: caOnlyMmcif(chains, options) })
+  return loadStructure({
+    plugin,
+    data: caOnlyMmcif(chains, options),
+    assembly: options?.assembly,
+  })
 }

@@ -100,6 +100,38 @@ const BEHAVIOR_SETTINGS = [
 
 type BehaviorSetting = (typeof BEHAVIOR_SETTINGS)[number][0]
 
+function assemblyItems(structure: JBrowsePluginProteinStructureModel) {
+  return structure.assemblyChoices.map(({ value, label, checked }) => ({
+    label,
+    type: 'radio' as const,
+    checked,
+    onClick: () => {
+      structure.setAssembly(value)
+    },
+  }))
+}
+
+// A structure with one way to build it offers no choice; with several
+// structures open, each choice sits under its structure's name.
+function assemblyMenu(structures: JBrowsePluginProteinStructureModel[]) {
+  const choosable = structures.filter(s => s.assemblyChoices.length > 1)
+  const [only] = choosable
+  return only === undefined
+    ? []
+    : [
+        {
+          label: 'Assembly',
+          subMenu:
+            structures.length === 1
+              ? assemblyItems(only)
+              : choosable.map(s => ({
+                  label: s.label,
+                  subMenu: assemblyItems(s),
+                })),
+        },
+      ]
+}
+
 /**
  * #stateModel Protein3dViewPlugin
  * extends
@@ -662,6 +694,7 @@ function stateModelFactory() {
                 },
               ]
             : []),
+          ...assemblyMenu(self.structures),
           {
             label: 'Clear selection',
             onClick: () => {

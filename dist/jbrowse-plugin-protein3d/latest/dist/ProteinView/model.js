@@ -62,6 +62,35 @@ const BEHAVIOR_SETTINGS = [
     ['showHighlight', 'Highlight aligned residues'],
     ['zoomToBaseLevel', 'Zoom to base level on click'],
 ];
+function assemblyItems(structure) {
+    return structure.assemblyChoices.map(({ value, label, checked }) => ({
+        label,
+        type: 'radio',
+        checked,
+        onClick: () => {
+            structure.setAssembly(value);
+        },
+    }));
+}
+// A structure with one way to build it offers no choice; with several
+// structures open, each choice sits under its structure's name.
+function assemblyMenu(structures) {
+    const choosable = structures.filter(s => s.assemblyChoices.length > 1);
+    const [only] = choosable;
+    return only === undefined
+        ? []
+        : [
+            {
+                label: 'Assembly',
+                subMenu: structures.length === 1
+                    ? assemblyItems(only)
+                    : choosable.map(s => ({
+                        label: s.label,
+                        subMenu: assemblyItems(s),
+                    })),
+            },
+        ];
+}
 /**
  * #stateModel Protein3dViewPlugin
  * extends
@@ -547,6 +576,7 @@ function stateModelFactory() {
                         },
                     ]
                     : []),
+                ...assemblyMenu(self.structures),
                 {
                     label: 'Clear selection',
                     onClick: () => {

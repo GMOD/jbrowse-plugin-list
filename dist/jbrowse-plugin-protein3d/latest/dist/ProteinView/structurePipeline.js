@@ -33,6 +33,16 @@ export async function parseStructureTrajectory({ plugin, data, url, }) {
     }
     return trajectory;
 }
+/** The `assembly` value that builds the deposited model, every chain the file
+ * holds, rather than one of the entry's biological assemblies. */
+export const DEPOSITED_MODEL = 'deposited';
+function rootStructure(assembly) {
+    return assembly === undefined
+        ? undefined
+        : assembly === DEPOSITED_MODEL
+            ? { name: 'model', params: {} }
+            : { name: 'assembly', params: { id: assembly } };
+}
 // The 'all-models' preset hands back { model, structure } through the default
 // preset for a single-model trajectory, { models, structures } for an
 // ensemble, and {} if the trajectory vanished.
@@ -68,9 +78,14 @@ async function removeWater(plugin, structures) {
  * addresses only the first leaves the other nineteen behind. They come from
  * the preset rather than `hierarchy.current.structures`, which also holds every
  * other load's.
+ *
+ * A single-model file falls through to Mol*'s default preset, which takes the
+ * `structure` param: absent, it builds the first assembly. An ensemble builds
+ * each model whole and ignores it.
  */
-async function applyStructurePreset(plugin, trajectory, source) {
-    const preset = await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', { useDefaultIfSingleModel: true });
+async function applyStructurePreset(plugin, trajectory, source, assembly) {
+    const params = { useDefaultIfSingleModel: true, structure: rootStructure(assembly) };
+    const preset = await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', params);
     const { models, structures } = presetOutput(preset);
     await removeWater(plugin, structures);
     const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []));
@@ -84,7 +99,7 @@ async function applyStructurePreset(plugin, trajectory, source) {
     };
 }
 /** Load a structure from its text or its url, as the view shows one. */
-export async function loadStructure({ plugin, data, url, }) {
+export async function loadStructure({ plugin, data, url, assembly, }) {
     const trajectory = await parseStructureTrajectory({ plugin, data, url });
-    return applyStructurePreset(plugin, trajectory, url ?? 'the structure data');
+    return applyStructurePreset(plugin, trajectory, url ?? 'the structure data', assembly);
 }

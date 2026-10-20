@@ -40,9 +40,11 @@ const TestStructure = types
     data: types.maybe(types.string),
     uniprotId: types.maybe(types.string),
     userProvidedTranscriptSequence: types.optional(types.string, ''),
+    assembly: types.maybe(types.string),
   })
   .volatile(() => ({
     loadedToMolstar: false,
+    loadedAssembly: undefined as string | undefined,
     entities: undefined as Entity[] | undefined,
     molstarStructures: new Array<Structure>(),
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
@@ -58,12 +60,22 @@ const TestStructure = types
     setStructureData(d: StructureData) {
       self.entities = d.entities
       self.molstarStructures = d.molstarStructures ?? []
+      self.loadedAssembly = d.assembly
+    },
+    setAssembly(assembly: string) {
+      self.assembly = assembly
     },
     setLoadedToMolstar(v: boolean) {
       self.loadedToMolstar = v
       if (!v) {
         self.molstarStructures = []
       }
+    },
+  }))
+
+  .views(self => ({
+    get molstarStructure() {
+      return self.molstarStructures[0]
     },
   }))
 
@@ -448,4 +460,55 @@ test('a retry clears the failure it is retrying', async () => {
   await tick()
   expect(structure.loadedToMolstar).toBe(true)
   logged.mockRestore()
+})
+
+// A load reports the assembly it built, as loadStructureData does
+function loadsAssembly() {
+  mockLoad.mockImplementation(({ structure }) => {
+    const { assembly } = structure as { assembly?: string }
+    return Promise.resolve({
+      assembly,
+      molstarStructures: [molstarStructure(assembly ?? 'first')],
+    })
+  })
+}
+
+test('a structure switched to another assembly leaves Mol* and loads it', async () => {
+  loadsAssembly()
+  const plugin = {}
+  const { load, structure } = setup(plugin)
+  load()
+  await tick()
+  const first = structure.molstarStructures[0]
+
+  structure.setAssembly('deposited')
+  load()
+  expect(mockRemove).toHaveBeenCalledWith({ plugin, molstarStructure: first })
+  await tick()
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+  expect(structure.loadedToMolstar).toBe(true)
+  expect(structure.molstarStructures).toEqual([molstarStructure('deposited')])
+
+  load()
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+})
+
+test('an assembly changed mid-load is loaded once the first load lands', async () => {
+  loadsAssembly()
+  let resolveFirst: (v: StructureData) => void = () => {}
+  mockLoad.mockImplementationOnce(
+    () => new Promise(res => (resolveFirst = res)),
+  )
+  const { load, structure } = setup({})
+  load()
+  structure.setAssembly('2')
+  load()
+  expect(mockLoad).toHaveBeenCalledTimes(1)
+
+  resolveFirst({ molstarStructures: [molstarStructure('first')] })
+  await tick()
+  load()
+  await tick()
+  expect(mockLoad).toHaveBeenCalledTimes(2)
+  expect(structure.molstarStructures).toEqual([molstarStructure('2')])
 })
