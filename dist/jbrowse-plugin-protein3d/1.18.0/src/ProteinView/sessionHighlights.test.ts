@@ -6,6 +6,7 @@ import { expect, test } from 'vitest'
 import {
   DEFAULT_HIGHLIGHT_COLOR,
   SESSION_HIGHLIGHTS_TAG,
+  labelOffsetZ,
   labelTextSize,
   sessionHighlightResidues,
   syncSessionHighlightMarks,
@@ -197,9 +198,17 @@ test('labels on neighbouring residues lean apart on their tethers', async () => 
     const params = tagged(plugin).labels.map(c => c.transform.params)
     expect(params.map(p => p?.attachment)).toEqual(['bottom-left', 'top-right'])
     expect(params.every(p => p?.tether)).toBe(true)
-    // in front of everything the structure draws
-    expect(params[0]?.offsetZ).toBe(molstarStructure.boundary.sphere.radius)
+    // forward, but not past the structure's bounding sphere
+    const { radius } = molstarStructure.boundary.sphere
+    expect(params[0]?.offsetZ).toBeGreaterThan(0)
+    expect(params[0]?.offsetZ).toBeLessThan(radius)
   })
+})
+
+test("a label moves forward as far as the structure's bounding sphere allows", () => {
+  expect(labelOffsetZ(30, 5)).toBe(25)
+  expect(labelOffsetZ(30, 30)).toBe(0)
+  expect(labelOffsetZ(30, 31)).toBe(0)
 })
 
 test('label size follows the structure, within bounds', () => {

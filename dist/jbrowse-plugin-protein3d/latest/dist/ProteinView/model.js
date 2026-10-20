@@ -15,7 +15,7 @@ import { checkedColor, colorOfScheme } from './proteinColor';
 import { defaultDisplayName } from './proteinViewSpec';
 import { removeMolstarStructure } from './removeStructure';
 import { reportPluginFailure } from './reportPluginFailure';
-import { syncSessionHighlightMarks } from './sessionHighlights';
+import { fitLabelDepths, syncSessionHighlightMarks } from './sessionHighlights';
 import { showLoading } from './showLoading';
 import { readStoredSettings, storeSetting, withStoredSettings, } from './storedSettings';
 import { makeStructureLoader } from './structureLoader';
@@ -346,8 +346,33 @@ function stateModelFactory() {
                     }))
                     : []);
                 if (plugin && structures.length > 0) {
-                    syncSessionHighlightMarks({ plugin, structures }).catch(reportPluginFailure(self, plugin));
+                    syncSessionHighlightMarks({ plugin, structures })
+                        .then(() => fitLabelDepths(plugin))
+                        .catch(reportPluginFailure(self, plugin));
                 }
+            }));
+            // A label's depth follows the camera, once it settles
+            let stopFollowingCamera;
+            addDisposer(self, () => stopFollowingCamera?.());
+            addDisposer(self, autorun(() => {
+                stopFollowingCamera?.();
+                stopFollowingCamera = undefined;
+                const plugin = self.molstarPluginContext;
+                const camera = plugin?.canvas3d?.camera;
+                if (!plugin || !camera) {
+                    return;
+                }
+                let timer;
+                const subscription = camera.stateChanged.subscribe(() => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        fitLabelDepths(plugin).catch(reportPluginFailure(self, plugin));
+                    }, 200);
+                });
+                stopFollowingCamera = () => {
+                    clearTimeout(timer);
+                    subscription.unsubscribe();
+                };
             }));
             addDisposer(self, autorun(() => {
                 const plugin = self.molstarPluginContext;
