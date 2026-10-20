@@ -15,6 +15,7 @@ import { checkedColor, colorOfScheme } from './proteinColor';
 import { defaultDisplayName } from './proteinViewSpec';
 import { removeMolstarStructure } from './removeStructure';
 import { reportPluginFailure } from './reportPluginFailure';
+import { syncSessionHighlightMarks } from './sessionHighlights';
 import { showLoading } from './showLoading';
 import { readStoredSettings, storeSetting, withStoredSettings, } from './storedSettings';
 import { makeStructureLoader } from './structureLoader';
@@ -332,6 +333,20 @@ function stateModelFactory() {
                     : []);
                 if (plugin && structures.length > 0) {
                     syncSiteSticks({ plugin, structures }).catch(reportPluginFailure(self, plugin));
+                }
+            }));
+            // The session's highlights, labelled in 3D on the residues each
+            // genome region codes for
+            addDisposer(self, autorun(() => {
+                const plugin = self.molstarPluginContext;
+                const structures = self.structures.flatMap(s => s.entities
+                    ? s.molstarStructures.map(molstarStructure => ({
+                        molstarStructure,
+                        marks: s.sessionHighlightMarks,
+                    }))
+                    : []);
+                if (plugin && structures.length > 0) {
+                    syncSessionHighlightMarks({ plugin, structures }).catch(reportPluginFailure(self, plugin));
                 }
             }));
             addDisposer(self, autorun(() => {

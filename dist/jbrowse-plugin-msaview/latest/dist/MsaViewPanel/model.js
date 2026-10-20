@@ -8,6 +8,7 @@ import { connectedDomains } from './connectedDomains';
 import { domainTrackConf } from './domainTrack';
 import { msaCoordToGenomeCoord, msaCoordToGenomeRegions, } from './msaCoordToGenomeCoord';
 import { resolveConnectedTranscriptIfNeeded } from './resolveConnectedTranscript';
+import { syncSessionHighlights } from './sessionHighlights';
 import { transcriptMap } from './transcriptMap';
 /**
  * Where the homolog set comes from. NCBI's ortholog sets cover vertebrates and
@@ -576,6 +577,7 @@ export default function stateModelFactory() {
             // so they're factories returning the autorun body rather than plain fns
             addDisposer(self, autorun(syncGenomeHoverToMsaColumn(self)));
             addDisposer(self, autorun(observeProteinHighlights(self)));
+            addDisposer(self, autorun(syncSessionHighlights(self)));
         },
     }));
 }

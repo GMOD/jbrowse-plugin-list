@@ -16,6 +16,7 @@ import { clickProteinToGenome, navigateToProteinPosition, structureRangesToGenom
 import { RESIDUE_COLORS } from './residueColors';
 import { positionRangeRuns, rangeList, residueRuns, transcriptRuns, } from './residueRanges';
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks';
+import { sessionHighlightResidues } from './sessionHighlights';
 import { structureUniProt } from './structureUniProt';
 import { assemblyNaming, errorMessage } from './util';
 import { makeVariantEffectLoader } from './variantEffectLoader';
@@ -1060,6 +1061,29 @@ const Structure = types
                 transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
             })
             : undefined;
+    },
+    /**
+     * #getter
+     * The session's highlights on the mapped entity, each with the residues
+     * its genome region codes for; see sessionHighlights
+     */
+    get sessionHighlightMarks() {
+        const session = getSession(self);
+        const { genomeToTranscriptSeqMapping: mapping, mappedEntity: entity, transcriptSeqToStructureSeqPosition: transcriptToStructure, } = self;
+        return session.highlightsVisible &&
+            mapping &&
+            entity &&
+            transcriptToStructure
+            ? sessionHighlightResidues({
+                highlights: session.highlights,
+                mapping,
+                naming: self.genomeNaming,
+                entity,
+                transcriptToStructure,
+                labels: !('highlightLabelsVisible' in session &&
+                    session.highlightLabelsVisible === false),
+            })
+            : [];
     },
     /**
      * #getter

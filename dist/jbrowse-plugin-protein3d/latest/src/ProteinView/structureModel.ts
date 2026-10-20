@@ -63,6 +63,7 @@ import {
   transcriptRuns,
 } from './residueRanges'
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
+import { sessionHighlightResidues } from './sessionHighlights'
 import { structureUniProt } from './structureUniProt'
 import { type MolstarLocationInfo } from './subscribeMolstarInteraction'
 import { assemblyNaming, errorMessage } from './util'
@@ -90,6 +91,7 @@ import type {
   ResidueRanges,
   SelectionTarget,
 } from './residueRanges'
+import type { ResidueMark } from './sessionHighlights'
 import type {
   VariantEffectAsk,
   VariantEffectState,
@@ -1236,6 +1238,35 @@ const Structure = types
             transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
           })
         : undefined
+    },
+    /**
+     * #getter
+     * The session's highlights on the mapped entity, each with the residues
+     * its genome region codes for; see sessionHighlights
+     */
+    get sessionHighlightMarks(): ResidueMark[] {
+      const session = getSession(self)
+      const {
+        genomeToTranscriptSeqMapping: mapping,
+        mappedEntity: entity,
+        transcriptSeqToStructureSeqPosition: transcriptToStructure,
+      } = self
+      return session.highlightsVisible &&
+        mapping &&
+        entity &&
+        transcriptToStructure
+        ? sessionHighlightResidues({
+            highlights: session.highlights,
+            mapping,
+            naming: self.genomeNaming,
+            entity,
+            transcriptToStructure,
+            labels: !(
+              'highlightLabelsVisible' in session &&
+              session.highlightLabelsVisible === false
+            ),
+          })
+        : []
     },
     /**
      * #getter
