@@ -19,6 +19,23 @@ import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 export const SESSION_HIGHLIGHTS_TAG = 'jbrowse-session-highlights'
 
+// The corner of each label its tether meets, in turn, so labels on
+// neighbouring residues (KRAS G12 and G13) lean apart instead of stacking
+export const LABEL_CORNERS = [
+  'bottom-left',
+  'top-right',
+  'top-left',
+  'bottom-right',
+] as const
+
+/**
+ * Label text in Å, in proportion to the structure, so a label reads at about
+ * one size whether the structure is one domain or a complex on DNA
+ */
+export function labelTextSize(radius: number) {
+  return Math.min(8, Math.max(3, radius / 10))
+}
+
 // core's default highlight color, which the genome view's band draws in
 export const DEFAULT_HIGHLIGHT_COLOR = '#FFB11D'
 
@@ -145,7 +162,11 @@ export async function syncSessionHighlightMarks({
     if (!root) {
       continue
     }
-    for (const { entityId, labelSeqIds, label, color } of marks) {
+    const textSize = labelTextSize(molstarStructure.boundary.sphere.radius)
+    for (const [
+      i,
+      { entityId, labelSeqIds, label, color },
+    ] of marks.entries()) {
       const expression = MS.struct.generator.atomGroups({
         'entity-test': MS.core.rel.eq([MS.ammp('label_entity_id'), entityId]),
         'residue-test': MS.core.set.has([
@@ -203,8 +224,10 @@ export async function syncSessionHighlightMarks({
             StateTransforms.Representation.StructureSelectionsLabel3D,
             {
               customText: label,
-              textSize: 4,
-              attachment: 'bottom-left',
+              textSize,
+              attachment: LABEL_CORNERS[i % LABEL_CORNERS.length],
+              tether: true,
+              tetherLength: 3,
               scaleByRadius: false,
               textColor: Color(0x000000),
               borderWidth: 0,

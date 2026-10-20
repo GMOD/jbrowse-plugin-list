@@ -6,6 +6,7 @@ import { expect, test } from 'vitest'
 import {
   DEFAULT_HIGHLIGHT_COLOR,
   SESSION_HIGHLIGHTS_TAG,
+  labelTextSize,
   sessionHighlightResidues,
   syncSessionHighlightMarks,
 } from './sessionHighlights'
@@ -172,4 +173,35 @@ test('a homo-oligomer gets the sticks on every chain and the label once', async 
     )[0]?.obj?.data as { loci: { elements: unknown[] } }[] | undefined
     expect(labelled?.[0]?.loci.elements).toHaveLength(1)
   })
+})
+
+test('labels on neighbouring residues lean apart on their tethers', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const [molstarStructure] = (
+      await loadCaOnly(plugin, [
+        { asym: 'A', entity: '1', residues: Array(12).fill('ALA') },
+      ])
+    ).structures
+    if (!molstarStructure) {
+      throw new Error('no structure loaded')
+    }
+    await syncSessionHighlightMarks({
+      plugin,
+      structures: [
+        {
+          molstarStructure,
+          marks: residues([codon(104, 'G12'), codon(101, 'G13')]),
+        },
+      ],
+    })
+    const params = tagged(plugin).labels.map(c => c.transform.params)
+    expect(params.map(p => p?.attachment)).toEqual(['bottom-left', 'top-right'])
+    expect(params.every(p => p?.tether)).toBe(true)
+  })
+})
+
+test('label size follows the structure, within bounds', () => {
+  expect(labelTextSize(20)).toBe(3)
+  expect(labelTextSize(50)).toBe(5)
+  expect(labelTextSize(400)).toBe(8)
 })
