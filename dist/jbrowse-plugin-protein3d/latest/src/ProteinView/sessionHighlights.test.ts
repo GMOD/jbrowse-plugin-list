@@ -10,6 +10,7 @@ import {
   copyCenters,
   highlightCameraSnapshot,
   labelAnchors,
+  pickHitsCopy,
   sessionHighlightResidues,
   syncSessionHighlightMarks,
   withoutLabelledResidues,
@@ -138,7 +139,7 @@ test('a labelled mark draws spheres and an anchor, an unlabelled one sticks, and
     const first = tagged(plugin)
     expect(first.types).toEqual(['spacefill', 'ball-and-stick'])
     expect([...labelAnchors(plugin).values()]).toEqual([
-      { label: 'G12', color: DEFAULT_HIGHLIGHT_COLOR },
+      { label: 'G12', color: DEFAULT_HIGHLIGHT_COLOR, labelSeqIds: [5] },
     ])
 
     await sync([codon(101, 'Q61')])
@@ -183,7 +184,8 @@ test('a homo-oligomer draws a highlighted residue on every chain, and its anchor
     const centers = copyCenters(molstar, loci!)
     expect(centers).toHaveLength(2)
     // the test chains sit 20 Å apart along x
-    expect(centers[1]![0]! - centers[0]![0]!).toBeCloseTo(20)
+    expect(centers[1]!.center[0]! - centers[0]!.center[0]!).toBeCloseTo(20)
+    expect(new Set(centers.map(c => c.chain)).size).toBe(2)
   })
 })
 
@@ -266,4 +268,29 @@ test("a seeded selection skips a labelled mark's residues and keeps an unlabelle
     { entityId: '1', labelSeqIds: [13], color: '#000' },
   ]
   expect(withoutLabelledResidues([11, 12, 13], marks)).toEqual([11, 13])
+})
+
+// a pick on the same chain's cartoon in front of the residue is not the residue
+test("a pick counts only on the residue's own copy", async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const molstarStructure = await helix(plugin, ['A', 'B'])
+    const molstar = await loadMolstar()
+    const { MolScriptBuilder: MS, Script, StructureSelection } = molstar
+    const lociOf = (asym: string, seq: number) =>
+      StructureSelection.toLociWithSourceUnits(
+        Script.getStructureSelection(
+          MS.struct.generator.atomGroups({
+            'chain-test': MS.core.rel.eq([MS.ammp('label_asym_id'), asym]),
+            'residue-test': MS.core.rel.eq([MS.ammp('label_seq_id'), seq]),
+          }),
+          molstarStructure,
+        ),
+      )
+    const residue = lociOf('A', 6)
+    const chain = residue.elements[0]!.unit.chainGroupId
+    expect(pickHitsCopy(molstar, residue, chain, [6])).toBe(true)
+    expect(pickHitsCopy(molstar, lociOf('A', 3), chain, [6])).toBe(false)
+    expect(pickHitsCopy(molstar, lociOf('B', 6), chain, [6])).toBe(false)
+    expect(pickHitsCopy(molstar, undefined, chain, [6])).toBe(false)
+  })
 })

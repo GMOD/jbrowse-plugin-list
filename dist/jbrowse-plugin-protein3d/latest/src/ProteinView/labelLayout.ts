@@ -87,20 +87,19 @@ export function placeLabels(
 }
 
 /**
- * Of a residue's copies projected to the screen, the one nearest the viewer,
- * skipping a copy behind the camera or past the far plane (depth outside
- * 0..1)
+ * Of a residue's copies projected to the screen, the one nearest the viewer
+ * among those Mol* last saw unoccluded, or the nearest of all when none was.
+ * A copy behind the camera or past the far plane (depth outside 0..1) never
+ * takes the label.
  */
-export function nearestInFront<T extends { depth: number }>(
+export function nearestInFront<T extends { depth: number; visible?: boolean }>(
   copies: readonly T[],
 ) {
+  const front = copies.filter(c => c.depth > 0 && c.depth < 1)
+  const pool = front.some(c => c.visible) ? front.filter(c => c.visible) : front
   let nearest: T | undefined
-  for (const copy of copies) {
-    if (
-      copy.depth > 0 &&
-      copy.depth < 1 &&
-      copy.depth < (nearest?.depth ?? 1)
-    ) {
+  for (const copy of pool) {
+    if (copy.depth < (nearest?.depth ?? 1)) {
       nearest = copy
     }
   }

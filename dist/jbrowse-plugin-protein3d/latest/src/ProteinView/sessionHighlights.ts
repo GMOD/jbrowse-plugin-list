@@ -117,7 +117,7 @@ export function withoutLabelledResidues(
 /** The label and color of each labelled residue's anchor cell, by state ref */
 const anchorsByPlugin = new WeakMap<
   PluginContext,
-  Map<string, { label: string; color: string }>
+  Map<string, { label: string; color: string; labelSeqIds: number[] }>
 >()
 
 export function labelAnchors(plugin: PluginContext) {
@@ -130,7 +130,7 @@ export function labelAnchors(plugin: PluginContext) {
 }
 
 /**
- * The centre of each chain's copy of the residues in `loci`, in the order
+ * Each chain's copy of the residues in `loci` and its centre, in the order
  * the structure holds the chains: haemoglobin's four β chains each carry
  * Val6, and the label goes on the copy nearest the viewer
  */
@@ -144,11 +144,32 @@ export function copyCenters(
     const chain = element.unit.chainGroupId
     byChain.set(chain, [...(byChain.get(chain) ?? []), element])
   }
-  return [...byChain.values()].map(
-    elements =>
-      StructureElement.Loci.getBoundary(
-        StructureElement.Loci(loci.structure, elements),
-      ).sphere.center,
+  return [...byChain.entries()].map(([chain, elements]) => ({
+    chain,
+    center: StructureElement.Loci.getBoundary(
+      StructureElement.Loci(loci.structure, elements),
+    ).sphere.center,
+  }))
+}
+
+/**
+ * Whether a Mol* pick landed on `chain`'s copy of the residues: a hit on the
+ * same chain's cartoon in front of them does not count
+ */
+export function pickHitsCopy(
+  molstar: Molstar,
+  loci: { kind: string } | undefined,
+  chain: number,
+  labelSeqIds: readonly number[],
+) {
+  const { StructureElement, StructureProperties: SP } = molstar
+  if (!loci || !StructureElement.Loci.is(loci)) {
+    return false
+  }
+  const location = StructureElement.Loci.getFirstLocation(loci)
+  return (
+    location?.unit.chainGroupId === chain &&
+    labelSeqIds.includes(SP.residue.label_seq_id(location))
   )
 }
 
@@ -244,7 +265,7 @@ export async function syncSessionHighlightMarks({
             tags: [SESSION_HIGHLIGHTS_TAG],
           },
         )
-        anchors.set(anchor.ref, { label, color })
+        anchors.set(anchor.ref, { label, color, labelSeqIds })
       }
     }
     if (labelled.length > 0) {
@@ -324,7 +345,7 @@ export function highlightCameraSnapshot(
     )?.[0]?.loci
     const first = loci ? copyCenters(molstar, loci)[0] : undefined
     if (loci && first) {
-      Vec3.add(mean, mean, first)
+      Vec3.add(mean, mean, first.center)
       sphere ??= loci.structure.boundary.sphere
       n++
     }

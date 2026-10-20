@@ -90,7 +90,9 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     return refNames.regionBytes(
       regions,
       opts,
-      walks && (start => walks.reader.queryStart(start, opts)),
+      walks &&
+        ((refName, { start, end }) =>
+          walks.reader.queryStart(start, { ...opts, refName, end })),
     )
   }
 

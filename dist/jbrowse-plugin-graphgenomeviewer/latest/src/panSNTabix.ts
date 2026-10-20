@@ -182,12 +182,12 @@ export class PanSNRefNames {
   /**
    * The compressed bytes a read of `regions` fetches from the file, as its
    * index estimates them, for the display's byte gate. `queryStart` moves a
-   * region's start to where the read begins.
+   * window's start to where the read begins.
    */
   async regionBytes(
     regions: Region[],
     opts: BaseOptions = {},
-    queryStart = async (start: number) => start,
+    queryStart = async (_refName: string, region: Region) => region.start,
   ) {
     const spans = []
     for (const region of regions) {
@@ -195,7 +195,7 @@ export class PanSNRefNames {
       if (refName !== undefined) {
         spans.push({
           refName,
-          start: await queryStart(region.start),
+          start: await queryStart(refName, region),
           end: region.end,
         })
       }

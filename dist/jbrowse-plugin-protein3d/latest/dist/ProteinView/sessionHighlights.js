@@ -72,7 +72,7 @@ export function labelAnchors(plugin) {
     return anchors;
 }
 /**
- * The centre of each chain's copy of the residues in `loci`, in the order
+ * Each chain's copy of the residues in `loci` and its centre, in the order
  * the structure holds the chains: haemoglobin's four β chains each carry
  * Val6, and the label goes on the copy nearest the viewer
  */
@@ -83,7 +83,23 @@ export function copyCenters(molstar, loci) {
         const chain = element.unit.chainGroupId;
         byChain.set(chain, [...(byChain.get(chain) ?? []), element]);
     }
-    return [...byChain.values()].map(elements => StructureElement.Loci.getBoundary(StructureElement.Loci(loci.structure, elements)).sphere.center);
+    return [...byChain.entries()].map(([chain, elements]) => ({
+        chain,
+        center: StructureElement.Loci.getBoundary(StructureElement.Loci(loci.structure, elements)).sphere.center,
+    }));
+}
+/**
+ * Whether a Mol* pick landed on `chain`'s copy of the residues: a hit on the
+ * same chain's cartoon in front of them does not count
+ */
+export function pickHitsCopy(molstar, loci, chain, labelSeqIds) {
+    const { StructureElement, StructureProperties: SP } = molstar;
+    if (!loci || !StructureElement.Loci.is(loci)) {
+        return false;
+    }
+    const location = StructureElement.Loci.getFirstLocation(loci);
+    return (location?.unit.chainGroupId === chain &&
+        labelSeqIds.includes(SP.residue.label_seq_id(location)));
 }
 // how far around a labelled residue the cartoon fades, and how much
 const FADE_RADIUS = 12;
@@ -145,7 +161,7 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
                     dependsOn: [root.transform.ref],
                     tags: [SESSION_HIGHLIGHTS_TAG],
                 });
-                anchors.set(anchor.ref, { label, color });
+                anchors.set(anchor.ref, { label, color, labelSeqIds });
             }
         }
         if (labelled.length > 0) {
@@ -193,7 +209,7 @@ export function highlightCameraSnapshot(plugin, molstar) {
         const loci = cell.obj?.data?.[0]?.loci;
         const first = loci ? copyCenters(molstar, loci)[0] : undefined;
         if (loci && first) {
-            Vec3.add(mean, mean, first);
+            Vec3.add(mean, mean, first.center);
             sphere ??= loci.structure.boundary.sphere;
             n++;
         }

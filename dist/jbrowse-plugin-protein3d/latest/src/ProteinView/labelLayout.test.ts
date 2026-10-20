@@ -72,3 +72,13 @@ test('the nearest copy in front of the camera takes the label', () => {
   expect(nearestInFront(copies)?.chain).toBe('D')
   expect(nearestInFront([{ chain: 'F', depth: -0.2 }])).toBeUndefined()
 })
+
+// the nearest copy of Val6 can sit behind another chain's cartoon
+test('a visible copy takes the label over a nearer hidden one', () => {
+  const copies = [
+    { chain: 'B', depth: 0.3, visible: false },
+    { chain: 'H', depth: 0.5, visible: true },
+    { chain: 'D', depth: 0.6, visible: true },
+  ]
+  expect(nearestInFront(copies)?.chain).toBe('H')
+})

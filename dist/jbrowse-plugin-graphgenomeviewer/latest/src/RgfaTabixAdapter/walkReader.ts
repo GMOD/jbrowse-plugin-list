@@ -87,7 +87,11 @@ export class WalkIndex {
     await getLines(
       this.file,
       refName,
-      await this.reader.queryStart(region.start, opts),
+      await this.reader.queryStart(region.start, {
+        ...opts,
+        refName,
+        end: region.end,
+      }),
       region.end,
       {
         signal: opts.signal,
