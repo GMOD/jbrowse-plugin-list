@@ -25,14 +25,14 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  *
  * `walksUri` takes the prefix of one reference's walk file, `<prefix>.<sample>`,
  * and resolves `<walksUri>.walks.bed.gz` and its `.tbi`. The adapter reads walk
- * format 3, which gfa-to-tabix writes from 1.1, through @jbrowse/graph-walks.
+ * format 4, which gfa-to-tabix writes from 1.2, through @jbrowse/graph-walks.
  * Only a window on the anchor is answered.
  *
  * #example
  * ```js
  * {
  *   type: 'WalkTabixSyntenyAdapter',
- *   walksUri: 'https://example.org/hprc-v2.1-mc-grch38.GRCh38',
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f4.GRCh38',
  *   assemblyNames: ['hg38'],
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  * }
@@ -56,7 +56,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * a `gfa-to-tabix --walks` file in walk format 3
+     * a `gfa-to-tabix --walks` file in walk format 4
      */
     walksLocation: fileLocationSlot('/path/to/graph.walks.bed.gz'),
     /**

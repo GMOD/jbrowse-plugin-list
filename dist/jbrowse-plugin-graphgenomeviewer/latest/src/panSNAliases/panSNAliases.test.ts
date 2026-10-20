@@ -123,11 +123,11 @@ describe("a lanes track anchored on an alias of the window's assembly", () => {
           {
             type: 'WalkTabixSyntenyAdapter',
             walksLocation: local(
-              '../RgfaTabixAdapter/test_data/walks3_header.GRCh38.walks.bed.gz',
+              '../RgfaTabixAdapter/test_data/walks4_header.GRCh38.walks.bed.gz',
             ),
             walksIndex: {
               location: local(
-                '../RgfaTabixAdapter/test_data/walks3_header.GRCh38.walks.bed.gz.tbi',
+                '../RgfaTabixAdapter/test_data/walks4_header.GRCh38.walks.bed.gz.tbi',
               ),
             },
             assemblyNames: ['GRCh38'],
