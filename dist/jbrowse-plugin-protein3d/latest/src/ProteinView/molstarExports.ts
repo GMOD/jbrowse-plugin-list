@@ -1,6 +1,6 @@
 export { GeometryExport } from 'molstar/lib/extensions/geo-export'
 export { MAQualityAssessment } from 'molstar/lib/extensions/model-archive/quality-assessment/behavior'
-export { Mat4 } from 'molstar/lib/mol-math/linear-algebra'
+export { Mat4, Vec3 } from 'molstar/lib/mol-math/linear-algebra'
 export {
   QueryContext,
   StructureElement,
@@ -36,3 +36,4 @@ export { registerPlacedValues } from './placedValueRegistry'
 // Molstar's stylesheet rides in this chunk rather than the main bundle, which
 // every host evaluates on boot whether or not a protein view is ever opened.
 export { default as css } from './css/molstar'
+export { formatMolScript } from 'molstar/lib/mol-script/language/expression-formatter'

@@ -20,12 +20,16 @@ import {
   trackHeightOf,
 } from './constants'
 import { makeSelectionFramer, structuresSettled } from './frameSelection'
+import loadMolstar from './loadMolstar'
 import { makeLociChannel } from './lociChannel'
 import { checkedColor, colorOfScheme } from './proteinColor'
 import { defaultDisplayName } from './proteinViewSpec'
 import { removeMolstarStructure } from './removeStructure'
 import { reportPluginFailure } from './reportPluginFailure'
-import { fitLabelDepths, syncSessionHighlightMarks } from './sessionHighlights'
+import {
+  highlightCameraSnapshot,
+  syncSessionHighlightMarks,
+} from './sessionHighlights'
 import { showLoading } from './showLoading'
 import {
   type PersistedSetting,
@@ -455,8 +459,10 @@ function stateModelFactory() {
           }),
         )
 
-        // The session's highlights, labelled in 3D on the residues each
-        // genome region codes for
+        // The session's highlights on the residues each genome region codes
+        // for. A plugin's first labelled sync turns the camera toward them,
+        // unless a seeded selection frames its own residues
+        let orientedPlugin: PluginContext | undefined
         addDisposer(
           self,
           autorun(() => {
@@ -469,38 +475,70 @@ function stateModelFactory() {
                   }))
                 : [],
             )
+            const seeded = self.structures.some(s => s.seededSelection)
             if (plugin && structures.length > 0) {
               syncSessionHighlightMarks({ plugin, structures })
-                .then(() => fitLabelDepths(plugin))
+                .then(async () => {
+                  if (orientedPlugin !== plugin && !seeded) {
+                    const snapshot = highlightCameraSnapshot(
+                      plugin,
+                      await loadMolstar(),
+                    )
+                    if (snapshot) {
+                      orientedPlugin = plugin
+                      plugin.canvas3d?.requestCameraReset({
+                        snapshot: (_, camera) => snapshot(camera),
+                      })
+                    }
+                  }
+                })
                 .catch(reportPluginFailure(self, plugin))
             }
           }),
         )
 
-        // A label's depth follows the camera, once it settles
-        let stopFollowingCamera: (() => void) | undefined
-        addDisposer(self, () => stopFollowingCamera?.())
+        // Reset Zoom frames the scene from the labelled residues' side too.
+        // Mol*'s own handler runs first and requests a plain reset, which
+        // this request's snapshot then overrides
+        let stopTurningResets: (() => void) | undefined
+        addDisposer(self, () => stopTurningResets?.())
         addDisposer(
           self,
           autorun(() => {
-            stopFollowingCamera?.()
-            stopFollowingCamera = undefined
+            stopTurningResets?.()
+            stopTurningResets = undefined
             const plugin = self.molstarPluginContext
-            const camera = plugin?.canvas3d?.camera
-            if (!plugin || !camera) {
+            if (!plugin) {
               return
             }
-            let timer: ReturnType<typeof setTimeout> | undefined
-            const subscription = camera.stateChanged.subscribe(() => {
-              clearTimeout(timer)
-              timer = setTimeout(() => {
-                fitLabelDepths(plugin).catch(reportPluginFailure(self, plugin))
-              }, 200)
-            })
-            stopFollowingCamera = () => {
-              clearTimeout(timer)
-              subscription.unsubscribe()
+            let stopped = false
+            stopTurningResets = () => {
+              stopped = true
             }
+            loadMolstar()
+              .then(molstar => {
+                if (stopped) {
+                  return
+                }
+                const subscription =
+                  molstar.PluginCommands.Camera.Reset.subscribe(
+                    plugin,
+                    ({ snapshot: requested }) => {
+                      const snapshot = requested
+                        ? undefined
+                        : highlightCameraSnapshot(plugin, molstar)
+                      if (snapshot) {
+                        plugin.canvas3d?.requestCameraReset({
+                          snapshot: (_, camera) => snapshot(camera),
+                        })
+                      }
+                    },
+                  )
+                stopTurningResets = () => {
+                  subscription.unsubscribe()
+                }
+              })
+              .catch(reportPluginFailure(self, plugin))
           }),
         )
 

@@ -3,13 +3,15 @@ import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test } from 'vitest'
 
+import loadMolstar from './loadMolstar'
 import {
   DEFAULT_HIGHLIGHT_COLOR,
   SESSION_HIGHLIGHTS_TAG,
-  labelOffsetZ,
-  labelTextSize,
+  highlightCameraSnapshot,
+  labelAnchors,
   sessionHighlightResidues,
   syncSessionHighlightMarks,
+  withoutLabelledResidues,
 } from './sessionHighlights'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
 import { loadCaOnly } from '../test_data/molstarPlugin'
@@ -83,7 +85,7 @@ test('a highlight on another assembly or chromosome marks nothing', () => {
   ).toEqual([])
 })
 
-test('labels turned off in the session keep the sticks and drop the text', () => {
+test('labels turned off in the session keep the residues and drop the text', () => {
   expect(residues([codon(104, 'G12')], false)[0]?.label).toBeUndefined()
 })
 
@@ -95,22 +97,36 @@ function tagged(plugin: PluginContext) {
         .withTag(SESSION_HIGHLIGHTS_TAG)
         .filter(c => c.transform.transformer === transformer),
     )
+  const residues = cells(
+    StateTransforms.Representation.StructureRepresentation3D,
+  )
   return {
-    sticks: cells(StateTransforms.Representation.StructureRepresentation3D),
-    labels: cells(StateTransforms.Representation.StructureSelectionsLabel3D),
+    residues,
+    types: residues.map(c => c.transform.params?.type.name),
+    anchors: cells(StateTransforms.Model.MultiStructureSelectionFromExpression),
   }
 }
 
-test('a labelled mark draws sticks and its label, and a re-sync replaces them', async () => {
+async function helix(plugin: PluginContext, chains = ['A']) {
+  const [molstarStructure] = (
+    await loadCaOnly(
+      plugin,
+      chains.map(asym => ({
+        asym,
+        entity: '1',
+        residues: Array(12).fill('ALA'),
+      })),
+    )
+  ).structures
+  if (!molstarStructure) {
+    throw new Error('no structure loaded')
+  }
+  return molstarStructure
+}
+
+test('a labelled mark draws spheres and an anchor, an unlabelled one sticks, and a re-sync replaces them', async () => {
   await withTemporaryMolstarPlugin(async plugin => {
-    const [molstarStructure] = (
-      await loadCaOnly(plugin, [
-        { asym: 'A', entity: '1', residues: Array(12).fill('ALA') },
-      ])
-    ).structures
-    if (!molstarStructure) {
-      throw new Error('no structure loaded')
-    }
+    const molstarStructure = await helix(plugin)
     const sync = (marks: Parameters<typeof residues>[0]) =>
       syncSessionHighlightMarks({
         plugin,
@@ -119,100 +135,128 @@ test('a labelled mark draws sticks and its label, and a re-sync replaces them', 
 
     await sync([codon(104, 'G12'), codon(101)])
     const first = tagged(plugin)
-    expect(first.sticks).toHaveLength(2)
-    expect(first.labels.map(c => c.transform.params?.customText)).toEqual([
-      'G12',
+    expect(first.types).toEqual(['spacefill', 'ball-and-stick'])
+    expect([...labelAnchors(plugin).values()]).toEqual([
+      { label: 'G12', color: DEFAULT_HIGHLIGHT_COLOR },
     ])
 
     await sync([codon(101, 'Q61')])
-    const second = tagged(plugin)
-    expect(second.sticks).toHaveLength(1)
-    expect(second.labels.map(c => c.transform.params?.customText)).toEqual([
+    expect(tagged(plugin).types).toEqual(['spacefill'])
+    expect([...labelAnchors(plugin).values()].map(a => a.label)).toEqual([
       'Q61',
     ])
 
     await sync([])
-    expect(tagged(plugin).sticks).toHaveLength(0)
-    expect(tagged(plugin).labels).toHaveLength(0)
+    expect(tagged(plugin).residues).toHaveLength(0)
+    expect(labelAnchors(plugin).size).toBe(0)
   })
 })
 
-// haemoglobin's four β chains each carry Val6; four labels would stack
-test('a homo-oligomer gets the sticks on every chain and the label once', async () => {
+// haemoglobin's four β chains each carry Val6; a label names one of them
+test('a homo-oligomer draws a labelled residue on one chain, an unlabelled one on every chain', async () => {
   await withTemporaryMolstarPlugin(async plugin => {
-    const [molstarStructure] = (
-      await loadCaOnly(plugin, [
-        { asym: 'A', entity: '1', residues: Array(12).fill('ALA') },
-        { asym: 'B', entity: '1', residues: Array(12).fill('ALA') },
-      ])
-    ).structures
-    if (!molstarStructure) {
-      throw new Error('no structure loaded')
-    }
-    await syncSessionHighlightMarks({
-      plugin,
-      structures: [{ molstarStructure, marks: residues([codon(104, 'G12')]) }],
-    })
-    const { sticks, labels } = tagged(plugin)
-    expect(labels).toHaveLength(1)
-    const stickChains = new Set(
-      (
-        sticks[0]?.obj?.data as
-          { sourceData: { units: { chainGroupId: number }[] } } | undefined
-      )?.sourceData.units.map(u => u.chainGroupId),
-    )
-    expect(stickChains.size).toBe(2)
-    const labelled = plugin.state.data.select(
-      StateSelection.Generators.root
-        .subtree()
-        .withTag(SESSION_HIGHLIGHTS_TAG)
-        .filter(
-          c =>
-            c.transform.transformer ===
-            StateTransforms.Model.MultiStructureSelectionFromExpression,
-        ),
-    )[0]?.obj?.data as { loci: { elements: unknown[] } }[] | undefined
-    expect(labelled?.[0]?.loci.elements).toHaveLength(1)
-  })
-})
-
-test('labels on neighbouring residues lean apart on their tethers', async () => {
-  await withTemporaryMolstarPlugin(async plugin => {
-    const [molstarStructure] = (
-      await loadCaOnly(plugin, [
-        { asym: 'A', entity: '1', residues: Array(12).fill('ALA') },
-      ])
-    ).structures
-    if (!molstarStructure) {
-      throw new Error('no structure loaded')
-    }
+    const molstarStructure = await helix(plugin, ['A', 'B'])
+    const chainsOf = (cell: { obj?: { data?: unknown } } | undefined) =>
+      new Set(
+        (
+          cell?.obj?.data as
+            { sourceData: { units: { chainGroupId: number }[] } } | undefined
+        )?.sourceData.units.map(u => u.chainGroupId),
+      ).size
     await syncSessionHighlightMarks({
       plugin,
       structures: [
         {
           molstarStructure,
-          marks: residues([codon(104, 'G12'), codon(101, 'G13')]),
+          marks: residues([codon(104, 'G12'), codon(101)]),
         },
       ],
     })
-    const params = tagged(plugin).labels.map(c => c.transform.params)
-    expect(params.map(p => p?.attachment)).toEqual(['bottom-left', 'top-right'])
-    expect(params.every(p => p?.tether)).toBe(true)
-    // forward, but not past the structure's bounding sphere
-    const { radius } = molstarStructure.boundary.sphere
-    expect(params[0]?.offsetZ).toBeGreaterThan(0)
-    expect(params[0]?.offsetZ).toBeLessThan(radius)
+    const { residues: drawn, anchors } = tagged(plugin)
+    expect(drawn.map(chainsOf)).toEqual([1, 2])
+    const anchored = anchors[0]?.obj?.data as
+      { loci: { elements: unknown[] } }[] | undefined
+    expect(anchored?.[0]?.loci.elements).toHaveLength(1)
   })
 })
 
-test("a label moves forward as far as the structure's bounding sphere allows", () => {
-  expect(labelOffsetZ(30, 5)).toBe(25)
-  expect(labelOffsetZ(30, 30)).toBe(0)
-  expect(labelOffsetZ(30, 31)).toBe(0)
+test("the camera looks from the labelled residues' side at Mol*'s framing distance", async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const molstarStructure = await helix(plugin)
+    await syncSessionHighlightMarks({
+      plugin,
+      structures: [{ molstarStructure, marks: residues([codon(104, 'G12')]) }],
+    })
+    const molstar = await loadMolstar()
+    const snapshot = highlightCameraSnapshot(plugin, molstar)
+    expect(snapshot).toBeDefined()
+    const { center } = molstarStructure.boundary.sphere
+    const residue = molstar.StructureElement.Loci.getBoundary(
+      (
+        tagged(plugin).anchors[0]?.obj?.data as {
+          loci: Parameters<typeof molstar.StructureElement.Loci.getBoundary>[0]
+        }[]
+      )[0]!.loci,
+    ).sphere.center
+    const camera = {
+      state: { up: [0, 1, 0] },
+      getFocus: (target: number[]) => ({
+        target,
+        position: [target[0]!, target[1]!, target[2]! + 50],
+      }),
+    }
+    const next = snapshot!(camera as never)
+    const { Vec3 } = molstar
+    const view = Vec3.sub(Vec3(), next.position, center)
+    const outward = Vec3.sub(Vec3(), residue, center)
+    expect(Vec3.magnitude(view)).toBeCloseTo(50)
+    expect(Vec3.angle(view, outward)).toBeCloseTo(0)
+    expect(Vec3.dot(next.up!, view)).toBeCloseTo(0)
+  })
 })
 
-test('label size follows the structure, within bounds', () => {
-  expect(labelTextSize(20)).toBe(3)
-  expect(labelTextSize(50)).toBe(5)
-  expect(labelTextSize(400)).toBe(8)
+test('nothing labelled leaves the camera alone', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const molstarStructure = await helix(plugin)
+    await syncSessionHighlightMarks({
+      plugin,
+      structures: [{ molstarStructure, marks: residues([codon(104)]) }],
+    })
+    expect(highlightCameraSnapshot(plugin, await loadMolstar())).toBeUndefined()
+  })
+})
+
+test('a labelled residue fades the cartoon around it, and an unlabelled one does not', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const molstarStructure = await helix(plugin)
+    const fades = () =>
+      plugin.state.data.select(
+        StateSelection.Generators.root
+          .subtree()
+          .withTag(SESSION_HIGHLIGHTS_TAG)
+          .filter(
+            c =>
+              c.transform.transformer ===
+              StateTransforms.Representation
+                .TransparencyStructureRepresentation3DFromScript,
+          ),
+      )
+    const sync = (marks: Parameters<typeof residues>[0]) =>
+      syncSessionHighlightMarks({
+        plugin,
+        structures: [{ molstarStructure, marks: residues(marks) }],
+      })
+    await sync([codon(104)])
+    expect(fades()).toHaveLength(0)
+    await sync([codon(104, 'G12')])
+    expect(fades().length).toBeGreaterThan(0)
+  })
+})
+
+test("a seeded selection skips a labelled mark's residues and keeps an unlabelled mark's", () => {
+  const marks = [
+    { entityId: '1', labelSeqIds: [12], label: 'G12', color: '#000' },
+    { entityId: '1', labelSeqIds: [13], color: '#000' },
+  ]
+  expect(withoutLabelledResidues([11, 12, 13], marks)).toEqual([11, 13])
 })

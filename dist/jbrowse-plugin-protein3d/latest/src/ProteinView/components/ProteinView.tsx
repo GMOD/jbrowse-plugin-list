@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { IconButton } from '@mui/material'
 import { observer } from 'mobx-react'
 
+import HighlightLabels from './HighlightLabels'
 import ProteinViewHeader from './ProteinViewHeader'
 import useProteinView from '../useProteinView'
 
@@ -130,6 +131,7 @@ const ProteinViewContainer = observer(function ProteinViewContainer({
             height,
           }}
         />
+        <HighlightLabels model={model} />
         <StructureLoadingOverlay model={model} />
       </div>
       <ResizeHandle

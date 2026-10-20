@@ -3,6 +3,7 @@ import { ErrorMessage, LoadingEllipses, ResizeHandle } from '@jbrowse/core/ui';
 import CloseIcon from '@mui/icons-material/Close';
 import { IconButton } from '@mui/material';
 import { observer } from 'mobx-react';
+import HighlightLabels from './HighlightLabels';
 import ProteinViewHeader from './ProteinViewHeader';
 import useProteinView from '../useProteinView';
 const ProteinView = observer(function ProteinView({ model, }) {
@@ -59,6 +60,7 @@ const ProteinViewContainer = observer(function ProteinViewContainer({ model, par
                     width,
                     height,
                 } }),
+            React.createElement(HighlightLabels, { model: model }),
             React.createElement(StructureLoadingOverlay, { model: model })),
         React.createElement(ResizeHandle, { style: { height: 4, background: 'grey' }, onDrag: delta => {
                 model.setHeight(model.height + delta);

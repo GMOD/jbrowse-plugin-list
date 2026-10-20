@@ -2,6 +2,7 @@ import { EMPTY_DOMAIN_COLOR, domainMarkOf } from './alignmentDomains';
 import { SITES_TAG } from './alignmentSites';
 import loadMolstar from './loadMolstar';
 import { molstarThemeOf, resolvedColor } from './proteinColor';
+import { SESSION_HIGHLIGHTS_TAG } from './sessionHighlights';
 import { structureRootCell } from './structureCells';
 import { VARIANT_EFFECT_SCHEMES } from './variantEffects';
 /**
@@ -65,7 +66,8 @@ export async function applyColorTheme({ plugin, color, structures, }) {
             : [];
         for (const representation of representations) {
             if (!representation.state.isGhost &&
-                !representation.transform.tags?.includes(SITES_TAG)) {
+                !representation.transform.tags?.includes(SITES_TAG) &&
+                !representation.transform.tags?.includes(SESSION_HIGHLIGHTS_TAG)) {
                 update.to(representation).update(prev => {
                     prev.colorTheme = createStructureColorThemeParams(plugin, molstarStructure, prev.type.name, theme, themeParams(color, {
                         entityId,

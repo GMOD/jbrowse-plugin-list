@@ -63,7 +63,10 @@ import {
   transcriptRuns,
 } from './residueRanges'
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
-import { sessionHighlightResidues } from './sessionHighlights'
+import {
+  sessionHighlightResidues,
+  withoutLabelledResidues,
+} from './sessionHighlights'
 import { DEPOSITED_MODEL } from './structurePipeline'
 import { structureUniProt } from './structureUniProt'
 import { type MolstarLocationInfo } from './subscribeMolstarInteraction'
@@ -901,23 +904,6 @@ const Structure = types
 
     /**
      * #getter
-     * The residues the molstar 'select' channel should light, as label_seq_ids:
-     * a clicked/declarative domain range takes priority, else the whole
-     * alignment-covered set when showHighlight is on, else nothing.
-     */
-    get selectLabelSeqIds() {
-      const entity = this.mappedEntity
-      if (self.clickedStructureRanges.length) {
-        return this.clickedLabelSeqIds
-      }
-      const covered = this.structureSeqToTranscriptSeqPosition
-      return this.showHighlight && covered
-        ? toLabelSeqIds(entity, Object.keys(covered).map(Number))
-        : []
-    },
-
-    /**
-     * #getter
      * The selected residues as label_seq_ids, without the whole-alignment
      * fallback selectLabelSeqIds lights when nothing is selected: what the
      * camera frames.
@@ -1347,6 +1333,30 @@ const Structure = types
             transcriptToStructure,
             structureToAlignment,
           })
+        : []
+    },
+  }))
+  .views(self => ({
+    /**
+     * #getter
+     * The residues the molstar 'select' channel should light, as label_seq_ids:
+     * a clicked/declarative domain range takes priority, else the whole
+     * alignment-covered set when showHighlight is on, else nothing. A seed
+     * skips the residues a labelled session highlight draws.
+     */
+    get selectLabelSeqIds() {
+      const entity = self.mappedEntity
+      if (self.clickedStructureRanges.length) {
+        return self.seedLit
+          ? withoutLabelledResidues(
+              self.clickedLabelSeqIds,
+              self.sessionHighlightMarks,
+            )
+          : self.clickedLabelSeqIds
+      }
+      const covered = self.structureSeqToTranscriptSeqPosition
+      return self.showHighlight && covered
+        ? toLabelSeqIds(entity, Object.keys(covered).map(Number))
         : []
     },
   }))
