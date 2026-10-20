@@ -96,7 +96,8 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
         if (!root) {
             continue;
         }
-        const textSize = labelTextSize(molstarStructure.boundary.sphere.radius);
+        const { radius } = molstarStructure.boundary.sphere;
+        const textSize = labelTextSize(radius);
         for (const [i, { entityId, labelSeqIds, label, color },] of marks.entries()) {
             const expression = MS.struct.generator.atomGroups({
                 'entity-test': MS.core.rel.eq([MS.ammp('label_entity_id'), entityId]),
@@ -151,7 +152,12 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
                     background: true,
                     backgroundColor: Color(0xffffff),
                     backgroundOpacity: 0.85,
-                    offsetZ: 10,
+                    // toward the camera by the structure's radius, past
+                    // everything the structure draws: Mol* depth-tests text, so
+                    // a label behind a helix or a DNA strand would hide. The
+                    // parameter's 10 Å bound is the UI's; the shader takes any
+                    // distance, and the camera sits outside the bounding sphere
+                    offsetZ: radius,
                 }, { tags: [SESSION_HIGHLIGHTS_TAG] });
             }
         }

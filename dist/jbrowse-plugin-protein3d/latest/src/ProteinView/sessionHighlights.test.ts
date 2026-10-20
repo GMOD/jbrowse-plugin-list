@@ -197,6 +197,8 @@ test('labels on neighbouring residues lean apart on their tethers', async () => 
     const params = tagged(plugin).labels.map(c => c.transform.params)
     expect(params.map(p => p?.attachment)).toEqual(['bottom-left', 'top-right'])
     expect(params.every(p => p?.tether)).toBe(true)
+    // in front of everything the structure draws
+    expect(params[0]?.offsetZ).toBe(molstarStructure.boundary.sphere.radius)
   })
 })
 
