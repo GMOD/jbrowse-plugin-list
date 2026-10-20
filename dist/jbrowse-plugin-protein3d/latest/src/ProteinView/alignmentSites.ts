@@ -20,6 +20,10 @@ import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 export const SITES_TAG = 'jbrowse-alignment-sites'
 
+// Over twice the preset's 0.15, so a site's side chains stand out from the
+// ligand and focus sticks around them
+export const SITE_STICKS = { sizeFactor: 0.35, sizeAspectRatio: 0.6 }
+
 let revision = 0
 
 /**
@@ -105,6 +109,7 @@ export async function syncSiteSticks({
     const representation = {
       ...createStructureRepresentationParams(plugin, molstarStructure, {
         type: 'ball-and-stick',
+        typeParams: SITE_STICKS,
       }),
       colorTheme: createStructureColorThemeParams(
         plugin,

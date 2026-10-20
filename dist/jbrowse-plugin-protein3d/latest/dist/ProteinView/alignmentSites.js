@@ -13,6 +13,9 @@
 import loadMolstar from './loadMolstar';
 import { structureRootCell } from './structureCells';
 export const SITES_TAG = 'jbrowse-alignment-sites';
+// Over twice the preset's 0.15, so a site's side chains stand out from the
+// ligand and focus sticks around them
+export const SITE_STICKS = { sizeFactor: 0.35, sizeAspectRatio: 0.6 };
 let revision = 0;
 /**
  * Make each structure's sticks match its sites: create, update, or remove
@@ -73,6 +76,7 @@ export async function syncSiteSticks({ plugin, structures, }) {
         const representation = {
             ...createStructureRepresentationParams(plugin, molstarStructure, {
                 type: 'ball-and-stick',
+                typeParams: SITE_STICKS,
             }),
             colorTheme: createStructureColorThemeParams(plugin, molstarStructure, 'ball-and-stick', 'alignment-domains', { revision, color, mark: 'atoms' }),
         };

@@ -4,6 +4,8 @@ import {
   structureFormatFromName,
 } from 'p2s_mapper'
 
+import loadMolstar from './loadMolstar'
+
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory'
@@ -72,6 +74,7 @@ export async function parseStructureTrajectory({
 type ModelSelector = StateObjectSelector<PluginStateObject.Molecule.Model>
 
 interface StructureSelector {
+  readonly ref: string
   readonly obj?: { data: Structure }
 }
 
@@ -87,6 +90,32 @@ function presetOutput(
   return preset && 'structure' in preset
     ? { models: [preset.model], structures: [preset.structure] }
     : { models: preset?.models ?? [], structures: preset?.structures ?? [] }
+}
+
+/**
+ * Drop the preset's water component. A crystal's ordered waters draw as a
+ * cloud of dots over the cartoon and every highlight, and nothing the view
+ * shows reads them.
+ */
+async function removeWater(
+  plugin: PluginContext,
+  structures: readonly StructureSelector[],
+) {
+  const { StateSelection, StateTransforms } = await loadMolstar()
+  const update = plugin.state.data.build()
+  for (const { ref } of structures) {
+    for (const cell of plugin.state.data.select(
+      StateSelection.Generators.byRef(ref)
+        .subtree()
+        .withTransformer(StateTransforms.Model.StructureComponent),
+    )) {
+      const { type } = cell.transform.params ?? {}
+      if (type?.name === 'static' && type.params === 'water') {
+        update.delete(cell.transform.ref)
+      }
+    }
+  }
+  await update.commit()
 }
 
 /**
@@ -108,6 +137,7 @@ async function applyStructurePreset(
     { useDefaultIfSingleModel: true },
   )
   const { models, structures } = presetOutput(preset)
+  await removeWater(plugin, structures)
   const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []))
   if (loaded.length === 0) {
     throw new Error(

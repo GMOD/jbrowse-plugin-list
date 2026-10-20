@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
+import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test, vi } from 'vitest'
 
 import { parseStructureTrajectory } from './structurePipeline'
@@ -55,5 +57,26 @@ test('a file with no model says so, and names the parser it tried', async () => 
     await expect(
       parseStructureTrajectory({ plugin, data: 'not a structure\n' }),
     ).rejects.toThrow('No model could be read from the structure data as pdb')
+  })
+})
+
+// A crystal's waters drew as a cloud of dots over the cartoon and the sites.
+// Twelve residues make the structure medium-sized, which Mol*'s preset draws
+// as polymer, ligand and water components.
+test('a load builds no water component', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(plugin, [
+      { asym: 'A', entity: '1', residues: Array(12).fill('ALA') },
+      { asym: 'W', entity: '2', residues: ['HOH', 'HOH', 'HOH'] },
+    ])
+    const components = plugin.state.data
+      .select(
+        StateSelection.Generators.ofTransformer(
+          StateTransforms.Model.StructureComponent,
+        ),
+      )
+      .map(c => c.transform.params?.type.params)
+    expect(components).toContain('polymer')
+    expect(components).not.toContain('water')
   })
 })

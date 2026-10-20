@@ -8,7 +8,7 @@ import { StateSelection } from 'molstar/lib/mol-state'
 import { Color } from 'molstar/lib/mol-util/color'
 import { expect, test } from 'vitest'
 
-import { SITES_TAG, syncSiteSticks } from './alignmentSites'
+import { SITES_TAG, SITE_STICKS, syncSiteSticks } from './alignmentSites'
 import { applyColorTheme } from './applyColorTheme'
 import { registerColorThemes } from './colorThemes'
 import { removeMolstarStructure } from './removeStructure'
@@ -103,6 +103,9 @@ test("a site's residues get sticks in the site's color, which a recolor leaves a
       type: 'ball-and-stick',
       byResidue: { A2: heme, A4: tetramer },
     })
+    expect(
+      siteCells(plugin).representation[0]!.transform.params!.type.params,
+    ).toMatchObject(SITE_STICKS)
 
     await applyColorTheme({
       plugin,

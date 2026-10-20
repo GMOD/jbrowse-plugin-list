@@ -1,4 +1,5 @@
 import { isBinaryStructureUrl, structureFormatFromContent, structureFormatFromName, } from 'p2s_mapper';
+import loadMolstar from './loadMolstar';
 // Typed as always resolving to a trajectory, but Mol* reverts a parse that
 // fails and resolves with nothing
 function parseTrajectory(plugin, raw, format) {
@@ -41,6 +42,26 @@ function presetOutput(preset) {
         : { models: preset?.models ?? [], structures: preset?.structures ?? [] };
 }
 /**
+ * Drop the preset's water component. A crystal's ordered waters draw as a
+ * cloud of dots over the cartoon and every highlight, and nothing the view
+ * shows reads them.
+ */
+async function removeWater(plugin, structures) {
+    const { StateSelection, StateTransforms } = await loadMolstar();
+    const update = plugin.state.data.build();
+    for (const { ref } of structures) {
+        for (const cell of plugin.state.data.select(StateSelection.Generators.byRef(ref)
+            .subtree()
+            .withTransformer(StateTransforms.Model.StructureComponent))) {
+            const { type } = cell.transform.params ?? {};
+            if (type?.name === 'static' && type.params === 'water') {
+                update.delete(cell.transform.ref);
+            }
+        }
+    }
+    await update.commit();
+}
+/**
  * Build the trajectory's models, structures and representations. One load is
  * one Mol* structure per model, so an NMR ensemble is twenty of them, and the
  * load returns every one: a color, a highlight or a superposition that
@@ -51,6 +72,7 @@ function presetOutput(preset) {
 async function applyStructurePreset(plugin, trajectory, source) {
     const preset = await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', { useDefaultIfSingleModel: true });
     const { models, structures } = presetOutput(preset);
+    await removeWater(plugin, structures);
     const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []));
     if (loaded.length === 0) {
         throw new Error(`No structure could be built from ${source} by Mol*'s all-models preset`);
