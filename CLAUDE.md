@@ -146,7 +146,9 @@ revalidates, and `plugins.json` with `s-maxage=86400`, which the edge serves
 without asking S3 until the next invalidation
 ([ADR 0010](agent-docs/architectural-decision-records/0010-the-manifest-is-edge-cached-until-a-publish-invalidates-it.md)).
 So `pnpm invalidate` is part of publishing, not an optional extra: skip it and
-the store shows the previous manifest for a day. `pnpm dep` runs it.
+the store shows the previous manifest for a day. `pnpm dep` runs it only when
+the run committed changes; after an upload that failed on a rerun with nothing
+to commit, run `pnpm invalidate` by hand.
 
 **Nothing should load a page against the store while an invalidation is in
 flight.** The edge can answer with a partially updated object, and a browser
