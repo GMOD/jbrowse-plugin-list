@@ -48,7 +48,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```js
  * {
  *   type: 'RgfaTabixAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f4.GRCh38',
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f5.GRCh38',
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  *   defaultHaplotypes: ['HG002', 'HG00733', 'HG02257', 'NA19240'],
  * }

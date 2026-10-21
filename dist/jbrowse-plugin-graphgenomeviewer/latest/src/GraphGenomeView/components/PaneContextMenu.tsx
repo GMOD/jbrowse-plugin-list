@@ -46,6 +46,10 @@ function nodeMenuItems(model: GraphPaneModel, nodeId: string): MenuItem[] {
   ]
 }
 
+function formatSteps(steps: number) {
+  return steps >= 1000 ? `${Math.round(steps / 1000)} k` : `${steps}`
+}
+
 // A walk row's bar stands for a span of its haplotype's own contig, so the
 // question a right-click asks is answered by a linear view on that assembly,
 // with its genes
@@ -80,6 +84,16 @@ function walkRowMenuItems(
             : 'This walk states no contig coordinates',
           onClick: () => {},
         },
+    ...(walk?.abridgedSteps
+      ? [
+          {
+            label: `Load the ${formatSteps(walk.abridgedSteps)} abridged steps`,
+            onClick: () => {
+              model.expandWalk(walk.name)
+            },
+          },
+        ]
+      : []),
     ...(walk && model.liftsWalks && model.modeDrawsNodes
       ? [
           {

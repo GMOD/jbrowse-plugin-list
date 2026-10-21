@@ -107,8 +107,8 @@ test('the threshold falls in a gap the ABCA7 cohort leaves empty', () => {
   const scored = rows.filter(r => r.call?.agrees !== undefined)
   const near = scored.filter(r => r.call!.agrees)
   const far = scored.filter(r => !r.call!.agrees)
-  expect(Math.max(...near.map(apart))).toBeLessThan(0.08)
-  expect(Math.min(...far.map(apart))).toBeGreaterThan(0.14)
+  expect(near.map(apart).reduce((a, b) => Math.max(a, b))).toBeLessThan(0.08)
+  expect(far.map(apart).reduce((a, b) => Math.min(a, b))).toBeGreaterThan(0.14)
   expect(CALL_TOLERANCE).toBeGreaterThan(0.08)
   expect(CALL_TOLERANCE).toBeLessThan(0.14)
   expect({

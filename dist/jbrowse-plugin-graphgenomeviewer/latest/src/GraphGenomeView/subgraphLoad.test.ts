@@ -305,6 +305,20 @@ describe('canceling and retrying', () => {
     })
   })
 
+  test('expanding a walk cuts again with its name', async () => {
+    const model = await cut(ON_HG38)
+    mockRpcCall.mockClear()
+    model.expandWalk('HG002#1#chr1')
+    model.expandWalk('HG002#1#chr1')
+    expect(model.expandedWalks).toEqual(['HG002#1#chr1'])
+    await vi.waitFor(() => {
+      expect(mockRpcCall).toHaveBeenCalledTimes(1)
+    })
+    expect(mockRpcCall.mock.calls[0]?.[2]).toMatchObject({
+      opts: { expand: ['HG002#1#chr1'] },
+    })
+  })
+
   test('a newer cut aborts the one it replaces', () => {
     pendingCuts()
     const model = launchedView()
@@ -621,7 +635,8 @@ describe('reads', () => {
       [x((r.x0 + r.x1) / 2), y((r.y0 + r.y1) / 2)] as const
     const [haplotypes, reads] = picture.layers
 
-    model.setHoveredTube(model.tubeAt(...onScreen(reads!.rects[0]!)))
+    const [readX, readY] = onScreen(reads!.rects[0]!)
+    model.setHoveredTube(model.tubeAt(readX, readY))
     expect(model.hoveredTubeText).toEqual({
       label: 'r1',
       readout: 'MAPQ 60, forward strand',
@@ -636,7 +651,8 @@ describe('reads', () => {
     )
 
     const alt = haplotypes!.rects.find(r => r.id === 1)!
-    model.setHoveredTube(model.tubeAt(...onScreen(alt)))
+    const [altX, altY] = onScreen(alt)
+    model.setHoveredTube(model.tubeAt(altX, altY))
     expect(model.hoveredTubeText).toEqual({
       label: 'alt',
       readout: 'haplotype',

@@ -155,9 +155,9 @@ export const withFitViews = withHostViews
     // The row labels are pinned to the pane's left edge, so the fit starts
     // the drawing past the widest one.
     get fitPadLeft() {
-      return Math.max(
+      return this.drawnRowLabels.reduce(
+        (pad, r) => Math.max(pad, rowLabelBox(r.label, 0).x1 + 6),
         FIT_PADDING,
-        ...this.drawnRowLabels.map(r => rowLabelBox(r.label, 0).x1 + 6),
       )
     },
     // Extent of the drawing in layout units, shared by the pane height and

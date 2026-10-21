@@ -7,6 +7,7 @@ import {
 } from '@jbrowse/bandage-core/gfa/graphTables'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { readConfObject } from '@jbrowse/core/configuration'
+import { WalkReader } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -17,9 +18,9 @@ import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 
 // chr22 of HPRC v2.1 at base level, one walk file per reference in walk
-// format 4, built under ~/work/scratch/walks-20261008/f4. Skipped where the
+// format 5, built under ~/work/scratch/walks-20261008/f5. Skipped where the
 // files are absent.
-const chr22 = '/home/cdiesh/work/scratch/walks-20261008/f4/chr22'
+const chr22 = '/home/cdiesh/work/scratch/walks-20261008/f5/chr22'
 const present = ['GRCh38', 'CHM13'].every(sample =>
   existsSync(`${chr22}.${sample}.walks.bed.gz`),
 )
@@ -201,6 +202,17 @@ test("the haplotypes a walk file's header names", async () => {
   expect(gfa).not.toMatch(/^S\t8\t/m)
 })
 
+test('a cut asked to expand walks hands the reader their names', async () => {
+  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  await makeAdapter(headerPrefix).getSubgraph(chr1(1000, 2600), {
+    expand: ['HG002#1#chr1'],
+  })
+  const expand = cut.mock.calls[0]?.[2]?.expand
+  expect(expand?.('HG002#1#chr1')).toBe(true)
+  expect(expand?.('HG002#2#chr1')).toBe(false)
+  cut.mockRestore()
+})
+
 test('a cut for some haplotypes keeps a reference walk named without a haplotype', async () => {
   const cut = (await makeAdapter(twoPartPrefix).getSubgraph(chr1(1000, 2600), {
     haplotypes: ['HG002#1'],
@@ -215,7 +227,7 @@ test('a cut for some haplotypes keeps a reference walk named without a haplotype
 
 test('a format 1 walk file is refused, with what to rebuild it with', async () => {
   const cut = makeAdapter(fixture('walks1_header')).getSubgraph(chr1(0, 600))
-  await expect(cut).rejects.toThrow(/rebuild it with gfa-to-tabix 1.2/)
+  await expect(cut).rejects.toThrow(/rebuild it with gfa-to-tabix 1.4/)
 })
 
 test('a cut over walkByteBudget reads no row', async () => {

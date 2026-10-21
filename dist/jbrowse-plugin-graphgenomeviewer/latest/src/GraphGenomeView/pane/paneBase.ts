@@ -332,6 +332,8 @@ export const paneBase = types
       // the haplotypes a GBZ or walk-indexed cut is for; unset is
       // trackHaplotypes
       subgraphHaplotypes: types.maybe(types.frozen<string[]>()),
+      // abridged walks the user asked to load in full
+      expandedWalks: types.optional(types.frozen<string[]>(), []),
     }),
   )
   .volatile(() => ({

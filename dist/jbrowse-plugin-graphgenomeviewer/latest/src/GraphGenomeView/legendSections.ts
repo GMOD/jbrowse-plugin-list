@@ -301,10 +301,10 @@ export function tubeMapRows(model: GraphPaneModel): LegendRow[] {
   if (values) {
     rows.push(
       tubeRow('value-reference', flat(PANEL_REFERENCE_TUBE), 'reference'),
-      ...values.map(({ value, color }) =>
-        tubeRow(`value-${value}`, flat(color), value),
-      ),
     )
+    for (const { value, color } of values) {
+      rows.push(tubeRow(`value-${value}`, flat(color), value))
+    }
   }
   if (roles) {
     rows.push(

@@ -57,7 +57,7 @@ export class WalkIndex {
   async subgraph(
     refName: string,
     region: { start: number; end: number },
-    { signal, haplotypes, walkRows }: SubgraphAdapterOptions,
+    { signal, haplotypes, walkRows, expand }: SubgraphAdapterOptions,
   ) {
     const budgets = this.budgets()
     const { graph, kept, fragments } = await this.reader.cut(refName, region, {
@@ -68,6 +68,9 @@ export class WalkIndex {
         haplotypes?.map(lane => resolvePanSNPrefix(this.adapter, lane)),
         refName,
       ),
+      ...(expand?.length
+        ? { expand: (name: string) => expand.includes(name) }
+        : {}),
     })
     return walkCutFor(graph.tables(kept, fragments), region, walkRows)
   }
