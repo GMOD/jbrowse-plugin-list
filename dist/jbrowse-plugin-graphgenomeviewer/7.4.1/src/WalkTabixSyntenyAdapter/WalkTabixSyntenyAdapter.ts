@@ -111,7 +111,10 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
   }
 
   // The window's walks for the haplotypes named and the reference, with no
-  // link read; a window past a budget fails as a zoom-in notice for lanes
+  // link read; a window past a budget fails as a zoom-in notice for lanes.
+  // Named lanes come back in full where format 5 abridged them: an abridged
+  // walk is two reference steps, which drew 15 of the HPRC MHC launch's 32
+  // lanes empty.
   private async laneWalks(
     refName: string,
     region: Region,
@@ -119,12 +122,14 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     opts: LaneFeatureOptions,
     status: string,
   ) {
+    const keep = walksKept(prefixes, refName)
     return updateStatus(status, opts.statusCallback, () =>
       this.walks.reader
         .cut(refName, region, {
           ...this.walks.budgets(),
           signal: opts.signal,
-          keep: walksKept(prefixes, refName),
+          keep,
+          expand: keep,
           links: false,
         })
         .catch((error: unknown) => {
