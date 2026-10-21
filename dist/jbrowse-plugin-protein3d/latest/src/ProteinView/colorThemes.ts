@@ -4,6 +4,8 @@ import { MappedChainColorThemeProvider } from './mappedChainColorTheme'
 import {
   AlphaMissenseColorThemeProvider,
   ClinVarColorThemeProvider,
+  GenomeTrackColorThemeProvider,
+  ResidueValuesColorThemeProvider,
 } from './variantEffectColorTheme'
 
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -14,5 +16,7 @@ export function registerColorThemes(plugin: PluginContext) {
   registry.add(KyteDoolittleColorThemeProvider)
   registry.add(AlphaMissenseColorThemeProvider)
   registry.add(ClinVarColorThemeProvider)
+  registry.add(GenomeTrackColorThemeProvider)
+  registry.add(ResidueValuesColorThemeProvider)
   registry.add(AlignmentDomainColorThemeProvider)
 }

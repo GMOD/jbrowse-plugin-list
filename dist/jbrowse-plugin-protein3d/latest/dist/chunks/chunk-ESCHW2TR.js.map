@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/ProteinView/crystallizationAdditives.ts"],
+  "sourcesContent": ["/**\n * Components a crystal carries from its buffer or cryoprotectant rather than\n * from biology: drawn like any other chain, never as a ligand.\n */\nexport const CRYSTALLIZATION_ADDITIVES = new Set([\n  'ACT',\n  'BME',\n  'BR',\n  'CL',\n  'DMS',\n  'EDO',\n  'EPE',\n  'FMT',\n  'GOL',\n  'IOD',\n  'K',\n  'MES',\n  'MPD',\n  'NA',\n  'NO3',\n  'PEG',\n  'PG4',\n  'PGE',\n  'PO4',\n  'SO4',\n  'TRS',\n])\n"],
+  "mappings": "AAIO,IAAMA,EAA4B,IAAI,IAAI,CAC/C,MACA,MACA,KACA,KACA,MACA,MACA,MACA,MACA,MACA,MACA,IACA,MACA,MACA,KACA,MACA,MACA,MACA,MACA,MACA,MACA,KACF,CAAC",
+  "names": ["CRYSTALLIZATION_ADDITIVES"]
+}

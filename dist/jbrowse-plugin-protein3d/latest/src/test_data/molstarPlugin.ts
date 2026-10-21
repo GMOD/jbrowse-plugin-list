@@ -1,4 +1,5 @@
 import { caOnlyMmcif } from './molstarStructure'
+import { POCKET_MMCIF, shiftedPocket } from './pocketStructure'
 import { loadStructure } from '../ProteinView/structurePipeline'
 
 import type { TestAssembly, TestChain } from './molstarStructure'
@@ -16,4 +17,17 @@ export async function loadCaOnly(
     data: caOnlyMmcif(chains, options),
     assembly: options?.assembly,
   })
+}
+
+/** The 6OIM pocket (see pocketStructure), loaded the way the view loads one. */
+export async function loadPocket(plugin: PluginContext, dx = 0) {
+  const { structures } = await loadStructure({
+    plugin,
+    data: dx === 0 ? POCKET_MMCIF : shiftedPocket(dx),
+  })
+  const [structure] = structures
+  if (!structure) {
+    throw new Error('the pocket did not load')
+  }
+  return { structure, structures }
 }

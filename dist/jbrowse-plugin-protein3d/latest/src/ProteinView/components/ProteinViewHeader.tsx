@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { lazy, useState } from 'react'
 
 import { LoadingEllipses } from '@jbrowse/core/ui'
+import { getSession } from '@jbrowse/core/util'
 import PaletteIcon from '@mui/icons-material/Palette'
 import TuneIcon from '@mui/icons-material/Tune'
 import Checkbox from '@mui/material/Checkbox'
@@ -26,12 +27,17 @@ import {
 import type { JBrowsePluginProteinViewModel } from '../model'
 import type { ColorField } from '../proteinColor'
 
+const GenomeTrackColorDialog = lazy(() => import('./GenomeTrackColorDialog'))
+
+// `values` takes numbers, which only a session can give
 const COLOR_CHOICES: { field?: ColorField; label: string }[] = [
   { label: DEFAULT_COLOR_LABEL },
-  ...Object.entries(COLOR_FIELDS).map(([field, { label }]) => ({
-    field: field as ColorField,
-    label,
-  })),
+  ...Object.entries(COLOR_FIELDS)
+    .filter(([field]) => field !== 'values')
+    .map(([field, { label }]) => ({
+      field: field as ColorField,
+      label: field === 'track' ? `${label}...` : label,
+    })),
 ]
 
 // An icon rather than a select showing the field's name, which took the
@@ -69,7 +75,12 @@ const ColorMenu = observer(function ColorMenu({
             dense
             selected={field === model.color.field}
             onClick={() => {
-              if (field !== model.color.field) {
+              if (field === 'track') {
+                getSession(model).queueDialog(handleClose => [
+                  GenomeTrackColorDialog,
+                  { model, handleClose },
+                ])
+              } else if (field !== model.color.field) {
                 model.setColor(field ? { field } : {})
               }
               setAnchorEl(null)
@@ -166,7 +177,13 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
 }: {
   model: JBrowsePluginProteinViewModel
 }) {
-  const { alignmentStructure, showAlignment, colorLegend, domainLegend } = model
+  const {
+    alignmentStructure,
+    showAlignment,
+    colorLegend,
+    colorLegendTitle,
+    domainLegend,
+  } = model
   return (
     <div>
       {/* The view's controls share the first structure row's line rather than
@@ -198,7 +215,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
           />
         ))
       ) : colorLegend ? (
-        <MolstarLegendKey title="Structure colors" legend={colorLegend} />
+        <MolstarLegendKey title={colorLegendTitle} legend={colorLegend} />
       ) : null}
       {showAlignment && alignmentStructure?.pairwiseAlignment ? (
         <ProteinAlignment model={alignmentStructure} />

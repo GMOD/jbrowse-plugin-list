@@ -12,6 +12,8 @@
  * rebuilds all of them, since highlights change by hand and a structure holds
  * a few.
  */
+import { colord } from '@jbrowse/core/util/colord'
+
 import { SITES_TAG } from './alignmentSites'
 import loadMolstar from './loadMolstar'
 import { structureRootCell } from './structureCells'
@@ -27,7 +29,7 @@ type Molstar = Awaited<ReturnType<typeof loadMolstar>>
 export const SESSION_HIGHLIGHTS_TAG = 'jbrowse-session-highlights'
 
 // core's default highlight color, which the genome view's band draws in
-export const DEFAULT_HIGHLIGHT_COLOR = '#FFB11D'
+export const DEFAULT_HIGHLIGHT_COLOR = '#ffb11d'
 
 /** A session highlight: a genome region, 0-based half-open */
 export interface GenomeHighlight {
@@ -37,6 +39,49 @@ export interface GenomeHighlight {
   end: number
   label?: string
   color?: string
+}
+
+// The genome band draws a translucent highlight over the tracks; Mol* would
+// read the alpha into the sphere's color
+function opaque(css: string) {
+  return colord(css).alpha(1).toHex()
+}
+
+const THREE_LETTER: Record<string, string> = {
+  A: 'Ala',
+  R: 'Arg',
+  N: 'Asn',
+  D: 'Asp',
+  C: 'Cys',
+  Q: 'Gln',
+  E: 'Glu',
+  G: 'Gly',
+  H: 'His',
+  I: 'Ile',
+  L: 'Leu',
+  K: 'Lys',
+  M: 'Met',
+  F: 'Phe',
+  P: 'Pro',
+  S: 'Ser',
+  T: 'Thr',
+  W: 'Trp',
+  Y: 'Tyr',
+  V: 'Val',
+}
+
+// a protein change as a paper writes it: E46K, Y220C, R273H
+const PROTEIN_CHANGE = /^[A-Z](\d+)[A-Z]$/
+
+/**
+ * A label naming a protein change, such as E46K, reads in 3D as the residue
+ * this structure has there: Glu46 on wild type, Lys46 on the E46K structure.
+ * The genome band keeps the change's name. Any other label is drawn as given.
+ */
+export function structureLabel(label: string, aa: string | undefined) {
+  const match = PROTEIN_CHANGE.exec(label)
+  const name = aa ? THREE_LETTER[aa] : undefined
+  return match && name ? `${name}${match[1]}` : label
 }
 
 /** One highlight's residues on the mapped entity */
@@ -64,7 +109,7 @@ export function sessionHighlightResidues({
   highlights: readonly GenomeHighlight[]
   mapping: { g2p: Record<number, number>; refName: string }
   naming: GenomeNaming
-  entity: { entityId: string; seqIds: readonly number[] }
+  entity: { entityId: string; seqIds: readonly number[]; seq?: string }
   transcriptToStructure: Record<number, number>
   /** whether the session writes labels on its highlights */
   labels: boolean
@@ -78,6 +123,7 @@ export function sessionHighlightResidues({
       return []
     }
     const labelSeqIds = new Set<number>()
+    let firstPos: number | undefined
     for (let base = h.start; base < h.end; base++) {
       const residue = mapping.g2p[base]
       const structurePos =
@@ -86,6 +132,7 @@ export function sessionHighlightResidues({
         structurePos === undefined ? undefined : entity.seqIds[structurePos]
       if (labelSeqId !== undefined) {
         labelSeqIds.add(labelSeqId)
+        firstPos ??= structurePos
       }
     }
     return labelSeqIds.size > 0
@@ -93,8 +140,14 @@ export function sessionHighlightResidues({
           {
             entityId: entity.entityId,
             labelSeqIds: [...labelSeqIds].sort((a, b) => a - b),
-            label: labels && h.label ? h.label : undefined,
-            color: h.color ?? DEFAULT_HIGHLIGHT_COLOR,
+            label:
+              labels && h.label
+                ? structureLabel(
+                    h.label,
+                    firstPos === undefined ? undefined : entity.seq?.[firstPos],
+                  )
+                : undefined,
+            color: opaque(h.color ?? DEFAULT_HIGHLIGHT_COLOR),
           },
         ]
       : []
@@ -191,6 +244,8 @@ export async function syncSessionHighlightMarks({
   structures: readonly {
     molstarStructure: Structure
     marks: readonly ResidueMark[]
+    /** the author chains drawn, when the structure draws only some */
+    chains?: readonly string[]
   }[]
 }) {
   const molstar = await loadMolstar()
@@ -212,7 +267,7 @@ export async function syncSessionHighlightMarks({
     anchors.delete(cell.transform.ref)
     update.delete(cell.transform.ref)
   }
-  for (const { molstarStructure, marks } of structures) {
+  for (const { molstarStructure, marks, chains } of structures) {
     const root = structureRootCell(plugin, molstar, molstarStructure)
     if (!root) {
       continue
@@ -225,6 +280,14 @@ export async function syncSessionHighlightMarks({
           MS.set(...labelSeqIds),
           MS.ammp('label_seq_id'),
         ]),
+        ...(chains?.length
+          ? {
+              'chain-test': MS.core.set.has([
+                MS.set(...chains),
+                MS.ammp('auth_asym_id'),
+              ]),
+            }
+          : {}),
       })
       update
         .to(root)

@@ -122,15 +122,26 @@ export async function loadStructureData({
   structure,
   plugin,
 }: {
-  structure: { data?: string; url?: string; assembly?: string }
+  structure: {
+    data?: string
+    url?: string
+    assembly?: string
+    chains?: readonly string[]
+  }
   plugin: PluginContext
 }): Promise<StructureData> {
-  const { data, url, assembly } = structure
+  const { data, url, assembly, chains } = structure
   const {
     model,
     structures: molstarStructures,
     modelIds,
-  } = await loadStructure({ plugin, data: data || undefined, url, assembly })
+  } = await loadStructure({
+    plugin,
+    data: data || undefined,
+    url,
+    assembly,
+    chains,
+  })
   const molstar = await loadMolstar()
   // An experimental entry's B-factors are not confidence: read as pLDDT they
   // invert, drawing a well-ordered residue as "very low".

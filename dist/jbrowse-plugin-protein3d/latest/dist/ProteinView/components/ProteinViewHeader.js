@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { lazy, useState } from 'react';
 import { LoadingEllipses } from '@jbrowse/core/ui';
+import { getSession } from '@jbrowse/core/util';
 import PaletteIcon from '@mui/icons-material/Palette';
 import TuneIcon from '@mui/icons-material/Tune';
 import Checkbox from '@mui/material/Checkbox';
@@ -16,11 +17,15 @@ import HeaderStructureRows from './HeaderStructureRow';
 import ProteinAlignment from './ProteinAlignment';
 import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton';
 import { COLOR_FIELDS, DEFAULT_COLOR_LABEL, colorLabelOf, } from '../proteinColor';
+const GenomeTrackColorDialog = lazy(() => import('./GenomeTrackColorDialog'));
+// `values` takes numbers, which only a session can give
 const COLOR_CHOICES = [
     { label: DEFAULT_COLOR_LABEL },
-    ...Object.entries(COLOR_FIELDS).map(([field, { label }]) => ({
+    ...Object.entries(COLOR_FIELDS)
+        .filter(([field]) => field !== 'values')
+        .map(([field, { label }]) => ({
         field: field,
-        label,
+        label: field === 'track' ? `${label}...` : label,
     })),
 ];
 // An icon rather than a select showing the field's name, which took the
@@ -37,7 +42,13 @@ const ColorMenu = observer(function ColorMenu({ model, }) {
         React.createElement(Menu, { anchorEl: anchorEl, open: Boolean(anchorEl), onClose: () => {
                 setAnchorEl(null);
             } }, COLOR_CHOICES.map(({ field, label }) => (React.createElement(MenuItem, { key: label, dense: true, selected: field === model.color.field, onClick: () => {
-                if (field !== model.color.field) {
+                if (field === 'track') {
+                    getSession(model).queueDialog(handleClose => [
+                        GenomeTrackColorDialog,
+                        { model, handleClose },
+                    ]);
+                }
+                else if (field !== model.color.field) {
                     model.setColor(field ? { field } : {});
                 }
                 setAnchorEl(null);
@@ -70,7 +81,7 @@ const DisplaySettingsMenu = observer(function DisplaySettingsMenu({ model, }) {
             model.behaviorToggles.map(toggle => (React.createElement(ToggleMenuItem, { key: toggle.label, checked: toggle.checked, label: toggle.label, onToggle: toggle.toggle }))))));
 });
 const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
-    const { alignmentStructure, showAlignment, colorLegend, domainLegend } = model;
+    const { alignmentStructure, showAlignment, colorLegend, colorLegendTitle, domainLegend, } = model;
     return (React.createElement("div", null,
         React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start', gap: 8 } },
             React.createElement(HeaderStructureRows, { model: model }),
@@ -84,7 +95,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({ model, }) {
                 React.createElement(ColorMenu, { model: model }),
                 React.createElement(DisplaySettingsMenu, { model: model }),
                 React.createElement(ProteinAlignmentHelpButton, { model: model }))),
-        domainLegend ? (domainLegend.map(group => (React.createElement(ColorKey, { key: group.title, title: group.title, entries: group.entries, testId: "structure-legend" })))) : colorLegend ? (React.createElement(MolstarLegendKey, { title: "Structure colors", legend: colorLegend })) : null,
+        domainLegend ? (domainLegend.map(group => (React.createElement(ColorKey, { key: group.title, title: group.title, entries: group.entries, testId: "structure-legend" })))) : colorLegend ? (React.createElement(MolstarLegendKey, { title: colorLegendTitle, legend: colorLegend })) : null,
         showAlignment && alignmentStructure?.pairwiseAlignment ? (React.createElement(ProteinAlignment, { model: alignmentStructure })) : showAlignment && alignmentStructure?.alignmentPending ? (React.createElement(LoadingEllipses, { message: "Loading pairwise alignment" })) : null));
 });
 export default ProteinViewHeader;

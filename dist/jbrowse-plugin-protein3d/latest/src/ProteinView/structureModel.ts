@@ -1,4 +1,4 @@
-import { SimpleFeature, getSession } from '@jbrowse/core/util'
+import { SimpleFeature, getSession, getTrackName } from '@jbrowse/core/util'
 import {
   type Instance,
   addDisposer,
@@ -63,6 +63,7 @@ import {
   transcriptRuns,
 } from './residueRanges'
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
+import { residueValuesStatus } from './residueValuesStatus'
 import {
   sessionHighlightResidues,
   withoutLabelledResidues,
@@ -76,6 +77,7 @@ import {
   alphaMissenseAsk,
   clinVarAsk,
   fetchVariantEffects,
+  genomeTrackAsk,
 } from './variantEffectSource'
 import { variantEffectStatus } from './variantEffectStatus'
 import { genomeToTranscriptSeqMapping } from '../mappings'
@@ -247,6 +249,13 @@ const Structure = types
      * NMR ensemble builds each model whole whatever this says.
      */
     assembly: types.maybe(types.string),
+    /**
+     * #property
+     * Author chain ids (`auth_asym_id`) to draw: one rung of a filament, one
+     * copy of a homo-oligomer. The other chains stay loaded, mapped and
+     * highlighted but are not drawn. Absent draws every chain.
+     */
+    chains: types.frozen<string[] | undefined>(),
   })
   .volatile(() => ({
     /**
@@ -1209,6 +1218,18 @@ const Structure = types
       if (field === 'alphaMissense') {
         return alphaMissenseAsk(self.uniProtEntry)
       }
+      if (field === 'track') {
+        const { trackId, stat = 'mean' } = self.parentView.color
+        const session = getSession(self)
+        const conf = trackId ? session.getTrackById(trackId) : undefined
+        return genomeTrackAsk({
+          trackId,
+          trackName: conf ? getTrackName(conf, session) : undefined,
+          stat,
+          feature: self.feature,
+          assemblyName: self.connectedView?.assemblyNames[0],
+        })
+      }
       if (field === 'clinvarPathogenicCount') {
         const assemblyName = self.connectedView?.assemblyNames[0]
         const assembly = assemblyName
@@ -1279,6 +1300,21 @@ const Structure = types
             connectedViewId: self.connectedViewId,
             mapping: self.genomeToTranscriptSeqMapping,
             naming: self.genomeNaming,
+            entity: self.mappedEntity,
+            transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
+          })
+        : undefined
+    },
+    /**
+     * #getter
+     * The numbers the view's color object gives per residue, placed on the
+     * mapped entity; undefined while the view colors by something else
+     */
+    get residueValuesStatus() {
+      const { field, values } = self.parentView.color
+      return field === 'values'
+        ? residueValuesStatus({
+            values,
             entity: self.mappedEntity,
             transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
           })
@@ -1377,7 +1413,9 @@ const Structure = types
      */
     get placedValues(): PlacedValues | undefined {
       return (
-        self.alignmentDomainStatus?.placed ?? self.variantEffectStatus.placed
+        self.alignmentDomainStatus?.placed ??
+        self.residueValuesStatus?.placed ??
+        self.variantEffectStatus.placed
       )
     },
     /**
@@ -1401,6 +1439,7 @@ const Structure = types
       return error === undefined
         ? (self.alignmentSkipped ??
             self.variantEffectStatus.message ??
+            self.residueValuesStatus?.message ??
             self.alignmentDomainStatus?.message)
         : errorMessage(error)
     },
@@ -1811,16 +1850,14 @@ const Structure = types
   .actions(self => ({
     afterAttach() {
       const { pdbId } = self
-      addDisposer(
+      const loadVariantEffects = makeVariantEffectLoader(
         self,
-        autorun(
-          makeVariantEffectLoader(
-            self,
-            () => isAlive(self),
-            request => fetchVariantEffects(request, getSession(self)),
-          ),
-        ),
+        () => isAlive(self),
+        (request, signal) =>
+          fetchVariantEffects(request, getSession(self), signal),
       )
+      addDisposer(self, autorun(loadVariantEffects))
+      addDisposer(self, loadVariantEffects.cancel)
       if (pdbId) {
         fetchUniProtStructureMappings(pdbId).then(
           mappings => {

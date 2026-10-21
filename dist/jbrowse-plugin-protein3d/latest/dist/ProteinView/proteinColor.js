@@ -29,6 +29,8 @@ export const COLOR_FIELDS = {
         theme: 'clinvar',
     },
     domain: { label: 'Domains from the alignment', theme: 'alignment-domains' },
+    track: { label: 'Genome track', theme: 'genome-track' },
+    values: { label: 'Your own values', theme: 'residue-values' },
 };
 export const DEFAULT_COLOR_LABEL = 'Default (element/chain)';
 /**
@@ -39,6 +41,8 @@ const SCALED_FIELDS = [
     'hydrophobicity',
     'alphaMissense',
     'clinvarPathogenicCount',
+    'track',
+    'values',
 ];
 /**
  * Who paints a field whose color object names the field alone, for the
@@ -54,6 +58,12 @@ const PAINTED_BY = {
     mappedChain: 'two fixed colors',
     domain: "the connected alignment's colors",
 };
+/**
+ * The view's color object: the `field` its structures are colored by, unset
+ * for Mol*'s default, and for a field whose scale is the plugin's the members
+ * of that scale overriding its preset in `RESIDUE_COLORS`.
+ */
+export const TRACK_STATS = ['mean', 'max', 'min'];
 const SCALE_MEMBERS = {
     threshold: ['scale', 'domain', 'range', 'labels', 'title'],
     linear: [
@@ -66,6 +76,32 @@ const SCALE_MEMBERS = {
         'title',
     ],
 };
+/**
+ * Members past the scale's that a scaled field takes; the value is what the
+ * member must be.
+ */
+const FIELD_MEMBERS = {
+    track: ['trackId', 'stat'],
+    values: ['values'],
+};
+function isDataScaledField(field) {
+    return field === 'track' || field === 'values';
+}
+/**
+ * A field's preset scale. `track` and `values` also take a threshold scale,
+ * which has no sensible cuts of its own, so a session names them.
+ */
+function presetOf(field, scale) {
+    return isDataScaledField(field) && scale === 'threshold'
+        ? {
+            field,
+            scale: 'threshold',
+            domain: [],
+            range: [],
+            title: RESIDUE_COLORS[field].title,
+        }
+        : RESIDUE_COLORS[field];
+}
 function isColorField(field) {
     return typeof field === 'string' && Object.hasOwn(COLOR_FIELDS, field);
 }
@@ -79,11 +115,31 @@ function isNumbers(value) {
     return (Array.isArray(value) &&
         value.every(v => typeof v === 'number' && Number.isFinite(v)));
 }
+function isResidueValues(value) {
+    if (Array.isArray(value)) {
+        return value.every(v => v === null || (typeof v === 'number' && Number.isFinite(v)));
+    }
+    return (typeof value === 'object' &&
+        value !== null &&
+        Object.entries(value).every(([key, v]) => Number.isInteger(Number(key)) &&
+            Number(key) >= 1 &&
+            typeof v === 'number' &&
+            Number.isFinite(v)));
+}
 const MEMBER_TYPES = {
     domain: [isNumbers, 'a list of numbers'],
     range: [isStrings, 'a list of CSS colors'],
     labels: [isStrings, 'a list of strings'],
     title: [v => typeof v === 'string', 'a string'],
+    trackId: [v => typeof v === 'string' && v !== '', 'a track id'],
+    stat: [
+        v => TRACK_STATS.some(s => s === v),
+        `one of ${TRACK_STATS.join(', ')}`,
+    ],
+    values: [
+        isResidueValues,
+        'a list of numbers, or an object of numbers keyed by residue number',
+    ],
     domainMin: [v => typeof v === 'number' && Number.isFinite(v), 'a number'],
     domainMax: [v => typeof v === 'number' && Number.isFinite(v), 'a number'],
     domainMid: [v => typeof v === 'number' && Number.isFinite(v), 'a number'],
@@ -108,8 +164,20 @@ export function colorProblems(color) {
     if (!isScaledField(field)) {
         return named.map(key => `color.${key} is refused: ${field} paints in ${PAINTED_BY[field]}, so its color names the field alone`);
     }
-    const preset = RESIDUE_COLORS[field];
-    const allowed = SCALE_MEMBERS[preset.scale];
+    const preset = presetOf(field, members.scale);
+    const allowed = [
+        ...SCALE_MEMBERS[preset.scale],
+        ...(FIELD_MEMBERS[field] ?? []),
+    ];
+    const missing = field === 'track' && members.trackId === undefined
+        ? ["color.trackId is required: a track's scores color a track field"]
+        : field === 'values' && members.values === undefined
+            ? ['color.values is required: the numbers to color the residues by']
+            : preset.scale === 'threshold' &&
+                isDataScaledField(field) &&
+                !(Array.isArray(members.domain) && members.domain.length > 0)
+                ? [`color.domain is required: the cuts of ${field}'s threshold scale`]
+                : [];
     const problems = named.flatMap(key => {
         const value = members[key];
         if (!allowed.includes(key)) {
@@ -126,11 +194,14 @@ export function colorProblems(color) {
         return accepts(value) ? [] : [`color.${key} is ${kind}`];
     });
     const resolved = resolvedColor(color);
-    return problems.length > 0 || !resolved
-        ? problems
-        : scaleProblems(field, resolved);
+    const domainFromData = isDataScaledField(field) &&
+        preset.scale === 'linear' &&
+        !(members.domainMin !== undefined && members.domainMax !== undefined);
+    return problems.length > 0 || missing.length > 0 || !resolved
+        ? [...missing, ...problems]
+        : scaleProblems(field, resolved, domainFromData);
 }
-function scaleProblems(field, color) {
+function scaleProblems(field, color, domainFromData = false) {
     if (color.scale === 'threshold') {
         const { domain, range } = color;
         return [
@@ -147,6 +218,11 @@ function scaleProblems(field, color) {
         ];
     }
     const { domainMin, domainMax, domainMid, range } = color;
+    if (domainFromData) {
+        return range.length > 0
+            ? []
+            : [`color.range of ${field} needs at least one color`];
+    }
     const reversed = domainMin > domainMax &&
         (domainMid === undefined ||
             (domainMid >= domainMax && domainMid <= domainMin));
@@ -181,9 +257,9 @@ export function checkedColor(color) {
  * preset; undefined for a field whose colors are Mol*'s or the alignment's.
  */
 export function resolvedColor(color) {
-    const { field, ...members } = color;
+    const { field, trackId, stat, values, ...members } = color;
     return field && isScaledField(field)
-        ? { ...RESIDUE_COLORS[field], ...members }
+        ? { ...presetOf(field, members.scale), ...members }
         : undefined;
 }
 /** The Mol* theme a color object paints with; undefined is Mol*'s default. */

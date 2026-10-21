@@ -32,6 +32,8 @@ export const COLOR_FIELDS = {
     theme: 'clinvar',
   },
   domain: { label: 'Domains from the alignment', theme: 'alignment-domains' },
+  track: { label: 'Genome track', theme: 'genome-track' },
+  values: { label: 'Your own values', theme: 'residue-values' },
 } as const
 
 export type ColorField = keyof typeof COLOR_FIELDS
@@ -46,6 +48,8 @@ const SCALED_FIELDS = [
   'hydrophobicity',
   'alphaMissense',
   'clinvarPathogenicCount',
+  'track',
+  'values',
 ] as const
 
 type ScaledField = (typeof SCALED_FIELDS)[number]
@@ -70,8 +74,24 @@ const PAINTED_BY: Record<Exclude<ColorField, ScaledField>, string> = {
  * for Mol*'s default, and for a field whose scale is the plugin's the members
  * of that scale overriding its preset in `RESIDUE_COLORS`.
  */
+export const TRACK_STATS = ['mean', 'max', 'min'] as const
+
+export type TrackStat = (typeof TRACK_STATS)[number]
+
+/**
+ * Values placed by transcript residue: a list whose entry `i` is residue
+ * `i + 1`, or an object keyed by the 1-based residue number.
+ */
+export type ResidueValues = readonly (number | null)[] | Record<string, number>
+
 export interface ProteinColor {
   field?: ColorField
+  /** `track`: the genome track whose scores color the residues */
+  trackId?: string
+  /** `track`: how the scores under a codon's three bases reduce to one */
+  stat?: TrackStat
+  /** `values`: one number per residue of the transcript's protein */
+  values?: ResidueValues
   scale?: 'linear' | 'threshold'
   domain?: readonly number[]
   range?: readonly string[]
@@ -95,6 +115,35 @@ const SCALE_MEMBERS = {
   ],
 } as const
 
+/**
+ * Members past the scale's that a scaled field takes; the value is what the
+ * member must be.
+ */
+const FIELD_MEMBERS: Partial<Record<ColorField, readonly string[]>> = {
+  track: ['trackId', 'stat'],
+  values: ['values'],
+}
+
+function isDataScaledField(field: ColorField) {
+  return field === 'track' || field === 'values'
+}
+
+/**
+ * A field's preset scale. `track` and `values` also take a threshold scale,
+ * which has no sensible cuts of its own, so a session names them.
+ */
+function presetOf(field: ScaledField, scale: unknown) {
+  return isDataScaledField(field) && scale === 'threshold'
+    ? ({
+        field,
+        scale: 'threshold',
+        domain: [],
+        range: [],
+        title: RESIDUE_COLORS[field].title,
+      } as const)
+    : RESIDUE_COLORS[field]
+}
+
 function isColorField(field: unknown): field is ColorField {
   return typeof field === 'string' && Object.hasOwn(COLOR_FIELDS, field)
 }
@@ -114,11 +163,39 @@ function isNumbers(value: unknown) {
   )
 }
 
+function isResidueValues(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.every(
+      v => v === null || (typeof v === 'number' && Number.isFinite(v)),
+    )
+  }
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.entries(value).every(
+      ([key, v]) =>
+        Number.isInteger(Number(key)) &&
+        Number(key) >= 1 &&
+        typeof v === 'number' &&
+        Number.isFinite(v),
+    )
+  )
+}
+
 const MEMBER_TYPES: Record<string, [(value: unknown) => boolean, string]> = {
   domain: [isNumbers, 'a list of numbers'],
   range: [isStrings, 'a list of CSS colors'],
   labels: [isStrings, 'a list of strings'],
   title: [v => typeof v === 'string', 'a string'],
+  trackId: [v => typeof v === 'string' && v !== '', 'a track id'],
+  stat: [
+    v => TRACK_STATS.some(s => s === v),
+    `one of ${TRACK_STATS.join(', ')}`,
+  ],
+  values: [
+    isResidueValues,
+    'a list of numbers, or an object of numbers keyed by residue number',
+  ],
   domainMin: [v => typeof v === 'number' && Number.isFinite(v), 'a number'],
   domainMax: [v => typeof v === 'number' && Number.isFinite(v), 'a number'],
   domainMid: [v => typeof v === 'number' && Number.isFinite(v), 'a number'],
@@ -147,8 +224,21 @@ export function colorProblems(color: unknown): string[] {
         `color.${key} is refused: ${field} paints in ${PAINTED_BY[field]}, so its color names the field alone`,
     )
   }
-  const preset = RESIDUE_COLORS[field]
-  const allowed: readonly string[] = SCALE_MEMBERS[preset.scale]
+  const preset = presetOf(field, members.scale)
+  const allowed: readonly string[] = [
+    ...SCALE_MEMBERS[preset.scale],
+    ...(FIELD_MEMBERS[field] ?? []),
+  ]
+  const missing =
+    field === 'track' && members.trackId === undefined
+      ? ["color.trackId is required: a track's scores color a track field"]
+      : field === 'values' && members.values === undefined
+        ? ['color.values is required: the numbers to color the residues by']
+        : preset.scale === 'threshold' &&
+            isDataScaledField(field) &&
+            !(Array.isArray(members.domain) && members.domain.length > 0)
+          ? [`color.domain is required: the cuts of ${field}'s threshold scale`]
+          : []
   const problems = named.flatMap(key => {
     const value = members[key]
     if (!allowed.includes(key)) {
@@ -165,12 +255,20 @@ export function colorProblems(color: unknown): string[] {
     return accepts(value) ? [] : [`color.${key} is ${kind}`]
   })
   const resolved = resolvedColor(color)
-  return problems.length > 0 || !resolved
-    ? problems
-    : scaleProblems(field, resolved)
+  const domainFromData =
+    isDataScaledField(field) &&
+    preset.scale === 'linear' &&
+    !(members.domainMin !== undefined && members.domainMax !== undefined)
+  return problems.length > 0 || missing.length > 0 || !resolved
+    ? [...missing, ...problems]
+    : scaleProblems(field, resolved, domainFromData)
 }
 
-function scaleProblems(field: string, color: LinearColor | ThresholdColor) {
+function scaleProblems(
+  field: string,
+  color: LinearColor | ThresholdColor,
+  domainFromData = false,
+) {
   if (color.scale === 'threshold') {
     const { domain, range } = color
     return [
@@ -187,6 +285,11 @@ function scaleProblems(field: string, color: LinearColor | ThresholdColor) {
     ]
   }
   const { domainMin, domainMax, domainMid, range } = color
+  if (domainFromData) {
+    return range.length > 0
+      ? []
+      : [`color.range of ${field} needs at least one color`]
+  }
   const reversed =
     domainMin > domainMax &&
     (domainMid === undefined ||
@@ -226,9 +329,10 @@ export function checkedColor(color: unknown): ProteinColor {
 export function resolvedColor(
   color: ProteinColor,
 ): LinearColor | ThresholdColor | undefined {
-  const { field, ...members } = color
+  const { field, trackId, stat, values, ...members } = color
   return field && isScaledField(field)
-    ? ({ ...RESIDUE_COLORS[field], ...members } as LinearColor | ThresholdColor)
+    ? ({ ...presetOf(field, members.scale), ...members } as
+        LinearColor | ThresholdColor)
     : undefined
 }
 

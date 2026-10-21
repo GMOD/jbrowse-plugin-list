@@ -5,7 +5,11 @@ import { expect, test } from 'vitest'
 
 import { applyColorTheme, colorLegendOf } from './applyColorTheme'
 import { registerColorThemes } from './colorThemes'
-import { MAPPED_CHAIN_COLOR, OTHER_CHAIN_COLOR } from './mappedChainColorTheme'
+import {
+  LIGAND_COLOR,
+  MAPPED_CHAIN_COLOR,
+  OTHER_CHAIN_COLOR,
+} from './mappedChainColorTheme'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
 import { loadCaOnly } from '../test_data/molstarPlugin'
 
@@ -165,6 +169,7 @@ test("each field's legend is the key of the theme that draws it", async () => {
       kind: 'table-legend',
       table: [
         ['Mapped chain', MAPPED_CHAIN_COLOR],
+        ['Ligand', LIGAND_COLOR],
         ['Other', OTHER_CHAIN_COLOR],
       ],
     })

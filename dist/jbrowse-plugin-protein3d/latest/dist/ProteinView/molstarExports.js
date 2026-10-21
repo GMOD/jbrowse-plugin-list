@@ -1,5 +1,7 @@
 export { GeometryExport } from 'molstar/lib/extensions/geo-export';
 export { MAQualityAssessment } from 'molstar/lib/extensions/model-archive/quality-assessment/behavior';
+export { OrderedSet } from 'molstar/lib/mol-data/int';
+export { Loci } from 'molstar/lib/mol-model/loci';
 export { Mat4, Vec3 } from 'molstar/lib/mol-math/linear-algebra';
 export { QueryContext, StructureElement, StructureProperties, StructureSelection, } from 'molstar/lib/mol-model/structure';
 export { ProteinBackboneAtoms } from 'molstar/lib/mol-model/structure/model/types';

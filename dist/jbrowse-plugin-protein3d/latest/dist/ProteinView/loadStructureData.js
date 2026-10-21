@@ -68,8 +68,14 @@ function structureAssemblies(model, molstar) {
  * callers own the decision of whether/where to store the result.
  */
 export async function loadStructureData({ structure, plugin, }) {
-    const { data, url, assembly } = structure;
-    const { model, structures: molstarStructures, modelIds, } = await loadStructure({ plugin, data: data || undefined, url, assembly });
+    const { data, url, assembly, chains } = structure;
+    const { model, structures: molstarStructures, modelIds, } = await loadStructure({
+        plugin,
+        data: data || undefined,
+        url,
+        assembly,
+        chains,
+    });
     const molstar = await loadMolstar();
     // An experimental entry's B-factors are not confidence: read as pLDDT they
     // invert, drawing a well-ordered residue as "very low".

@@ -12,6 +12,7 @@ const STRUCTURE_KEY_ROLES = {
     alignmentImported: 'setting',
     hidden: 'setting',
     assembly: 'setting',
+    chains: 'setting',
     feature: 'launchWide',
     userProvidedTranscriptSequence: 'launchWide',
     connectedViewId: 'launchWide',
@@ -30,6 +31,9 @@ export function isRecord(value) {
 }
 export function isString(value) {
     return typeof value === 'string';
+}
+function isStringArray(value) {
+    return Array.isArray(value) && value.every(isString);
 }
 function isBoolean(value) {
     return typeof value === 'boolean';
@@ -121,6 +125,7 @@ function readStructure(fields, at, warnings) {
         alignmentImported: read('alignmentImported', isBoolean, 'true or false'),
         hidden: read('hidden', isBoolean, 'true or false'),
         assembly: read('assembly', isString, 'a string'),
+        chains: read('chains', isStringArray, 'a list of chain ids'),
         feature: read('feature', isFeature, 'a feature object'),
         userProvidedTranscriptSequence: read('userProvidedTranscriptSequence', isString, 'a string'),
         connectedViewId: read('connectedViewId', isString, 'a string'),

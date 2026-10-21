@@ -12,12 +12,52 @@
  * rebuilds all of them, since highlights change by hand and a structure holds
  * a few.
  */
+import { colord } from '@jbrowse/core/util/colord';
 import { SITES_TAG } from './alignmentSites';
 import loadMolstar from './loadMolstar';
 import { structureRootCell } from './structureCells';
 export const SESSION_HIGHLIGHTS_TAG = 'jbrowse-session-highlights';
 // core's default highlight color, which the genome view's band draws in
-export const DEFAULT_HIGHLIGHT_COLOR = '#FFB11D';
+export const DEFAULT_HIGHLIGHT_COLOR = '#ffb11d';
+// The genome band draws a translucent highlight over the tracks; Mol* would
+// read the alpha into the sphere's color
+function opaque(css) {
+    return colord(css).alpha(1).toHex();
+}
+const THREE_LETTER = {
+    A: 'Ala',
+    R: 'Arg',
+    N: 'Asn',
+    D: 'Asp',
+    C: 'Cys',
+    Q: 'Gln',
+    E: 'Glu',
+    G: 'Gly',
+    H: 'His',
+    I: 'Ile',
+    L: 'Leu',
+    K: 'Lys',
+    M: 'Met',
+    F: 'Phe',
+    P: 'Pro',
+    S: 'Ser',
+    T: 'Thr',
+    W: 'Trp',
+    Y: 'Tyr',
+    V: 'Val',
+};
+// a protein change as a paper writes it: E46K, Y220C, R273H
+const PROTEIN_CHANGE = /^[A-Z](\d+)[A-Z]$/;
+/**
+ * A label naming a protein change, such as E46K, reads in 3D as the residue
+ * this structure has there: Glu46 on wild type, Lys46 on the E46K structure.
+ * The genome band keeps the change's name. Any other label is drawn as given.
+ */
+export function structureLabel(label, aa) {
+    const match = PROTEIN_CHANGE.exec(label);
+    const name = aa ? THREE_LETTER[aa] : undefined;
+    return match && name ? `${name}${match[1]}` : label;
+}
 /**
  * Each highlight's residues on the mapped entity: genome base → transcript
  * residue (`g2p`) → structure residue → `label_seq_id`. A highlight on
@@ -32,12 +72,14 @@ export function sessionHighlightResidues({ highlights, mapping, naming, entity, 
             return [];
         }
         const labelSeqIds = new Set();
+        let firstPos;
         for (let base = h.start; base < h.end; base++) {
             const residue = mapping.g2p[base];
             const structurePos = residue === undefined ? undefined : transcriptToStructure[residue];
             const labelSeqId = structurePos === undefined ? undefined : entity.seqIds[structurePos];
             if (labelSeqId !== undefined) {
                 labelSeqIds.add(labelSeqId);
+                firstPos ??= structurePos;
             }
         }
         return labelSeqIds.size > 0
@@ -45,8 +87,10 @@ export function sessionHighlightResidues({ highlights, mapping, naming, entity, 
                 {
                     entityId: entity.entityId,
                     labelSeqIds: [...labelSeqIds].sort((a, b) => a - b),
-                    label: labels && h.label ? h.label : undefined,
-                    color: h.color ?? DEFAULT_HIGHLIGHT_COLOR,
+                    label: labels && h.label
+                        ? structureLabel(h.label, firstPos === undefined ? undefined : entity.seq?.[firstPos])
+                        : undefined,
+                    color: opaque(h.color ?? DEFAULT_HIGHLIGHT_COLOR),
                 },
             ]
             : [];
@@ -120,7 +164,7 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
         anchors.delete(cell.transform.ref);
         update.delete(cell.transform.ref);
     }
-    for (const { molstarStructure, marks } of structures) {
+    for (const { molstarStructure, marks, chains } of structures) {
         const root = structureRootCell(plugin, molstar, molstarStructure);
         if (!root) {
             continue;
@@ -133,6 +177,14 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
                     MS.set(...labelSeqIds),
                     MS.ammp('label_seq_id'),
                 ]),
+                ...(chains?.length
+                    ? {
+                        'chain-test': MS.core.set.has([
+                            MS.set(...chains),
+                            MS.ammp('auth_asym_id'),
+                        ]),
+                    }
+                    : {}),
             });
             update
                 .to(root)

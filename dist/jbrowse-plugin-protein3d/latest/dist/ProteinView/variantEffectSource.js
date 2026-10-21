@@ -1,5 +1,6 @@
 import { SimpleFeature } from '@jbrowse/core/util';
 import { clinVarBuild, isUnnumberedMitochondrion } from './clinVar';
+import { fetchTrackScores } from './trackScoresSource';
 import { VARIANT_EFFECT_SOURCE_NAMES, meanScoreByPosition, } from './variantEffects';
 import { parseAlphaMissense } from '../AlphaMissensePathogenicityAdapter/parseAlphaMissense';
 /**
@@ -77,6 +78,42 @@ export function clinVarAsk({ feature, assemblyName, assemblyNames, }) {
         },
     };
 }
+/**
+ * A genome track is read under the transcript's codons on the connected genome
+ * view's assembly, so it needs the transcript and that view. `trackName`
+ * labels the request in a message.
+ */
+export function genomeTrackAsk({ trackId, trackName, stat, feature, assemblyName, }) {
+    const source = VARIANT_EFFECT_SOURCE_NAMES['genome-track'];
+    if (!trackId) {
+        return { status: 'unavailable', reason: 'No genome track is chosen' };
+    }
+    if (!feature) {
+        return {
+            status: 'unavailable',
+            reason: `No transcript to place ${source} on`,
+        };
+    }
+    if (!assemblyName) {
+        return {
+            status: 'unavailable',
+            reason: `No genome view to read ${source} on`,
+        };
+    }
+    const { refName, start, end, uniqueId } = feature;
+    return {
+        status: 'ready',
+        request: {
+            scheme: 'genome-track',
+            key: `genome-track:${assemblyName}:${trackId}:${stat}:${refName}:${start}-${end}:${uniqueId}`,
+            label: trackName ?? trackId,
+            trackId,
+            stat,
+            assemblyName,
+            feature,
+        },
+    };
+}
 // TP53's ClinVar slice is under 1 MB, but a stalled host should not leave a
 // structure waiting on it for good
 const DOWNLOAD_TIMEOUT_MS = 60_000;
@@ -96,6 +133,19 @@ export function withTimeout(task, timeoutMs) {
     ]);
 }
 async function load(request, session, signal) {
+    if (request.scheme === 'genome-track') {
+        return {
+            numbering: 'transcript',
+            byPosition: await fetchTrackScores({
+                session,
+                trackId: request.trackId,
+                stat: request.stat,
+                feature: new SimpleFeature(request.feature),
+                assemblyName: request.assemblyName,
+                signal,
+            }),
+        };
+    }
     if (request.scheme === 'alphamissense') {
         const response = await fetch(`https://alphafold.ebi.ac.uk/files/AF-${request.accession}-F1-aa-substitutions.csv`, { signal });
         if (!response.ok) {
@@ -118,16 +168,42 @@ async function load(request, session, signal) {
 const cache = new Map();
 /**
  * A request's values, fetched once per key for every structure and view of
- * the page. A failure is forgotten, so the next request tries again.
+ * the page. A failure is forgotten, so the next request tries again. The
+ * download stops once every caller's `signal` has aborted and it is still
+ * running, and the next request for the key starts afresh.
  */
-export function fetchVariantEffects(request, session) {
-    let values = cache.get(request.key);
-    if (!values) {
-        values = withTimeout(signal => load(request, session, signal), DOWNLOAD_TIMEOUT_MS);
-        values.catch(() => {
-            cache.delete(request.key);
-        });
-        cache.set(request.key, values);
+export function fetchVariantEffects(request, session, signal) {
+    let entry = cache.get(request.key);
+    if (!entry) {
+        const controller = new AbortController();
+        const created = {
+            values: withTimeout(timeout => load(request, session, AbortSignal.any([timeout, controller.signal])), DOWNLOAD_TIMEOUT_MS),
+            controller,
+            waiters: 0,
+            settled: false,
+        };
+        const forget = () => {
+            created.settled = true;
+            if (cache.get(request.key) === created) {
+                cache.delete(request.key);
+            }
+        };
+        created.values.then(() => {
+            created.settled = true;
+        }, forget);
+        cache.set(request.key, created);
+        entry = created;
     }
-    return values;
+    const waiting = entry;
+    waiting.waiters++;
+    signal?.addEventListener('abort', () => {
+        waiting.waiters--;
+        if (waiting.waiters === 0 && !waiting.settled) {
+            waiting.controller.abort();
+            if (cache.get(request.key) === waiting) {
+                cache.delete(request.key);
+            }
+        }
+    }, { once: true });
+    return waiting.values;
 }

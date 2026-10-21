@@ -2,6 +2,7 @@ import { EMPTY_DOMAIN_COLOR, domainMarkOf } from './alignmentDomains'
 import { SITES_TAG } from './alignmentSites'
 import loadMolstar from './loadMolstar'
 import { molstarThemeOf, resolvedColor } from './proteinColor'
+import { RESIDUE_MARKS_TAG } from './residueMarks'
 import { SESSION_HIGHLIGHTS_TAG } from './sessionHighlights'
 import { structureRootCell } from './structureCells'
 import { VARIANT_EFFECT_SCHEMES } from './variantEffects'
@@ -20,6 +21,7 @@ import type { Legend } from 'molstar/lib/mol-util/legend'
 export const PLACED_VALUE_SCHEMES = [
   ...VARIANT_EFFECT_SCHEMES,
   'alignment-domains',
+  'residue-values',
 ] as const
 
 export type PlacedValueScheme = (typeof PLACED_VALUE_SCHEMES)[number]
@@ -128,7 +130,8 @@ export async function applyColorTheme({
       if (
         !representation.state.isGhost &&
         !representation.transform.tags?.includes(SITES_TAG) &&
-        !representation.transform.tags?.includes(SESSION_HIGHLIGHTS_TAG)
+        !representation.transform.tags?.includes(SESSION_HIGHLIGHTS_TAG) &&
+        !representation.transform.tags?.includes(RESIDUE_MARKS_TAG)
       ) {
         update.to(representation).update(prev => {
           prev.colorTheme = createStructureColorThemeParams(

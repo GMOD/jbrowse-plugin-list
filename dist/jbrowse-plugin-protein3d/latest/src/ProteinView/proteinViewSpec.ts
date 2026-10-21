@@ -45,6 +45,8 @@ export interface ProteinStructureSpec {
   // what Mol* builds: absent for the first biological assembly, an assembly id
   // ('2') for another, or 'deposited' for every chain the file holds
   assembly?: string
+  // author chain ids to draw, the rest left out; absent draws every chain
+  chains?: string[]
 }
 
 /**

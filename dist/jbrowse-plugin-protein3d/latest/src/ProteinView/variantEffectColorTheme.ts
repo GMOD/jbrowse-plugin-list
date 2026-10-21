@@ -10,8 +10,10 @@ import type { VariantEffectScheme } from './variantEffects'
 import type { ColorTheme } from 'molstar/lib/mol-theme/color'
 import type { ThemeDataContext } from 'molstar/lib/mol-theme/theme'
 
+type ScoreScheme = VariantEffectScheme | 'residue-values'
+
 const STYLES: Record<
-  VariantEffectScheme,
+  ScoreScheme,
   { color: ScaledColor; noValueLabel?: string; description: string }
 > = {
   alphamissense: {
@@ -24,6 +26,16 @@ const STYLES: Record<
     noValueLabel: 'No value',
     description:
       'Colors residues by how many missense substitutions ClinVar calls pathogenic or likely pathogenic, read off the genome under the transcript. Residues the alignment to the transcript does not reach are grey.',
+  },
+  'genome-track': {
+    color: RESIDUE_COLORS.track,
+    description:
+      "Colors residues by the scores of a genome track under each residue's codon. Residues with no score are grey.",
+  },
+  'residue-values': {
+    color: RESIDUE_COLORS.values,
+    description:
+      'Colors residues by numbers given per residue of the transcript. Residues with no number are grey.',
   },
 }
 
@@ -39,7 +51,7 @@ function themeParams(color: ScaledColor) {
 
 type Params = ReturnType<typeof themeParams>
 
-function variantEffectTheme(scheme: VariantEffectScheme) {
+function variantEffectTheme(scheme: ScoreScheme) {
   const { noValueLabel, description } = STYLES[scheme]
   return function VariantEffectColorTheme(
     ctx: ThemeDataContext,
@@ -62,7 +74,7 @@ function variantEffectTheme(scheme: VariantEffectScheme) {
   }
 }
 
-function provider<N extends VariantEffectScheme>(
+function provider<N extends ScoreScheme>(
   name: N,
   label: string,
 ): ColorTheme.Provider<Params, N> {
@@ -86,4 +98,14 @@ export const AlphaMissenseColorThemeProvider = provider(
 export const ClinVarColorThemeProvider = provider(
   'clinvar',
   'ClinVar pathogenic variants',
+)
+
+export const GenomeTrackColorThemeProvider = provider(
+  'genome-track',
+  'Genome track scores',
+)
+
+export const ResidueValuesColorThemeProvider = provider(
+  'residue-values',
+  'Residue values',
 )

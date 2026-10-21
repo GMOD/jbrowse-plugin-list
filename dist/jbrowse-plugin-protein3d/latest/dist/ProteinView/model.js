@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes';
-import { getSession } from '@jbrowse/core/util';
+import { getSession, getTrackName } from '@jbrowse/core/util';
 import { ElementId } from '@jbrowse/core/util/types/mst';
 import { addDisposer, getPath, types } from '@jbrowse/mobx-state-tree';
 import { autorun } from 'mobx';
@@ -9,13 +9,17 @@ import { domainLegend } from './alignmentDomains';
 import { syncSiteSticks } from './alignmentSites';
 import { applyColorTheme, colorLegendOf } from './applyColorTheme';
 import { MAX_TRACK_HEIGHT, MIN_TRACK_HEIGHT, NORMAL_TRACK_HEIGHT, trackHeightOf, } from './constants';
+import { applyFigureStyle } from './figureStyle';
 import { makeSelectionFramer, structuresSettled } from './frameSelection';
 import loadMolstar from './loadMolstar';
 import { makeLociChannel } from './lociChannel';
-import { checkedColor, colorOfScheme } from './proteinColor';
+import { syncMeasurements } from './measurements';
+import { checkedColor, colorOfScheme, resolvedColor } from './proteinColor';
 import { defaultDisplayName } from './proteinViewSpec';
 import { removeMolstarStructure } from './removeStructure';
 import { reportPluginFailure } from './reportPluginFailure';
+import { syncResidueMarks } from './residueMarks';
+import { applySavedCamera } from './savedCamera';
 import { highlightCameraSnapshot, syncSessionHighlightMarks, } from './sessionHighlights';
 import { showLoading } from './showLoading';
 import { readStoredSettings, storeSetting, withStoredSettings, } from './storedSettings';
@@ -23,6 +27,8 @@ import { makeStructureLoader } from './structureLoader';
 import Structure from './structureModel';
 import { makeStructureSuperposer } from './structureSuperposer';
 import { setStructuresHidden } from './structureVisibility';
+import { syncSurfaces } from './surface';
+import { isValueField, paintedColor, valueDomain } from './valueScale';
 import { attachViewInteractions } from './viewInteractions';
 const MIN_HEIGHT = 100;
 // Queued on the session rather than mounted in the view's body, which is not
@@ -139,6 +145,37 @@ function stateModelFactory() {
          * scale's members; `{}` is Mol*'s default
          */
         color: types.optional(types.frozen(), {}),
+        /**
+         * #property
+         * a fixed camera (see SavedCamera) that load and Reset Zoom both
+         * restore, in place of framing the whole scene or the labelled
+         * highlights
+         */
+        camera: types.frozen(),
+        /**
+         * #property
+         * a translucent molecular surface over each structure's polymer (see
+         * ProteinSurface), colored as the cartoon is; absent draws none
+         */
+        surface: types.frozen(),
+        /**
+         * #property
+         * dashed distances drawn between two sites of a structure, each
+         * labelled in angstroms (see DistanceMeasurement); `structure` is the
+         * index into `structures`, the first by default
+         */
+        distances: types.frozen(),
+        /**
+         * #property
+         * sites drawn on their own as spheres or sticks, on any chain (see
+         * ResidueMark): a partner's residue, a ligand, a pocket
+         */
+        marks: types.frozen(),
+        /**
+         * #property
+         * silhouettes around every object, for a figure (see applyFigureStyle)
+         */
+        silhouettes: false,
         /**
          * #property
          */
@@ -301,6 +338,35 @@ function stateModelFactory() {
         get tracksCompact() {
             return trackHeightOf(self) < NORMAL_TRACK_HEIGHT;
         },
+        /**
+         * #getter
+         * The color object the themes paint with: the session's, and for a
+         * field scaled by its data, the ends of the domain it leaves out filled
+         * from the scores of every structure, and a title naming the track
+         */
+        get paintColor() {
+            const { color, structures } = self;
+            if (!isValueField(color)) {
+                return color;
+            }
+            const session = getSession(self);
+            const conf = color.trackId
+                ? session.getTrackById(color.trackId)
+                : undefined;
+            const trackName = conf ? getTrackName(conf, session) : color.trackId;
+            const needsDomain = color.scale !== 'threshold' &&
+                (color.domainMin === undefined || color.domainMax === undefined);
+            return paintedColor(color, {
+                domain: needsDomain
+                    ? valueDomain(structures.flatMap(s => [
+                        ...(s.placedValues?.byLabelSeqId.values() ?? []),
+                    ]))
+                    : undefined,
+                label: color.field === 'track'
+                    ? `${trackName} (${color.stat ?? 'mean'} per codon)`
+                    : undefined,
+            });
+        },
     }))
         .actions(self => ({
         /**
@@ -330,9 +396,14 @@ function stateModelFactory() {
             // Apply the chosen color theme whenever it changes, a structure
             // finishes loading (entities is set after its molstar
             // representation is built, so the theme has something to recolor),
-            // the mapped chain changes, or a placed-value source answers.
+            // the mapped chain changes, or a placed-value source answers; the
+            // surface is built first so it takes the same theme.
+            // runs queue so two surface builds never overlap, and only the
+            // latest run paints, since an earlier one can finish last
+            let colorRun = 0;
+            let colorQueue = Promise.resolve();
             addDisposer(self, autorun(() => {
-                const { molstarPluginContext, color } = self;
+                const { molstarPluginContext, paintColor: color, surface } = self;
                 const structures = self.structures.flatMap(s => s.entities
                     ? s.molstarStructures.map(molstarStructure => ({
                         molstarStructure,
@@ -343,11 +414,23 @@ function stateModelFactory() {
                     }))
                     : []);
                 if (molstarPluginContext && structures.length > 0) {
-                    applyColorTheme({
-                        plugin: molstarPluginContext,
-                        color,
-                        structures,
-                    }).catch(reportPluginFailure(self, molstarPluginContext));
+                    const run = ++colorRun;
+                    colorQueue = colorQueue
+                        .then(async () => {
+                        await syncSurfaces({
+                            plugin: molstarPluginContext,
+                            structures: structures.map(s => s.molstarStructure),
+                            surface,
+                        });
+                        if (run === colorRun) {
+                            await applyColorTheme({
+                                plugin: molstarPluginContext,
+                                color,
+                                structures,
+                            });
+                        }
+                    })
+                        .catch(reportPluginFailure(self, molstarPluginContext));
                 }
             }));
             // The alignment sites' sticks, layer 2 of the alignment domains,
@@ -375,13 +458,14 @@ function stateModelFactory() {
                     ? s.molstarStructures.map(molstarStructure => ({
                         molstarStructure,
                         marks: s.sessionHighlightMarks,
+                        chains: s.chains,
                     }))
                     : []);
                 const seeded = self.structures.some(s => s.seededSelection);
                 if (plugin && structures.length > 0) {
                     syncSessionHighlightMarks({ plugin, structures })
                         .then(async () => {
-                        if (orientedPlugin !== plugin && !seeded) {
+                        if (orientedPlugin !== plugin && !seeded && !self.camera) {
                             const snapshot = highlightCameraSnapshot(plugin, await loadMolstar());
                             if (snapshot) {
                                 orientedPlugin = plugin;
@@ -416,6 +500,10 @@ function stateModelFactory() {
                         return;
                     }
                     const subscription = molstar.PluginCommands.Camera.Reset.subscribe(plugin, ({ snapshot: requested }) => {
+                        if (!requested && self.camera) {
+                            applySavedCamera(plugin, molstar, self.camera);
+                            return;
+                        }
                         const snapshot = requested
                             ? undefined
                             : highlightCameraSnapshot(plugin, molstar);
@@ -451,6 +539,49 @@ function stateModelFactory() {
             // Frame a declared selection once everything is loaded and superposed;
             // see makeSelectionFramer.
             addDisposer(self, autorun(makeSelectionFramer(self)));
+            // The declared distances, once their structures have loaded
+            addDisposer(self, autorun(() => {
+                const plugin = self.molstarPluginContext;
+                const distances = self.distances ?? [];
+                const structures = self.structures.map(s => s.entities ? s.molstarStructures[0] : undefined);
+                if (plugin && structures.some(Boolean)) {
+                    syncMeasurements({
+                        plugin,
+                        structures,
+                        measurements: distances,
+                    }).catch(reportPluginFailure(self, plugin));
+                }
+            }));
+            // The declared residue marks, once their structures have loaded
+            addDisposer(self, autorun(() => {
+                const plugin = self.molstarPluginContext;
+                const marks = self.marks ?? [];
+                const structures = self.structures.map(s => s.entities ? s.molstarStructures[0] : undefined);
+                if (plugin && structures.some(Boolean)) {
+                    syncResidueMarks({ plugin, structures, marks }).catch(reportPluginFailure(self, plugin));
+                }
+            }));
+            addDisposer(self, autorun(() => {
+                const { molstarPluginContext: plugin, silhouettes } = self;
+                if (plugin) {
+                    loadMolstar()
+                        .then(({ Color }) => {
+                        applyFigureStyle(plugin, Color, silhouettes);
+                    })
+                        .catch(reportPluginFailure(self, plugin));
+                }
+            }));
+            // A saved camera, once every structure has loaded
+            addDisposer(self, autorun(() => {
+                const { molstarPluginContext: plugin, camera } = self;
+                if (plugin && camera && structuresSettled(self)) {
+                    loadMolstar()
+                        .then(molstar => {
+                        applySavedCamera(plugin, molstar, camera);
+                    })
+                        .catch(reportPluginFailure(self, plugin));
+                }
+            }));
             addDisposer(self, autorun(makeLociChannel(self, 'select')));
             addDisposer(self, autorun(makeLociChannel(self, 'highlight')));
             // Mol*'s click and hover, heard once for the whole view
@@ -502,6 +633,13 @@ function stateModelFactory() {
         },
         /**
          * #getter
+         * What the legend of the structure colors is titled
+         */
+        get colorLegendTitle() {
+            return resolvedColor(self.paintColor)?.title ?? 'Structure colors';
+        },
+        /**
+         * #getter
          * The color object's key, from the first structure that has loaded.
          */
         get colorLegend() {
@@ -511,7 +649,7 @@ function stateModelFactory() {
             return plugin && structure
                 ? colorLegendOf({
                     plugin,
-                    color: self.color,
+                    color: self.paintColor,
                     structure,
                     entityId: loaded.mappedEntity?.entityId,
                     domainColor: loaded.alignmentDomainStatus?.domains?.color,

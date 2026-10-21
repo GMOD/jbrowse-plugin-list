@@ -57,4 +57,26 @@ export const RESIDUE_COLORS = {
     labels: ['0', '1', '2', '3', '4 or more'],
     title: 'ClinVar pathogenic variants',
   },
+  /**
+   * Scores a genome track gives a residue's codon. The domain is a
+   * placeholder: the view fills any end the session leaves out from the
+   * scores themselves (see valueScale).
+   */
+  track: {
+    field: 'track',
+    scale: 'linear',
+    domainMin: 0,
+    domainMax: 1,
+    range: ['#ffffd9', '#41b6c4', '#0c2c84'],
+    title: 'Genome track',
+  },
+  /** Numbers a session gives per residue; the domain follows the numbers. */
+  values: {
+    field: 'values',
+    scale: 'linear',
+    domainMin: 0,
+    domainMax: 1,
+    range: ['#ffffd9', '#41b6c4', '#0c2c84'],
+    title: 'Residue values',
+  },
 } as const satisfies Record<string, LinearColor | ThresholdColor>

@@ -1,4 +1,5 @@
 import { isBinaryStructureUrl, structureFormatFromContent, structureFormatFromName, } from 'p2s_mapper';
+import { CRYSTALLIZATION_ADDITIVES } from './crystallizationAdditives';
 import loadMolstar from './loadMolstar';
 // Typed as always resolving to a trajectory, but Mol* reverts a parse that
 // fails and resolves with nothing
@@ -33,6 +34,9 @@ export async function parseStructureTrajectory({ plugin, data, url, }) {
     }
     return trajectory;
 }
+/** The label of a polymer component narrowed to the drawn chains, which
+ * other drawing (the surface) finds it by in place of its static type. */
+export const DRAWN_CHAINS_POLYMER = 'Polymer, drawn chains';
 /** The `assembly` value that builds the deposited model, every chain the file
  * holds, rather than one of the entry's biological assemblies. */
 export const DEPOSITED_MODEL = 'deposited';
@@ -83,11 +87,80 @@ async function removeWater(plugin, structures) {
  * `structure` param: absent, it builds the first assembly. An ensemble builds
  * each model whole and ignores it.
  */
-async function applyStructurePreset(plugin, trajectory, source, assembly) {
+async function applyStructurePreset(plugin, trajectory, source, assembly, chains) {
     const params = { useDefaultIfSingleModel: true, structure: rootStructure(assembly) };
-    const preset = await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', params);
+    return collectPreset(plugin, source, await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', params), chains);
+}
+/**
+ * Narrow the preset's polymer and ligand components to the named author
+ * chains. The structure itself stays whole, so mapping, highlights and colors
+ * address it as before; only what is drawn shrinks.
+ */
+async function drawOnlyChains(plugin, structures, chains) {
+    const { MolScriptBuilder: MS, StateSelection, StateTransforms, } = await loadMolstar();
+    const chainTest = MS.core.set.has([
+        MS.set(...chains),
+        MS.ammp('auth_asym_id'),
+    ]);
+    const entityTest = (polymer) => polymer
+        ? MS.core.rel.eq([MS.ammp('entityType'), 'polymer'])
+        : MS.core.logic.and([
+            MS.core.rel.neq([MS.ammp('entityType'), 'polymer']),
+            MS.core.rel.neq([MS.ammp('entityType'), 'water']),
+            MS.core.logic.not([
+                MS.core.set.has([
+                    MS.set(...CRYSTALLIZATION_ADDITIVES),
+                    MS.ammp('label_comp_id'),
+                ]),
+            ]),
+        ]);
+    const update = plugin.state.data.build();
+    for (const { ref } of structures) {
+        for (const cell of plugin.state.data.select(StateSelection.Generators.byRef(ref)
+            .subtree()
+            .withTransformer(StateTransforms.Model.StructureComponent))) {
+            const { type } = cell.transform.params ?? {};
+            if (type?.name === 'static') {
+                const polymer = type.params === 'polymer';
+                update.to(cell).update(prev => ({
+                    ...prev,
+                    ...(polymer ? { label: DRAWN_CHAINS_POLYMER } : {}),
+                    type: {
+                        name: 'expression',
+                        params: MS.struct.generator.atomGroups({
+                            'chain-test': chainTest,
+                            'entity-test': entityTest(polymer),
+                        }),
+                    },
+                }));
+            }
+        }
+    }
+    // a lone rung of a filament has no strand partners, so Mol* draws it as
+    // thin coil; drawn thicker it reads at figure size
+    for (const { ref } of structures) {
+        for (const cell of plugin.state.data.select(StateSelection.Generators.byRef(ref)
+            .subtree()
+            .withTransformer(StateTransforms.Representation.StructureRepresentation3D))) {
+            if (cell.transform.params?.type.name === 'cartoon') {
+                update.to(cell).update(prev => ({
+                    ...prev,
+                    type: {
+                        ...prev.type,
+                        params: { ...prev.type.params, sizeFactor: 0.45 },
+                    },
+                }));
+            }
+        }
+    }
+    await update.commit();
+}
+async function collectPreset(plugin, source, preset, chains) {
     const { models, structures } = presetOutput(preset);
     await removeWater(plugin, structures);
+    if (chains?.length) {
+        await drawOnlyChains(plugin, structures, chains);
+    }
     const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []));
     if (loaded.length === 0) {
         throw new Error(`No structure could be built from ${source} by Mol*'s all-models preset`);
@@ -99,7 +172,8 @@ async function applyStructurePreset(plugin, trajectory, source, assembly) {
     };
 }
 /** Load a structure from its text or its url, as the view shows one. */
-export async function loadStructure({ plugin, data, url, assembly, }) {
+export async function loadStructure({ plugin, data, url, assembly, chains, }) {
     const trajectory = await parseStructureTrajectory({ plugin, data, url });
-    return applyStructurePreset(plugin, trajectory, url ?? 'the structure data', assembly);
+    const source = url ?? 'the structure data';
+    return applyStructurePreset(plugin, trajectory, source, assembly, chains);
 }

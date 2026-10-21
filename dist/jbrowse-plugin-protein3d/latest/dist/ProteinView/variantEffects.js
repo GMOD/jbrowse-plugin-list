@@ -1,7 +1,12 @@
-export const VARIANT_EFFECT_SCHEMES = ['alphamissense', 'clinvar'];
+export const VARIANT_EFFECT_SCHEMES = [
+    'alphamissense',
+    'clinvar',
+    'genome-track',
+];
 export const VARIANT_EFFECT_SOURCE_NAMES = {
     alphamissense: 'AlphaMissense scores',
     clinvar: 'ClinVar variants',
+    'genome-track': 'Genome track scores',
 };
 /**
  * A source that answered, but with values that would mislead, such as a VCF
