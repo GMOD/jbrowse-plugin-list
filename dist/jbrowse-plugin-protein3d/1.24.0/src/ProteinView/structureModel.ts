@@ -1420,8 +1420,8 @@ const Structure = types
     },
     /**
      * #getter
-     * Whether the field's values are still on their way, which the ready
-     * marker does not wait for
+     * Whether the field's values are still on their way: the view's ready
+     * marker waits for them (showLoading.ts), a structure's `loading` does not
      */
     get variantEffectsPending() {
       return self.variantEffectStatus.pending

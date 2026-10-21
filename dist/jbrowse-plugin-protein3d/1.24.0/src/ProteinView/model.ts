@@ -3,7 +3,7 @@ import { lazy } from 'react'
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes'
 import { getSession, getTrackName } from '@jbrowse/core/util'
 import { ElementId } from '@jbrowse/core/util/types/mst'
-import { addDisposer, getPath, types } from '@jbrowse/mobx-state-tree'
+import { addDisposer, getPath, isAlive, types } from '@jbrowse/mobx-state-tree'
 import { autorun } from 'mobx'
 import {
   ALIGNMENT_ALGORITHM_VALUES,
@@ -231,6 +231,12 @@ function stateModelFactory() {
         silhouettes: false,
         /**
          * #property
+         * ambient occlusion, darkening crevices and folds, for a figure (see
+         * applyFigureStyle)
+         */
+        occlusion: false,
+        /**
+         * #property
          */
         showAlignment: true,
         /**
@@ -311,6 +317,21 @@ function stateModelFactory() {
        * how many loaded structures the last TM-align superposition covered
        */
       superposedCount: 0,
+      /**
+       * #volatile
+       * color and surface runs queued or in flight; the ready marker waits
+       * for zero (see showLoading.ts)
+       */
+      paintsPending: 0,
+    }))
+
+    .actions(self => ({
+      /**
+       * #action
+       */
+      countPaint(delta: number) {
+        self.paintsPending += delta
+      },
     }))
 
     .actions(self => ({
@@ -507,6 +528,7 @@ function stateModelFactory() {
             )
             if (molstarPluginContext && structures.length > 0) {
               const run = ++colorRun
+              self.countPaint(1)
               colorQueue = colorQueue
                 .then(async () => {
                   await syncSurfaces({
@@ -523,6 +545,11 @@ function stateModelFactory() {
                   }
                 })
                 .catch(reportPluginFailure(self, molstarPluginContext))
+                .finally(() => {
+                  if (isAlive(self)) {
+                    self.countPaint(-1)
+                  }
+                })
             }
           }),
         )
@@ -706,11 +733,15 @@ function stateModelFactory() {
         addDisposer(
           self,
           autorun(() => {
-            const { molstarPluginContext: plugin, silhouettes } = self
+            const {
+              molstarPluginContext: plugin,
+              silhouettes,
+              occlusion,
+            } = self
             if (plugin) {
               loadMolstar()
                 .then(({ Color }) => {
-                  applyFigureStyle(plugin, Color, silhouettes)
+                  applyFigureStyle(plugin, Color, { silhouettes, occlusion })
                 })
                 .catch(reportPluginFailure(self, plugin))
             }

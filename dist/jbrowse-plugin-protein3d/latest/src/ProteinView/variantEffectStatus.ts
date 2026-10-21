@@ -15,8 +15,9 @@ import type { MapUniProtPosition } from 'p2s_mapper'
 export interface VariantEffectStatus {
   /**
    * Whether the values are still on their way. Kept out of a structure's
-   * `loading`: color arriving late only recolors, so selection, framing and
-   * the ready marker do not wait on it.
+   * `loading`: color arriving late only recolors, so selection and framing do
+   * not wait on it. The view's ready marker does (showLoading.ts), so a
+   * capture lands on the painted cartoon.
    */
   pending: boolean
   /** the values on the mapped entity's residues, by label_seq_id */
