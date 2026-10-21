@@ -2,8 +2,17 @@
 
 Pangenome graphs in JBrowse 2.
 
-- **In:** a GFA, rGFA, GBZ or walk-indexed graph
-- **Out:** a graph track in a linear view, or a view of its own, with
+- **In:** one of
+  - a [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) walk file
+    (`<prefix>.<sample>.walks.bed.gz` beside its `.tbi`), opened with File →
+    **Open track**
+  - a gfa-to-tabix segments index (`<prefix>.segs.bed.gz` beside
+    `<prefix>.links.bed.gz` and a `.tbi` for each), opened the same way
+  - a [gbz-base](https://github.com/jltsiren/gbz-base) database (`.gbz.db`),
+    opened the same way
+  - a GFA file (`.gfa` or `.gfa.gz`), opened whole with Add → **Graph genome
+    view**
+- **Out:** a graph track in a linear view, or a separate graph genome view, with
   haplotypes, bubbles and genes marked
 
 ![KIV-2 as a graph track under RefSeq genes and the curated KIV-2 annotation, its reference segments on a strip at their bp](img/force_kiv2.png)
@@ -23,14 +32,19 @@ Pangenome graphs in JBrowse 2.
    }
    ```
 
-2. Open a graph:
-   - **A small GFA:** Add → **Graph genome view** opens the whole file
-   - **A large graph:** index it with
-     [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) or build a gbz-base
-     database, then File → **Open track**. The track redraws the graph for the
-     view's window as you pan. See [docs/data.md](docs/data.md)
+2. Write a walk file from a base-level GFA with W or P lines
+   (`vg convert -f graph.gbz` writes one):
 
-3. Explore:
+   ```console
+   gfa-to-tabix chr22.gfa --walks --refs GRCh38 -o chr22
+   ```
+
+3. In an hg38 session, File → **Open track** on the url of
+   `chr22.GRCh38.walks.bed.gz`. The track redraws the graph for the view's
+   window as you pan. [docs/data.md](docs/data.md) covers the other formats and
+   the track config
+
+4. Explore:
    - Pick a layout from the track menu: force-directed, ordered, anchored,
      sample rows, walk rows or tube map ([docs/layouts.md](docs/layouts.md))
    - Lift haplotypes or show a panel per haplotype
@@ -41,14 +55,6 @@ Pangenome graphs in JBrowse 2.
 
 The [JBrowse tutorials](#tutorials) walk through the whole process with commands
 you can run.
-
-## What it draws
-
-![The KIV-2 array side by side: GRCh38, HG00097, HG01960 and HG00133 each followed start to end](img/force_kiv2_facet.png)
-
-![KIV-2 walk rows under LPA and the curated KIV-2 annotation](img/walk_rows_kiv2.png)
-
-![C4A and C4B as a tube per route coloured by superpopulation](img/tube_map_c4_routes_by_population.png)
 
 ## Tutorials
 
@@ -75,7 +81,24 @@ In reading order:
 3. [Haplotypes](docs/haplotypes.md): lifting, panels, colouring, walk rows
 4. [Tube maps](docs/tube-maps.md): panels, routes, reads
 5. [Bubbles](docs/bubbles.md) and [genes](docs/genes.md)
-6. [Developing](docs/developing.md): build, test, release
+6. [Maize NAM founders](docs/maize.md): MaizeGDB's graph of one gene and a
+   Minigraph-Cactus graph of chr8, with links that open each view
+7. [Developing](docs/developing.md): build, test, release
+
+## Gallery
+
+<table>
+<tr>
+<td><a href="docs/haplotypes.md#facets"><img src="img/force_kiv2_facet.png" width="260" alt="KIV-2, a panel per haplotype"></a><br>KIV-2, a panel per haplotype</td>
+<td><a href="docs/haplotypes.md#walk-rows"><img src="img/walk_rows_kiv2.png" width="260" alt="KIV-2 walk rows tiled by kringle"></a><br>KIV-2 walk rows tiled by kringle</td>
+<td><a href="docs/tube-maps.md#routes-and-tube-colour"><img src="img/tube_map_c4_routes_by_population.png" width="260" alt="C4, a tube per route by superpopulation"></a><br>C4, a tube per route by superpopulation</td>
+</tr>
+<tr>
+<td><a href="docs/tube-maps.md#panels"><img src="img/tube_map_cfhr_samples.png" width="260" alt="The CFHR3–CFHR1 deletion, a panel per sample"></a><br>The CFHR3–CFHR1 deletion, a panel per sample</td>
+<td><a href="docs/bubbles.md"><img src="img/force_kiv2_bubbles.png" width="260" alt="KIV-2 bubbles under the HPRC bubbles track"></a><br>KIV-2 bubbles under the HPRC bubbles track</td>
+<td><a href="docs/maize.md"><img src="docs/maize/walk_rows_200kb.png" width="260" alt="Maize NAM founders as walk rows"></a><br>Maize NAM founders as walk rows</td>
+</tr>
+</table>
 
 ## See also
 
@@ -90,6 +113,8 @@ Supporting utility libraries
   layout and drawing engine
 - [@jbrowse/tubemap-core](https://github.com/GMOD/tubemap-core) (npm): tube map
   layout
+- [@jbrowse/graph-walks](https://github.com/GMOD/graph-walks) (npm): walk file
+  reader
 - [@gmod/gbz-base](https://github.com/GMOD/gbz-base-js) (npm): `.gbz.db` reader
 
 Supporting graph layout libraries
@@ -99,7 +124,8 @@ Supporting graph layout libraries
 
 Supporting data preparation toolkits
 
-- [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix): indexes a GFA
+- [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix): writes walk files and
+  segment indexes from a GFA
 - [gbz-haplotype-index](https://github.com/GMOD/gbz-haplotype-index): names
   every walk in a gbz-base cut
 - [gfa-to-pairwise-paf](https://github.com/cmdcolin/gfa-to-pairwise-paf-rs):

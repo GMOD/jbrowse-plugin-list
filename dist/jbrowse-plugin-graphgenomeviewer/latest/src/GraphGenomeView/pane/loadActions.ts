@@ -349,7 +349,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
         : parsed
     const folded =
       foldBelowBp > 0 && !readsOf
-        ? foldVariants(anchored, foldBelowBp)
+        ? foldVariants(anchored, foldBelowBp, { cut: true })
         : anchored
     const graph =
       region && folded !== anchored
