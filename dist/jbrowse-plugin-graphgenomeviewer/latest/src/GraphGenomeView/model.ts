@@ -67,6 +67,9 @@ export const GraphPane = withLaunchActions
         haplotypes: self.cutHaplotypes,
         ...(self.chosenLayoutMode === 'walkrows' ? { walkRows: true } : {}),
         ...(self.cutsWholeWalks ? { snarls: 'overlapping' as const } : {}),
+        ...(self.expandedWalks.length > 0
+          ? { expand: self.expandedWalks }
+          : {}),
       }
     },
   }))

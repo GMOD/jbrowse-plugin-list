@@ -143,7 +143,8 @@ function Keys({
   }
   const pad = 6
   const rows = sections.flat()
-  const boxWidth = Math.max(...rows.map(r => r.width)) + pad * 2
+  const boxWidth =
+    rows.reduce((max, r) => Math.max(max, r.width), -Infinity) + pad * 2
   const boxHeight =
     rows.reduce((sum, r) => sum + r.height, 0) + sections.length * pad
   const right = model.paneWidth - LEGEND_INSET_PX

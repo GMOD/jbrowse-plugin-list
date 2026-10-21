@@ -93,8 +93,10 @@ test('panels stack down the pane, a title gap above each', () => {
   expect(a!.result.tubeMap.layout.tracks).toHaveLength(3)
   expect(b!.result.tubeMap.layout.tracks).toHaveLength(2)
   const ys = Object.values(split.nodePositions).flatMap(s => s.map(p => p.y))
-  expect(Math.min(...ys)).toBeGreaterThanOrEqual(PANEL_GAP)
-  expect(Math.max(...ys)).toBeLessThanOrEqual(split.extent!.maxY!)
+  expect(ys.reduce((a, b) => Math.min(a, b))).toBeGreaterThanOrEqual(PANEL_GAP)
+  expect(ys.reduce((a, b) => Math.max(a, b))).toBeLessThanOrEqual(
+    split.extent!.maxY!,
+  )
 })
 
 test('one group draws the whole map, unsplit', () => {

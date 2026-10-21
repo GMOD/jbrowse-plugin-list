@@ -198,8 +198,8 @@ export function memberAt(
   if (spans.length === 0) {
     return undefined
   }
-  const start = Math.min(...spans.map(s => s.start))
-  const end = Math.max(...spans.map(s => s.end))
+  const start = spans.reduce((min, s) => Math.min(min, s.start), Infinity)
+  const end = spans.reduce((max, s) => Math.max(max, s.end), -Infinity)
   const share = right > left ? (sx - left) / (right - left) : 0
   const bp = start + Math.min(1, Math.max(0, share)) * (end - start)
   const distance = (s: { start: number; end: number }) =>

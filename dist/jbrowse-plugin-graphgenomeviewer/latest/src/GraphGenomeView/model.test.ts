@@ -50,6 +50,9 @@ import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 import type { Graph } from '@jbrowse/bandage-core/types'
 
+const minOf = (v: number[]) => v.reduce((a, b) => Math.min(a, b))
+const maxOf = (v: number[]) => v.reduce((a, b) => Math.max(a, b))
+
 const mockRpcCall = vi.fn()
 // The canonical assembly a name or alias resolves to, which is what
 // assemblyManager.assemblyNameMap does: it is keyed by [name, ...aliases].
@@ -1575,8 +1578,8 @@ describe('canvas height follows the drawing', () => {
     const ys = points.map(p => p.y)
     const xs = points.map(p => p.x)
     return {
-      w: Math.max(...xs) - Math.min(...xs),
-      h: Math.max(...ys) - Math.min(...ys),
+      w: maxOf(xs) - minOf(xs),
+      h: maxOf(ys) - minOf(ys),
     }
   }
 
@@ -2498,8 +2501,7 @@ describe('bubbleSpread', () => {
   })
 
   test('compressing shrinks the drawn length range', () => {
-    const range = (lengths: number[]) =>
-      Math.max(...lengths) / Math.min(...lengths)
+    const range = (lengths: number[]) => maxOf(lengths) / minOf(lengths)
     // the rope: on the real cut the longest node draws tens of times the
     // shortest, so zoom-to-fit frames the long one and the alleles vanish
     expect(range(lengthsUnder('auto'))).toBeGreaterThan(20)
@@ -2608,7 +2610,7 @@ describe('layoutBounds on a reference axis', () => {
     const drawnX = Object.values(model.nodePositions!)
       .flat()
       .map(s => s.x)
-    expect(Math.min(...drawnX)).toBeLessThan(FAR_REGION.start)
+    expect(minOf(drawnX)).toBeLessThan(FAR_REGION.start)
 
     expect(model.layoutBounds!.minX).toBe(FAR_REGION.start)
     expect(model.layoutBounds!.w).toBe(FAR_REGION.end - FAR_REGION.start)
@@ -2639,9 +2641,7 @@ describe('layoutBounds on a reference axis', () => {
     const drawnY = Object.values(model.nodePositions!)
       .flat()
       .map(s => s.y)
-    expect(model.layoutBounds!.h).toBe(
-      Math.max(...drawnY) - Math.min(...drawnY),
-    )
+    expect(model.layoutBounds!.h).toBe(maxOf(drawnY) - minOf(drawnY))
   })
 
   test('a force layout keeps the extent it measured', async () => {
@@ -2659,10 +2659,8 @@ describe('layoutBounds on a reference axis', () => {
     const drawnX = Object.values(model.nodePositions!)
       .flat()
       .map(s => s.x)
-    expect(model.layoutBounds!.minX).toBe(Math.min(...drawnX))
-    expect(model.layoutBounds!.w).toBe(
-      Math.max(...drawnX) - Math.min(...drawnX),
-    )
+    expect(model.layoutBounds!.minX).toBe(minOf(drawnX))
+    expect(model.layoutBounds!.w).toBe(maxOf(drawnX) - minOf(drawnX))
   })
 })
 
@@ -2749,7 +2747,7 @@ describe('a row layout draws y in pixels', () => {
     const xs = Object.values(model.nodePositions!)
       .flat()
       .map(p => p.x * model.scaleX + model.translateX)
-    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(
+    expect(maxOf(xs) - minOf(xs)).toBeCloseTo(
       model.width - model.fitPadLeft - 40,
       5,
     )
@@ -2847,7 +2845,7 @@ describe('what the row axis draws, in pixels', () => {
     return model
   }
 
-  const spread = (v: number[]) => Math.max(...v) - Math.min(...v)
+  const spread = (v: number[]) => maxOf(v) - minOf(v)
 
   test('the rows are one pitch apart and the pane holds them', async () => {
     const model = await fitted()
@@ -2861,8 +2859,8 @@ describe('what the row axis draws, in pixels', () => {
 
     // three row gaps, and each tube half a thickness either side of its row
     expect(spread(rowYs)).toBeCloseTo(3 * ROW_HEIGHT_PX, 5)
-    expect(Math.min(...rowYs) - model.contigThickness / 2).toBeGreaterThan(0)
-    expect(Math.max(...rowYs) + model.contigThickness / 2).toBeLessThan(
+    expect(minOf(rowYs) - model.contigThickness / 2).toBeGreaterThan(0)
+    expect(maxOf(rowYs) + model.contigThickness / 2).toBeLessThan(
       model.canvasHeight,
     )
   })
@@ -2877,8 +2875,8 @@ describe('what the row axis draws, in pixels', () => {
     expect(model.deletions).toHaveLength(1)
     const points = render(model)
 
-    const top = Math.min(...points.map(p => p.y))
-    const bottom = Math.max(...points.map(p => p.y))
+    const top = minOf(points.map(p => p.y))
+    const bottom = maxOf(points.map(p => p.y))
     // it does bow past the rows — a flat arc would mean the bow was dropped,
     // not converted; the rows themselves span three pitches
     expect(bottom - top).toBeGreaterThanOrEqual(3 * ROW_HEIGHT_PX)
@@ -2917,11 +2915,11 @@ describe('what the row axis draws, in pixels', () => {
 
   test('the fit starts the drawing right of the row labels', async () => {
     const model = await fitted()
-    const labelsEnd = Math.max(
-      ...model.drawnRowLabels.map(r => rowLabelBox(r.label, 0).x1),
+    const labelsEnd = maxOf(
+      model.drawnRowLabels.map(r => rowLabelBox(r.label, 0).x1),
     )
     expect(labelsEnd).toBeGreaterThan(40)
-    expect(Math.min(...render(model).map(p => p.x))).toBeGreaterThan(labelsEnd)
+    expect(minOf(render(model).map(p => p.x))).toBeGreaterThan(labelsEnd)
   })
 
   // Zoom is an x-only gesture on this axis, so afterwards the rows are drawn in

@@ -424,3 +424,12 @@ export const withRenderingActions = withLoadActions
         : self.switchLayout('force')
     },
   }))
+  .actions(self => ({
+    // reads the abridged walk `name` in full with the next cut
+    expandWalk(name: string) {
+      if (!self.expandedWalks.includes(name)) {
+        self.expandedWalks = self.expandedWalks.concat(name)
+        self.retryLoad()
+      }
+    },
+  }))

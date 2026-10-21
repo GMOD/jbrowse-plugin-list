@@ -198,7 +198,10 @@ const FacetPanels = observer(function FacetPanels({
       <div
         style={{
           ...keyStyle,
-          gridRow: Math.floor(Math.max(...place.cells) / columns) + 2,
+          gridRow:
+            Math.floor(
+              place.cells.reduce((a, b) => Math.max(a, b), -Infinity) / columns,
+            ) + 2,
         }}
         data-testid="graph-facet-key"
       >

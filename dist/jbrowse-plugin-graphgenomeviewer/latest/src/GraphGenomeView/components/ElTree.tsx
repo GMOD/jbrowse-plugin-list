@@ -24,7 +24,7 @@ function toReact(node: El | string, key: number): ReactNode {
       props[propName(name)] = value
     }
   }
-  return createElement(node.tag, props, ...node.children.map(toReact))
+  return createElement(node.tag, props, node.children.map(toReact))
 }
 
 // A useId fit for an SVG id and for url(#…)

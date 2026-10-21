@@ -518,7 +518,10 @@ function cigarSpans(cigar: string) {
 }
 
 const largestGap = (cigar: string) =>
-  Math.max(0, ...[...cigar.matchAll(/(\d+)[ID]/g)].map(([, n]) => Number(n)))
+  [...cigar.matchAll(/(\d+)[ID]/g)].reduce(
+    (max, [, n]) => Math.max(max, Number(n)),
+    0,
+  )
 
 // HG01361#2 and HG02145#2 each carry a ~170 bp insertion against GRCh38 at
 // 31,498,602, which a band composed through GRCh38 draws as nothing
@@ -539,8 +542,8 @@ const anchoredAdapter = (conf: Record<string, unknown> = {}) =>
   })
 
 const spanOf = (intervals: { start: number; end: number }[]) => ({
-  start: Math.min(...intervals.map(i => i.start)),
-  end: Math.max(...intervals.map(i => i.end)),
+  start: intervals.reduce((min, i) => Math.min(min, i.start), Infinity),
+  end: intervals.reduce((max, i) => Math.max(max, i.end), -Infinity),
 })
 
 test('the adapter type declares that a window of its anchor answers any lane pair', () => {
@@ -683,7 +686,10 @@ test('sequence both lanes carry and GRCh38 lacks aligns inside the pair record',
     targetAssemblyName: 'HG01361#2',
   })
   expect(
-    Math.max(...againstReference.map(f => largestGap(cigarOf(f)))),
+    againstReference.reduce(
+      (max, f) => Math.max(max, largestGap(cigarOf(f))),
+      0,
+    ),
   ).toBeGreaterThan(150)
   const records = await feats(adapter, insertionWindow, pair)
   for (const f of records) {

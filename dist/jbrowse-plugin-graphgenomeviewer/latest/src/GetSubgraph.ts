@@ -31,6 +31,8 @@ export interface SubgraphCutOptions {
   // a cut for walk rows: its runs come with the tables, and the
   // step budget, which guards a Graph of every step, does not apply
   walkRows?: boolean
+  // abridged walks, `sample#haplotype#contig`, a walk-file cut reads in full
+  expand?: string[]
 }
 
 // What an adapter's cut is handed: the payload, plus the call's own signal so

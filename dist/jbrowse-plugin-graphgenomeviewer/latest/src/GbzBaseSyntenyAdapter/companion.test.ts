@@ -10,10 +10,12 @@ vi.mock('@jbrowse/core/util/io', async importOriginal => {
   const io = await importOriginal<typeof IO>()
   return {
     ...io,
-    openLocation: (...args: Parameters<typeof io.openLocation>) => {
+    openLocation: (
+      ...[location, pluginManager]: Parameters<typeof io.openLocation>
+    ) => {
       const error = statError.current
       return error === undefined
-        ? io.openLocation(...args)
+        ? io.openLocation(location, pluginManager)
         : { stat: () => Promise.reject(error) }
     },
   }
