@@ -35,27 +35,27 @@ const fixture = (name: string) =>
 //   W HG002   1 chr1 >1>2>7>4>5>6   7 replaces 3
 //   W HG002   2 chr1 >1>2>3>4>8>6   8 replaces 5
 //   W HG00097 1 chr1 >1>2>3>4>5>6
-const headerPrefix = fixture('walks4_header')
+const headerPrefix = fixture('walks5_header')
 
-// walks4_header's walks with the reference named as pggb names a P-line,
+// walks5_header's walks with the reference named as pggb names a P-line,
 // GRCh38#chr1
-const twoPartPrefix = fixture('walks4_twopart')
+const twoPartPrefix = fixture('walks5_twopart')
 
 // An unchopped graph, node 1 spanning 0-2600 and filed under chunk 0 alone:
 //   W GRCh38 0 chr1 >1>2>4
 //   W HG002  1 chr1 >1>3>4   3 replaces 2
-const maxNodePrefix = fixture('walks4_maxnode')
+const maxNodePrefix = fixture('walks5_maxnode')
 
 // Twelve 500 bp reference nodes over chr1:0-6000 in one 10 kb chunk:
 //   W GRCh38  0 chr1 >1>2>3>4>5>6>7>8>9>10>11>12
 //   W HG002   1 chr1 >1>2>3>20>21>9>10>11>12   20 and 21, 2 kb each, replace 4-8
 //   W HG002   2 chr1 >1>2>3>4>5>6>7>8>9>10>11>12
 //   W HG003   1 chr1 >1>2>3>22                 the contig ends on 22, 300 bp
-const rejoinPrefix = fixture('walks4_rejoin')
+const rejoinPrefix = fixture('walks5_rejoin')
 
 // The same graph in 1 kb chunks, whose rows name the chunks their path goes on
 // in: HG002#1 leaves chunk 1000 for 20 and 21 and rejoins at 9, in chunk 4000
-const followPrefix = fixture('walks4_follow')
+const followPrefix = fixture('walks5_follow')
 
 function makeAdapter(prefix: string, slots = {}) {
   const local = (path: string) => ({

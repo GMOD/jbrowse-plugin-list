@@ -666,10 +666,6 @@ export const withGraphViews = paneBase
     get cutHaplotypes(): string[] | undefined {
       return undefined
     },
-    // the GFA the graph on screen was read from, where a host says
-    get sourceGfaLocation(): FileLocation | undefined {
-      return undefined
-    },
     get sourceAdapter() {
       const track = self.sourceTrack
       return track ? trackAdapterConfig(self, track) : undefined

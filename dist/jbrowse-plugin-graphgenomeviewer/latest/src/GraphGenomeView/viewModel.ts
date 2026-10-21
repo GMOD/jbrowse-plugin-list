@@ -93,9 +93,6 @@ export default function stateModelFactory() {
       get paneMeasured() {
         return self.widthMeasured
       },
-      get sourceGfaLocation() {
-        return self.gfaLocation
-      },
       get sourceTrack(): AnyConfigurationModel | undefined {
         return self.loadedTrackId
           ? self.sessionTrack(self.loadedTrackId)

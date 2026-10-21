@@ -5,7 +5,6 @@ import {
   facetGrid,
 } from '@jbrowse/bandage-core/facetGrid'
 import { figureSvg } from '@jbrowse/bandage-core/figure'
-import { figureSpecSettings } from '@jbrowse/bandage-core/figureSettings'
 import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
 import {
   LEGEND_INSET_PX,
@@ -34,10 +33,6 @@ import {
 } from '@jbrowse/bandage-core/tubeMap/genes'
 import { padded } from '@jbrowse/bandage-core/viewport'
 import { walkPosition } from '@jbrowse/bandage-core/walkKey'
-import {
-  expandTabixShorthand,
-  readConfObject,
-} from '@jbrowse/core/configuration'
 import { untracked } from 'mobx'
 
 import { SECTION_HEADER_PX, sectionPlacement } from '../walkRowGroups'
@@ -52,7 +47,6 @@ import {
   VIEWPORT_PANES_BUILT,
   dependOn,
   paneViewportOf,
-  uriOf,
 } from './paneBase'
 import { trackedDpr } from '../trackedDpr'
 
@@ -63,7 +57,6 @@ import type {
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 import type { LiftedWalk, WalkLift } from '@jbrowse/bandage-core/walkHighlight'
-import type { FileLocation } from '@jbrowse/core/util/types'
 
 export const TOOLTIP_INSET_PX = 8
 export const FACET_KEY_ROW_PX = 19
@@ -557,96 +550,6 @@ export const withFitViews = withHostViews
         ? (walkPosition(walk, node.id, node.length) ?? 'not on this walk')
         : undefined
     },
-    // The spec bandage-figure makes this drawing from with no browser, or
-    // undefined for a graph it cannot read again: one cut from a gbz-base
-    // track or read from a GFA url, with the genes of a GFF3 tabix track
-    figureSpec() {
-      const region = self.graphRegion
-      const adapter = self.sourceAdapter
-      const panSN = adapter?.assemblyNameToPanSN as
-        Record<string, string> | undefined
-      const window = region && `${region.refName}:${region.start}-${region.end}`
-      const gfa = uriOf(self.sourceGfaLocation)
-      const db =
-        adapter?.type === 'GbzBaseSyntenyAdapter'
-          ? uriOf(adapter.gbzDbLocation as FileLocation)
-          : undefined
-      const source = gfa
-        ? { gfa, region: window }
-        : db && region && window
-          ? {
-              gbz: {
-                db,
-                index: uriOf(adapter!.haplotypeIndexLocation as FileLocation),
-                region: window,
-                // the adapter cuts a lane by its PanSN prefix
-                haplotypes: self.cutHaplotypes?.map(
-                  lane => panSN?.[lane] ?? lane,
-                ),
-                referenceSample:
-                  (adapter!.referenceSample as string | undefined) ||
-                  panSN?.[region.assemblyName] ||
-                  region.assemblyName,
-                context: adapter!.context as number | undefined,
-                snarls: self.cutsWholeWalks
-                  ? 'overlapping'
-                  : (adapter!.subgraphSnarls as string | undefined),
-              },
-            }
-          : undefined
-      if (!source) {
-        return undefined
-      }
-      const geneTrack = self.showGenes ? self.geneTrack : undefined
-      const geneConf = geneTrack
-        ? self.sessionTrack(geneTrack.trackId)
-        : undefined
-      const geneAdapter = geneConf
-        ? expandTabixShorthand(
-            readConfObject(geneConf, 'adapter') as Record<string, unknown>,
-            'gffGzLocation',
-          )
-        : undefined
-      const genes =
-        geneAdapter?.type === 'Gff3TabixAdapter'
-          ? {
-              file: uriOf(geneAdapter.gffGzLocation as FileLocation),
-              index: uriOf(
-                (geneAdapter.index as { location?: FileLocation } | undefined)
-                  ?.location,
-              ),
-              format: 'gff3',
-            }
-          : undefined
-      return JSON.parse(
-        JSON.stringify({
-          ...source,
-          genes: genes?.file && genes.index ? genes : undefined,
-          referencePath: self.referencePath || undefined,
-          layout: self.chosenLayoutMode,
-          ...figureSpecSettings({
-            engine: self.layoutEngine,
-            quality: self.layoutQuality,
-            linearLayout: self.linearLayout,
-            bubbleSpread: self.bubbleSpread,
-            showDeletionEdges: self.showDeletionEdges,
-            colorScheme: self.chosenColorScheme,
-            nodeWidth: self.nodeWidth,
-            contigThickness: self.contigThickness,
-            connectorThickness: self.connectorThickness,
-            colorDomain: self.statedColorDomain,
-          }),
-          walks: self.walkLayers.length
-            ? self.walkLayers.map(l => (l.color ? l : l.walk))
-            : undefined,
-          facet: self.walkLayers.length > 1 ? self.facetSpec : undefined,
-          walkStrip: self.walkStripShown || undefined,
-          walkRowSamples: self.walkStripShown ? self.walkRowSamples : undefined,
-          width: self.paneWidth,
-          height: self.paneCeiling,
-        }),
-      ) as Record<string, unknown>
-    },
     // Why the drawing cannot be written as SVG, which draws the canvas's
     // nodes, or walk rows' bars
     get figureUnavailable() {
@@ -657,15 +560,6 @@ export const withFitViews = withHostViews
           : self.drawsNodes || self.walkRowBars
             ? undefined
             : `${layoutModeByValue(self.chosenLayoutMode).label} draws a picture of its own, which the SVG export does not`
-    },
-    // Why bandage-figure can't make this drawing again: it draws only
-    // layouts with nodes, from a graph it can read for itself
-    get figureSpecUnavailable() {
-      return !self.drawsNodes
-        ? `bandage-figure draws no ${layoutModeByValue(self.chosenLayoutMode).label} layout`
-        : this.figureSpec()
-          ? undefined
-          : 'bandage-figure reads a graph cut from a gbz-base track or a GFA url'
     },
     // The drawing as a standalone SVG, fitted, with its genes, its lifted
     // walks' keys, facet panels and the strip of walk rows; see figureSvg
@@ -695,9 +589,6 @@ export const withFitViews = withHostViews
               rowGenes: self.walkRowGenes,
               rowGeneGaps: self.walkRowGeneGaps,
             },
-            // the SVG carries the spec only where the spec draws this same
-            // picture: one of nodes (figureSpecUnavailable)
-            spec: self.drawsNodes ? this.figureSpec() : undefined,
           })
         : undefined
     },

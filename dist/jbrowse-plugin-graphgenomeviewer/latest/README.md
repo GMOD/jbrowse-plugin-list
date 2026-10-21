@@ -1,7 +1,5 @@
 # jbrowse-plugin-graphgenomeviewer
 
-Pangenome graphs in JBrowse 2.
-
 - **In:** one of
   - a [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) walk file
     (`<prefix>.<sample>.walks.bed.gz` beside its `.tbi`), opened with File →
@@ -77,12 +75,14 @@ In the [JBrowse 2 docs](https://jbrowse.org/jb2/docs/tutorials/):
 In reading order:
 
 1. [Data and track config](docs/data.md): index a graph and write the track
-2. [Layouts](docs/layouts.md): the seven layouts, colour, the reference strip
+2. [Layouts, bubbles and genes](docs/layouts.md): the seven layouts, the
+   reference strip, bubble halos, gene outlines, export
 3. [Haplotypes](docs/haplotypes.md): lifting, panels, colouring, walk rows
-4. [Tube maps](docs/tube-maps.md): panels, routes, reads
-5. [Bubbles](docs/bubbles.md) and [genes](docs/genes.md)
-6. [Maize NAM founders](docs/maize.md): MaizeGDB's graph of one gene and a
+4. [Tube maps](docs/tube-maps.md): axes, box colour, panels, routes, reads
+5. [Maize NAM founders](docs/maize.md): MaizeGDB's graph of one gene and a
    Minigraph-Cactus graph of chr8, with links that open each view
+6. [syng graphs from impg](docs/syng.md): build C4 as a syng graph and draw it
+   with `bandage-figure`
 7. [Developing](docs/developing.md): build, test, release
 
 ## Gallery
@@ -95,8 +95,11 @@ In reading order:
 </tr>
 <tr>
 <td><a href="docs/tube-maps.md#panels"><img src="img/tube_map_cfhr_samples.png" width="260" alt="The CFHR3–CFHR1 deletion, a panel per sample"></a><br>The CFHR3–CFHR1 deletion, a panel per sample</td>
-<td><a href="docs/bubbles.md"><img src="img/force_kiv2_bubbles.png" width="260" alt="KIV-2 bubbles under the HPRC bubbles track"></a><br>KIV-2 bubbles under the HPRC bubbles track</td>
+<td><a href="docs/layouts.md#bubbles"><img src="img/force_kiv2_bubbles.png" width="260" alt="KIV-2 bubbles under the HPRC bubbles track"></a><br>KIV-2 bubbles under the HPRC bubbles track</td>
 <td><a href="docs/maize.md"><img src="docs/maize/walk_rows_200kb.png" width="260" alt="Maize NAM founders as walk rows"></a><br>Maize NAM founders as walk rows</td>
+</tr>
+<tr>
+<td><a href="docs/syng.md"><img src="img/syng_c4.png" width="260" alt="C4 as a syng graph from impg"></a><br>C4 as a syng graph from impg</td>
 </tr>
 </table>
 

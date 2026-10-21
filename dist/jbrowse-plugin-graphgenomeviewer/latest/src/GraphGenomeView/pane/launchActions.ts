@@ -5,7 +5,6 @@ import {
   layoutModeByValue,
 } from '@jbrowse/bandage-core/layoutModes'
 import { getSession } from '@jbrowse/core/util'
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import HubIcon from '@mui/icons-material/Hub'
 import PaletteIcon from '@mui/icons-material/Palette'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
@@ -336,27 +335,6 @@ export const withLaunchActions = withRenderingActions
                 `${(self.graph?.name ?? 'graph').replaceAll(/[^\w.-]+/g, '_')}.svg`,
               )
             }
-          },
-        },
-        {
-          label: 'Copy figure spec',
-          icon: ContentCopyIcon,
-          disabled: self.figureSpecUnavailable !== undefined,
-          disabledHelpText: self.figureSpecUnavailable,
-          onClick: () => {
-            const spec = self.figureSpec()
-            const session = getSession(self)
-            navigator.clipboard
-              .writeText(`${JSON.stringify(spec, null, 2)}\n`)
-              .then(() => {
-                session.notify(
-                  'Figure spec copied. Save it as spec.json and run: npx -p @jbrowse/bandage-core bandage-figure spec.json -o figure.svg',
-                  'info',
-                )
-              })
-              .catch((e: unknown) => {
-                session.notify(`Could not copy the figure spec: ${String(e)}`)
-              })
           },
         },
       ]

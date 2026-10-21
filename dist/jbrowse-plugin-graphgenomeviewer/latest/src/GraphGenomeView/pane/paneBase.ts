@@ -177,13 +177,6 @@ export function fileName(location: FileLocation) {
   return path.split(/[\\/]/).at(-1) ?? ''
 }
 
-// A url bandage-figure can read again, or undefined for a local file
-export function uriOf(location: FileLocation | undefined) {
-  return location && 'uri' in location && location.uri
-    ? new URL(location.uri, location.baseUri ?? window.location.href).href
-    : undefined
-}
-
 type ViewportOwner = 'fit' | 'user' | 'host'
 
 interface BuiltViewport {

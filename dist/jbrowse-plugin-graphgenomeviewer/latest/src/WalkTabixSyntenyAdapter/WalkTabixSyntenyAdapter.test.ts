@@ -34,7 +34,7 @@ const fixture = (name: string) =>
 
 function makeAdapter(
   slots: Record<string, unknown> = {},
-  name = 'walks4_header',
+  name = 'walks5_header',
 ) {
   const local = (path: string) => ({
     localPath: path,
@@ -111,7 +111,7 @@ test('a fetch for some haplotypes answers those lanes in the order asked, named 
 })
 
 test('a fetch for some haplotypes reads them against a reference walk named without a haplotype', async () => {
-  const found = await feats(makeAdapter({}, 'walks4_twopart'), {
+  const found = await feats(makeAdapter({}, 'walks5_twopart'), {
     haplotypes: ['HG002#1'],
   })
   expect(found.map(summary)).toEqual([
@@ -172,7 +172,7 @@ test('a batch of lane pairs answers each pair what it answers alone', async () =
   expect(batch).toHaveLength(2)
 })
 
-// walks4_lanepairs, a 5.5 kb reference of 2 kb flanks around three 500 bp
+// walks5_lanepairs, a 5.5 kb reference of 2 kb flanks around three 500 bp
 // nodes, in 1 kb chunks:
 //   W GRCh38  0 chr1 >1>2>3>4>5
 //   W HG002   1 chr1 >1>2>3>4>5
@@ -180,7 +180,7 @@ test('a batch of lane pairs answers each pair what it answers alone', async () =
 //   W HG00097 1 chr1 >1>2>6>2>6>2>3>4>5   2 three times, 6 a 30 bp spacer
 test('a lane pair matches through a copy-number array, and draws an inversion between the lanes as a reverse-strand record', async () => {
   const found = await firstValueFrom(
-    makeAdapter({}, 'walks4_lanepairs')
+    makeAdapter({}, 'walks5_lanepairs')
       .getFeatures(
         { ...window, end: 5500 },
         {
@@ -554,7 +554,7 @@ test('a walk turned against the reference for 10 kb or more gains a reverse-stra
 //   W HG00097 1 chr1 >1>2>3>4>5
 test('the anchor window answers a haplotype turned against the reference with a reverse-strand record of the turned stretch', async () => {
   const records = await firstValueFrom(
-    makeAdapter({}, 'walks4_inversion')
+    makeAdapter({}, 'walks5_inversion')
       .getFeatures({ ...window, end: 55_000 }, {})
       .pipe(toArray()),
   )

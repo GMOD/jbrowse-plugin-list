@@ -874,27 +874,7 @@ describe('loadGFAFromLocation', () => {
     expect(model.graphRegion).toEqual(TEST_REGION)
   })
 
-  test('a graph read from a url gives the figure spec that reads it again', async () => {
-    rpcRespond()
-    mockReadFile.mockResolvedValue(SIMPLE_GFA)
-    const model = stateModelFactory().create({
-      type: 'GraphGenomeView',
-      gfaLocation: location,
-      loadedRegion: TEST_REGION,
-      layoutMode: 'auto',
-    })
-    await model.load()
-    expect(model.figureSpec()).toMatchObject({
-      gfa: location.uri,
-      region: 'chr1:1000-5000',
-      layout: 'auto',
-    })
-    expect(model.figure()).toContain(
-      '&quot;gfa&quot;:&quot;https://example.com/graphs/small.gfa&quot;',
-    )
-  })
-
-  test('a gene track in tabix shorthand gives the figure spec its index', async () => {
+  test('a gene track in tabix shorthand turns genes on', async () => {
     rpcRespond()
     mockReadFile.mockResolvedValue(SIMPLE_GFA)
     mockSession.tracks = [
@@ -916,11 +896,7 @@ describe('loadGFAFromLocation', () => {
     })
     await model.load()
     expect(model.showGenes).toBe(true)
-    expect(model.figureSpec()?.genes).toEqual({
-      file: 'https://jbrowse.org/ucsc/hg38/ncbiRefSeq.gff.gz',
-      index: 'https://jbrowse.org/ucsc/hg38/ncbiRefSeq.gff.gz.csi',
-      format: 'gff3',
-    })
+    expect(model.geneTrack?.trackId).toBe('ncbiRefSeq')
     mockSession.tracks = []
   })
 
@@ -3411,89 +3387,6 @@ describe('walk rows', () => {
     expect(svg).toContain('>B#1</text>')
     expect(svg).not.toContain('>A#1</text>')
     expect(svg).toContain("'s path")
-  })
-
-  test("the figure spec keeps the strip's sample filter", async () => {
-    rpcRespond()
-    mockReadFile.mockResolvedValue(WALKS_GFA)
-    const model = stateModelFactory().create({
-      type: 'GraphGenomeView',
-      gfaLocation: {
-        uri: 'https://example.com/graphs/walks.gfa',
-        locationType: 'UriLocation',
-      },
-      loadedRegion: TEST_REGION,
-      layoutMode: 'ordered',
-      layers: { walkStrip: true },
-      rows: { kept: ['B'] },
-    })
-    await model.load()
-    expect(model.walkStripRows!.rows.map(r => r.label)).toEqual(['B#1'])
-    expect(model.figureSpec()).toMatchObject({
-      walkStrip: true,
-      walkRowSamples: ['B'],
-    })
-    model.setWalkStrip(false)
-    expect(model.figureSpec()?.walkRowSamples).toBeUndefined()
-  })
-
-  // bandage-figure shows deletion edges unless a spec says otherwise
-  test('the figure spec states deletion edges only when they are off', async () => {
-    rpcRespond()
-    mockReadFile.mockResolvedValue(WALKS_GFA)
-    const model = stateModelFactory().create({
-      type: 'GraphGenomeView',
-      gfaLocation: {
-        uri: 'https://example.com/graphs/walks.gfa',
-        locationType: 'UriLocation',
-      },
-      loadedRegion: TEST_REGION,
-      layoutMode: 'ordered',
-    })
-    await model.load()
-    expect(model.figureSpec()).not.toHaveProperty('showDeletionEdges')
-    model.setLayer('deletions', false)
-    expect(model.figureSpec()?.showDeletionEdges).toBe(false)
-  })
-
-  // bandage-figure laid a linear layout out as an ordinary one, and drew its
-  // own line widths, while the spec said nothing about either
-  test('the figure spec carries the settings that change the picture', async () => {
-    rpcRespond()
-    mockReadFile.mockResolvedValue(WALKS_GFA)
-    const model = stateModelFactory().create({
-      type: 'GraphGenomeView',
-      gfaLocation: {
-        uri: 'https://example.com/graphs/walks.gfa',
-        locationType: 'UriLocation',
-      },
-      loadedRegion: TEST_REGION,
-      layoutMode: 'ordered',
-      size: 9,
-    })
-    await model.load()
-    expect(model.figureSpec()).toMatchObject({ contigThickness: 9 })
-    expect(model.figureSpec()).not.toHaveProperty('connectorThickness')
-    expect(model.figureSpec()).not.toHaveProperty('linearLayout')
-    model.setLinearLayout(true)
-    expect(model.figureSpec()?.linearLayout).toBe(true)
-  })
-
-  test('walk rows offer no figure spec, since bandage-figure draws no walk rows', async () => {
-    rpcRespond()
-    mockReadFile.mockResolvedValue(WALKS_GFA)
-    const model = stateModelFactory().create({
-      type: 'GraphGenomeView',
-      gfaLocation: {
-        uri: 'https://example.com/graphs/walks.gfa',
-        locationType: 'UriLocation',
-      },
-      loadedRegion: TEST_REGION,
-      layoutMode: 'walkrows',
-    })
-    await model.load()
-    expect(model.walkRowBars).toBeDefined()
-    expect(model.figureSpecUnavailable).toMatch(/^bandage-figure draws no /)
   })
 
   test("a picker's set keeps lifted walks this cut does not hold", async () => {
