@@ -23,6 +23,7 @@ import { applyFigureStyle } from './figureStyle'
 import { makeSelectionFramer, structuresSettled } from './frameSelection'
 import loadMolstar from './loadMolstar'
 import { makeLociChannel } from './lociChannel'
+import { checkedLayers } from './markProblems'
 import { syncMeasurements } from './measurements'
 import { checkedColor, colorOfScheme, resolvedColor } from './proteinColor'
 import { defaultDisplayName } from './proteinViewSpec'
@@ -220,8 +221,9 @@ function stateModelFactory() {
         distances: types.frozen<DistanceMeasurement[] | undefined>(),
         /**
          * #property
-         * sites drawn on their own as spheres or sticks, on any chain (see
-         * ResidueMark): a partner's residue, a ligand, a pocket
+         * sites drawn on their own as spheres, sticks or a cartoon, on any
+         * chain (see ResidueMark): a partner's residue, a ligand, a pocket, a
+         * partner protein
          */
         marks: types.frozen<ResidueMark[] | undefined>(),
         /**
@@ -290,7 +292,7 @@ function stateModelFactory() {
       } & Record<string, unknown>) =>
         withStoredSettings(
           {
-            ...snapshot,
+            ...checkedLayers(snapshot, snapshot.structures),
             displayName:
               snapshot.displayName ??
               defaultDisplayName(snapshot.structures ?? []),

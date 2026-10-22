@@ -1,9 +1,20 @@
 import loadMolstar from './loadMolstar';
+import { encodedColor } from './markEncoding';
 import { parseSite, siteExpression } from './residueSpec';
 import { serialPerPlugin } from './serialPerPlugin';
 import { structureRootCell } from './structureCells';
 export const RESIDUE_MARKS_TAG = 'jbrowse-residue-marks';
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+function markRepresentation(mark) {
+    return mark === 'sticks'
+        ? {
+            type: 'ball-and-stick',
+            typeParams: { sizeFactor: 0.35, sizeAspectRatio: 0.7 },
+        }
+        : // as thick as the cartoon drawOnlyChains gives the chains beside it
+            mark === 'cartoon'
+                ? { type: 'cartoon', typeParams: { sizeFactor: 0.45 } }
+                : { type: 'spacefill', typeParams: { sizeFactor: 1 } };
+}
 export const DEFAULT_MARK_COLOR = '#f28e2b';
 export function syncResidueMarks({ plugin, structures, marks, }) {
     return serialPerPlugin(plugin, RESIDUE_MARKS_TAG, async () => {
@@ -22,9 +33,7 @@ export function syncResidueMarks({ plugin, structures, marks, }) {
             if (!structure || !site || !root) {
                 continue;
             }
-            const color = HEX_COLOR.test(mark.color ?? '')
-                ? mark.color
-                : DEFAULT_MARK_COLOR;
+            const color = encodedColor(mark.encoding, DEFAULT_MARK_COLOR);
             update
                 .to(root)
                 .apply(StateTransforms.Model.StructureComponent, {
@@ -33,12 +42,7 @@ export function syncResidueMarks({ plugin, structures, marks, }) {
                 label: mark.site,
             }, { tags: [RESIDUE_MARKS_TAG] })
                 .apply(StateTransforms.Representation.StructureRepresentation3D, createStructureRepresentationParams(plugin, structure, {
-                ...(mark.style === 'sticks'
-                    ? {
-                        type: 'ball-and-stick',
-                        typeParams: { sizeFactor: 0.35, sizeAspectRatio: 0.7 },
-                    }
-                    : { type: 'spacefill', typeParams: { sizeFactor: 1 } }),
+                ...markRepresentation(mark.mark),
                 color: 'uniform',
                 colorParams: { value: Color.fromHexStyle(color) },
             }), { tags: [RESIDUE_MARKS_TAG] });

@@ -1,10 +1,10 @@
 import loadMolstar from './loadMolstar';
+import { encodedColor } from './markEncoding';
 import { parseSite, siteExpression } from './residueSpec';
 import { serialPerPlugin } from './serialPerPlugin';
 export const MEASUREMENT_TAG = 'jbrowse-measurement';
 const KEY_PREFIX = `${MEASUREMENT_TAG}:`;
 export const DEFAULT_DASH_COLOR = '#ffd60a';
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 function atomsOf(molstar, structure, site) {
     const { MolScriptBuilder: MS, OrderedSet, Script, StructureElement, StructureProperties: SP, StructureSelection, Vec3, } = molstar;
     const loci = StructureSelection.toLociWithSourceUnits(Script.getStructureSelection(siteExpression(MS, site), structure));
@@ -34,7 +34,7 @@ export function closestAtoms(molstar, structure, a, b) {
     const siteA = parseSite(a);
     const siteB = parseSite(b);
     if (!siteA || !siteB) {
-        return { error: `${siteA ? b : a} is not a residue such as A:248` };
+        return { error: `${siteA ? b : a} is not a site such as A:248 or G:*` };
     }
     const atomsA = atomsOf(molstar, structure, siteA);
     const atomsB = atomsOf(molstar, structure, siteB);
@@ -63,7 +63,7 @@ function atomLoci(molstar, structure, atom) {
     ]);
 }
 function keyOf(structure, m) {
-    return `${KEY_PREFIX}${structure.model.id}|${m.a}|${m.b}|${m.color ?? ''}`;
+    return `${KEY_PREFIX}${structure.model.id}|${m.a}|${m.b}|${m.encoding?.color?.value ?? ''}`;
 }
 /**
  * Make the distances drawn in Mol* match `measurements`: the ones no longer
@@ -97,9 +97,7 @@ export function syncMeasurements({ plugin, structures, measurements, labels = tr
             wanted.set(keyOf(structure, measurement), {
                 structure,
                 pair,
-                color: HEX_COLOR.test(measurement.color ?? '')
-                    ? measurement.color
-                    : DEFAULT_DASH_COLOR,
+                color: encodedColor(measurement.encoding, DEFAULT_DASH_COLOR),
             });
             return {
                 measurement,

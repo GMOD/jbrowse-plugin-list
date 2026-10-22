@@ -1,7 +1,9 @@
 import loadMolstar from './loadMolstar'
+import { encodedColor } from './markEncoding'
 import { parseSite, siteExpression } from './residueSpec'
 import { serialPerPlugin } from './serialPerPlugin'
 
+import type { ConstantEncoding } from './markEncoding'
 import type * as MolstarExports from './molstarExports'
 import type { Site } from './residueSpec'
 import type {
@@ -16,7 +18,6 @@ export const MEASUREMENT_TAG = 'jbrowse-measurement'
 const KEY_PREFIX = `${MEASUREMENT_TAG}:`
 
 export const DEFAULT_DASH_COLOR = '#ffd60a'
-const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
 /**
  * A dashed distance between two sites of one structure. Each side is a residue
@@ -27,7 +28,7 @@ export interface DistanceMeasurement {
   a: string
   b: string
   structure?: number
-  color?: string
+  encoding?: ConstantEncoding
 }
 
 export interface MeasurementResult {
@@ -90,7 +91,7 @@ export function closestAtoms(
   const siteA = parseSite(a)
   const siteB = parseSite(b)
   if (!siteA || !siteB) {
-    return { error: `${siteA ? b : a} is not a residue such as A:248` }
+    return { error: `${siteA ? b : a} is not a site such as A:248 or G:*` }
   }
   const atomsA = atomsOf(molstar, structure, siteA)
   const atomsB = atomsOf(molstar, structure, siteB)
@@ -123,7 +124,7 @@ function atomLoci(molstar: Molstar, structure: Structure, atom: AtomRef) {
 }
 
 function keyOf(structure: Structure, m: DistanceMeasurement) {
-  return `${KEY_PREFIX}${structure.model.id}|${m.a}|${m.b}|${m.color ?? ''}`
+  return `${KEY_PREFIX}${structure.model.id}|${m.a}|${m.b}|${m.encoding?.color?.value ?? ''}`
 }
 
 /**
@@ -187,9 +188,7 @@ export function syncMeasurements({
       wanted.set(keyOf(structure, measurement), {
         structure,
         pair,
-        color: HEX_COLOR.test(measurement.color ?? '')
-          ? measurement.color!
-          : DEFAULT_DASH_COLOR,
+        color: encodedColor(measurement.encoding, DEFAULT_DASH_COLOR),
       })
       return {
         measurement,

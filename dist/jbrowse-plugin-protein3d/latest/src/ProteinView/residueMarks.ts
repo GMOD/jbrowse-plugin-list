@@ -1,8 +1,10 @@
 import loadMolstar from './loadMolstar'
+import { encodedColor } from './markEncoding'
 import { parseSite, siteExpression } from './residueSpec'
 import { serialPerPlugin } from './serialPerPlugin'
 import { structureRootCell } from './structureCells'
 
+import type { ConstantEncoding } from './markEncoding'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
@@ -10,18 +12,34 @@ export const RESIDUE_MARKS_TAG = 'jbrowse-residue-marks'
 
 /**
  * A site of a structure drawn on its own, whichever chain holds it: a
- * partner peptide's phenylalanine, a ligand, a pocket residue. `site` is a
- * residue (`B:11`), an atom of one (`A:248@NH2`) or a component id (`MOV`);
- * `structure` indexes the view's structures, the first by default.
+ * partner peptide's phenylalanine, a ligand, a pocket residue, a partner
+ * protein. `site` is a residue (`B:11`), an atom of one (`A:248@NH2`), a
+ * component id (`MOV`) or a whole chain (`G:*`); `structure` indexes the
+ * view's structures, the first by default. `mark` is the geometry and
+ * `encoding.color.value` its color, as in a mark display's `marks`. A
+ * `cartoon` mark of a chain left out of the structure's `chains` draws that
+ * chain's polymer, a partner protein say, in its own color; as spheres or
+ * sticks a chain site takes every residue of the chain, its glycans and
+ * waters included. markProblems checks a snapshot's marks.
  */
 export interface ResidueMark {
   site: string
   structure?: number
-  style?: 'spheres' | 'sticks'
-  color?: string
+  mark?: 'spheres' | 'sticks' | 'cartoon'
+  encoding?: ConstantEncoding
 }
 
-const HEX_COLOR = /^#[0-9a-f]{6}$/i
+function markRepresentation(mark: ResidueMark['mark']) {
+  return mark === 'sticks'
+    ? {
+        type: 'ball-and-stick' as const,
+        typeParams: { sizeFactor: 0.35, sizeAspectRatio: 0.7 },
+      }
+    : // as thick as the cartoon drawOnlyChains gives the chains beside it
+      mark === 'cartoon'
+      ? { type: 'cartoon' as const, typeParams: { sizeFactor: 0.45 } }
+      : { type: 'spacefill' as const, typeParams: { sizeFactor: 1 } }
+}
 export const DEFAULT_MARK_COLOR = '#f28e2b'
 
 export function syncResidueMarks({
@@ -57,9 +75,7 @@ export function syncResidueMarks({
       if (!structure || !site || !root) {
         continue
       }
-      const color = HEX_COLOR.test(mark.color ?? '')
-        ? mark.color!
-        : DEFAULT_MARK_COLOR
+      const color = encodedColor(mark.encoding, DEFAULT_MARK_COLOR)
       update
         .to(root)
         .apply(
@@ -74,12 +90,7 @@ export function syncResidueMarks({
         .apply(
           StateTransforms.Representation.StructureRepresentation3D,
           createStructureRepresentationParams(plugin, structure, {
-            ...(mark.style === 'sticks'
-              ? {
-                  type: 'ball-and-stick',
-                  typeParams: { sizeFactor: 0.35, sizeAspectRatio: 0.7 },
-                }
-              : { type: 'spacefill', typeParams: { sizeFactor: 1 } }),
+            ...markRepresentation(mark.mark),
             color: 'uniform',
             colorParams: { value: Color.fromHexStyle(color) },
           }),

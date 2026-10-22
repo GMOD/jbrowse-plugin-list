@@ -54,7 +54,7 @@ test('a site that is not written or not there is reported, not thrown', async ()
   await withTemporaryMolstarPlugin(async plugin => {
     const { structure } = await loadPocket(plugin)
     expect(closestAtoms(molstar, structure, 'A:12', 'not a site!')).toEqual({
-      error: 'not a site! is not a residue such as A:248',
+      error: 'not a site! is not a site such as A:248 or G:*',
     })
     expect(closestAtoms(molstar, structure, 'A:12', 'B:12')).toEqual({
       error: 'B:12 is not in the structure',
@@ -95,12 +95,14 @@ test('measurements draw through the manager, and a re-sync keeps, adds and remov
 
     await sync([
       { a: 'A:12', b: 'MOV' },
-      { a: 'A:16', b: 'A:96', color: '#ff0000' },
+      { a: 'A:16', b: 'A:96', encoding: { color: { value: '#ff0000' } } },
     ])
     expect(drawn(plugin)).toHaveLength(2)
     expect(drawn(plugin)[0]?.transform.ref).toBe(kept?.transform.ref)
 
-    await sync([{ a: 'A:16', b: 'A:96', color: '#ff0000' }])
+    await sync([
+      { a: 'A:16', b: 'A:96', encoding: { color: { value: '#ff0000' } } },
+    ])
     expect(drawn(plugin)).toHaveLength(1)
     expect(plugin.managers.structure.measurement.state.distances).toHaveLength(
       1,
@@ -198,5 +200,15 @@ test('on a superposed structure the dashes follow the moved atoms', async () => 
     }
     expect(a).toBeDefined()
     expect(Math.abs(center[0]! - pivotSg.a.position[0]!)).toBeLessThan(0.5)
+  })
+})
+
+test('a chain not in the structure is reported', async () => {
+  const molstar = await loadMolstar()
+  await withTemporaryMolstarPlugin(async plugin => {
+    const { structure } = await loadPocket(plugin)
+    expect(closestAtoms(molstar, structure, 'B:*', 'MOV')).toEqual({
+      error: 'B:* is not in the structure',
+    })
   })
 })
