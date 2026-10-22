@@ -1,3 +1,4 @@
+import { narrowsChains } from './residueFilter'
 import { parseSite } from './residueSpec'
 
 const MARK_TYPES = ['spheres', 'sticks', 'cartoon']
@@ -34,15 +35,21 @@ function siteProblems(where: string, key: string, site: unknown) {
       ]
 }
 
+/** What a structure draws, as the checks read it. */
+interface DrawnBy {
+  chains?: string[]
+  filter?: unknown
+}
+
 /**
  * Why `marks` would draw something other than what it says: a site or mark
  * type that does not parse, a color that is not #rrggbb, or a cartoon over a
- * chain the structure already draws. `structures` are the view's, whose
- * `chains` say which chains are drawn.
+ * chain the structure already draws whole. `structures` are the view's, whose
+ * `chains` and `filter` say what is drawn.
  */
 export function markProblems(
   marks: unknown,
-  structures: readonly { chains?: string[] }[] = [],
+  structures: readonly DrawnBy[] = [],
 ): string[] {
   if (marks === undefined) {
     return []
@@ -70,6 +77,7 @@ export function markProblems(
       ...encodingProblems(where, mark),
       ...(mark.mark === 'cartoon' &&
       site?.kind === 'chain' &&
+      !narrowsChains(structure) &&
       (!drawn || drawn.includes(site.chain))
         ? [
             `${where} draws chain ${site.chain} as a cartoon over the one the structure draws; list the other chains in chains`,
@@ -131,7 +139,7 @@ function migratedList(list: unknown) {
  */
 export function checkedLayers<T extends Record<string, unknown>>(
   snapshot: T,
-  structures: readonly { chains?: string[] }[] = [],
+  structures: readonly DrawnBy[] = [],
 ): T {
   const migrated = {
     ...snapshot,

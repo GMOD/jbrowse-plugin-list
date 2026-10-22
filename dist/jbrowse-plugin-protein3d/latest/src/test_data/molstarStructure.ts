@@ -1,5 +1,10 @@
+import { OrderedSet } from 'molstar/lib/mol-data/int'
 import { CIF } from 'molstar/lib/mol-io/reader/cif'
-import { Structure } from 'molstar/lib/mol-model/structure'
+import {
+  Structure,
+  StructureElement,
+  StructureProperties,
+} from 'molstar/lib/mol-model/structure'
 import { trajectoryFromMmCIF } from 'molstar/lib/mol-model-formats/structure/mmcif'
 import { Task } from 'molstar/lib/mol-task'
 
@@ -117,6 +122,28 @@ _atom_site.auth_asym_id
 _atom_site.pdbx_PDB_model_num
 ${rows.join('\n')}
 `
+}
+
+/**
+ * Every residue the given structures hold, as `auth_asym_id:auth_seq_id`,
+ * each once and in order: what a component draws, read back.
+ */
+export function residuesOf(structures: readonly (Structure | undefined)[]) {
+  const found = new Map<string, { chain: string; seq: number }>()
+  for (const structure of structures) {
+    for (const unit of structure?.units ?? []) {
+      const location = StructureElement.Location.create(structure, unit)
+      OrderedSet.forEach(unit.elements, element => {
+        location.element = element
+        const chain = StructureProperties.chain.auth_asym_id(location)
+        const seq = StructureProperties.residue.auth_seq_id(location)
+        found.set(`${chain}:${seq}`, { chain, seq })
+      })
+    }
+  }
+  return [...found.values()]
+    .sort((a, b) => a.chain.localeCompare(b.chain) || a.seq - b.seq)
+    .map(({ chain, seq }) => `${chain}:${seq}`)
 }
 
 /**

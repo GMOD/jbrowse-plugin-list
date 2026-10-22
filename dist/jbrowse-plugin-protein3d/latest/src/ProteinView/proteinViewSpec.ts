@@ -1,6 +1,7 @@
 import { resolveStructureUrl, structureDisplayLabel } from 'p2s_mapper'
 
 import type { ProteinColor } from './proteinColor'
+import type { StructureFilter } from './residueFilter'
 import type { ResidueRanges } from './residueRanges'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
@@ -47,6 +48,11 @@ export interface ProteinStructureSpec {
   assembly?: string
   // author chain ids to draw, the rest left out; absent draws every chain
   chains?: string[]
+  // which residues of those chains to draw, as a list of field predicates on
+  // `residue` (auth_seq_id) and `chain` (auth_asym_id). A residue draws only
+  // where every predicate holds and `chains` keeps its chain; absent draws
+  // every residue
+  filter?: StructureFilter
 }
 
 /**

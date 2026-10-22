@@ -18,8 +18,11 @@ import {
 } from './sessionHighlights'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
 import { loadCaOnly } from '../test_data/molstarPlugin'
+import { residuesOf } from '../test_data/molstarStructure'
 
+import type { StructureFilter } from './residueFilter'
 import type { GenomeHighlight } from './sessionHighlights'
+import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 // minus strand: residue 0 on bases 109..107, residue 1 on 106..104, residue 2
@@ -132,6 +135,44 @@ async function helix(plugin: PluginContext, chains = ['A']) {
   }
   return molstarStructure
 }
+
+/** The residues the highlight components hold, `auth_asym_id:auth_seq_id`. */
+function markedResidues(plugin: PluginContext) {
+  return residuesOf(
+    plugin.state.data
+      .select(
+        StateSelection.Generators.root
+          .subtree()
+          .withTag(SESSION_HIGHLIGHTS_TAG)
+          .filter(
+            c =>
+              c.transform.transformer ===
+              StateTransforms.Model.StructureComponent,
+          ),
+      )
+      .map(cell => cell.obj?.data as Structure | undefined),
+  )
+}
+
+// the structure draws residues 1..4 of the helix, so spheres on residue 5
+// would hang in the air beside it
+test('a highlight on a residue the structure filters out is not drawn', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const molstarStructure = await helix(plugin)
+    const sync = (filter?: StructureFilter) =>
+      syncSessionHighlightMarks({
+        plugin,
+        structures: [
+          { molstarStructure, marks: residues([codon(104, 'G12')]), filter },
+        ],
+      })
+
+    await sync()
+    expect(markedResidues(plugin)).toEqual(['A:5'])
+    await sync([{ field: 'residue', lte: 4 }])
+    expect(markedResidues(plugin)).toEqual([])
+  })
+})
 
 test('a labelled mark draws spheres and an anchor, an unlabelled one sticks, and a re-sync replaces them', async () => {
   await withTemporaryMolstarPlugin(async plugin => {

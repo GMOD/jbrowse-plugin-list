@@ -1,6 +1,7 @@
 import { isBinaryStructureUrl, structureFormatFromContent, structureFormatFromName, } from 'p2s_mapper';
 import { CRYSTALLIZATION_ADDITIVES } from './crystallizationAdditives';
 import loadMolstar from './loadMolstar';
+import { drawnTests } from './residueFilter';
 // Typed as always resolving to a trajectory, but Mol* reverts a parse that
 // fails and resolves with nothing
 function parseTrajectory(plugin, raw, format) {
@@ -34,9 +35,12 @@ export async function parseStructureTrajectory({ plugin, data, url, }) {
     }
     return trajectory;
 }
-/** The label of a polymer component narrowed to the drawn chains, which
+/** The label of a polymer component narrowed to part of the structure, which
  * other drawing (the surface) finds it by in place of its static type. */
 export const DRAWN_CHAINS_POLYMER = 'Polymer, drawn chains';
+function drawsPart({ chains, filter }) {
+    return !!chains?.length || !!filter?.length;
+}
 /** The `assembly` value that builds the deposited model, every chain the file
  * holds, rather than one of the entry's biological assemblies. */
 export const DEPOSITED_MODEL = 'deposited';
@@ -87,21 +91,22 @@ async function removeWater(plugin, structures) {
  * `structure` param: absent, it builds the first assembly. An ensemble builds
  * each model whole and ignores it.
  */
-async function applyStructurePreset(plugin, trajectory, source, assembly, chains) {
+async function applyStructurePreset(plugin, trajectory, source, assembly, drawn) {
     const params = { useDefaultIfSingleModel: true, structure: rootStructure(assembly) };
-    return collectPreset(plugin, source, await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', params), chains);
+    return collectPreset(plugin, source, await plugin.builders.structure.hierarchy.applyPreset(trajectory, 'all-models', params), drawn);
 }
 /**
- * Narrow the preset's polymer and ligand components to the named author
- * chains. The structure itself stays whole, so mapping, highlights and colors
+ * Narrow the preset's polymer and ligand components to the residues the spec
+ * draws. The structure itself stays whole, so mapping, highlights and colors
  * address it as before; only what is drawn shrinks.
+ *
+ * A `filter` narrows the ligand component too: a bound ligand is numbered in
+ * the same author series as the polymer, well above its last residue, so a
+ * residue bound leaves the ligand out as well.
  */
-async function drawOnlyChains(plugin, structures, chains) {
+async function drawOnlyPart(plugin, structures, drawn) {
     const { MolScriptBuilder: MS, StateSelection, StateTransforms, } = await loadMolstar();
-    const chainTest = MS.core.set.has([
-        MS.set(...chains),
-        MS.ammp('auth_asym_id'),
-    ]);
+    const { chainTest, residueTest } = drawnTests(MS, drawn);
     const entityTest = (polymer) => polymer
         ? MS.core.rel.eq([MS.ammp('entityType'), 'polymer'])
         : MS.core.logic.and([
@@ -128,7 +133,8 @@ async function drawOnlyChains(plugin, structures, chains) {
                     type: {
                         name: 'expression',
                         params: MS.struct.generator.atomGroups({
-                            'chain-test': chainTest,
+                            ...(chainTest ? { 'chain-test': chainTest } : {}),
+                            ...(residueTest ? { 'residue-test': residueTest } : {}),
                             'entity-test': entityTest(polymer),
                         }),
                     },
@@ -155,11 +161,11 @@ async function drawOnlyChains(plugin, structures, chains) {
     }
     await update.commit();
 }
-async function collectPreset(plugin, source, preset, chains) {
+async function collectPreset(plugin, source, preset, drawn) {
     const { models, structures } = presetOutput(preset);
     await removeWater(plugin, structures);
-    if (chains?.length) {
-        await drawOnlyChains(plugin, structures, chains);
+    if (drawsPart(drawn)) {
+        await drawOnlyPart(plugin, structures, drawn);
     }
     const loaded = structures.flatMap(s => (s.obj ? [s.obj.data] : []));
     if (loaded.length === 0) {
@@ -172,8 +178,11 @@ async function collectPreset(plugin, source, preset, chains) {
     };
 }
 /** Load a structure from its text or its url, as the view shows one. */
-export async function loadStructure({ plugin, data, url, assembly, chains, }) {
+export async function loadStructure({ plugin, data, url, assembly, chains, filter, }) {
     const trajectory = await parseStructureTrajectory({ plugin, data, url });
     const source = url ?? 'the structure data';
-    return applyStructurePreset(plugin, trajectory, source, assembly, chains);
+    return applyStructurePreset(plugin, trajectory, source, assembly, {
+        chains,
+        filter,
+    });
 }

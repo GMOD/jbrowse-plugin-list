@@ -13,6 +13,7 @@ const STRUCTURE_KEY_ROLES = {
     hidden: 'setting',
     assembly: 'setting',
     chains: 'setting',
+    filter: 'setting',
     feature: 'launchWide',
     userProvidedTranscriptSequence: 'launchWide',
     connectedViewId: 'launchWide',
@@ -43,6 +44,11 @@ function isNumber(value) {
 }
 function isFeature(value) {
     return isRecord(value);
+}
+// the shape only: the view model refuses a predicate that does not read, with
+// the reason, as it does a color
+function isPredicateList(value) {
+    return Array.isArray(value) && value.every(isRecord);
 }
 function isResidueRange(value) {
     return (isRecord(value) &&
@@ -126,6 +132,7 @@ function readStructure(fields, at, warnings) {
         hidden: read('hidden', isBoolean, 'true or false'),
         assembly: read('assembly', isString, 'a string'),
         chains: read('chains', isStringArray, 'a list of chain ids'),
+        filter: read('filter', isPredicateList, "a list of predicates such as [{ field: 'residue', lte: 184 }]"),
         feature: read('feature', isFeature, 'a feature object'),
         userProvidedTranscriptSequence: read('userProvidedTranscriptSequence', isString, 'a string'),
         connectedViewId: read('connectedViewId', isString, 'a string'),

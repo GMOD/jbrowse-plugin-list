@@ -67,6 +67,14 @@ test('a cartoon over a chain the structure already draws is refused', () => {
   expect(markProblems([mark], [{ chains: ['B', 'G'] }])).toEqual([message])
   expect(markProblems([mark], [{}])).toEqual([message])
   expect(markProblems([mark], [{ chains: ['B'] }])).toEqual([])
+  // a filtered structure draws part of G, so a cartoon of the whole chain
+  // adds the rest rather than covering it
+  expect(
+    markProblems(
+      [mark],
+      [{ chains: ['G'], filter: [{ field: 'residue', lte: 184 }] }],
+    ),
+  ).toEqual([])
 })
 
 test('checkedLayers throws every problem at once', () => {

@@ -19,6 +19,7 @@ import { checkedColor, colorOfScheme, resolvedColor } from './proteinColor';
 import { defaultDisplayName } from './proteinViewSpec';
 import { removeMolstarStructure } from './removeStructure';
 import { reportPluginFailure } from './reportPluginFailure';
+import { checkedStructureFilters } from './residueFilter';
 import { syncResidueMarks } from './residueMarks';
 import { applySavedCamera } from './savedCamera';
 import { highlightCameraSnapshot, syncSessionHighlightMarks, } from './sessionHighlights';
@@ -221,7 +222,7 @@ function stateModelFactory() {
         alignmentAlgorithm: types.optional(types.enumeration('AlignmentAlgorithm', ALIGNMENT_ALGORITHM_VALUES), DEFAULT_ALIGNMENT_ALGORITHM),
     }))
         .preProcessSnapshot(({ colorScheme, ...snapshot }) => withStoredSettings({
-        ...checkedLayers(snapshot, snapshot.structures),
+        ...checkedLayers(snapshot, checkedStructureFilters(snapshot.structures)),
         displayName: snapshot.displayName ??
             defaultDisplayName(snapshot.structures ?? []),
         color: checkedColor(snapshot.color ??
@@ -487,6 +488,7 @@ function stateModelFactory() {
                         molstarStructure,
                         marks: s.sessionHighlightMarks,
                         chains: s.chains,
+                        filter: s.filter,
                     }))
                     : []);
                 const seeded = self.structures.some(s => s.seededSelection);

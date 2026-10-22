@@ -1,3 +1,4 @@
+import { narrowsChains } from './residueFilter';
 import { parseSite } from './residueSpec';
 const MARK_TYPES = ['spheres', 'sticks', 'cartoon'];
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -32,8 +33,8 @@ function siteProblems(where, key, site) {
 /**
  * Why `marks` would draw something other than what it says: a site or mark
  * type that does not parse, a color that is not #rrggbb, or a cartoon over a
- * chain the structure already draws. `structures` are the view's, whose
- * `chains` say which chains are drawn.
+ * chain the structure already draws whole. `structures` are the view's, whose
+ * `chains` and `filter` say what is drawn.
  */
 export function markProblems(marks, structures = []) {
     if (marks === undefined) {
@@ -60,6 +61,7 @@ export function markProblems(marks, structures = []) {
             ...encodingProblems(where, mark),
             ...(mark.mark === 'cartoon' &&
                 site?.kind === 'chain' &&
+                !narrowsChains(structure) &&
                 (!drawn || drawn.includes(site.chain))
                 ? [
                     `${where} draws chain ${site.chain} as a cartoon over the one the structure draws; list the other chains in chains`,

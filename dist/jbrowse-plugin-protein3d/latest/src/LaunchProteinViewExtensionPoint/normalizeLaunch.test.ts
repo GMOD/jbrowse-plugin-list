@@ -54,6 +54,20 @@ test('a structure keeps every field it carries, with its url resolved', () => {
   ])
 })
 
+test('a structure carries the chains and filter it draws', () => {
+  const filter = [{ field: 'residue', lte: 184 }]
+  const { requested, warnings } = accepted({
+    structures: [{ pdbId: '6MEO', chains: ['B'], filter }],
+  })
+  expect(requested).toMatchObject([{ chains: ['B'], filter }])
+  expect(warnings).toEqual([])
+  expect(
+    accepted({ pdbId: '6MEO', filter: 'residue <= 184' }).warnings,
+  ).toEqual([
+    "`filter` is not a list of predicates such as [{ field: 'residue', lte: 184 }] and was ignored",
+  ])
+})
+
 test('a value the structure model would throw on is dropped by name', () => {
   const { requested, warnings } = accepted({
     structures: [

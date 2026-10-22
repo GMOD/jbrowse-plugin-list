@@ -3,6 +3,7 @@ import { extractEntities, extractPerResidueConfidence } from 'p2s_mapper'
 import loadMolstar from './loadMolstar'
 import { loadStructure } from './structurePipeline'
 
+import type { DrawnResidues } from './structurePipeline'
 import type { Model, Structure } from 'molstar/lib/mol-model/structure'
 import type { ModelFormat } from 'molstar/lib/mol-model-formats/format'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -126,11 +127,10 @@ export async function loadStructureData({
     data?: string
     url?: string
     assembly?: string
-    chains?: readonly string[]
-  }
+  } & DrawnResidues
   plugin: PluginContext
 }): Promise<StructureData> {
-  const { data, url, assembly, chains } = structure
+  const { data, url, assembly, chains, filter } = structure
   const {
     model,
     structures: molstarStructures,
@@ -141,6 +141,7 @@ export async function loadStructureData({
     url,
     assembly,
     chains,
+    filter,
   })
   const molstar = await loadMolstar()
   // An experimental entry's B-factors are not confidence: read as pLDDT they

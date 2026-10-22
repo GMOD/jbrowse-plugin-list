@@ -137,6 +137,14 @@ const Structure = types
      * highlighted but are not drawn. Absent draws every chain.
      */
     chains: types.frozen(),
+    /**
+     * #property
+     * Which residues of those chains are drawn, as field predicates on
+     * `residue` (`auth_seq_id`) and `chain` (`auth_asym_id`): CCR5's Δ32
+     * allele is `[{ field: 'residue', lte: 184 }]`. The rest stay loaded,
+     * mapped and highlighted but are not drawn. Absent draws every residue.
+     */
+    filter: types.frozen(),
 })
     .volatile(() => ({
     /**

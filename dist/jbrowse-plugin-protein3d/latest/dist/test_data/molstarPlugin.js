@@ -8,6 +8,8 @@ export async function loadCaOnly(plugin, chains, options) {
         plugin,
         data: caOnlyMmcif(chains, options),
         assembly: options?.assembly,
+        chains: options?.drawChains,
+        filter: options?.filter,
     });
 }
 /** The 6OIM pocket (see pocketStructure), loaded the way the view loads one. */

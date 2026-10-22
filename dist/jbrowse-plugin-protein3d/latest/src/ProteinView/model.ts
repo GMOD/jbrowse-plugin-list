@@ -29,6 +29,7 @@ import { checkedColor, colorOfScheme, resolvedColor } from './proteinColor'
 import { defaultDisplayName } from './proteinViewSpec'
 import { removeMolstarStructure } from './removeStructure'
 import { reportPluginFailure } from './reportPluginFailure'
+import { checkedStructureFilters } from './residueFilter'
 import { syncResidueMarks } from './residueMarks'
 import { applySavedCamera } from './savedCamera'
 import {
@@ -292,7 +293,10 @@ function stateModelFactory() {
       } & Record<string, unknown>) =>
         withStoredSettings(
           {
-            ...checkedLayers(snapshot, snapshot.structures),
+            ...checkedLayers(
+              snapshot,
+              checkedStructureFilters(snapshot.structures),
+            ),
             displayName:
               snapshot.displayName ??
               defaultDisplayName(snapshot.structures ?? []),
@@ -593,6 +597,7 @@ function stateModelFactory() {
                     molstarStructure,
                     marks: s.sessionHighlightMarks,
                     chains: s.chains,
+                    filter: s.filter,
                   }))
                 : [],
             )

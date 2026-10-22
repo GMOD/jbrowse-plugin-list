@@ -11,9 +11,11 @@ import { loadStructureData } from './loadStructureData'
 import { DEPOSITED_MODEL, parseStructureTrajectory } from './structurePipeline'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
 import { loadCaOnly } from '../test_data/molstarPlugin'
-import { caOnlyMmcif } from '../test_data/molstarStructure'
+import { caOnlyMmcif, residuesOf } from '../test_data/molstarStructure'
 
+import type { FilterPredicate } from './residueFilter'
 import type { Structure } from 'molstar/lib/mol-model/structure'
+import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 const chain = { asym: 'A', entity: '1', residues: ['MET', 'LYS', 'ALA'] }
 
@@ -139,6 +141,103 @@ test('an assembly id builds that assembly', async () => {
       assembly: '2',
     })
     expect(chainsOf(structures)).toEqual(['C', 'D'])
+  })
+})
+
+// Two helices of twelve residues each, numbered auth_seq_id 1..12, which is
+// the size Mol*'s preset draws as a polymer component of its own
+const helices = ['A', 'B'].map((asym, i) => ({
+  asym,
+  entity: String(i + 1),
+  residues: Array<string>(12).fill('ALA'),
+}))
+
+/** Every residue the components draw, `chain:auth_seq_id`, in order. */
+function drawnResidues(plugin: PluginContext) {
+  return residuesOf(
+    plugin.state.data
+      .select(
+        StateSelection.Generators.ofTransformer(
+          StateTransforms.Model.StructureComponent,
+        ),
+      )
+      .map(cell => cell.obj?.data as Structure | undefined),
+  )
+}
+
+const everyResidue = helices.flatMap(({ asym }) =>
+  Array.from({ length: 12 }, (_, i) => `${asym}:${i + 1}`),
+)
+
+test('a load with neither chains nor a filter draws every residue', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(plugin, helices)
+    expect(drawnResidues(plugin)).toEqual(everyResidue)
+  })
+})
+
+test('chains draws those chains whole', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(plugin, helices, { drawChains: ['B'] })
+    expect(drawnResidues(plugin)).toEqual(
+      everyResidue.filter(r => r.startsWith('B')),
+    )
+  })
+})
+
+test.each([
+  ['equal', { equal: 3 }, [3]],
+  ['lt', { lt: 3 }, [1, 2]],
+  ['lte', { lte: 3 }, [1, 2, 3]],
+  ['gt', { gt: 10 }, [11, 12]],
+  ['gte', { gte: 10 }, [10, 11, 12]],
+  ['range', { range: [4, 6] }, [4, 5, 6]],
+  ['oneOf', { oneOf: [2, 9] }, [2, 9]],
+] satisfies [string, Omit<FilterPredicate, 'field'>, number[]][])(
+  'a filter on residue %s draws the residues it names',
+  async (_operator, bound, expected) => {
+    await withTemporaryMolstarPlugin(async plugin => {
+      await loadCaOnly(plugin, [helices[0]!], {
+        filter: [{ field: 'residue', ...bound }],
+      })
+      expect(drawnResidues(plugin)).toEqual(expected.map(seq => `A:${seq}`))
+    })
+  },
+)
+
+test('a filter on chain draws only those chains', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(plugin, helices, {
+      filter: [{ field: 'chain', equal: 'B' }],
+    })
+    expect(drawnResidues(plugin)).toEqual(
+      everyResidue.filter(r => r.startsWith('B')),
+    )
+  })
+})
+
+test('a filter of several predicates draws what all of them pass', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(plugin, helices, {
+      filter: [
+        { field: 'residue', gte: 3 },
+        { field: 'residue', lte: 5 },
+        { field: 'chain', oneOf: ['B'] },
+      ],
+    })
+    expect(drawnResidues(plugin)).toEqual(['B:3', 'B:4', 'B:5'])
+  })
+})
+
+// CCR5's Δ32 allele frameshifts after residue 184: the figure draws the part
+// the truncation leaves of one chain, beside the whole receptor
+test('a filter narrows the chains chains names', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(plugin, helices, {
+      drawChains: ['B'],
+      filter: [{ field: 'residue', lte: 2 }],
+    })
+    expect(drawnResidues(plugin)).toEqual(['B:1', 'B:2'])
   })
 })
 

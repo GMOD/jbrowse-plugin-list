@@ -15,6 +15,7 @@
 import { colord } from '@jbrowse/core/util/colord';
 import { SITES_TAG } from './alignmentSites';
 import loadMolstar from './loadMolstar';
+import { drawnTests } from './residueFilter';
 import { structureRootCell } from './structureCells';
 export const SESSION_HIGHLIGHTS_TAG = 'jbrowse-session-highlights';
 // core's default highlight color, which the genome view's band draws in
@@ -164,27 +165,24 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
         anchors.delete(cell.transform.ref);
         update.delete(cell.transform.ref);
     }
-    for (const { molstarStructure, marks, chains } of structures) {
+    for (const { molstarStructure, marks, chains, filter } of structures) {
         const root = structureRootCell(plugin, molstar, molstarStructure);
         if (!root) {
             continue;
         }
+        const { chainTest, residueTest } = drawnTests(MS, { chains, filter });
         const labelled = [];
         for (const { entityId, labelSeqIds, label, color } of marks) {
+            const marked = MS.core.set.has([
+                MS.set(...labelSeqIds),
+                MS.ammp('label_seq_id'),
+            ]);
             const expression = MS.struct.generator.atomGroups({
                 'entity-test': MS.core.rel.eq([MS.ammp('label_entity_id'), entityId]),
-                'residue-test': MS.core.set.has([
-                    MS.set(...labelSeqIds),
-                    MS.ammp('label_seq_id'),
-                ]),
-                ...(chains?.length
-                    ? {
-                        'chain-test': MS.core.set.has([
-                            MS.set(...chains),
-                            MS.ammp('auth_asym_id'),
-                        ]),
-                    }
-                    : {}),
+                'residue-test': residueTest
+                    ? MS.core.logic.and([marked, residueTest])
+                    : marked,
+                ...(chainTest ? { 'chain-test': chainTest } : {}),
             });
             update
                 .to(root)

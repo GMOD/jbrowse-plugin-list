@@ -4,6 +4,7 @@ import type {
   ProteinStructureSpec,
   ProteinViewSpec,
 } from '../ProteinView/proteinViewSpec'
+import type { StructureFilter } from '../ProteinView/residueFilter'
 import type { ResidueRange, ResidueRanges } from '../ProteinView/residueRanges'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { PairwiseAlignment } from 'p2s_mapper'
@@ -34,6 +35,7 @@ const STRUCTURE_KEY_ROLES = {
   hidden: 'setting',
   assembly: 'setting',
   chains: 'setting',
+  filter: 'setting',
   feature: 'launchWide',
   userProvidedTranscriptSequence: 'launchWide',
   connectedViewId: 'launchWide',
@@ -74,6 +76,12 @@ function isNumber(value: unknown): value is number {
 
 function isFeature(value: unknown): value is SimpleFeatureSerialized {
   return isRecord(value)
+}
+
+// the shape only: the view model refuses a predicate that does not read, with
+// the reason, as it does a color
+function isPredicateList(value: unknown): value is StructureFilter {
+  return Array.isArray(value) && value.every(isRecord)
 }
 
 function isResidueRange(value: unknown): value is ResidueRange {
@@ -215,6 +223,11 @@ function readStructure(
     hidden: read('hidden', isBoolean, 'true or false'),
     assembly: read('assembly', isString, 'a string'),
     chains: read('chains', isStringArray, 'a list of chain ids'),
+    filter: read(
+      'filter',
+      isPredicateList,
+      "a list of predicates such as [{ field: 'residue', lte: 184 }]",
+    ),
     feature: read('feature', isFeature, 'a feature object'),
     userProvidedTranscriptSequence: read(
       'userProvidedTranscriptSequence',

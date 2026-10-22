@@ -16,8 +16,10 @@ import { colord } from '@jbrowse/core/util/colord'
 
 import { SITES_TAG } from './alignmentSites'
 import loadMolstar from './loadMolstar'
+import { drawnTests } from './residueFilter'
 import { structureRootCell } from './structureCells'
 
+import type { StructureFilter } from './residueFilter'
 import type { GenomeNaming } from './util'
 import type { Camera } from 'molstar/lib/mol-canvas3d/camera'
 import type { Vec3 } from 'molstar/lib/mol-math/linear-algebra'
@@ -246,6 +248,10 @@ export async function syncSessionHighlightMarks({
     marks: readonly ResidueMark[]
     /** the author chains drawn, when the structure draws only some */
     chains?: readonly string[]
+    /** which of those residues are drawn, when the structure draws part of a
+     * chain; a highlight on a residue it leaves out would otherwise draw
+     * spheres in empty space */
+    filter?: StructureFilter
   }[]
 }) {
   const molstar = await loadMolstar()
@@ -267,27 +273,24 @@ export async function syncSessionHighlightMarks({
     anchors.delete(cell.transform.ref)
     update.delete(cell.transform.ref)
   }
-  for (const { molstarStructure, marks, chains } of structures) {
+  for (const { molstarStructure, marks, chains, filter } of structures) {
     const root = structureRootCell(plugin, molstar, molstarStructure)
     if (!root) {
       continue
     }
+    const { chainTest, residueTest } = drawnTests(MS, { chains, filter })
     const labelled = []
     for (const { entityId, labelSeqIds, label, color } of marks) {
+      const marked = MS.core.set.has([
+        MS.set(...labelSeqIds),
+        MS.ammp('label_seq_id'),
+      ])
       const expression = MS.struct.generator.atomGroups({
         'entity-test': MS.core.rel.eq([MS.ammp('label_entity_id'), entityId]),
-        'residue-test': MS.core.set.has([
-          MS.set(...labelSeqIds),
-          MS.ammp('label_seq_id'),
-        ]),
-        ...(chains?.length
-          ? {
-              'chain-test': MS.core.set.has([
-                MS.set(...chains),
-                MS.ammp('auth_asym_id'),
-              ]),
-            }
-          : {}),
+        'residue-test': residueTest
+          ? MS.core.logic.and([marked, residueTest])
+          : marked,
+        ...(chainTest ? { 'chain-test': chainTest } : {}),
       })
       update
         .to(root)

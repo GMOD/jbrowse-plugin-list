@@ -445,6 +445,28 @@ test('a snapshot whose marks use the 1.24 spelling loads in the encoding spellin
   ])
 })
 
+test('a structure keeps the filter its snapshot names', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [
+      { url: 'a.cif', chains: ['B'], filter: [{ field: 'residue', lte: 184 }] },
+    ],
+  })
+  expect(view.structures[0]!.filter).toEqual([{ field: 'residue', lte: 184 }])
+})
+
+test('a snapshot whose filter does not read is refused with the reason', () => {
+  expect(() =>
+    ProteinView.create({
+      type: 'ProteinView',
+      structures: [
+        // @ts-expect-error a residue bound is a number, which is the refusal
+        { url: 'a.cif', filter: [{ field: 'residue', lte: '184' }] },
+      ],
+    }),
+  ).toThrow('structures[0].filter[0].lte is a number, not "184"')
+})
+
 test('a snapshot whose marks do not parse is refused with the reason', () => {
   expect(() =>
     ProteinView.create({
