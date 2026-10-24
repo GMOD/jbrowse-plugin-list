@@ -9,6 +9,7 @@ import {
 import { walkRowLayoutOf } from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
+import { panSNHaplotype, panSNSample } from '@jbrowse/bandage-core/pansn'
 import {
   anchorFromPaths,
   chooseReferencePath,
@@ -93,6 +94,15 @@ export const withLoadActions = withEngineSettings.actions(self => {
     }) as Promise<{ result: LayoutResult; duration: number }>
   }
 
+  // the node cap is a drawing's cost
+  function assertDrawable(graph: Graph) {
+    if (graph.nodes.length > self.maxGraphNodes) {
+      throw new Error(
+        `Graph too large to draw: ${graph.nodes.length.toLocaleString()} nodes (limit ${self.maxGraphNodes.toLocaleString()}). Pick Layout → Walk rows, zoom in to a smaller region, or raise the node limit in Graph settings.`,
+      )
+    }
+  }
+
   // Single dispatch point for every layout mode. A mode that returns a
   // result computed it locally; one that returns undefined can't draw this
   // graph and hands off to the remote FMMM engine, which is also how
@@ -150,6 +160,8 @@ export const withLoadActions = withEngineSettings.actions(self => {
         mode: self.chosenLayoutMode,
       }
     }
+    // walk rows and tube maps fall back here for a graph with no walks
+    assertDrawable(graph)
     const settings = self.engineSettings
     const hit = forceLayouts.ready(graph, settings)
     if (hit) {
@@ -209,11 +221,9 @@ export const withLoadActions = withEngineSettings.actions(self => {
     const signal = loadController?.signal
     let computed
     try {
-      // the node cap is a drawing's cost, and walk rows draw a bar per walk
-      if (self.modeDrawsNodes && graph.nodes.length > self.maxGraphNodes) {
-        throw new Error(
-          `Graph too large to draw: ${graph.nodes.length.toLocaleString()} nodes (limit ${self.maxGraphNodes.toLocaleString()}). Pick Layout → Walk rows, zoom in to a smaller region, or raise the node limit in Graph settings.`,
-        )
+      // walk rows draw a bar per walk, not a node each
+      if (self.modeDrawsNodes) {
+        assertDrawable(graph)
       }
       computed = yield* computeLayout(graph)
     } catch (e) {
@@ -314,6 +324,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     self.indexBubbles = undefined
     self.geneTrackFeatures = undefined
     self.walkGeneFeatures = undefined
+    self.ownGeneFeatures = undefined
     walkGeneCache.clear()
     self.repeatArrays = undefined
     self.clearInteractionState()
@@ -478,10 +489,17 @@ export const withLoadActions = withEngineSettings.actions(self => {
         { adapterConfig, regions: [region], signal },
       )) as Feature[]
     } catch (e) {
-      console.warn(`[GraphGenomeView] no ${what} for this graph`, e)
+      // a cut the next one replaced aborts its reads, which is not a failure
+      if (!signal?.aborted) {
+        console.warn(`[GraphGenomeView] no ${what} for this graph`, e)
+      }
       return undefined
     }
   }
+
+  // Bubble indexes a read failed on, so a graph without one, the ordinary
+  // case, is not asked again on every re-cut of a pan
+  const missingBubbleIndexes = new Set<string>()
 
   // The bubble index that the hosted HPRC build keeps beside its segments,
   // `<prefix>.bubbles.bed.gz`, read through the bubble adapter over the same
@@ -499,13 +517,18 @@ export const withLoadActions = withEngineSettings.actions(self => {
     // The track config arrives as written, so the prefix is either the
     // `uri` shorthand or the segments location it expands to.
     const prefix = bubblePrefix(adapterConfig)
-    if (adapterConfig.type !== 'RgfaTabixAdapter' || prefix === undefined) {
+    const uri = `${prefix}.bubbles.bed.gz`
+    if (
+      adapterConfig.type !== 'RgfaTabixAdapter' ||
+      prefix === undefined ||
+      missingBubbleIndexes.has(uri)
+    ) {
       return
     }
     const features = yield* readFeatures(
       {
         type: 'MinigraphBubbleAdapter',
-        uri: `${prefix}.bubbles.bed.gz`,
+        uri,
         baseUri: adapterConfig.baseUri,
         assemblyNameToPanSN: adapterConfig.assemblyNameToPanSN,
       },
@@ -513,6 +536,9 @@ export const withLoadActions = withEngineSettings.actions(self => {
       'bubble index',
       signal,
     )
+    if (features === undefined && !signal?.aborted) {
+      missingBubbleIndexes.add(uri)
+    }
     if (features && isLive()) {
       self.indexBubbles = features.flatMap(f => {
         const start = f.get('start')
@@ -557,6 +583,25 @@ export const withLoadActions = withEngineSettings.actions(self => {
       what,
       signal,
     )
+  }
+
+  // A haplotype assembly's genes over a span of its own contig, named for
+  // that contig whatever the track calls it, read once per cut
+  function* haplotypeGenes(trackId: string, region: SubgraphRegion) {
+    const cacheKey = `${trackId} ${region.refName}:${region.start}-${region.end}`
+    let genes = walkGeneCache.get(cacheKey)
+    if (!genes) {
+      const features = yield* trackFeatures(trackId, region, 'haplotype genes')
+      if (!features) {
+        return undefined
+      }
+      genes = geneModelsFrom(features).map(g => ({
+        ...g,
+        refName: region.refName,
+      }))
+      walkGeneCache.set(cacheKey, genes)
+    }
+    return genes
   }
 
   // The annotation tracks read over the cut: genes, which `geneFeatures`
@@ -860,24 +905,10 @@ export const withLoadActions = withEngineSettings.actions(self => {
       yield Promise.all(
         reads.map(({ row, trackId, region }) =>
           flow(function* () {
-            const cacheKey = `${trackId} ${region.refName}:${region.start}-${region.end}`
-            let genes = walkGeneCache.get(cacheKey)
-            if (!genes) {
-              const features = yield* trackFeatures(
-                trackId,
-                region,
-                'haplotype genes',
-              )
-              if (!features) {
-                return
-              }
-              genes = geneModelsFrom(features).map(g => ({
-                ...g,
-                refName: region.refName,
-              }))
-              walkGeneCache.set(cacheKey, genes)
+            const genes = yield* haplotypeGenes(trackId, region)
+            if (genes) {
+              fetched.set(row, genes)
             }
-            fetched.set(row, genes)
           })(),
         ),
       )
@@ -887,6 +918,35 @@ export const withLoadActions = withEngineSettings.actions(self => {
         JSON.stringify(self.walkGeneReads?.reads ?? []) === key
       ) {
         self.walkGeneFeatures = reads.length ? fetched : undefined
+      }
+    }),
+    // Each loaded haplotype's genes on its own off-reference nodes, renamed
+    // to those nodes' stable sequence so genePins lands them there
+    loadOwnGenes: flow(function* () {
+      const reads = self.ownGeneReads
+      const key = JSON.stringify(reads)
+      const graph = self.graph
+      const fetched = (yield Promise.all(
+        reads.map(({ stableRefName, trackId, region }) =>
+          flow(function* () {
+            const genes = yield* haplotypeGenes(trackId, region)
+            // a chip reading LPA twice would not say whose copy each is
+            const whose =
+              panSNHaplotype(stableRefName) ?? panSNSample(stableRefName)
+            return (genes ?? []).map(g => ({
+              ...g,
+              name: `${g.name} · ${whose}`,
+              refName: stableRefName,
+            }))
+          })(),
+        ),
+      )) as GeneModel[][]
+      if (
+        isAlive(self) &&
+        self.graph === graph &&
+        JSON.stringify(self.ownGeneReads) === key
+      ) {
+        self.ownGeneFeatures = reads.length ? fetched.flat() : undefined
       }
     }),
     // Open a bubble in place: it keeps its colour, the rest of the drawing

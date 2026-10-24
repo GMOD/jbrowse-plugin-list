@@ -20,7 +20,7 @@ import { nodeOwnLocation } from '../../launchFromGraph/contributors'
 import { withRows } from '../../launchFromGraph/linearViewTarget'
 import { withLayer } from '../graphLayers'
 import { colorOfScheme } from '../nodeColor'
-import { sizeOfNodeWidth } from '../nodeSize'
+import { sizeOf } from '../nodeSize'
 
 import type { GraphGrammar } from './graphViews'
 import type { ScreenTransform } from './keepInView'
@@ -32,6 +32,7 @@ import type { WalkRowGroupBy } from '../walkRowGroups'
 import type { BubbleSpread } from '@jbrowse/bandage-core/bubbleSpreads'
 import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import type { ColorScheme } from '@jbrowse/bandage-core/colorSchemes'
+import type { EdgeWidth } from '@jbrowse/bandage-core/edgeWidths'
 import type { FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
@@ -43,6 +44,8 @@ import type {
   WalkEncoding,
   WalkLayer,
 } from '@jbrowse/bandage-core/walkEncoding'
+
+const ROW_HOVER_SETTLE_MS = 80
 
 export const withSettingActions = withTubeMapViews
   .actions(() => ({
@@ -166,7 +169,20 @@ export const withSettingActions = withTubeMapViews
     },
     setNodeWidth(width: NodeWidth) {
       self.writeGrammar({
-        size: sizeOfNodeWidth(width, self.contigThickness),
+        size: sizeOf({
+          width,
+          px: self.contigThickness,
+          links: self.linkWidth,
+        }),
+      })
+    },
+    setLinkWidth(links: EdgeWidth) {
+      self.writeGrammar({
+        size: sizeOf({
+          width: self.nodeWidth,
+          px: self.contigThickness,
+          links,
+        }),
       })
     },
     setTubeMapFold(bp: number) {
@@ -237,7 +253,19 @@ export const withSettingActions = withTubeMapViews
       )
     },
     setWalkRowSamples(samples: string[] | undefined) {
-      self.writeGrammar({ rows: samples ? { kept: samples } : {} })
+      const order = self.walkRowOrder
+      self.writeGrammar({
+        rows: {
+          ...(samples ? { kept: samples } : {}),
+          ...(order ? { order } : {}),
+        },
+      })
+    },
+    setWalkRowOrder(order: 'shared' | undefined) {
+      const kept = self.walkRowSamples
+      self.writeGrammar({
+        rows: { ...(kept ? { kept } : {}), ...(order ? { order } : {}) },
+      })
     },
     setWalkRowGroupBy(groupBy: WalkRowGroupBy | undefined) {
       if (groupBy || self.walkRowGroupBy) {
@@ -276,7 +304,7 @@ export const withSettingActions = withTubeMapViews
         self.hoveredTube = tube
       }
     },
-    setHoveredRowWalks(walks: string[]) {
+    applyHoveredRowWalks(walks: string[]) {
       if (walks.join('\n') !== self.hoveredRowWalks.join('\n')) {
         self.hoveredRowWalks = walks
       }
@@ -469,6 +497,36 @@ export const withSettingActions = withTubeMapViews
       self.builtViewport = undefined
     },
   }))
+  .actions(self => {
+    let settle: ReturnType<typeof setTimeout> | undefined
+    let pending: string | undefined
+    return {
+      // A lane row's lift rebuilds the drawing (43 ms at 10k nodes), and a
+      // sweep down a lane crosses a row every few px, so a move from one row
+      // to the next lifts once the pointer has stayed on a row a moment.
+      // Entering and leaving the rows apply at once.
+      setHoveredRowWalks(walks: string[]) {
+        const key = walks.join('\n')
+        if (key === pending) {
+          return
+        }
+        clearTimeout(settle)
+        pending = undefined
+        if (walks.length > 0 && self.hoveredRowWalks.length > 0) {
+          pending = key
+          settle = setTimeout(() => {
+            pending = undefined
+            // a hover cleared meanwhile, by a pan, stays cleared
+            if (isAlive(self) && self.hoveredRowWalks.length > 0) {
+              self.applyHoveredRowWalks(walks)
+            }
+          }, ROW_HOVER_SETTLE_MS)
+        } else {
+          self.applyHoveredRowWalks(walks)
+        }
+      },
+    }
+  })
   .actions(self => ({
     // The frame clock. Unclamped, since clampZoom's floor is there to keep a
     // scale finite and 1 / bpPerPx already is; clamped, a whole-chromosome

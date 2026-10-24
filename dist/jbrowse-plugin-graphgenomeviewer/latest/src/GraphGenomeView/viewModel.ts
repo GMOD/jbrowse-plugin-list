@@ -1,7 +1,4 @@
-import {
-  LAYOUT_MODE_VALUES,
-  layoutModeByValue,
-} from '@jbrowse/bandage-core/layoutModes'
+import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes/models'
 import { getSession } from '@jbrowse/core/util'
 import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
@@ -222,10 +219,11 @@ export default function stateModelFactory() {
           self,
           reaction(
             () => self.walkStrip,
-            () => {
+            on => {
               if (
                 self.loadedTrackId &&
-                !layoutModeByValue(self.chosenLayoutMode).wholeWalks
+                self.cutsWholeWalks !==
+                  self.cutsWholeWalksIn(self.chosenLayoutMode, !on)
               ) {
                 void self.load()
               }

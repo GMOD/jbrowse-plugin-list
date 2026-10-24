@@ -22,14 +22,15 @@ import {
 import { withRenderingActions } from './renderingActions'
 import { graphLaunchMenuItems } from '../../launchFromGraph/graphMenuItems'
 import {
+  canonicalAssemblyName,
   highlightInLinearView,
   launchSyntenyView,
   showInLinearView,
 } from '../../launchFromGraph/launchFromGraph'
-import { launchTracks } from '../../launchFromGraph/launchTracks'
 import { pushLaunchItem } from '../../launchFromGraph/pushLaunchItem'
 import { launchableSyntenyTracks } from '../../launchFromGraph/syntenyTracks'
 import { downloadText } from '../download'
+import { GENE_ADAPTER_TYPES } from '../genes/geneFeatures'
 import { HOVER_HIGHLIGHT_VALUES } from '../hoverHighlight'
 import { TUBE_MAP_PANELS, tubeMapPanelGroups } from '../tubeMapPanels'
 
@@ -67,10 +68,10 @@ function radioItems<T>(
 export const withLaunchActions = withRenderingActions
   .actions(self => ({
     // Move the linear view already on screen, or open one if there is none,
-    // and pair with whichever it was. A view being created gets the session's
-    // annotation for the assembly it opens on (see launchTracks), led by the
-    // graph's own segments track when the launch is on the reference — the one
-    // assembly that track is configured for.
+    // and pair with whichever it was. A view being created gets the graph's
+    // own track when the launch is on the reference, plus the one gene track
+    // the graph reads for that assembly: a hub config can hold hundreds of
+    // FeatureTracks per assembly, and a launch is a jump to a locus.
     //
     // Only a view on the reference is paired with. A node's hover band is on
     // that assembly, so paired with a view on another the band fails that
@@ -79,16 +80,31 @@ export const withLaunchActions = withRenderingActions
     showInLinearView(target: { location: GraphLocation; assembly: string }) {
       const session = getSession(self)
       const onReference = target.assembly === self.graphRegion?.assemblyName
+      const assembly = canonicalAssemblyName(session, target.assembly)
+      // an assembly whose annotation nothing names as genes, a strain's BED,
+      // still opens on its first feature track rather than on none
+      const geneTrack =
+        (onReference
+          ? self.geneTrack
+          : self.geneTracksByAssembly.get(assembly)) ??
+        self.sessionTracks.find(
+          t =>
+            t.assemblies.includes(assembly) &&
+            GENE_ADAPTER_TYPES.has(t.adapterType),
+        )
       const viewId = showInLinearView({
         session,
         location: target.location,
         assembly: target.assembly,
         connectedViewId: self.pairedViewId,
-        tracks: launchTracks({
-          session,
-          assemblyName: target.assembly,
-          first: onReference ? self.sourceTrackId : undefined,
-        }),
+        tracks: [
+          ...new Set(
+            [
+              onReference ? self.sourceTrackId : undefined,
+              geneTrack?.trackId,
+            ].filter(id => id !== undefined),
+          ),
+        ],
       })
       if (onReference) {
         self.pairWithLinearView(viewId)
@@ -282,7 +298,35 @@ export const withLaunchActions = withRenderingActions
             ]
           : []),
         ...(self.chosenLayoutMode === 'walkrows' && self.walkRowBars
-          ? [{ label: 'Samples', subMenu: this.walkRowSampleMenuItems() }]
+          ? [
+              { label: 'Samples', subMenu: this.walkRowSampleMenuItems() },
+              {
+                type: 'checkbox' as const,
+                label: 'Ribbons between rows',
+                checked: self.walkRibbons,
+                onClick: () => {
+                  self.setLayer('walkRibbons', !self.walkRibbons)
+                },
+              },
+              {
+                type: 'checkbox' as const,
+                label: 'Letter shared blocks',
+                checked: self.layerSet.has('walkBlocks'),
+                onClick: () => {
+                  self.setLayer('walkBlocks', !self.layerSet.has('walkBlocks'))
+                },
+              },
+              {
+                type: 'checkbox' as const,
+                label: 'Order rows by shared sequence',
+                checked: self.walkRowOrder === 'shared',
+                onClick: () => {
+                  self.setWalkRowOrder(
+                    self.walkRowOrder === 'shared' ? undefined : 'shared',
+                  )
+                },
+              },
+            ]
           : []),
         ...(self.chosenLayoutMode === 'walkrows' &&
         self.walkRowBars &&
