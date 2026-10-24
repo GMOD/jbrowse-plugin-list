@@ -868,8 +868,14 @@ test('walk rows fit their own bars in the track, since a walk can be longer than
   expect(pane.viewportOwner).toBe('fit')
 })
 
-test('walk rows cut every snarl a walk takes past the window, so a walk comes whole', async () => {
-  const { pane, cuts } = await shownGraph({ paths: true })
+test('walk rows cut every snarl a GBZ walk takes past the window, so a walk comes whole', async () => {
+  const { view, cuts } = createEnvironment({ paths: true })
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('walks')
+  const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
   await pane.switchLayout('force')
   await wait(SETTLE_MS)
   const before = cuts.length
@@ -881,6 +887,18 @@ test('walk rows cut every snarl a walk takes past the window, so a walk comes wh
   await pane.switchLayout('force')
   await wait(SETTLE_MS)
   expect(cuts).toHaveLength(before + 2)
+  expect(cuts.at(-1)!.snarls).toBeUndefined()
+})
+
+// A walk file cuts the same whatever the snarl option says
+test('walk rows on an rGFA track cut for the step budget, not for snarls', async () => {
+  const { pane, cuts } = await shownGraph({ paths: true })
+  await pane.switchLayout('force')
+  await wait(SETTLE_MS)
+  const before = cuts.length
+  await pane.switchLayout('walkrows')
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(before + 1)
   expect(cuts.at(-1)!.snarls).toBeUndefined()
 })
 
@@ -1018,9 +1036,11 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setLayoutMode('ordered')
   display.setColorScheme('depth')
   display.setNodeWidth('uniform')
+  display.setLinkWidth('walks')
   display.setLayer('bubbles', true)
   display.setFacet('walk')
   display.setWalkRowSamples(['HG1'])
+  display.setWalkRowOrder('shared')
   display.setHover('off')
   const slots = [
     'layoutMode',
@@ -1040,21 +1060,31 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   ).toEqual({
     layoutMode: 'ordered',
     color: { field: 'depth' },
-    size: 6,
+    size: { value: 6, links: 'walks' },
     layers: { bubbles: true },
     facet: { field: 'walk', domain: [] },
-    rows: { kept: ['HG1'] },
+    rows: { kept: ['HG1'], order: 'shared' },
     hover: 'off',
   })
   expect([
     display.chosenLayoutMode,
     display.chosenColorScheme,
     display.nodeWidth,
+    display.linkWidth,
     display.showBubbles,
     display.facetSetting.field,
     display.walkRowSamples,
     display.chosenHover,
-  ]).toEqual(['ordered', 'depth', 'uniform', true, 'walk', ['HG1'], 'off'])
+  ]).toEqual([
+    'ordered',
+    'depth',
+    'uniform',
+    'walks',
+    true,
+    'walk',
+    ['HG1'],
+    'off',
+  ])
 })
 
 // Reset track settings, undo and the config editor write the slot without

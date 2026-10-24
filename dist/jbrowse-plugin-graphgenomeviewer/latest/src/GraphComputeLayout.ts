@@ -24,8 +24,10 @@ export default class GraphComputeLayout extends RpcMethodType<'GraphComputeLayou
   name = 'GraphComputeLayout' as const
 
   async execute(args: RpcExecuteArgs<'GraphComputeLayout'>) {
-    const { graph, options, statusCallback } = args
-
+    const { graph, options, signal, statusCallback } = args
+    // The engine takes no signal, so a layout superseded while it queued
+    // behind another is dropped here rather than holding up the next cut
+    signal?.throwIfAborted()
     statusCallback?.('Computing layout')
     return layoutEngine({ graph, options })
   }

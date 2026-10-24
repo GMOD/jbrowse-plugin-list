@@ -96,30 +96,36 @@ export function openTabixSlot(
   })
 }
 
+export function unmappedRegionMessage(region: Region) {
+  return `${region.assemblyName} ${region.refName} is not in this graph's index; a graph with PanSN names (GRCh38#0#chr1) needs ${region.assemblyName} mapped to its prefix in assemblyNameToPanSN`
+}
+
 /**
  * The reference-name half of a tabix graph track, against one indexed file.
  *
  * Constructed with the file the adapter's own slots opened, so this never reads
  * a slot whose name it cannot prove.
  */
-export function unmappedRegionMessage(region: Region) {
-  return `${region.assemblyName} ${region.refName} is not in this graph's index; a graph with PanSN names (GRCh38#0#chr1) needs ${region.assemblyName} mapped to its prefix in assemblyNameToPanSN`
-}
-
 export class PanSNRefNames {
   // Read once and shared by every query, so it takes on no caller's signal: a
   // track fetch the user panned away from once aborted the read a graph cut
   // was waiting on. cachedSetup rejects only the caller that aborts, keeps the
   // read going for the rest, and retries a failed read.
   private lookup = cachedSetup({
-    setup: async opts =>
-      refNameLookup(await this.file.getReferenceSequenceNames(opts)),
+    setup: async opts => refNameLookup(await this.names(opts)),
   })
 
   constructor(
     private file: TabixIndexedFile,
     private adapter: BaseFeatureDataAdapter,
   ) {}
+
+  // A walk file also indexes `<seq>~<chunkStart>` detail sequences, which name
+  // no contig
+  private async names(opts?: BaseOptions) {
+    const names = await this.file.getReferenceSequenceNames(opts)
+    return names.filter(n => !n.includes('~'))
+  }
 
   /**
    * The names the ASSEMBLY uses, not the graph's own.
@@ -132,7 +138,7 @@ export class PanSNRefNames {
    * were spotted.
    */
   async assemblyRefNames(opts: BaseOptions = {}) {
-    const names = await this.file.getReferenceSequenceNames(opts)
+    const names = await this.names(opts)
     const prefix = resolvePanSNPrefix(this.adapter, opts.assemblyName)
     const contigs = names
       .filter(n => panSNMatchesPrefix(n, prefix))
@@ -167,7 +173,7 @@ export class PanSNRefNames {
   async resolveMapped(region: Region, opts?: BaseOptions) {
     const refName = await this.resolve(region, opts)
     if (refName === undefined && region.assemblyName) {
-      const names = await this.file.getReferenceSequenceNames(opts)
+      const names = await this.names(opts)
       const prefix = resolvePanSNPrefix(this.adapter, region.assemblyName)
       if (
         names.every(n => n.includes('#')) &&
@@ -175,6 +181,18 @@ export class PanSNRefNames {
       ) {
         throw new Error(unmappedRegionMessage(region))
       }
+    }
+    return refName
+  }
+
+  // The name a graph cut reads, failing with what is actually wrong: an
+  // unmapped assembly, or a contig such as chrM the graph has nothing on
+  async resolveForCut(region: Region, opts?: BaseOptions) {
+    const refName = await this.resolveMapped(region, opts)
+    if (refName === undefined) {
+      throw new Error(
+        `This graph has nothing on ${region.assemblyName} ${region.refName}`,
+      )
     }
     return refName
   }

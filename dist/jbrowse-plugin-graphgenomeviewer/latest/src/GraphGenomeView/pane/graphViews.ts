@@ -13,6 +13,12 @@ import { facetSettingOf } from '@jbrowse/bandage-core/facetGrid'
 import { genePins } from '@jbrowse/bandage-core/genes/genePins'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
 import {
+  ribbonJoin,
+  sharedRowOrder,
+  walkRowBlocks,
+  walkRowLinks,
+} from '@jbrowse/bandage-core/layout/walkRowLinks'
+import {
   walkRowRuns,
   walkRowsOf,
 } from '@jbrowse/bandage-core/layout/walkRowRuns'
@@ -98,6 +104,7 @@ import type {
   ColorScheme,
   ResolvedColorScheme,
 } from '@jbrowse/bandage-core/colorSchemes'
+import type { EdgeWidth } from '@jbrowse/bandage-core/edgeWidths'
 import type { FacetInput, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { NodeWidth } from '@jbrowse/bandage-core/nodeWidths'
@@ -110,12 +117,16 @@ import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 import type { FileLocation } from '@jbrowse/core/util/types'
 
 // A repeat pick slices the cut's walks again, by the repeat's own array
+// The rows again from the cut's tables: for a repeat pick, by the repeat's
+// own array, or with each row's visits, which ribbons need and the worker's
+// runs leave out
 function walkRowsFromCut(
   cut: WalkCut,
   region: { start: number; end: number },
   unit?: number,
+  visits?: boolean,
 ) {
-  const runs = walkRowRuns(cut, region)
+  const runs = walkRowRuns(cut, region, { visits })
   return runs ? walkRowsOf(runs, unit) : undefined
 }
 
@@ -162,9 +173,12 @@ export interface GraphGrammar {
 type TubeColorKind = 'value' | 'tinted' | 'role' | 'path'
 
 // The rows walk rows draw: `kept` names the samples whose walks show, by the
-// name before the haplotype number; unset shows every walk the cut holds
+// name before the haplotype number; unset shows every walk the cut holds.
+// `order: 'shared'` stacks each row under the one it shares the most sequence
+// with, so ribbons stay short and shared blocks line up.
 export interface GraphRows {
   kept?: string[]
+  order?: 'shared'
 }
 
 export const withGraphViews = paneBase
@@ -227,6 +241,10 @@ export const withGraphViews = paneBase
       get contigThickness() {
         return nodeSizeOf(self.grammar.size).px
       },
+      // Link thickness by the walks taking it; see EDGE_WIDTHS
+      get linkWidth(): EdgeWidth {
+        return nodeSizeOf(self.grammar.size).links
+      },
       get layerSet() {
         return layersOf(self.grammar.layers)
       },
@@ -248,6 +266,9 @@ export const withGraphViews = paneBase
       get walkStrip() {
         return this.layerSet.has('walkStrip')
       },
+      get walkRibbons() {
+        return this.layerSet.has('walkRibbons')
+      },
       // One section per value of a field, as a grammar of graphics splits a
       // plot. A node layout draws a panel per `walk` (each lifted walk alone,
       // on the same layout) or per `sample` (a sample's haplotypes in a row);
@@ -264,6 +285,9 @@ export const withGraphViews = paneBase
       get walkRowSamples() {
         const kept = self.grammar.rows?.kept
         return Array.isArray(kept) ? kept : undefined
+      },
+      get walkRowOrder() {
+        return self.grammar.rows?.order === 'shared' ? 'shared' : undefined
       },
       get hoverLightsEverything() {
         return this.chosenHover === 'everything'
@@ -740,12 +764,26 @@ export const withGraphViews = paneBase
     // Each walk sliced to the window, for walk rows and the strip; a repeat
     // pick slices again by its own array
     get cutWalkRows() {
-      const runs = self.walkCut?.walkRowRuns
-      return runs
-        ? walkRowsOf(runs)
-        : self.graph
-          ? walkRows(self.graph, self.graphRegion)
-          : undefined
+      const cut = self.walkCut
+      const runs = cut?.walkRowRuns
+      const visits = this.rowVisitsNeeded
+      return cut && runs && visits && self.graphRegion
+        ? walkRowsFromCut(cut, self.graphRegion, undefined, true)
+        : runs
+          ? walkRowsOf(runs)
+          : self.graph
+            ? walkRows(self.graph, self.graphRegion, undefined, { visits })
+            : undefined
+    },
+    // Ribbons, shared blocks and the shared order compare the rows node by
+    // node, so the rows carry their visits
+    get rowVisitsNeeded() {
+      return (
+        self.chosenLayoutMode === 'walkrows' &&
+        (self.walkRibbons ||
+          self.layerSet.has('walkBlocks') ||
+          self.walkRowOrder === 'shared')
+      )
     },
     // An assembly by each name a backbone may spell it with: the session's
     // name and aliases, and the PanSN prefix the source track maps each of
@@ -852,10 +890,11 @@ export const withGraphViews = paneBase
       }
       const repeat = self.selectedRepeat
       const cut = self.walkCut
+      const visits = self.rowVisitsNeeded
       const bars = repeat
         ? cut
-          ? walkRowsFromCut(cut, repeat, repeat.unit)
-          : walkRows(self.graph, repeat, repeat.unit)
+          ? walkRowsFromCut(cut, repeat, repeat.unit, visits)
+          : walkRows(self.graph, repeat, repeat.unit, { visits })
         : self.cutWalkRows
       if (!bars) {
         return undefined
@@ -929,10 +968,18 @@ export const withGraphViews = paneBase
           ? { by: 'column', ...grouped.groupBy, table: grouped.table }
           : undefined
     },
-    // the cohort's rows the sample filter keeps
+    // The cohort's rows the sample filter keeps, in the shared order where
+    // asked; a grouping then keeps that order within each section
     get keptCohortRows() {
       const bars = this.cohortWalkRows
-      return bars && filterSamples(bars.rows, self.walkRowSamples)
+      const rows = bars && filterSamples(bars.rows, self.walkRowSamples)
+      if (!bars || !rows || self.walkRowOrder !== 'shared') {
+        return rows
+      }
+      const all = [bars.reference, ...rows]
+      return sharedRowOrder(all)
+        .filter(i => i > 0)
+        .map(i => all[i]!)
     },
     // The kept rows in a section per value of the grouped column, or
     // undefined while ungrouped or the table lacks that column
@@ -952,6 +999,27 @@ export const withGraphViews = paneBase
         ? { ...bars, rows: this.walkRowGroups?.rows ?? rows }
         : undefined
     },
+    // Where each row walks the same nodes as the row below it, as bar
+    // offsets on both, the reference row first
+    get walkRowRibbons() {
+      const bars = this.walkRowBars
+      if (!self.walkRibbons || !self.rowVisitsNeeded || !bars) {
+        return undefined
+      }
+      const rows = [bars.reference, ...bars.rows]
+      return walkRowLinks(rows, ribbonJoin(rows))
+    },
+    // The stretches of each row through a block of nodes off the
+    // reference's path that two or more rows walk, block 0 the one with the
+    // most bp, which the bars letter A, B, C...
+    get sharedBlocks() {
+      const bars = this.walkRowBars
+      if (!self.layerSet.has('walkBlocks') || !self.rowVisitsNeeded || !bars) {
+        return undefined
+      }
+      const rows = [bars.reference, ...bars.rows]
+      return walkRowBlocks(rows, ribbonJoin(rows))
+    },
     // Whether the canvas draws the graph's nodes. A tube map and walk rows
     // draw a picture of their own over it, so what sits on nodes (genes,
     // bubble halos, deletion arcs, the reference strip) has nowhere to go.
@@ -967,12 +1035,17 @@ export const withGraphViews = paneBase
     get genePins() {
       dependOn(self.positionsVersion)
       const positions = self.layoutResult?.nodePositions
+      // each haplotype's own genes ride its nodes off the reference
+      const genes = [
+        ...(self.backboneGenes ?? []),
+        ...(self.ownGeneFeatures ?? []),
+      ]
       return self.showGenes &&
         this.drawsNodes &&
         self.graph &&
-        self.backboneGenes &&
+        genes.length > 0 &&
         positions
-        ? genePins(self.graph, self.backboneGenes, positions)
+        ? genePins(self.graph, genes, positions)
         : []
     },
     // The bubbles as halos along their nodes.
@@ -980,10 +1053,17 @@ export const withGraphViews = paneBase
     get bubbleHalos() {
       dependOn(self.positionsVersion)
       const positions = self.layoutResult?.nodePositions
-      if (!self.showBubbles || !this.drawsNodes || !self.graph || !positions) {
+      // with the layer off, a bubble hovered from a linear view's bubble or
+      // variant track still rings
+      const shown = self.showBubbles
+        ? self.bubbles
+        : self.hoveredBubble
+          ? [self.hoveredBubble]
+          : []
+      if (shown.length === 0 || !this.drawsNodes || !self.graph || !positions) {
         return []
       }
-      return bubbleHalos(self.graph, self.bubbles, positions, self.repeatArrays)
+      return bubbleHalos(self.graph, shown, positions, self.repeatArrays)
     },
     // What `reference-position` paints from, which is also what `auto`
     // resolves to on any anchored graph

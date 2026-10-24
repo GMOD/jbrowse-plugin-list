@@ -95,6 +95,8 @@ export const VIEWPORT_DEBOUNCE_MS = 150
 export const VIEWPORT_PANES_BUILT = 1
 // How many walk rows read their haplotype's genes, the first rows down
 export const WALK_GENE_ROWS = 40
+// How many off-reference contigs read their haplotype's genes
+export const OWN_GENE_CONTIGS = 40
 
 // What the canvas draws under the tube map, whose ink is all TubeMapOverlay's
 export type TubeMapRoutes = 'each' | 'grouped' | 'bundled'
@@ -359,6 +361,9 @@ export const paneBase = types
     // each walk row's genes, read from its haplotype's own assembly, by walk
     // name
     walkGeneFeatures: undefined as Map<string, GeneModel[]> | undefined,
+    // each loaded haplotype's genes on its own nodes off the reference, under
+    // those nodes' stable names (ownGeneReads)
+    ownGeneFeatures: undefined as GeneModel[] | undefined,
     // the source track's samples TSV, which walk rows group by
     walkRowSampleTable: undefined as SampleRow[] | undefined,
     // the tandem repeat arrays over the cut window, from the repeat track

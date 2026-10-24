@@ -44,7 +44,8 @@ export function configSchemaFactory() {
        * #slot
        * the node thickness: a px number draws every node that thick;
        * `{ field: 'depth', value }` thickens a node the more paths carry it,
-       * around `value` px
+       * around `value` px; `links: 'walks'` thickens a link the more walks
+       * take it
        */
       size: {
         type: 'frozen',
@@ -54,8 +55,8 @@ export function configSchemaFactory() {
       /**
        * #slot
        * what the drawing adds over its nodes and edges, stated as changes to
-       * the defaults: `paths`, `bubbles` and `walkStrip` are off, `deletions`,
-       * `genes` and `referenceStrip` on
+       * the defaults: `paths`, `bubbles`, `walkStrip` and `walkRibbons` are
+       * off, `deletions`, `genes` and `referenceStrip` on
        * ```js
        * { layers: { bubbles: true, genes: false } }
        * ```
