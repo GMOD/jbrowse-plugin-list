@@ -101,12 +101,9 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
    * asks for, and the nodes and links they visit
    */
   async getSubgraph(region: Region, opts: SubgraphAdapterOptions = {}) {
-    const refName = await this.refNames.resolve(region, { signal: opts.signal })
-    if (refName === undefined) {
-      throw new Error(
-        `${region.assemblyName} ${region.refName} is not in this graph's index; the graph is cut on ${this.anchor}, mapped to its PanSN prefix in assemblyNameToPanSN`,
-      )
-    }
+    const refName = await this.refNames.resolveForCut(region, {
+      signal: opts.signal,
+    })
     return this.walks.subgraph(refName, region, opts)
   }
 

@@ -1,5 +1,13 @@
-import { hoverInRegion, nodeForLgvHover, readLgvHover } from './lgvHover'
+import {
+  bubbleForLgvHover,
+  hoverFromPair,
+  hoverInRegion,
+  nodeForLgvHover,
+  readLgvHover,
+  readSelectedFeature,
+} from './lgvHover'
 
+import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import type { GraphNode } from '@jbrowse/bandage-core/types'
 
 // The shape LinearGenomeViewContainer writes on mousemove: `hoverPosition` is a
@@ -199,4 +207,95 @@ test('a coordinate past the graph resolves to nothing', () => {
   expect(
     nodeForLgvHover({ hover: { refName: 'chr1', coord: 9999 }, nodes: NODES }),
   ).toBeNull()
+})
+
+describe('the bubble a linear-view feature names', () => {
+  const bubble = (over: Partial<MinigraphBubble>): MinigraphBubble => ({
+    refName: 'chr1',
+    start: 5,
+    end: 8,
+    segmentCount: 3,
+    pathCount: 2,
+    inversion: false,
+    shortestAlleleLength: 0,
+    longestAlleleLength: 2,
+    segments: '',
+    shortestAllele: undefined,
+    longestAllele: undefined,
+    ...over,
+  })
+  const indexed = bubble({ segments: 's10,s11,s12' })
+  const derived = bubble({ segments: 's21,s20,s22', key: 's20>s22' })
+  const bubbles = [indexed, derived]
+  const at = { refName: 'chr1', coord: 6 }
+
+  test("is the indexed bubble with a bubble feature's segments", () => {
+    expect(
+      bubbleForLgvHover(
+        { ...at, featureSegments: 's10,s11,s12', featureName: '2 bp' },
+        bubbles,
+      ),
+    ).toBe(indexed)
+  })
+
+  // vg deconstruct writes the snarl's ends as the record ID
+  test('is the bubble a graph-derived VCF record names, either way round', () => {
+    expect(bubbleForLgvHover({ ...at, featureName: '>s20>s22' }, bubbles)).toBe(
+      derived,
+    )
+    expect(bubbleForLgvHover({ ...at, featureName: '<s22<s20' }, bubbles)).toBe(
+      derived,
+    )
+    expect(bubbleForLgvHover({ ...at, featureName: '>s10>s12' }, bubbles)).toBe(
+      indexed,
+    )
+  })
+
+  test('is nothing for a feature that names no bubble', () => {
+    expect(bubbleForLgvHover({ ...at, featureName: 'rs123' }, bubbles)).toBe(
+      undefined,
+    )
+    expect(bubbleForLgvHover({ ...at, featureName: '>s20>s99' }, bubbles)).toBe(
+      undefined,
+    )
+  })
+
+  test('a selected feature reads as a hover at its start', () => {
+    const fields: Record<string, unknown> = {
+      refName: 'chr1',
+      start: 5,
+      name: '>s20>s22',
+    }
+    expect(
+      readSelectedFeature({ get: (key: string) => fields[key] }),
+    ).toMatchObject({ refName: 'chr1', coord: 5, featureName: '>s20>s22' })
+    expect(readSelectedFeature(undefined)).toBeUndefined()
+  })
+})
+
+// Two linear views on one locus: the graph paired with A must not light for
+// a hover in B
+describe('a hover from another linear view', () => {
+  const at = (viewId?: string) => ({ refName: 'chr1', coord: 3, viewId })
+  const live = new Set(['lgvA', 'lgvB'])
+
+  test('is read off the hover payload', () => {
+    expect(
+      readLgvHover({
+        hoverPosition: { refName: 'chr1', coord: 4 },
+        viewId: 'lgvB',
+      })?.viewId,
+    ).toBe('lgvB')
+  })
+
+  test('is ignored by a graph paired with an open view', () => {
+    expect(hoverFromPair(at('lgvA'), 'lgvA', live)).toBe(true)
+    expect(hoverFromPair(at('lgvB'), 'lgvA', live)).toBe(false)
+  })
+
+  test('reaches an unpaired graph, one whose pair closed, or from an older host', () => {
+    expect(hoverFromPair(at('lgvB'), undefined, live)).toBe(true)
+    expect(hoverFromPair(at('lgvB'), 'gone', live)).toBe(true)
+    expect(hoverFromPair(at(), 'lgvA', live)).toBe(true)
+  })
 })

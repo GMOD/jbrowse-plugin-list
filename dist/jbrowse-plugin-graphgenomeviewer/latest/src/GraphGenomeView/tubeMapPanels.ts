@@ -215,9 +215,10 @@ export function walksThrough(graph: Graph, box: string) {
   for (const p of graph.paths ?? []) {
     const walk = walkOf(p.name)
     if (walk !== graph.referencePath) {
+      const through = p.nodeIds.includes(box)
       for (const member of p.members ?? [walk]) {
         all.add(member)
-        if (p.nodeIds.includes(box)) {
+        if (through) {
           here.add(member)
         }
       }

@@ -129,7 +129,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       get grammar(): GraphGrammar {
         return {
           layoutMode: getConf(self, 'layoutMode'),
-          color: getConf(self, 'color'),
+          encoding: getConf(self, 'encoding'),
           size: getConf(self, 'size'),
           layers: getConf(self, 'layers') as GraphLayers,
           facet: getConf(self, 'facet'),
@@ -590,6 +590,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         }
         const start = Math.floor(seen.start)
         const end = Math.ceil(seen.end)
+        const { encoding, ...grammar } = self.grammar
         return {
           ...paneSettings(self),
           loadedTrackId: trackId,
@@ -601,7 +602,8 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           },
           subgraphHaplotypes: self.cutHaplotypes,
           maxRegionBp: Math.max(self.maxRegionBp, end - start),
-          ...self.grammar,
+          ...grammar,
+          color: encoding?.color,
           layoutMode: self.chosenLayoutMode,
           connectedViewId: self.host?.id,
         } satisfies GraphViewSpec

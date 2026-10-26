@@ -31,7 +31,7 @@ const FORCE_LOAD_ADVICE =
 // read `model` and `visible`; later hosts read values and callbacks. Each
 // overlay gets both, so one build runs on either.
 function overlayProps(model: LinearGraphDisplayModel) {
-  const error = model.error ?? model.renderError
+  const { error } = model
   const regionTooLarge =
     error instanceof Error &&
     (error as { regionTooLarge?: unknown }).regionTooLarge === true
@@ -128,7 +128,9 @@ export default observer(function GraphStatusChrome({
         {children}
       </BottomRightCornerContext>
       <TrackOverlayPortal>
-        {phase === 'error' ? (
+        {/* a backend's render error is the canvas's banner, whose retry
+        rebuilds the backend */}
+        {phase === 'error' && model.error !== undefined ? (
           <ErrorBar model={model} visible {...props.error} />
         ) : null}
         <Loading

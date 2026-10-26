@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { observable, runInAction } from 'mobx'
 
 import SubgraphHaplotypesField from './SubgraphHaplotypesField'
 
@@ -57,4 +58,43 @@ test('without names the field takes typed ones', () => {
   fireEvent.change(field, { target: { value: 'HG002, NA19240#1' } })
   fireEvent.keyDown(field, { key: 'Enter' })
   expect(m.setSubgraphHaplotypes).toHaveBeenCalledWith(['HG002', 'NA19240#1'])
+})
+
+// A model whose set re-renders the field, as the display's does
+function liveModel(haplotypeNames?: string[]) {
+  const m = observable({
+    sourceAdapter: { type: 'RgfaTabixAdapter', walksUri: 'chr22' },
+    cutHaplotypes: ['HG002'],
+    haplotypeNames,
+    setSubgraphHaplotypes(haplotypes: string[]) {
+      m.cutHaplotypes = haplotypes
+    },
+    recut: vi.fn(),
+  })
+  return m as unknown as LinearGraphCutModel & { cutHaplotypes: string[] }
+}
+
+test('applying from the field keeps its focus', () => {
+  const m = liveModel()
+  render(<SubgraphHaplotypesField model={m} />)
+  const field = screen.getByTestId<HTMLInputElement>('graph-haplotypes-field')
+  field.focus()
+  fireEvent.change(field, { target: { value: 'HG002, NA19240#1' } })
+  fireEvent.keyDown(field, { key: 'Enter' })
+  expect(m.cutHaplotypes).toEqual(['HG002', 'NA19240#1'])
+  expect(screen.getByTestId('graph-haplotypes-field')).toBe(field)
+  expect(document.activeElement).toBe(field)
+})
+
+test('a set changed elsewhere resets the draft', () => {
+  const m = liveModel()
+  render(<SubgraphHaplotypesField model={m} />)
+  act(() => {
+    runInAction(() => {
+      m.cutHaplotypes = ['HG00097#1']
+    })
+  })
+  expect(
+    screen.getByTestId<HTMLInputElement>('graph-haplotypes-field').value,
+  ).toBe('HG00097#1')
 })

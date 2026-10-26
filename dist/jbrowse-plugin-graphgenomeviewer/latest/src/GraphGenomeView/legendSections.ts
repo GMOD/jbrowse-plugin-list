@@ -28,6 +28,7 @@ import { walkKey } from '@jbrowse/bandage-core/walkKey'
 
 import { CALL_TOLERANCE } from './repeats/walkCalls'
 import { PANEL_REFERENCE_TUBE } from './tubeMapPanels'
+import { COLORED_BLOCKS, blockFill, blockLetter } from './walkRowBlocks'
 
 import type { GraphPaneModel } from './model'
 import type { KeySwatch } from '@jbrowse/bandage-core/layout/walkRowDraw'
@@ -399,6 +400,36 @@ export function walkRowSwatch(swatch: KeySwatch): LegendSwatch {
       }
 }
 
+// The shared blocks the rows draw: each coloured one by its letter, then one
+// row for the grey rest
+function blockRows(model: GraphPaneModel): LegendRow[] {
+  const present = new Set(model.sharedBlocks?.map(b => b.block))
+  const swatch = (block: number) => ({
+    kind: 'fill' as const,
+    stops: flat(blockFill(block)),
+    height: WALK_ROW_SWATCH_PX,
+  })
+  return [
+    ...[...present]
+      .filter(block => block < COLORED_BLOCKS)
+      .sort((a, b) => a - b)
+      .map(block => ({
+        key: `block-${block}`,
+        label: `${blockLetter(block)}: off the reference, walked by several rows`,
+        swatch: swatch(block),
+      })),
+    ...([...present].some(block => block >= COLORED_BLOCKS)
+      ? [
+          {
+            key: 'block-more',
+            label: 'more shared blocks',
+            swatch: swatch(COLORED_BLOCKS),
+          },
+        ]
+      : []),
+  ]
+}
+
 // The walk rows' bar colours, genes and ticks; each tick row appears once
 // the rows hold one, so a catalogue with no genotypes keeps the plain key
 function walkRowsRows(model: GraphPaneModel): LegendRow[] {
@@ -421,6 +452,7 @@ function walkRowsRows(model: GraphPaneModel): LegendRow[] {
       label: entry.label,
       swatch: entry.note ? undefined : walkRowSwatch(entry.swatch),
     })),
+    ...blockRows(model),
     ...(calls.some(call => call.spanningReads !== 0)
       ? [tick('call', CALL_TICK, 'allele length called for this walk')]
       : []),

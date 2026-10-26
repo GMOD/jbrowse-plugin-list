@@ -16,7 +16,12 @@ import {
 } from '@jbrowse/core/pluggableElementTypes/models'
 import { LAUNCH_LABEL } from '@jbrowse/core/ui'
 import SimpleFeature from '@jbrowse/core/util/simpleFeature'
-import { applyPatch, getType, types } from '@jbrowse/mobx-state-tree'
+import {
+  applyPatch,
+  getSnapshot,
+  getType,
+  types,
+} from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { reaction } from 'mobx'
@@ -868,8 +873,14 @@ test('walk rows fit their own bars in the track, since a walk can be longer than
   expect(pane.viewportOwner).toBe('fit')
 })
 
-test('walk rows cut every snarl a walk takes past the window, so a walk comes whole', async () => {
-  const { pane, cuts } = await shownGraph({ paths: true })
+test('walk rows cut every snarl a GBZ walk takes past the window, so a walk comes whole', async () => {
+  const { view, cuts } = createEnvironment({ paths: true })
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('walks')
+  const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
   await pane.switchLayout('force')
   await wait(SETTLE_MS)
   const before = cuts.length
@@ -881,6 +892,18 @@ test('walk rows cut every snarl a walk takes past the window, so a walk comes wh
   await pane.switchLayout('force')
   await wait(SETTLE_MS)
   expect(cuts).toHaveLength(before + 2)
+  expect(cuts.at(-1)!.snarls).toBeUndefined()
+})
+
+// A walk file cuts the same whatever the snarl option says
+test('walk rows on an rGFA track cut for the step budget, not for snarls', async () => {
+  const { pane, cuts } = await shownGraph({ paths: true })
+  await pane.switchLayout('force')
+  await wait(SETTLE_MS)
+  const before = cuts.length
+  await pane.switchLayout('walkrows')
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(before + 1)
   expect(cuts.at(-1)!.snarls).toBeUndefined()
 })
 
@@ -967,7 +990,7 @@ test("a launch names the pane's props without its type, and opens in that layout
     {
       type: 'LinearGraphDisplay',
       layoutMode: 'force',
-      color: 'uniform',
+      encoding: { color: { value: 'uniform' } },
     },
   )
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
@@ -977,6 +1000,51 @@ test("a launch names the pane's props without its type, and opens in that layout
   expect(display.chosenLayoutMode).toBe('force')
   expect(display.chosenColorScheme).toBe('uniform')
   expect(display.hostPlacesX).toBe(false)
+})
+
+test.each([
+  ['uniform', 'uniform'],
+  [{ field: 'id', scale: 'categorical' }, 'random'],
+  [{ field: 'id', scheme: 'rainbow' }, 'rainbow'],
+  [{ field: 'depth' }, 'depth'],
+])('a flat color %j in a saved config is read as %s', async (color, scheme) => {
+  const { view } = createEnvironment()
+  view.showTrack('graph', {}, { type: 'LinearGraphDisplay', color })
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  expect(display.chosenColorScheme).toBe(scheme)
+  expect(getSnapshot(display.configuration)).not.toHaveProperty('color')
+})
+
+test('a flat color lifts to encoding.color', async () => {
+  const { view } = createEnvironment()
+  view.showTrack(
+    'graph',
+    {},
+    {
+      type: 'LinearGraphDisplay',
+      color: { field: 'position', domainMin: 5, domainMax: 50 },
+    },
+  )
+  const lifted = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  expect(readConfObject(lifted.configuration, 'encoding')).toEqual({
+    color: { field: 'position', scale: { domainMin: 5, domainMax: 50 } },
+  })
+  expect(lifted.statedColorDomain).toEqual({ start: 5, end: 50 })
+})
+
+test('an encoding beside a flat color wins', () => {
+  const { view } = createEnvironment()
+  view.showTrack(
+    'graph',
+    {},
+    {
+      type: 'LinearGraphDisplay',
+      color: { field: 'depth', domainMin: 1 },
+      encoding: { color: { field: 'length' } },
+    },
+  )
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  expect(display.chosenColorScheme).toBe('node-length')
 })
 
 test.each([
@@ -1000,7 +1068,14 @@ test('a launch that states one choice takes the rest from the config', async () 
   const { view, cuts } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
-  view.showTrack('graph', {}, { type: 'LinearGraphDisplay', color: 'uniform' })
+  view.showTrack(
+    'graph',
+    {},
+    {
+      type: 'LinearGraphDisplay',
+      encoding: { color: { value: 'uniform' } },
+    },
+  )
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
   display.startRenderingBackend(fakeRenderer())
   await wait(SETTLE_MS)
@@ -1018,13 +1093,15 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setLayoutMode('ordered')
   display.setColorScheme('depth')
   display.setNodeWidth('uniform')
+  display.setLinkWidth('walks')
   display.setLayer('bubbles', true)
   display.setFacet('walk')
   display.setWalkRowSamples(['HG1'])
+  display.setWalkRowOrder('shared')
   display.setHover('off')
   const slots = [
     'layoutMode',
-    'color',
+    'encoding',
     'size',
     'layers',
     'facet',
@@ -1039,22 +1116,32 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     ),
   ).toEqual({
     layoutMode: 'ordered',
-    color: { field: 'depth' },
-    size: 6,
+    encoding: { color: { field: 'depth' } },
+    size: { value: 6, links: 'walks' },
     layers: { bubbles: true },
     facet: { field: 'walk', domain: [] },
-    rows: { kept: ['HG1'] },
+    rows: { kept: ['HG1'], order: 'shared' },
     hover: 'off',
   })
   expect([
     display.chosenLayoutMode,
     display.chosenColorScheme,
     display.nodeWidth,
+    display.linkWidth,
     display.showBubbles,
     display.facetSetting.field,
     display.walkRowSamples,
     display.chosenHover,
-  ]).toEqual(['ordered', 'depth', 'uniform', true, 'walk', ['HG1'], 'off'])
+  ]).toEqual([
+    'ordered',
+    'depth',
+    'uniform',
+    'walks',
+    true,
+    'walk',
+    ['HG1'],
+    'off',
+  ])
 })
 
 // Reset track settings, undo and the config editor write the slot without
