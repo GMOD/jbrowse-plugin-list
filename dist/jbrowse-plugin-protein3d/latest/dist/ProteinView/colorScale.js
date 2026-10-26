@@ -25,7 +25,8 @@ function rampPosition(color, value) {
         : 0.5 +
             (value - domainMid) /
                 (2 * Math.max(domainMid - domainMin, domainMax - domainMid));
-    return Math.max(0, Math.min(1, p));
+    // a zero-width domain gives NaN, which would index no stop
+    return Number.isNaN(p) ? 0 : Math.max(0, Math.min(1, p));
 }
 function rampRgb(color) {
     const stops = color.range.map(rgbOf);

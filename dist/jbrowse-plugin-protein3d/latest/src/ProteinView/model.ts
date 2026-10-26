@@ -65,6 +65,22 @@ import type { AlignmentAlgorithm } from 'p2s_mapper'
 
 const MIN_HEIGHT = 100
 
+// the entries a removal leaves, addressing the same structures in the shorter
+// list; an entry with no `structure` addresses the first
+function withoutStructure<T extends { structure?: number }>(
+  entries: readonly T[],
+  removed: number,
+) {
+  return entries.flatMap(entry => {
+    const index = entry.structure ?? 0
+    return index === removed
+      ? []
+      : index > removed
+        ? [{ ...entry, structure: index - 1 }]
+        : [entry]
+  })
+}
+
 // Queued on the session rather than mounted in the view's body, which is not
 // there while Mol* loads, after it fails, or while the view is minimized
 const AddStructureDialog = lazy(() => import('./components/AddStructureDialog'))
@@ -431,6 +447,9 @@ function stateModelFactory() {
           self.alignmentStructureIndex =
             removed === open ? undefined : removed < open ? open - 1 : open
         }
+        self.marks = self.marks && withoutStructure(self.marks, removed)
+        self.distances =
+          self.distances && withoutStructure(self.distances, removed)
         self.structures.remove(structure)
         self.setSuperposedCount(0)
         if (plugin) {
@@ -572,6 +591,8 @@ function stateModelFactory() {
                     molstarStructure,
                     sites: s.alignmentDomainStatus?.placedSites,
                     color: s.alignmentDomainStatus?.domains?.color,
+                    chains: s.chains,
+                    filter: s.filter,
                   }))
                 : [],
             )

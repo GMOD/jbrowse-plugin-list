@@ -121,7 +121,17 @@ export function SvgSwatch({
       )
     }
     case 'line':
-      return (
+      return swatch.dashed ? (
+        <line
+          x1={x + 1}
+          x2={x + SWATCH_PX}
+          y1={mid}
+          y2={mid}
+          stroke={swatch.color}
+          strokeWidth={3}
+          strokeDasharray="4 3"
+        />
+      ) : (
         <rect
           x={x}
           y={mid - 1.5}

@@ -83,8 +83,10 @@ export async function placeClinVarOnTranscript({
   if (positions.length === 0) {
     throw new Error('the transcript has no coding sequence')
   }
-  const start = Math.min(...positions)
-  const end = Math.max(...positions) + 1
+  // reduced, not spread: TTN's 100k coding bases pass JavaScriptCore's
+  // argument limit
+  const start = positions.reduce((a, b) => Math.min(a, b))
+  const end = positions.reduce((a, b) => Math.max(a, b)) + 1
   const assembly = await session.assemblyManager.waitForAssembly(assemblyName)
   const [variants, genome] = await Promise.all([
     readMissense(

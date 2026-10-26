@@ -1,6 +1,6 @@
 import { SimpleFeature, getSession, getTrackName } from '@jbrowse/core/util';
 import { addDisposer, getParent, isAlive, types, } from '@jbrowse/mobx-state-tree';
-import { autorun, when } from 'mobx';
+import { autorun, untracked, when } from 'mobx';
 import { alignTranscriptToEntity, alignmentCol, alignmentQuality, chooseMappedEntity, entityLabel, fetchUniProtStructureMappings, fusionPartnerPositions, getPdbIdFromUrl, getUniprotIdFromAlphaFoldTarget, looksLikePlddt, makeCoordinateMapper, makeLabelSeqIdIndex, mappedStructureIdentity, rangeToLabelSeqIds, residueNumber, resolveStructureUrl, stripStopCodon, structureDisplayLabel, structurePos, toLabelSeqIds, unmapStructurePositions, } from 'p2s_mapper';
 import { alignOffThread, isIdentical } from './alignOffThread';
 import { decideAlignment } from './alignmentDecision';
@@ -1131,6 +1131,20 @@ const Structure = types
     },
     /**
      * #getter
+     * Why a pLDDT color shows no confidence on an experimental entry. Mol*'s
+     * theme takes an entry as experimental only by a field RCSB's files leave
+     * out, so it paints a crystal's B-factors as pLDDT bands; the load reads
+     * the method and keeps no confidence for one
+     */
+    get plddtMissing() {
+        return self.parentView.color.field === 'plddt' &&
+            self.entities &&
+            !self.structureConfidence
+            ? 'This structure is experimental and has no pLDDT, so the pLDDT color shows no confidence on it'
+            : undefined;
+    },
+    /**
+     * #getter
      * The numbers the view's color object gives per residue, placed on the
      * mapped entity; undefined while the view colors by something else
      */
@@ -1246,6 +1260,7 @@ const Structure = types
         const { error } = self;
         return error === undefined
             ? (self.alignmentSkipped ??
+                self.plddtMissing ??
                 self.variantEffectStatus.message ??
                 self.residueValuesStatus?.message ??
                 self.alignmentDomainStatus?.message)
@@ -1667,7 +1682,9 @@ const Structure = types
                     case 'realign': {
                         const { transcript, entity: { seq }, } = decision;
                         const key = `${algorithm}:${transcript}:${seq}`;
-                        if (key === realigning && self.aligning) {
+                        // read untracked: the realign ending would rerun this, and a
+                        // realign that keeps failing would start itself again forever
+                        if (key === realigning && untracked(() => self.aligning)) {
                             break;
                         }
                         realigning = key;

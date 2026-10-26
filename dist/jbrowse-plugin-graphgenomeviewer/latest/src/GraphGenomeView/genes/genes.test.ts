@@ -6,7 +6,7 @@ import {
   graphBackbone,
 } from '@jbrowse/bandage-core/reference'
 
-import { geneModelsFrom, pickGeneTrack } from './geneFeatures'
+import { annotationNoun, geneModelsFrom, pickGeneTrack } from './geneFeatures'
 
 const gene = {
   type: 'gene',
@@ -159,6 +159,19 @@ test("a BED gene's transcripts merge, its copies stay apart, CDS and UTR count a
     { start: 1000, end: 1060 },
     { start: 1090, end: 1100 },
   ])
+})
+
+test('a track named for TEs keys its boxes as TEs, any other as genes', () => {
+  const track = (name: string) => ({
+    trackId: 'b73_te',
+    name,
+    adapterType: 'Gff3TabixAdapter',
+  })
+  expect(annotationNoun(track('B73 v5 TEs'))).toBe('TE')
+  expect(annotationNoun(track('Transposable elements'))).toBe('TE')
+  expect(annotationNoun(track('NCBI RefSeq genes'))).toBe('gene')
+  expect(annotationNoun(track('Gene site annotation'))).toBe('gene')
+  expect(annotationNoun(undefined)).toBe('gene')
 })
 
 test('a BED track counts as genes only where its name says so', () => {

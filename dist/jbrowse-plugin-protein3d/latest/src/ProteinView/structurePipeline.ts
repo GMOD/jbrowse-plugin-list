@@ -6,7 +6,9 @@ import {
 
 import { CRYSTALLIZATION_ADDITIVES } from './crystallizationAdditives'
 import loadMolstar from './loadMolstar'
+import { removeWithGhosts } from './removeStructure'
 import { drawnTests } from './residueFilter'
+import { serialPerPlugin } from './serialPerPlugin'
 
 import type { StructureFilter } from './residueFilter'
 import type { Structure } from 'molstar/lib/mol-model/structure'
@@ -68,6 +70,7 @@ export async function parseStructureTrajectory({
   }
   const trajectory = await parseTrajectory(plugin, raw, parsedAs)
   if (!trajectory?.obj?.data.frameCount) {
+    await removeWithGhosts(plugin, await loadMolstar(), raw.ref)
     throw new Error(
       `No model could be read from ${url ?? 'the structure data'} as ${parsedAs}`,
     )
@@ -292,8 +295,12 @@ async function collectPreset(
   }
 }
 
-/** Load a structure from its text or its url, as the view shows one. */
-export async function loadStructure({
+/**
+ * Load a structure from its text or its url, as the view shows one. A load
+ * that fails after parsing takes its trajectory back out, or Mol* would draw a
+ * structure no model of the view owns and none can remove.
+ */
+export function loadStructure({
   plugin,
   data,
   url,
@@ -306,10 +313,21 @@ export async function loadStructure({
   url?: string
   assembly?: string
 } & DrawnResidues) {
-  const trajectory = await parseStructureTrajectory({ plugin, data, url })
-  const source = url ?? 'the structure data'
-  return applyStructurePreset(plugin, trajectory, source, assembly, {
-    chains,
-    filter,
+  return serialPerPlugin(plugin, async () => {
+    const trajectory = await parseStructureTrajectory({ plugin, data, url })
+    const source = url ?? 'the structure data'
+    try {
+      return await applyStructurePreset(plugin, trajectory, source, assembly, {
+        chains,
+        filter,
+      })
+    } catch (e) {
+      // a plugin disposed mid-load fails the removal too, and the load's
+      // own error is the one to report
+      await removeWithGhosts(plugin, await loadMolstar(), trajectory.ref).catch(
+        () => {},
+      )
+      throw e
+    }
   })
 }

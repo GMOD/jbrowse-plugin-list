@@ -17,10 +17,12 @@ export default function useAlphaFoldData({
   uniprotId,
   feature,
   view,
+  preferredTranscriptId,
 }: {
   uniprotId?: string
   feature: Feature
   view?: { assemblyNames?: string[] }
+  preferredTranscriptId?: string
 }) {
   const { data, isLoading, isValidating, error } = useSWR(
     uniprotId ? (['alphafold-models', uniprotId] as const) : null,
@@ -37,9 +39,10 @@ export default function useAlphaFoldData({
             uniprotId,
             error ? undefined : data,
             isoformSequences,
+            preferredTranscriptId,
           )
         : undefined,
-    [uniprotId, data, error, isoformSequences],
+    [uniprotId, data, error, isoformSequences, preferredTranscriptId],
   )
   const modelsUnreachable: unknown = uniprotId ? error : undefined
   return {

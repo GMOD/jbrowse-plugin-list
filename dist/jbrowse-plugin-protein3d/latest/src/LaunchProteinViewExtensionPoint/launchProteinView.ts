@@ -65,19 +65,7 @@ export interface LaunchArgs extends LaunchViewSettings, ProteinStructureSpec {
  * `jb.addView` the launch failed rather than that it opened a genome view.
  */
 export async function launchProteinView(args: LaunchArgs) {
-  const {
-    session,
-    uniprotId,
-    transcriptId,
-    userProvidedTranscriptSequence,
-    feature,
-    connectedViewId,
-    connectedView: givenConnectedView,
-    gene,
-    sideBySide,
-  } = args
-
-  const { session: _session, ...launch } = args
+  const { session, ...launch } = args
   const normalized = normalizeLaunch(launch)
   for (const warning of normalized.warnings) {
     console.warn(warning)
@@ -86,7 +74,17 @@ export async function launchProteinView(args: LaunchArgs) {
   if ('error' in normalized) {
     throw new Error(normalized.error)
   }
-  const { geneModel } = normalized
+  const { geneModel, linkage } = normalized
+  const {
+    uniprotId,
+    transcriptId,
+    userProvidedTranscriptSequence,
+    feature,
+    connectedViewId,
+    connectedView: givenConnectedView,
+    gene,
+    sideBySide,
+  } = linkage
   const settings = launchViewSettings(normalized.settings)
 
   // A gene name alone: the host's text search finds the gene, and the

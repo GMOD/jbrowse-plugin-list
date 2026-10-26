@@ -148,6 +148,7 @@ const WalkStrip = observer(function WalkStrip({
     ramp: model.referenceRampDomain,
     rampCss: RAMP_GRADIENT_CSS,
     genes: stripGeneGaps(frame, model.walkRowGenes, model.walkRowGeneGaps),
+    annotation: model.walkRowAnnotation,
   })
   return (
     <div

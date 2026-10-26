@@ -1,3 +1,4 @@
+import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { contains } from '@jbrowse/bandage-core/viewport'
 import { getSession } from '@jbrowse/core/util'
 import { addDisposer } from '@jbrowse/mobx-state-tree'
@@ -11,11 +12,16 @@ import {
   paneViewportOf,
 } from './paneBase'
 import {
+  bubbleForLgvHover,
+  hoverFromPair,
   hoverInRegion,
   nodeForLgvHover,
   readLgvHover,
+  readSelectedFeature,
 } from '../../hoverSync/lgvHover'
 import { walksForRow } from '../../hoverSync/rowWalks'
+import { isRecord } from '../../isRecord'
+import { withRows } from '../../launchFromGraph/linearViewTarget'
 import { trackedDpr } from '../trackedDpr'
 
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
@@ -88,6 +94,23 @@ export const withRenderingActions = withLoadActions
             },
           ),
         )
+        // and the haplotypes' own genes on their nodes off the reference
+        addDisposer(
+          self,
+          reaction(
+            () => ({
+              graph: self.graph,
+              reads: JSON.stringify(self.ownGeneReads),
+            }),
+            () => {
+              void self.loadOwnGenes()
+            },
+            {
+              fireImmediately: true,
+              equals: (a, b) => a.graph === b.graph && a.reads === b.reads,
+            },
+          ),
+        )
         // Walk rows and tube map panels read the source track's samples
         // TSV, to group by its columns, again for a graph after a dropped one
         addDisposer(
@@ -145,8 +168,16 @@ export const withRenderingActions = withLoadActions
             untracked(() => {
               const region = self.graphRegion
               const graph = self.graph
+              const liveViewIds = new Set(
+                withRows([...getSession(self).views]).flatMap(v =>
+                  isRecord(v) && typeof v.id === 'string' ? [v.id] : [],
+                ),
+              )
               const inRegion =
-                hover && region && hoverInRegion(hover, region)
+                hover &&
+                region &&
+                hoverInRegion(hover, region) &&
+                hoverFromPair(hover, self.pairedViewId, liveViewIds)
                   ? hover
                   : undefined
               // a row naming a walk is the hover, not the node at its bp,
@@ -155,9 +186,14 @@ export const withRenderingActions = withLoadActions
                 inRegion?.featureName && graph?.paths
                   ? walksForRow(inRegion.featureName, graph.paths)
                   : []
+              // a bubble track's feature, or a graph-derived VCF record,
+              // names a whole bubble, which lights whatever the setting
+              const bubble =
+                inRegion && bubbleForLgvHover(inRegion, self.bubbles)
               if (region && graph && !self.pointerInPane) {
+                self.setHoveredBubble(bubble ?? null)
                 self.setHoveredNode(
-                  inRegion && lightsNode && rowWalks.length === 0
+                  inRegion && lightsNode && rowWalks.length === 0 && !bubble
                     ? nodeForLgvHover({ hover: inRegion, nodes: graph.nodes })
                     : null,
                 )
@@ -165,6 +201,29 @@ export const withRenderingActions = withLoadActions
               self.setHoveredRowWalks(rowWalks)
             })
           }),
+        )
+
+        // A click on a bubble feature or graph-derived variant in a linear
+        // view opens its bubble here, as clicking its label would
+        addDisposer(
+          self,
+          reaction(
+            () => readSelectedFeature(getSession(self).selection),
+            selected => {
+              const region = self.graphRegion
+              const bubble =
+                selected &&
+                region &&
+                hoverInRegion(selected, region) &&
+                bubbleForLgvHover(selected, self.bubbles)
+              if (
+                bubble &&
+                !self.openBubbles.some(open => sameBubble(open, bubble))
+              ) {
+                self.toggleBubble(bubble)
+              }
+            },
+          ),
         )
 
         // Reaction: drop a hover the pointer cannot still be over.
@@ -425,11 +484,43 @@ export const withRenderingActions = withLoadActions
     },
   }))
   .actions(self => ({
-    // reads the abridged walk `name` in full with the next cut
-    expandWalk(name: string) {
-      if (!self.expandedWalks.includes(name)) {
-        self.expandedWalks = self.expandedWalks.concat(name)
+    // reads the abridged walks `names` in full with the next cut
+    expandWalks(names: string[]) {
+      const more = names.filter(name => !self.expandedWalks.includes(name))
+      if (more.length > 0) {
+        self.expandedWalks = self.expandedWalks.concat(more)
         self.retryLoad()
       }
+    },
+  }))
+  .actions(self => ({
+    expandWalk(name: string) {
+      self.expandWalks([name])
+    },
+    // A lifted walk's key states its length, so the cut reads a lifted walk
+    // it abridged in full
+    afterAttach() {
+      addDisposer(
+        self,
+        reaction(
+          () => {
+            const lifted = new Set(self.walkLayers.map(l => l.walk))
+            return [
+              ...new Set(
+                (self.graph?.paths ?? [])
+                  .filter(p => p.abridged && lifted.has(p.name))
+                  .map(p => p.name),
+              ),
+            ]
+          },
+          names => {
+            self.expandWalks(names)
+          },
+          {
+            fireImmediately: true,
+            equals: (a, b) => a.join('\n') === b.join('\n'),
+          },
+        ),
+      )
     },
   }))

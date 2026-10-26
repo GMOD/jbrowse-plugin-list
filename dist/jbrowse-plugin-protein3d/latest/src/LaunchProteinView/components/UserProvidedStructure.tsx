@@ -97,7 +97,10 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
     preferredTranscriptId,
   })
 
-  const error = isoformError ?? fileError ?? launchError
+  const error = launchError ?? isoformError ?? fileError
+  // a structure that failed to read would open an empty view; an error from
+  // the url as it stood before the latest typing does not count
+  const readFailed = !!fileError && activeURL === debouncedURL
 
   // Until the structure is read the ranking has none and orders the isoforms
   // by length, so a launch that takes the ranked default waits. The
@@ -110,6 +113,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
     !!protein &&
     !!selectedTranscript &&
     !awaitsStructure &&
+    !readFailed &&
     !launching
   const sequencesDiffer =
     !!protein?.seq &&
@@ -144,6 +148,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
           setChoice={setChoice}
           structureURL={structureURL}
           setStructureURL={setStructureURL}
+          file={file}
           setFile={setFile}
         />
         <div style={{ margin: 20 }}>
@@ -161,7 +166,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
             />
           ) : null}
           {isoformSequences ? (
-            structureSequence && ranking ? (
+            ranking ? (
               <TranscriptSelector
                 val={userSelection}
                 setVal={setUserSelection}

@@ -4,6 +4,7 @@ import { trackHeightConfigSchemaFields } from '@jbrowse/display-kit/trackHeightC
 import { types } from '@jbrowse/mobx-state-tree'
 
 import { HOVER_HIGHLIGHT_VALUES } from '../GraphGenomeView/hoverHighlight'
+import { retiredGraphColor } from '../GraphGenomeView/retiredNodeColor'
 
 /**
  * #config LinearGraphDisplay
@@ -27,15 +28,17 @@ export function configSchemaFactory() {
       },
       /**
        * #slot
-       * the node color: `grey` or `uniform`, or the field nodes are colored
-       * by, `depth`, `length`, `rank`, `position` or `id` (`scale:
-       * 'categorical'` or `scheme: 'rainbow'`). `domainMin`/`domainMax` span
-       * the position ramp. `{}` colors an anchored graph by position.
+       * the channels the nodes are painted through, as core's `encoding`.
+       * `color` is `{ value: 'grey' }` or `{ value: 'uniform' }`, or the
+       * `field` nodes are colored by, `depth`, `length`, `rank`, `position` or
+       * `id` (`scale: { type: 'ordinal' }` or `scale: { scheme: 'rainbow' }`).
+       * `scale.domainMin` and `scale.domainMax` span the position ramp. `{}`
+       * colors an anchored graph by position.
        * ```js
-       * { color: { field: 'depth' } }
+       * { encoding: { color: { field: 'depth' } } }
        * ```
        */
-      color: {
+      encoding: {
         type: 'frozen',
         defaultValue: {},
         plot: true,
@@ -44,7 +47,9 @@ export function configSchemaFactory() {
        * #slot
        * the node thickness: a px number draws every node that thick;
        * `{ field: 'depth', value }` thickens a node the more paths carry it,
-       * around `value` px
+       * around `value` px; `{ field: 'frequency', value }` draws it as wide as
+       * the share of haplotypes through it, `value` px at 100%; `links:
+       * 'walks'` thickens a link the more walks take it
        */
       size: {
         type: 'frozen',
@@ -54,8 +59,8 @@ export function configSchemaFactory() {
       /**
        * #slot
        * what the drawing adds over its nodes and edges, stated as changes to
-       * the defaults: `paths`, `bubbles` and `walkStrip` are off, `deletions`,
-       * `genes` and `referenceStrip` on
+       * the defaults: `paths`, `bubbles`, `walkStrip` and `walkRibbons` are
+       * off, `deletions`, `genes` and `referenceStrip` on
        * ```js
        * { layers: { bubbles: true, genes: false } }
        * ```
@@ -101,7 +106,11 @@ export function configSchemaFactory() {
         height: 'the height of the track the graph is drawn in',
       }),
     },
-    { explicitlyTyped: true, explicitIdentifier: 'displayId' },
+    {
+      explicitlyTyped: true,
+      explicitIdentifier: 'displayId',
+      retired: retiredGraphColor,
+    },
   )
 }
 

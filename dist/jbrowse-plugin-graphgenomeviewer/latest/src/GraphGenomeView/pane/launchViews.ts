@@ -5,9 +5,12 @@ import {
 import { getSession } from '@jbrowse/core/util'
 
 import { withGraphViews } from './graphViews'
+import { OWN_GENE_CONTIGS } from './paneBase'
 import {
   contributingAssemblies,
+  nodeAssemblySpans,
   nodeOwnLocation,
+  offReferenceContigs,
   resolveContributors,
   resolveLocationAssembly,
 } from '../../launchFromGraph/contributors'
@@ -16,7 +19,11 @@ import {
   withReferenceRegion,
 } from '../../launchFromGraph/launchFromGraph'
 import { linearViewTarget } from '../../launchFromGraph/linearViewTarget'
-import { GENE_ADAPTER_TYPES, pickGeneTrack } from '../genes/geneFeatures'
+import {
+  GENE_ADAPTER_TYPES,
+  annotationNoun,
+  pickGeneTrack,
+} from '../genes/geneFeatures'
 import { isLinearHost } from '../host'
 
 import type { LinearHost } from '../host'
@@ -83,12 +90,16 @@ export const withLaunchViews = withGraphViews
       return (sample: string) => loaded(byPrefix.get(sample)) ?? loaded(sample)
     },
     // Each assembly's gene track among the session's tracks, picked as the
-    // backbone's is, so a walk row can read its haplotype's own annotation.
+    // backbone's is and of the backbone's kind, so a walk row reads its
+    // haplotype's own TEs beside a backbone of TEs and its genes beside genes.
     // One pass over the tracks, not one per row.
     get geneTracksByAssembly() {
       const byAssembly = new Map<string, typeof self.sessionTracks>()
       for (const track of self.sessionTracks) {
-        if (GENE_ADAPTER_TYPES.has(track.adapterType)) {
+        if (
+          GENE_ADAPTER_TYPES.has(track.adapterType) &&
+          annotationNoun(track) === self.walkRowAnnotation
+        ) {
           for (const asm of track.assemblies) {
             byAssembly.set(asm, [...(byAssembly.get(asm) ?? []), track])
           }
@@ -169,5 +180,48 @@ export const withLaunchViews = withGraphViews
             ? { location: onReference, assembly: region.assemblyName }
             : undefined,
       }
+    },
+    // The gene reads that put each loaded haplotype's own genes on its nodes
+    // off the reference: its assembly's gene track over the span those nodes
+    // cover, the first OWN_GENE_CONTIGS contigs of them
+    get ownGeneReads() {
+      const { graph } = self
+      if (!graph || !self.showGenes || !self.modeDrawsNodes) {
+        return []
+      }
+      return offReferenceContigs(
+        graph,
+        self.assemblyResolver,
+        self.graphRegion?.assemblyName,
+      )
+        .flatMap(({ stableRefName, assemblyName, refName, start, end }) => {
+          const track = self.geneTracksByAssembly.get(assemblyName)
+          return track
+            ? [
+                {
+                  stableRefName,
+                  trackId: track.trackId,
+                  region: { assemblyName, refName, start, end },
+                },
+              ]
+            : []
+        })
+        .slice(0, OWN_GENE_CONTIGS)
+    },
+    // The hovered node's own sequence on every loaded assembly but the
+    // reference, for linear views of those assemblies to band: an allele off
+    // the reference is a few hundred bp "instead of" on GRCh38, and here it
+    // is where it actually lives on each haplotype
+    get assemblyHoverHighlights() {
+      const id = self.hoveredNode
+      const node = id === null ? undefined : self.nodeById?.get(id)
+      return node && self.graph && self.chosenHover !== 'off'
+        ? nodeAssemblySpans(
+            self.graph,
+            node,
+            self.assemblyResolver,
+            self.graphRegion?.assemblyName,
+          )
+        : []
     },
   }))

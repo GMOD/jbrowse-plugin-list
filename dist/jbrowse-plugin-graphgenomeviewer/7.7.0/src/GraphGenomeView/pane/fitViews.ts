@@ -1,0 +1,617 @@
+import {
+  FACET_GAP_PX,
+  FACET_PAD_PX,
+  facetCells,
+  facetGrid,
+} from '@jbrowse/bandage-core/facetGrid'
+import { figureSvg } from '@jbrowse/bandage-core/figure'
+import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
+import {
+  LEGEND_INSET_PX,
+  layoutLabels,
+} from '@jbrowse/bandage-core/labelLayout'
+import {
+  boxesGenes,
+  rowPitch,
+  walkRowReadout,
+} from '@jbrowse/bandage-core/layout/walkRowDraw'
+import {
+  walkRowLabels,
+  walkRowsExtent,
+} from '@jbrowse/bandage-core/layout/walkRowLayout'
+import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
+import {
+  FIT_PADDING,
+  drawingBounds,
+  fitTransform,
+} from '@jbrowse/bandage-core/pipeline'
+import { buildGeometry } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
+import { layoutGeometryInputs } from '@jbrowse/bandage-core/renderer/geometryInputs'
+import {
+  GENE_ROW_PX,
+  tubeMapGeneRows,
+} from '@jbrowse/bandage-core/tubeMap/genes'
+import { padded } from '@jbrowse/bandage-core/viewport'
+import { walkPosition } from '@jbrowse/bandage-core/walkKey'
+import { untracked } from 'mobx'
+
+import { SECTION_HEADER_PX, sectionPlacement } from '../walkRowGroups'
+import { withHostViews } from './hostViews'
+import { fadeEntering } from './morph'
+import {
+  MAX_CANVAS_HEIGHT,
+  MIN_CANVAS_HEIGHT,
+  MIN_FIT_TUBE_PX,
+  PAPER,
+  SELECT_BRIGHTEN,
+  VIEWPORT_PANES_BUILT,
+  dependOn,
+  paneViewportOf,
+} from './paneBase'
+import { trackedDpr } from '../trackedDpr'
+
+import type { FacetGrid, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
+import type {
+  GeneGaps,
+  RowPitch,
+} from '@jbrowse/bandage-core/layout/walkRowDraw'
+import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
+import type { LiftedWalk, WalkLift } from '@jbrowse/bandage-core/walkHighlight'
+
+export const TOOLTIP_INSET_PX = 8
+export const FACET_KEY_ROW_PX = 19
+// the facet key line and the grid gap above it
+export const FACET_KEY_PX = FACET_GAP_PX + FACET_KEY_ROW_PX
+// a two-line tooltip and its inset
+const TOOLTIP_ROOM_PX = 48
+
+export function walkRowGeneKey(
+  pitch: RowPitch | undefined,
+  hasGenes: boolean,
+  gaps: GeneGaps | undefined,
+): GeneGaps | undefined {
+  if (!pitch || !hasGenes) {
+    return undefined
+  }
+  return boxesGenes(pitch.rowPx, pitch.barPx)
+    ? gaps
+    : { untracked: 0, unread: 0, ...gaps, crowded: true }
+}
+
+export const withFitViews = withHostViews
+  .views(self => ({
+    // `paneHeight` replaces the built-in ceiling rather than adding a second
+    // clamp under it, and the floor still wins: a pane shorter than
+    // MIN_CANVAS_HEIGHT leaves no room to hover a node and read its tooltip,
+    // which is the reason that floor exists.
+    get paneCeiling(): number {
+      return Math.max(MIN_CANVAS_HEIGHT, self.paneHeight ?? MAX_CANVAS_HEIGHT)
+    },
+    // the height a fit fills: a track's own, or the pane's ceiling
+    get fitRoom(): number {
+      return self.host ? this.canvasHeight : this.paneCeiling
+    },
+    // Walk rows pack to fill the pane, as the strip does, so every walk of a
+    // cohort is on screen; rows too thin to letter put their names and
+    // readouts on hover
+    get walkRowPitch(): RowPitch | undefined {
+      const bars = self.walkRowBars
+      if (!bars) {
+        return undefined
+      }
+      const room = this.fitRoom
+      const headersPx =
+        (self.walkRowGroups?.sections.length ?? 0) * SECTION_HEADER_PX
+      return rowPitch(
+        bars.rows.length + 1,
+        room - this.fitPadTopBase - FIT_PADDING - headersPx,
+      )
+    },
+    // Where each walk row and section header sits at the rows' pitch
+    get walkRowPlacement() {
+      const pitch = this.walkRowPitch
+      return pitch
+        ? sectionPlacement(self.walkRowGroups?.sections ?? [], pitch.rowPx)
+        : undefined
+    },
+    // What the walk-rows key says of genes: where they went unread, or one
+    // note that rows this thin box none, as the walk strip's key says
+    get walkRowGeneKey() {
+      return walkRowGeneKey(
+        this.walkRowPitch,
+        !!self.walkRowGenes?.size,
+        self.walkRowGeneGaps,
+      )
+    },
+    // Walk rows label from the bars themselves, which follow the selected
+    // repeat and sample filter that the layout, run once per cut, cannot
+    get drawnRowLabels() {
+      const place = this.walkRowPlacement
+      const labels = walkRowLabels(
+        self.walkRowBars,
+        self.layoutResult,
+        this.walkRowPitch,
+      )
+      return self.walkRowBars && place
+        ? labels.map((l, i) => ({ ...l, y: place.rowY(i) }))
+        : labels
+    },
+    // The row labels on the canvas, each at its pane px `top`. A row scrolled
+    // out is dropped rather than clamped to the edge, so a label never points
+    // at a row that is not there.
+    get visibleRowLabels() {
+      return this.drawnRowLabels.flatMap(({ label, y }) => {
+        const top = self.toScreen({ x: 0, y }).y
+        return top >= 0 && top <= this.canvasHeight ? [{ label, y, top }] : []
+      })
+    },
+    // The row labels are pinned to the pane's left edge, so the fit starts
+    // the drawing past the widest one.
+    get fitPadLeft() {
+      return this.drawnRowLabels.reduce(
+        (pad, r) => Math.max(pad, rowLabelBox(r.label, 0).x1 + 6),
+        FIT_PADDING,
+      )
+    },
+    // Extent of the drawing in layout units, shared by the pane height and
+    // zoomToFit. On a reference-bp layout x is the cut window rather than
+    // how far the drawing reaches: an allele anchored far outside it is a
+    // fact about the graph, not a reason to draw the window at 6% of the
+    // frame. Walk rows reach as far as
+    // the bars on screen, which a repeat pick or a sample filter narrows
+    // after the layout ran.
+    get layoutBounds() {
+      const layout = self.layoutResult
+      const bars = self.walkRowBars
+      const rowsExtent =
+        bars && layout?.extent
+          ? walkRowsExtent(bars, this.walkRowPitch)
+          : undefined
+      return layout
+        ? drawingBounds(layout, {
+            region: self.graphRegion,
+            extent: rowsExtent && {
+              ...rowsExtent,
+              maxY: rowsExtent.maxY + (this.walkRowPlacement?.headersPx ?? 0),
+            },
+          })
+        : undefined
+    },
+    // What a hovered row's label and readout would say, while its rows are
+    // too thin to draw them
+    get hoveredWalkRowText() {
+      const bars = self.walkRowBars
+      const name = self.hoveredWalkRow
+      if (!bars || name === null || this.walkRowPitch?.readouts !== false) {
+        return undefined
+      }
+      const isReference = bars.reference.name === name
+      const row = isReference
+        ? bars.reference
+        : bars.rows.find(r => r.name === name)
+      return row
+        ? {
+            label: row.label,
+            readout: walkRowReadout(
+              row,
+              isReference ? undefined : bars.reference,
+              bars.unit,
+              row.call,
+            ),
+          }
+        : undefined
+    },
+    // The walk row under a pane point, as its index among the reference row
+    // and the rows below it, where the point is on its bar
+    walkRowAt(screenX: number, screenY: number) {
+      const bars = self.walkRowBars
+      const pitch = this.walkRowPitch
+      const place = this.walkRowPlacement
+      if (!bars || !pitch || !place) {
+        return undefined
+      }
+      const i = place.rowAt(
+        (screenY - self.translateY) / self.scaleY,
+        bars.rows.length + 1,
+      )
+      const row = [bars.reference, ...bars.rows][i]
+      const y = place.rowY(i) * self.scaleY + self.translateY
+      const bp = (screenX - self.translateX) / self.scaleX - bars.origin
+      return row &&
+        Math.abs(screenY - y) <= pitch.barPx / 2 + 2 &&
+        bp >= 0 &&
+        bp <= row.bp
+        ? i
+        : undefined
+    },
+    // Room over a tube map for the rows its genes need, one inside the
+    // padding and one more for each further gene that overlaps it, and
+    // room for the reference strip
+    get fitPadTopBase() {
+      const rows = tubeMapGeneRows(self.tubeMapGenes)
+      return (
+        FIT_PADDING +
+        Math.max(0, rows - 1) * GENE_ROW_PX +
+        self.referenceStripZonePx
+      )
+    },
+    // The fit draws nothing under the legend. It leaves the legend room on
+    // the side that costs the drawing less scale: beside a tall drawing,
+    // which has width to spare, or above a wide flat one, which takes the
+    // height instead. A drawing whose x the host places can only move down.
+    // Reads get no room: their letters, and the legend row naming them, come
+    // and go with the fit's scale.
+    get legendRoom(): 'right' | 'top' | undefined {
+      const bounds = this.layoutBounds
+      const { width, height } = self.legendSize
+      if (
+        !bounds ||
+        bounds.w <= 0 ||
+        width === 0 ||
+        self.facetPanels ||
+        self.tubeMapReads
+      ) {
+        return undefined
+      }
+      if (self.hostPlacesX) {
+        return 'top'
+      }
+      const base = this.fitPadTopBase
+      const room = this.fitRoom
+      const across = (padRight: number) =>
+        (self.paneWidth - this.fitPadLeft - padRight) / bounds.w
+      const down = (padTop: number) =>
+        self.pixelRows
+          ? bounds.h + padTop + FIT_PADDING <= room
+            ? Infinity
+            : 0
+          : (room - padTop - FIT_PADDING) / bounds.h
+      const beside = Math.min(across(width + 2 * LEGEND_INSET_PX), down(base))
+      const above = Math.min(
+        across(FIT_PADDING),
+        down(base + height + LEGEND_INSET_PX),
+      )
+      return above >= beside ? 'top' : 'right'
+    },
+    get fitPadTop() {
+      return (
+        this.fitPadTopBase +
+        (this.legendRoom === 'top'
+          ? self.legendSize.height + LEGEND_INSET_PX
+          : 0)
+      )
+    },
+    get fitPadRight() {
+      return this.legendRoom === 'right'
+        ? Math.max(FIT_PADDING, self.legendSize.width + 2 * LEGEND_INSET_PX)
+        : FIT_PADDING
+    },
+    // A tube map on its own axis reads by panning along it, as in
+    // sequenceTubeMap. Rather than shrink a long cut to a strip, the fit
+    // stops where its tubes are MIN_FIT_TUBE_PX wide, or at whatever fits
+    // the tallest pane, with the cut's left end on screen.
+    get minFitScale() {
+      const bounds = this.layoutBounds
+      const layout = self.layoutResult
+      const tubePx = layout?.tubeMap?.layout.tracks[0]?.width
+      return bounds && bounds.h > 0 && tubePx && !layout.referenceAxis
+        ? Math.min(
+            MIN_FIT_TUBE_PX / tubePx,
+            (this.paneCeiling - this.fitPadTop - FIT_PADDING) / bounds.h,
+          )
+        : 0
+    },
+    // The facet as a spec writes it: the bare field while nothing else is
+    // written, the whole setting otherwise, and nothing while off
+    get facetSpec(): string | FacetSetting | undefined {
+      const { field, domain, columns } = self.facetSetting
+      return field === ''
+        ? undefined
+        : domain.length === 0 && columns === undefined
+          ? field
+          : {
+              field,
+              domain: [...domain],
+              ...(columns === undefined ? {} : { columns }),
+            }
+    },
+    // Which grid cell each panel takes; see facetCells
+    get facetPlacement() {
+      const panels = self.facetPanels
+      const { field, domain } = self.facetSetting
+      return panels
+        ? facetCells(
+            panels.map(p => p.walks[0]!.name),
+            self.hostPlacesX || field === '' ? 'walk' : field,
+            domain,
+          )
+        : undefined
+    },
+    // How the facet panels tile the pane in `room` px. A track whose x the
+    // linear view places stacks full-width panels so each keeps that x.
+    facetGridIn(room: number): FacetGrid | undefined {
+      const place = this.facetPlacement
+      const bounds = this.layoutBounds
+      return place && bounds && bounds.w > 0
+        ? facetGrid({
+            count: place.count,
+            bounds,
+            pixelRows: self.pixelRows,
+            width: self.paneWidth,
+            room,
+            columns: self.hostPlacesX
+              ? 1
+              : (place.columns ?? self.facetSetting.columns),
+          })
+        : undefined
+    },
+    // the facet grid's room leaves the key line under it
+    get facetGrid() {
+      return this.facetGridIn(this.fitRoom - FACET_KEY_PX)
+    },
+    // The hover tooltip's distance from the pane's right edge: in the corner,
+    // unless the legend reaches down into its room, and then beside it. A
+    // faceted pane mounts no legend, so its last measured size is stale.
+    get tooltipRightPx() {
+      const { width, height } = self.legendSize
+      const legendBottom = LEGEND_INSET_PX + self.referenceStripZonePx + height
+      return !self.facetPanels &&
+        width > 0 &&
+        legendBottom > this.canvasHeight - TOOLTIP_ROOM_PX
+        ? width + 2 * LEGEND_INSET_PX
+        : TOOLTIP_INSET_PX
+    },
+    // The pane is as tall as the drawing, rather than a fixed box the drawing
+    // floats in. A row layout's rows are px, so its height is a sum; an
+    // isotropic layout has no height of its own and takes its aspect ratio
+    // at the width's fit. Neither reads `scale`, so the fit reads this
+    // without feeding back into it.
+    get canvasHeight(): number {
+      const bounds = this.layoutBounds
+      const ceiling = this.paneCeiling
+      if (!bounds) {
+        return ceiling
+      }
+      const grid = this.facetGrid
+      if (grid) {
+        return Math.max(MIN_CANVAS_HEIGHT, grid.total + FACET_KEY_PX)
+      }
+      // never shorter than the legend, which a flat drawing would clip
+      const floor = Math.max(
+        MIN_CANVAS_HEIGHT,
+        self.legendSize.height +
+          2 * LEGEND_INSET_PX +
+          self.referenceStripZonePx,
+      )
+      const pads = this.fitPads
+      const padsY = pads.top + pads.bottom
+      if (self.pixelRows) {
+        return Math.min(ceiling, Math.max(floor, bounds.h + padsY))
+      }
+      const usableWidth = self.paneWidth - pads.left - pads.right
+      return bounds.w > 0 && usableWidth > 0
+        ? Math.min(
+            ceiling,
+            Math.max(
+              floor,
+              bounds.h * Math.max(usableWidth / bounds.w, this.minFitScale) +
+                padsY,
+            ),
+          )
+        : ceiling
+    },
+    // What the transform maps the drawing into: one facet panel while the
+    // pane is faceted, since every panel shares it, else the pane
+    get viewBox() {
+      const grid = this.facetGrid
+      return grid
+        ? { width: grid.width, height: grid.height }
+        : { width: self.paneWidth, height: this.canvasHeight }
+    },
+    // The fit's margins: a facet panel's all round, else room for the row
+    // labels, the genes and strip above, and the legend where legendRoom
+    // puts it
+    get fitPads() {
+      return this.facetGrid
+        ? {
+            left: FACET_PAD_PX,
+            top: FACET_PAD_PX,
+            right: FACET_PAD_PX,
+            bottom: FACET_PAD_PX,
+          }
+        : {
+            left: this.fitPadLeft,
+            top: this.fitPadTop,
+            right: this.fitPadRight,
+            bottom: FIT_PADDING,
+          }
+    },
+    // the view box's height inside the fit's margins
+    get usableHeight() {
+      const { top, bottom } = this.fitPads
+      return this.viewBox.height - top - bottom
+    },
+    // Where the fit puts the drawing, or undefined until there is a layout
+    // and a measured canvas to fit it into
+    get fittedTransform() {
+      const bounds = this.layoutBounds
+      const { width, height } = this.viewBox
+      const pads = this.fitPads
+      return bounds
+        ? fitTransform(bounds, width, height, self.pixelRows, {
+            minScale: this.facetGrid ? 0 : this.minFitScale,
+            padLeft: pads.left,
+            padTop: pads.top,
+            padRight: pads.right,
+            padBottom: pads.bottom,
+          })
+        : undefined
+    },
+  }))
+  .views(self => ({
+    // The window the transform shows plus a pane of overscan all round,
+    // which a pan inside needs no rebuild for
+    viewportToBuild() {
+      return padded(paneViewportOf(self), VIEWPORT_PANES_BUILT)
+    },
+    // The selection as a draw-time colour override, keyed by node so it
+    // survives a rebuild renumbering the batch. The hover is paintHover's,
+    // on a layer of its own.
+    applySelection(b: Renderer) {
+      const id = self.selectedNode
+      b.setNodeHighlights(
+        id === null ? new Map() : new Map([[id, SELECT_BRIGHTEN]]),
+      )
+    },
+    // the hovered node, unless the selection already lights it
+    get hoverLayerNode() {
+      const { litNode, selectedNode } = self
+      return litNode === selectedNode ? null : litNode
+    },
+    // getDpr(), never a bare `devicePixelRatio`: it is capped at MAX_DPR so
+    // this canvas costs what every other canvas in the app costs on a 3x
+    // display, and it is the same read `syncCanvasSize` sizes the backing
+    // store with. Tracked, so a new ratio repaints rather than leaving the
+    // geometry at a different scale from the canvas under it.
+    get paintTransform() {
+      const dpr = trackedDpr()
+      return {
+        scaleX: self.scaleX * dpr,
+        scaleY: self.scaleY * dpr,
+        translateX: self.translateX * dpr,
+        translateY: self.translateY * dpr,
+        // the thicknesses in the vertex buffer are css px, expanded after
+        // this transform, so they need the same ratio
+        dpr,
+      }
+    },
+  }))
+  .views(self => ({
+    // Draws the uploaded batch through the pane's transform
+    paint(b: Renderer) {
+      b.updateTransform(self.paintTransform)
+      // Clear under a reference strip: GraphCanvas lays the paper below the
+      // strip, so the linear view's gridlines show through between its blocks
+      b.render(self.referenceStripShown ? [0, 0, 0, 0] : PAPER)
+    },
+  }))
+  .views(self => ({
+    // The drawing's batch with `highlight`'s walks lifted, for the window
+    // the transform shows. A caller's autorun rebuilds it when the window
+    // settles after a pan or zoom, when a drag moves the positions, and when
+    // any display option read here changes.
+    buildDrawing(highlight: WalkLift | undefined, drawPaths: boolean) {
+      const { graph, nodeById, layoutResult, deletionDrawing } = self
+      if (!graph || !nodeById || !layoutResult || !deletionDrawing) {
+        return undefined
+      }
+      dependOn(self.viewportDirty, self.positionsVersion)
+      const viewportBounds = untracked(() => self.viewportToBuild())
+      const batch = buildGeometry({
+        // walk rows' overlay draws every bar, the reference's among them;
+        // its nodes stay in the hit index, so hovering the bar finds them
+        ...layoutGeometryInputs(layoutResult, deletionDrawing, {
+          drawsRows: !!self.walkRowBars,
+        }),
+        graph,
+        nodeById,
+        colorScheme: self.effectiveColorScheme,
+        contigThickness: self.contigThickness,
+        connectorThickness: self.connectorThickness,
+        drawPaths,
+        nodeWidth: self.nodeWidth,
+        edgeWidth: self.linkWidth,
+        highlight,
+        // Untracked, so a zoom does not eagerly rebuild geometry — the
+        // debounced viewportDirty bump drives the scale-dependent rebuild
+        // (flatness, arrow visibility, viewport culling), same as pan.
+        axis: untracked(() => self.axisScale),
+        linearLayout: self.linearLayout,
+        viewportBounds,
+        // Held against the graph rather than derived here, the same way the
+        // deletion drawing is and for the same reason — see `drawnReferenceRamp`.
+        referenceRamp: self.referenceRamp,
+        // passed so the shared edge-curve cache can tell a drag from a pan
+        version: self.positionsVersion,
+      })
+      const entering = self.morphEntering
+      if (entering?.layout === layoutResult) {
+        fadeEntering(batch, graph.edges, entering)
+      }
+      return { batch, viewportBounds }
+    },
+    get overlayLabels() {
+      return layoutLabels(self)
+    },
+    // where the hovered node sits on a lifted walk, while one is hovered
+    hoveredOn(walk: LiftedWalk) {
+      const id = self.hoveredNode
+      const node = id ? self.nodeById?.get(id) : undefined
+      return node
+        ? (walkPosition(walk, node.id, node.length) ?? 'not on this walk')
+        : undefined
+    },
+    // Why the drawing cannot be written as SVG, which draws the canvas's
+    // nodes, or walk rows' bars
+    get figureUnavailable() {
+      return !self.layoutResult
+        ? 'Nothing is drawn yet'
+        : self.walkRowGroups
+          ? 'The SVG export cannot group walk rows yet: set Group by... to None first'
+          : self.drawsNodes || self.walkRowBars
+            ? undefined
+            : `${layoutModeByValue(self.chosenLayoutMode).label} draws a picture of its own, which the SVG export does not`
+    },
+    // The drawing as a standalone SVG, fitted, with its genes, its lifted
+    // walks' keys, facet panels and the strip of walk rows; see figureSvg
+    figure() {
+      const { graph, layoutResult } = self
+      return graph && layoutResult && !this.figureUnavailable
+        ? figureSvg(graph, layoutResult, {
+            width: self.paneWidth,
+            height: self.paneCeiling,
+            walks: self.walkLayers,
+            facet: self.facetSpec,
+            colorScheme: self.effectiveColorScheme,
+            nodeWidth: self.nodeWidth,
+            edgeWidth: self.linkWidth,
+            showDeletionEdges: self.showDeletionEdges,
+            linearLayout: self.linearLayout,
+            contigThickness: self.contigThickness,
+            connectorThickness: self.connectorThickness,
+            region: self.graphRegion,
+            colorDomain: self.statedColorDomain,
+            genes: self.showGenes
+              ? [...(self.backboneGenes ?? []), ...(self.ownGeneFeatures ?? [])]
+              : undefined,
+            walkRows: self.walkRowBars,
+            walkRowPitch: self.walkRowPitch,
+            rowGenes: self.walkRowGenes,
+            rowGeneGaps: self.walkRowGeneGaps,
+            rowAnnotation: self.walkRowAnnotation,
+            walkStrip: self.walkStripRows && {
+              rows: self.walkStripRows,
+              rowGenes: self.walkRowGenes,
+              rowGeneGaps: self.walkRowGeneGaps,
+            },
+          })
+        : undefined
+    },
+  }))
+  .views(self => ({
+    // A drawing in its own coordinates that still follows the linear view's
+    // pan and zoom as a stretched picture until the re-cut lands. The view
+    // drives it, so a horizontal drag or a zoom over it is the view's.
+    get followsHostView() {
+      const layout = self.layoutResult
+      return (
+        !!self.host &&
+        !self.hostPlacesX &&
+        !!layout &&
+        !layout.referenceAxis &&
+        !layout.pixelRows &&
+        !layout.tubeMap &&
+        !self.facetGrid
+      )
+    },
+  }))

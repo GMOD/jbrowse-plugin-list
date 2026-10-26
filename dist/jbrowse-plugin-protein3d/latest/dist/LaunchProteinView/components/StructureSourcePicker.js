@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
 import HelpButton from './HelpButton';
 import { STRUCTURE_FILE_ACCEPT } from '../utils/readStructureFile';
-export default function StructureSourcePicker({ choice, setChoice, structureURL, setStructureURL, setFile, }) {
+export default function StructureSourcePicker({ choice, setChoice, structureURL, setStructureURL, file, setFile, }) {
     return (React.createElement("div", { style: { display: 'flex', margin: 30 } },
         React.createElement(Typography, null,
             "Open your structure file ",
@@ -11,8 +11,8 @@ export default function StructureSourcePicker({ choice, setChoice, structureURL,
             React.createElement(RadioGroup, { value: choice, onChange: event => {
                     setChoice(event.target.value);
                 } },
-                React.createElement(FormControlLabel, { value: "url", control: React.createElement(Radio, null), label: "URL" }),
-                React.createElement(FormControlLabel, { value: "file", control: React.createElement(Radio, null), label: "File" }))),
+                React.createElement(FormControlLabel, { value: "file", control: React.createElement(Radio, null), label: "File" }),
+                React.createElement(FormControlLabel, { value: "url", control: React.createElement(Radio, null), label: "URL" }))),
         choice === 'url' ? (React.createElement("div", null,
             React.createElement(Typography, null, "Open a PDB/mmCIF/etc. file from remote URL"),
             React.createElement(TextField, { label: "URL", value: structureURL, onChange: event => {
@@ -26,5 +26,8 @@ export default function StructureSourcePicker({ choice, setChoice, structureURL,
                         if (f) {
                             setFile(f);
                         }
-                    } }))))));
+                        // picking the same file again, edited, fires a change
+                        target.value = '';
+                    } })),
+            file ? React.createElement(Typography, { variant: "body2" }, file.name) : null))));
 }

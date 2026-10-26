@@ -142,6 +142,19 @@ test('keeps the right-clicked isoform and reads its accession', async () => {
   expect(searched).toEqual([])
 })
 
+test('a right-clicked isoform opens its own AlphaFold model, not the canonical one', async () => {
+  const { host: h } = host({
+    models: [model('P11111', SHORT), model('P11111-2', LONG)],
+  })
+  const launch = await resolveGeneLaunch({
+    host: h,
+    feature: gene(),
+    preferredTranscriptId: 'long',
+  })
+  expect(launch.transcript.id()).toBe('long')
+  expect(launch.url).toBe('https://alphafold.example/P11111-2.cif')
+})
+
 test('an ambiguous search resolves the longest isoform and no structure', async () => {
   const { host: h } = host({
     entries: [entry('P11111', true), entry('P22222', true)],

@@ -73,7 +73,7 @@ function keyOf(structure, m) {
  * Mol*'s own tool carry no tag and are left alone.
  */
 export function syncMeasurements({ plugin, structures, measurements, labels = true, }) {
-    return serialPerPlugin(plugin, MEASUREMENT_TAG, async () => {
+    return serialPerPlugin(plugin, async () => {
         const molstar = await loadMolstar();
         const { Color, StateSelection, StateTransforms } = molstar;
         const existing = plugin.state.data.select(StateSelection.Generators.root

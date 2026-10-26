@@ -54,6 +54,14 @@ export function pickGeneTrack<T extends TrackChoice>(
   )
 }
 
+const TE_TRACK_HINT = /\bTEs?\b|transpos/i
+
+// What a walk row's boxes are, for the key: TEs where the annotation track's
+// name says so, else genes
+export function annotationNoun(track: TrackChoice | undefined) {
+  return track && TE_TRACK_HINT.test(trackLabel(track)) ? 'TE' : 'gene'
+}
+
 interface LaneView {
   tracks?: readonly {
     configuration: AnyConfigurationModel

@@ -2,13 +2,17 @@ import loadMolstar from './loadMolstar'
 import { encodedColor } from './markEncoding'
 import { parseSite, siteExpression } from './residueSpec'
 import { serialPerPlugin } from './serialPerPlugin'
-import { structureRootCell } from './structureCells'
+import {
+  RESIDUE_MARKS_TAG,
+  drawnUnder,
+  structureRootCell,
+} from './structureCells'
 
 import type { ConstantEncoding } from './markEncoding'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
-export const RESIDUE_MARKS_TAG = 'jbrowse-residue-marks'
+export { RESIDUE_MARKS_TAG } from './structureCells'
 
 /**
  * A site of a structure drawn on its own, whichever chain holds it: a
@@ -51,7 +55,7 @@ export function syncResidueMarks({
   structures: readonly (Structure | undefined)[]
   marks: readonly ResidueMark[]
 }) {
-  return serialPerPlugin(plugin, RESIDUE_MARKS_TAG, async () => {
+  return serialPerPlugin(plugin, async () => {
     const molstar = await loadMolstar()
     const {
       Color,
@@ -85,7 +89,7 @@ export function syncResidueMarks({
             nullIfEmpty: true,
             label: mark.site,
           },
-          { tags: [RESIDUE_MARKS_TAG] },
+          drawnUnder(root, RESIDUE_MARKS_TAG),
         )
         .apply(
           StateTransforms.Representation.StructureRepresentation3D,
@@ -94,7 +98,7 @@ export function syncResidueMarks({
             color: 'uniform',
             colorParams: { value: Color.fromHexStyle(color) },
           }),
-          { tags: [RESIDUE_MARKS_TAG] },
+          drawnUnder(root, RESIDUE_MARKS_TAG),
         )
     }
     await update.commit()

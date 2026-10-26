@@ -136,7 +136,7 @@ test('a hosted pane that pans itself claims presses from the linear view; one th
 })
 
 // A pane mid-drag, whose transform moves as the model's would
-function panModel() {
+function panModel(state: Record<string, unknown> = {}) {
   const model: Record<string, unknown> = fakeModel({
     isPanning: false,
     draggingNode: null,
@@ -155,6 +155,7 @@ function panModel() {
       model.isPanning = false
     },
     clearHover: vi.fn(),
+    ...state,
   })
   return model
 }
@@ -382,11 +383,12 @@ describe('a press on a bubble label', () => {
     window.dispatchEvent(e)
   }
 
-  function pressLabel() {
-    const model = panModel()
-    const { result } = renderHook(() =>
+  function pressLabel(
+    model = panModel(),
+    { result } = renderHook(() =>
       usePaneGestures(model as unknown as GraphPaneModel),
-    )
+    ),
+  ) {
     const layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     layer.setAttribute(PANS_WITH_DRAWING, '')
     const chip = document.createElementNS('http://www.w3.org/2000/svg', 'g')
@@ -402,6 +404,7 @@ describe('a press on a bubble label', () => {
     const click = { stopPropagation: vi.fn() }
     return {
       model,
+      result,
       click: () => {
         onClickCapture(click as unknown as React.MouseEvent)
         return click.stopPropagation.mock.calls.length === 0
@@ -428,6 +431,75 @@ describe('a press on a bubble label', () => {
     expect(click()).toBe(false)
   })
 
+  // The pointer leaves a 3px tick at once, so the canvas under it sees the
+  // same moves the window listener pans by
+  test('pans once, not again through the canvas under the pointer', () => {
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      frames.push(cb),
+    )
+    const { model, result } = pressLabel()
+    act(() => {
+      pointer('pointermove', 110)
+      result.current.handlers.onPointerMove(at(110, 20))
+      pointer('pointermove', 140)
+      result.current.handlers.onPointerMove(at(140, 20))
+      frames.splice(0).forEach(f => {
+        f(0)
+      })
+    })
+    expect(model.translateX).toBe(40)
+  })
+
+  test('after a drag on the reference strip still pans the graph', () => {
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      frames.push(cb),
+    )
+    const horizontalScroll = vi.fn()
+    const model = panModel({
+      referenceStripZonePx: 30,
+      host: { horizontalScroll },
+      followsHostView: false,
+    })
+    const hook = renderHook(() =>
+      usePaneGestures(model as unknown as GraphPaneModel),
+    )
+    const canvas = Object.assign(document.createElement('canvas'), {
+      setPointerCapture: vi.fn(),
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+    })
+    const press = (x: number) =>
+      ({
+        clientX: x,
+        clientY: 10,
+        button: 0,
+        pointerId: 1,
+        pointerType: 'mouse',
+        currentTarget: canvas,
+      }) as unknown as React.PointerEvent
+    const h = hook.result.current.handlers
+    act(() => {
+      h.onPointerDown(press(50))
+      h.onPointerMove(press(80))
+      frames.splice(0).forEach(f => {
+        f(0)
+      })
+      h.onPointerUp(press(80))
+    })
+    horizontalScroll.mockClear()
+    pressLabel(model, hook)
+    act(() => {
+      pointer('pointermove', 140)
+      frames.splice(0).forEach(f => {
+        f(0)
+      })
+      pointer('pointerup', 140)
+    })
+    expect(horizontalScroll).not.toHaveBeenCalled()
+    expect(model.translateX).toBe(40)
+  })
+
   test('that stays put is a click on the label', () => {
     const { model, click } = pressLabel()
     act(() => {
@@ -437,6 +509,11 @@ describe('a press on a bubble label', () => {
     expect(model.setTransform).not.toHaveBeenCalled()
     expect(click()).toBe(true)
   })
+})
+
+test('a frame that began before the wheel event never zooms backwards', () => {
+  expect(easeZoom(0.2, -5)).toBeGreaterThanOrEqual(0)
+  expect(easeZoom(-0.2, -5)).toBeLessThanOrEqual(0)
 })
 
 test('a wheel notch eases in over a few frames and lands the whole zoom', () => {

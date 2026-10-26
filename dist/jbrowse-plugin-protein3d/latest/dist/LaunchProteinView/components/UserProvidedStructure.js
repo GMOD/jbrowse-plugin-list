@@ -51,7 +51,10 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
         structureSequences,
         preferredTranscriptId,
     });
-    const error = isoformError ?? fileError ?? launchError;
+    const error = launchError ?? isoformError ?? fileError;
+    // a structure that failed to read would open an empty view; an error from
+    // the url as it stood before the latest typing does not count
+    const readFailed = !!fileError && activeURL === debouncedURL;
     // Until the structure is read the ranking has none and orders the isoforms
     // by length, so a launch that takes the ranked default waits. The
     // right-clicked isoform needs no ranking and launches at once.
@@ -61,6 +64,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
         !!protein &&
         !!selectedTranscript &&
         !awaitsStructure &&
+        !readFailed &&
         !launching;
     const sequencesDiffer = !!protein?.seq &&
         !!structureSequence &&
@@ -85,12 +89,12 @@ const UserProvidedStructure = observer(function UserProvidedStructure({ feature,
         React.createElement(DialogContent, { className: classes.dialogContent },
             error ? React.createElement(ErrorMessage, { error: error }) : null,
             React.createElement(HelpText, null),
-            React.createElement(StructureSourcePicker, { choice: choice, setChoice: setChoice, structureURL: structureURL, setStructureURL: setStructureURL, setFile: setFile }),
+            React.createElement(StructureSourcePicker, { choice: choice, setChoice: setChoice, structureURL: structureURL, setStructureURL: setStructureURL, file: file, setFile: setFile }),
             React.createElement("div", { style: { margin: 20 } },
                 isStructureLoading ? (React.createElement(LoadingEllipses, { variant: "subtitle2", message: "Reading residues from the structure" })) : null,
                 React.createElement(PartialFailureNotice, { message: isoformPartialFailure }),
                 isRanking ? (React.createElement(LoadingEllipses, { variant: "subtitle2", message: "Aligning isoforms to the structure" })) : null,
-                isoformSequences ? (structureSequence && ranking ? (React.createElement(TranscriptSelector, { val: userSelection, setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, ranking: ranking })) : null) : (React.createElement(LoadingEllipses, { title: "Loading protein sequences", variant: "h6" })))),
+                isoformSequences ? (ranking ? (React.createElement(TranscriptSelector, { val: userSelection, setVal: setUserSelection, structureSequence: structureSequence, isoforms: options, feature: feature, ranking: ranking })) : null) : (React.createElement(LoadingEllipses, { title: "Loading protein sequences", variant: "h6" })))),
         React.createElement(DialogActions, null,
             sequencesDiffer ? React.createElement(SequenceMismatchNotice, null) : null,
             React.createElement(Button, { variant: "contained", color: "secondary", onClick: () => {

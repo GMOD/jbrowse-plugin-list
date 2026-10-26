@@ -13,11 +13,11 @@
  * a few.
  */
 import { colord } from '@jbrowse/core/util/colord';
-import { SITES_TAG } from './alignmentSites';
 import loadMolstar from './loadMolstar';
 import { drawnTests } from './residueFilter';
-import { structureRootCell } from './structureCells';
-export const SESSION_HIGHLIGHTS_TAG = 'jbrowse-session-highlights';
+import { serialPerPlugin } from './serialPerPlugin';
+import { SESSION_HIGHLIGHTS_TAG, drawnUnder, structureRepresentations, structureRootCell, } from './structureCells';
+export { SESSION_HIGHLIGHTS_TAG } from './structureCells';
 // core's default highlight color, which the genome view's band draws in
 export const DEFAULT_HIGHLIGHT_COLOR = '#ffb11d';
 // The genome band draws a translucent highlight over the tracks; Mol* would
@@ -73,14 +73,16 @@ export function sessionHighlightResidues({ highlights, mapping, naming, entity, 
             return [];
         }
         const labelSeqIds = new Set();
+        // the N-terminal residue names the change, whichever strand the bases
+        // run on
         let firstPos;
         for (let base = h.start; base < h.end; base++) {
             const residue = mapping.g2p[base];
             const structurePos = residue === undefined ? undefined : transcriptToStructure[residue];
             const labelSeqId = structurePos === undefined ? undefined : entity.seqIds[structurePos];
-            if (labelSeqId !== undefined) {
+            if (structurePos !== undefined && labelSeqId !== undefined) {
                 labelSeqIds.add(labelSeqId);
-                firstPos ??= structurePos;
+                firstPos = Math.min(firstPos ?? structurePos, structurePos);
             }
         }
         return labelSeqIds.size > 0
@@ -155,7 +157,7 @@ const FADE_TRANSPARENCY = 0.75;
  * labelled mark also gets an anchor cell, the selection HighlightLabels
  * points its label at, and fades the cartoon around it.
  */
-export async function syncSessionHighlightMarks({ plugin, structures, }) {
+async function drawHighlights({ plugin, structures, }) {
     const molstar = await loadMolstar();
     const { Color, MolScriptBuilder: MS, Script, StateSelection, StateTransforms, createStructureRepresentationParams, formatMolScript, } = molstar;
     const anchors = labelAnchors(plugin);
@@ -190,7 +192,7 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
                 type: { name: 'expression', params: expression },
                 nullIfEmpty: true,
                 label: label ?? 'Session highlight',
-            }, { tags: [SESSION_HIGHLIGHTS_TAG] })
+            }, drawnUnder(root, SESSION_HIGHLIGHTS_TAG))
                 .apply(StateTransforms.Representation.StructureRepresentation3D, createStructureRepresentationParams(plugin, molstarStructure, {
                 ...(label
                     ? { type: 'spacefill', typeParams: { sizeFactor: 1 } }
@@ -200,7 +202,7 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
                     }),
                 color: 'uniform',
                 colorParams: { value: Color.fromHexStyle(color) },
-            }), { tags: [SESSION_HIGHLIGHTS_TAG] });
+            }), drawnUnder(root, SESSION_HIGHLIGHTS_TAG));
             if (label) {
                 labelled.push(expression);
                 const anchor = update.toRoot().apply(StateTransforms.Model.MultiStructureSelectionFromExpression, {
@@ -224,20 +226,18 @@ export async function syncSessionHighlightMarks({ plugin, structures, }) {
                 }),
                 by: hotspots,
             })), 'mol-script');
-            const representations = plugin.state.data.select(StateSelection.Generators.ofTransformer(StateTransforms.Representation.StructureRepresentation3D, root.transform.ref));
-            for (const representation of representations) {
-                if (!representation.state.isGhost &&
-                    !representation.transform.tags?.includes(SESSION_HIGHLIGHTS_TAG) &&
-                    !representation.transform.tags?.includes(SITES_TAG)) {
-                    update
-                        .to(representation)
-                        .apply(StateTransforms.Representation
-                        .TransparencyStructureRepresentation3DFromScript, { layers: [{ script: around, value: FADE_TRANSPARENCY }] }, { tags: [SESSION_HIGHLIGHTS_TAG] });
-                }
+            for (const representation of structureRepresentations(plugin, molstar, root)) {
+                update
+                    .to(representation)
+                    .apply(StateTransforms.Representation
+                    .TransparencyStructureRepresentation3DFromScript, { layers: [{ script: around, value: FADE_TRANSPARENCY }] }, { tags: [SESSION_HIGHLIGHTS_TAG] });
             }
         }
     }
     await update.commit();
+}
+export function syncSessionHighlightMarks(args) {
+    return serialPerPlugin(args.plugin, () => drawHighlights(args));
 }
 /**
  * The camera that looks at the whole structure from the side the first copy

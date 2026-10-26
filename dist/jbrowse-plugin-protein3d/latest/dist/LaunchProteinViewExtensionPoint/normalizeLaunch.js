@@ -72,6 +72,16 @@ export function isPairwiseAlignment(value) {
         value.alns.length === 2 &&
         value.alns.every(isAlignmentRow));
 }
+function isTrackSpec(value) {
+    return isString(value) || isRecord(value);
+}
+export function isConnectedViewSpec(value) {
+    return (isRecord(value) &&
+        (value.loc === undefined || isString(value.loc)) &&
+        (value.assembly === undefined || isString(value.assembly)) &&
+        (value.tracks === undefined ||
+            (Array.isArray(value.tracks) && value.tracks.every(isTrackSpec))));
+}
 const RANGES = '{ start, end } numbers or an array of them';
 /**
  * Launch text comes from a url, and the view model throws on a wrongly typed
@@ -95,6 +105,22 @@ const LAUNCH_KEYS = [
     'connectedView',
     'sideBySide',
 ];
+// `uniprotId` is a structure's source too, which readStructure reports, so
+// a wrongly typed one is left out here without a second warning
+function readLinkage(fields, warnings) {
+    const read = fieldReader(fields, key => `\`${key}\``, warnings);
+    const uniprotId = fields.get('uniprotId');
+    return {
+        gene: read('gene', isString, 'a string'),
+        transcriptId: read('transcriptId', isString, 'a string'),
+        uniprotId: isString(uniprotId) ? uniprotId : undefined,
+        connectedView: read('connectedView', isConnectedViewSpec, '{ assembly, loc, tracks }'),
+        connectedViewId: read('connectedViewId', isString, 'a string'),
+        sideBySide: read('sideBySide', isBoolean, 'true or false'),
+        feature: read('feature', isFeature, 'a feature object'),
+        userProvidedTranscriptSequence: read('userProvidedTranscriptSequence', isString, 'a string'),
+    };
+}
 function readViewSettings(fields, warnings) {
     const read = fieldReader(fields, key => `\`${key}\``, warnings);
     const flag = (key) => read(key, isBoolean, 'true or false');
@@ -155,6 +181,7 @@ export function normalizeLaunch(launch) {
     const top = new Map(Object.entries(launch));
     const warnings = [];
     const settings = readViewSettings(top, warnings);
+    const linkage = readLinkage(top, warnings);
     const known = new Set([
         ...Object.keys(settings),
         ...STRUCTURE_KEYS,
@@ -164,8 +191,8 @@ export function normalizeLaunch(launch) {
     if (unknownKeys.length > 0) {
         warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`);
     }
-    const looksUpGene = !!top.get('gene') && !top.get('userProvidedTranscriptSequence');
-    const noStructure = top.get('gene')
+    const looksUpGene = !!linkage.gene && !linkage.userProvidedTranscriptSequence;
+    const noStructure = linkage.gene
         ? 'the launch names no structure, and `gene` is not looked up beside `userProvidedTranscriptSequence`'
         : 'No url, data, uniprotId, pdbId or gene provided when launching protein view';
     const given = top.get('structures');
@@ -179,6 +206,7 @@ export function normalizeLaunch(launch) {
             return {
                 requested: [withUrl(structure)],
                 settings,
+                linkage,
                 warnings,
                 geneModel: looksUpGene &&
                     !!structure.uniprotId &&
@@ -189,7 +217,13 @@ export function normalizeLaunch(launch) {
             };
         }
         return looksUpGene
-            ? { requested: [structure], settings, warnings, geneModel: 'required' }
+            ? {
+                requested: [structure],
+                settings,
+                linkage,
+                warnings,
+                geneModel: 'required',
+            }
             : { error: noStructure, warnings };
     }
     for (const key of STRUCTURE_KEYS) {
@@ -219,12 +253,18 @@ export function normalizeLaunch(launch) {
         return [withUrl(structure)];
     });
     if (requested.length > 0) {
-        return { requested, settings, warnings };
+        return { requested, settings, linkage, warnings };
     }
     return looksUpGene
-        ? { requested: [{}], settings, warnings, geneModel: 'required' }
+        ? {
+            requested: [{}],
+            settings,
+            linkage,
+            warnings,
+            geneModel: 'required',
+        }
         : {
-            error: top.get('gene')
+            error: linkage.gene
                 ? noStructure
                 : 'no entry of `structures` names a url, data, uniprotId or pdbId',
             warnings,

@@ -1,5 +1,3 @@
-import { cutsWholeWalks as wholeWalksRule } from '@jbrowse/bandage-core/layout/walkStrip'
-import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
 import { getSession } from '@jbrowse/core/util'
 
 import {
@@ -46,16 +44,11 @@ export const GraphPane = withLaunchActions
             canonicalAssemblyName(session, region.assemblyName),
           )
     },
-    // Walk rows, and the strip of them under a node layout, measure whole
-    // walks, which a GBZ cut only follows when asked, so a layout change
-    // that changes whether the drawing needs them cuts the track again.
+    // A layout change that changes the cut options cuts the track again:
+    // whole walks (cutsWholeWalksIn), or the walk-row step budget.
     cutChangedFrom(from: LayoutModeValue) {
-      const before = wholeWalksRule(layoutModeByValue(from), {
-        walkStrip: self.walkStrip,
-        host: !!self.host,
-      })
       return (
-        self.cutsWholeWalks !== before ||
+        self.cutsWholeWalks !== self.cutsWholeWalksIn(from) ||
         (from === 'walkrows') !== (self.chosenLayoutMode === 'walkrows')
       )
     },

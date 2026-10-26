@@ -1,4 +1,4 @@
-import { isRecord, isString } from './normalizeLaunch'
+import { isConnectedViewSpec, isString } from './normalizeLaunch'
 
 import type { ConnectedViewSpec } from './resolveShortLaunch'
 
@@ -21,20 +21,6 @@ const ANNOTATION_KEYS = [
 
 function isAnnotationKey(key: string) {
   return ANNOTATION_KEYS.some(k => k === key)
-}
-
-function isTrackSpec(value: unknown) {
-  return isString(value) || isRecord(value)
-}
-
-function isConnectedViewSpec(value: unknown): value is ConnectedViewSpec {
-  return (
-    isRecord(value) &&
-    (value.loc === undefined || isString(value.loc)) &&
-    (value.assembly === undefined || isString(value.assembly)) &&
-    (value.tracks === undefined ||
-      (Array.isArray(value.tracks) && value.tracks.every(isTrackSpec)))
-  )
 }
 
 /**

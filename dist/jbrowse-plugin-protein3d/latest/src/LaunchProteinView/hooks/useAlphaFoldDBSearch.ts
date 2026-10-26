@@ -28,7 +28,7 @@ export default function useAlphaFoldDBSearch({
     modelsUnreachable,
     model,
     noModel,
-  } = useAlphaFoldData({ uniprotId, feature, view })
+  } = useAlphaFoldData({ uniprotId, feature, view, preferredTranscriptId })
   // a stable array, or the isoform picker realigns on every render
   const modelSequence = model?.sequence
   const structureSequences = useMemo(

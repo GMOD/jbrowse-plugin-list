@@ -1,5 +1,6 @@
 import loadMolstar from './loadMolstar'
-import { structureRootCell } from './structureCells'
+import { serialPerPlugin } from './serialPerPlugin'
+import { drawnUnder, structureRootCell } from './structureCells'
 import { DRAWN_CHAINS_POLYMER } from './structurePipeline'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
@@ -18,7 +19,7 @@ export interface ProteinSurface {
 
 export const DEFAULT_SURFACE_OPACITY = 0.45
 
-export async function syncSurfaces({
+async function drawSurfaces({
   plugin,
   structures,
   surface,
@@ -80,7 +81,7 @@ export async function syncSurfaces({
             type: 'molecular-surface',
             typeParams: { alpha, quality: 'high' },
           }),
-          { tags: [SURFACE_TAG] },
+          drawnUnder(cell, SURFACE_TAG),
         )
         changed = true
       }
@@ -90,4 +91,8 @@ export async function syncSurfaces({
     await update.commit()
   }
   return changed
+}
+
+export function syncSurfaces(args: Parameters<typeof drawSurfaces>[0]) {
+  return serialPerPlugin(args.plugin, () => drawSurfaces(args))
 }

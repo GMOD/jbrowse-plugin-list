@@ -146,7 +146,7 @@ export function syncMeasurements({
   /** the Å text beside each line; Node has no canvas to draw it in tests */
   labels?: boolean
 }) {
-  return serialPerPlugin(plugin, MEASUREMENT_TAG, async () => {
+  return serialPerPlugin(plugin, async () => {
     const molstar = await loadMolstar()
     const { Color, StateSelection, StateTransforms } = molstar
     const existing = plugin.state.data.select(

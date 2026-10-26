@@ -18,12 +18,14 @@ export default function StructureSourcePicker({
   setChoice,
   structureURL,
   setStructureURL,
+  file,
   setFile,
 }: {
   choice: string
   setChoice: (c: string) => void
   structureURL: string
   setStructureURL: (url: string) => void
+  file?: File
   setFile: (f: File) => void
 }) {
   return (
@@ -39,8 +41,8 @@ export default function StructureSourcePicker({
             setChoice(event.target.value)
           }}
         >
-          <FormControlLabel value="url" control={<Radio />} label="URL" />
           <FormControlLabel value="file" control={<Radio />} label="File" />
+          <FormControlLabel value="url" control={<Radio />} label="URL" />
         </RadioGroup>
       </FormControl>
 
@@ -71,9 +73,12 @@ export default function StructureSourcePicker({
                 if (f) {
                   setFile(f)
                 }
+                // picking the same file again, edited, fires a change
+                target.value = ''
               }}
             />
           </Button>
+          {file ? <Typography variant="body2">{file.name}</Typography> : null}
         </div>
       )}
     </div>

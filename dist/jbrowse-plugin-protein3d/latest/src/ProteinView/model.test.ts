@@ -268,6 +268,26 @@ test('removing a structure keeps the open panel on the structure it was on', () 
   expect(view.alignmentStructure?.url).toBe('b.cif')
 })
 
+// 1TUP and 2OCJ have the same chain names, so a distance moved onto the other
+// crystal would draw there without a complaint
+test("removing a structure drops its marks and distances and keeps the others' on theirs", () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }, { url: 'b.cif' }, { url: 'c.cif' }],
+    marks: [{ site: 'A:1' }, { site: 'A:2', structure: 2 }],
+    distances: [
+      { a: 'A:1', b: 'A:2', structure: 1 },
+      { a: 'A:3', b: 'A:4', structure: 2 },
+    ],
+  })
+  view.removeStructure(view.structures[0]!)
+  expect(view.marks).toEqual([{ site: 'A:2', structure: 1 }])
+  expect(view.distances).toEqual([
+    { a: 'A:1', b: 'A:2', structure: 0 },
+    { a: 'A:3', b: 'A:4', structure: 1 },
+  ])
+})
+
 test('minor feature types are omitted until every track is shown', () => {
   const view = makeView()
   const structure = view.structures[0]!

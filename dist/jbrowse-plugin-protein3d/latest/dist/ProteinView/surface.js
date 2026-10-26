@@ -1,9 +1,10 @@
 import loadMolstar from './loadMolstar';
-import { structureRootCell } from './structureCells';
+import { serialPerPlugin } from './serialPerPlugin';
+import { drawnUnder, structureRootCell } from './structureCells';
 import { DRAWN_CHAINS_POLYMER } from './structurePipeline';
 export const SURFACE_TAG = 'jbrowse-surface';
 export const DEFAULT_SURFACE_OPACITY = 0.45;
-export async function syncSurfaces({ plugin, structures, surface, }) {
+async function drawSurfaces({ plugin, structures, surface, }) {
     const molstar = await loadMolstar();
     const { StateSelection, StateTransforms, createStructureRepresentationParams, } = molstar;
     const alpha = surface?.opacity ?? DEFAULT_SURFACE_OPACITY;
@@ -42,7 +43,7 @@ export async function syncSurfaces({ plugin, structures, surface, }) {
                 update.to(polymer).apply(StateTransforms.Representation.StructureRepresentation3D, createStructureRepresentationParams(plugin, data, {
                     type: 'molecular-surface',
                     typeParams: { alpha, quality: 'high' },
-                }), { tags: [SURFACE_TAG] });
+                }), drawnUnder(cell, SURFACE_TAG));
                 changed = true;
             }
         }
@@ -51,4 +52,7 @@ export async function syncSurfaces({ plugin, structures, surface, }) {
         await update.commit();
     }
     return changed;
+}
+export function syncSurfaces(args) {
+    return serialPerPlugin(args.plugin, () => drawSurfaces(args));
 }

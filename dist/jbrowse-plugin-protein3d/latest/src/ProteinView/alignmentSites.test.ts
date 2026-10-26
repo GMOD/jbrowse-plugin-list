@@ -134,3 +134,35 @@ test("a site's residues get sticks in the site's color, which a recolor leaves a
     expect(siteCells(plugin).representation).toHaveLength(0)
   })
 })
+
+test('a structure that draws one chain of a homodimer gets sticks on that chain alone', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    registerColorThemes(plugin)
+    const residues = ['MET', 'LYS', 'VAL', 'ALA']
+    const [structure] = (
+      await loadCaOnly(
+        plugin,
+        [
+          { asym: 'A', entity: '1', residues },
+          { asym: 'C', entity: '1', residues },
+        ],
+        { drawChains: ['C'] },
+      )
+    ).structures
+    if (!structure) {
+      throw new Error('no structure loaded')
+    }
+    await syncSiteSticks({
+      plugin,
+      structures: [
+        {
+          molstarStructure: structure,
+          sites: { entityId: '1', byLabelSeqId: new Map([[2, 1]]) },
+          color,
+          chains: ['C'],
+        },
+      ],
+    })
+    expect(stickColors(plugin).byResidue).toEqual({ C2: heme })
+  })
+})

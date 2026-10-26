@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest'
 
+import { cssScaleOf } from './colorScale'
+import { resolvedColor } from './proteinColor'
 import { paintedColor, valueDomain } from './valueScale'
 
 test('the domain trims the extremes of a long list of scores', () => {
@@ -56,4 +58,30 @@ test('a threshold track takes only the title from the data', () => {
 test('a field that is not a value field passes through', () => {
   const color = { field: 'alphaMissense' } as const
   expect(paintedColor(color, { domain: { min: 0, max: 1 } })).toBe(color)
+})
+
+test('an end from the data past the given end moves to one beyond it', () => {
+  const values = [1, 2, 3]
+  const painted = paintedColor(
+    { field: 'values', values, domainMin: 10 },
+    { domain: valueDomain(values) },
+  )
+  expect(painted).toMatchObject({ domainMin: 10, domainMax: 11 })
+})
+
+// values all 0 with domainMax 0 made a zero-width ramp, and its NaN position
+// indexed no stop, so the header threw while drawing the key
+test('a zero-width ramp paints its low color', () => {
+  const values = [0, 0, 0, 0]
+  const painted = resolvedColor(
+    paintedColor(
+      { field: 'values', values, domainMin: 0, domainMax: 0 },
+      { domain: valueDomain(values) },
+    ),
+  )
+  if (!painted) {
+    throw new Error('a values color resolves to a scale')
+  }
+  const paint = cssScaleOf(painted)
+  expect(paint(0)).toBe(paint(-5))
 })

@@ -1,4 +1,5 @@
 import loadMolstar from './loadMolstar'
+import { serialPerPlugin } from './serialPerPlugin'
 import { structureRootCell } from './structureCells'
 
 import type * as MolstarExports from './molstarExports'
@@ -17,7 +18,14 @@ const SuperpositionTag = 'SuperpositionTransform'
  * ensemble's models as separate structures: it used to align each of them on
  * its own, twenty TM-aligns for one NMR entry.
  */
-export async function superposeStructures(
+export function superposeStructures(
+  plugin: PluginContext,
+  loads: readonly (readonly Structure[])[],
+) {
+  return serialPerPlugin(plugin, () => superpose(plugin, loads))
+}
+
+async function superpose(
   plugin: PluginContext,
   loads: readonly (readonly Structure[])[],
 ) {

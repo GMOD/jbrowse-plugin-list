@@ -18,20 +18,39 @@ function parseHaplotypeList(text: string) {
   return text.split(/[\s,]+/).filter(name => name !== '')
 }
 
+const sameList = (a: readonly string[], b: readonly string[]) =>
+  a.join('\n') === b.join('\n')
+
+// The cut's set, and the last one this field saw: an outside change (a
+// restored session, a launch) resets the draft, while the field's own apply
+// records what it set first, so it keeps its focus and draft
+function useCutHaplotypes(model: LinearGraphCutModel, reset: () => void) {
+  const current = model.cutHaplotypes ?? []
+  const [seen, setSeen] = useState(current)
+  if (!sameList(current, seen)) {
+    setSeen(current)
+    reset()
+  }
+  return (haplotypes: string[]) => {
+    if (!sameList(haplotypes, current)) {
+      setSeen(haplotypes)
+      model.setSubgraphHaplotypes(haplotypes)
+      model.recut()
+    }
+  }
+}
+
 const HaplotypeListField = observer(function HaplotypeListField({
   model,
 }: {
   model: LinearGraphCutModel
 }) {
   const [draft, setDraft] = useState(model.cutHaplotypes?.join(', ') ?? '')
+  const setCut = useCutHaplotypes(model, () => {
+    setDraft(model.cutHaplotypes?.join(', ') ?? '')
+  })
   const apply = () => {
-    const parsed = parseHaplotypeList(draft)
-    const unchanged =
-      parsed.join('\n') === (model.cutHaplotypes ?? []).join('\n')
-    if (!unchanged) {
-      model.setSubgraphHaplotypes(parsed)
-      model.recut()
-    }
+    setCut(parseHaplotypeList(draft))
   }
   return (
     <TextField
@@ -72,12 +91,10 @@ const HaplotypePickField = observer(function HaplotypePickField({
   const draftRef = useRef(draft)
   const typed = useRef('')
   const [open, setOpen] = useState(false)
-  const apply = (haplotypes: string[]) => {
-    if (haplotypes.join('\n') !== (model.cutHaplotypes ?? []).join('\n')) {
-      model.setSubgraphHaplotypes(haplotypes)
-      model.recut()
-    }
-  }
+  const apply = useCutHaplotypes(model, () => {
+    draftRef.current = model.cutHaplotypes ?? []
+    setDraft(draftRef.current)
+  })
   return (
     <Autocomplete
       multiple
@@ -126,9 +143,7 @@ const HaplotypePickField = observer(function HaplotypePickField({
   )
 })
 
-// Only a GBZ cut and a walk-indexed rGFA cut read the set. The inner field is
-// keyed on it so an outside change (a restored session, a launch) resets the
-// draft rather than fighting it.
+// Only a GBZ cut and a walk-indexed rGFA cut read the set
 const SubgraphHaplotypesField = observer(function SubgraphHaplotypesField({
   model,
 }: {
@@ -136,14 +151,13 @@ const SubgraphHaplotypesField = observer(function SubgraphHaplotypesField({
 }) {
   const { classes } = useStyles()
   const names = model.haplotypeNames
-  const key = model.cutHaplotypes?.join(',') ?? ''
   const adapter = model.sourceAdapter
   return adapter && cutsByHaplotype(adapter) ? (
     <div className={classes.section}>
       {names ? (
-        <HaplotypePickField key={key} model={model} names={names} />
+        <HaplotypePickField model={model} names={names} />
       ) : (
-        <HaplotypeListField key={key} model={model} />
+        <HaplotypeListField model={model} />
       )}
       <Typography variant="caption" component="div" color="text.secondary">
         {names

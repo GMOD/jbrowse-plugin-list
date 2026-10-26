@@ -156,10 +156,17 @@ const PdbSearch = observer(function PdbSearch({
   const launchWaiting =
     typedPdbIdInvalid ||
     (typedIdOverrides ? isoformStatuses.some(Boolean) : isLoading)
+  // RCSB answering that it has no such entry, as opposed to failing to
+  // answer, means the launch would open a view on a 404
+  const typedIdUnknown =
+    typedIdOverrides &&
+    entryError instanceof Error &&
+    'status' in entryError &&
+    entryError.status === 404
   const launchError = typedIdOverrides
     ? launchWaiting
       ? undefined
-      : isoformError
+      : (isoformError ?? (typedIdUnknown ? entryError : undefined))
     : error
   // Loading or failed, the lookup can still hold the previous query's
   // accession, which would name the view and its 1D entry
@@ -188,9 +195,11 @@ const PdbSearch = observer(function PdbSearch({
           helperText={
             typedPdbIdInvalid
               ? 'A PDB ID is four characters beginning with a digit'
-              : 'Overrides the selection below'
+              : typedIdUnknown
+                ? `RCSB has no entry ${debouncedTypedPdbId.toUpperCase()}`
+                : 'Overrides the selection below'
           }
-          error={typedPdbIdInvalid}
+          error={typedPdbIdInvalid || typedIdUnknown}
           value={typedPdbId}
           onChange={event => {
             setTypedPdbId(event.target.value)
@@ -204,7 +213,10 @@ const PdbSearch = observer(function PdbSearch({
             <PdbResultsTable
               entries={entries}
               selectedPdbId={selectedPdbId}
-              onSelect={setUserPdbId}
+              onSelect={pdbId => {
+                setUserPdbId(pdbId)
+                setTypedPdbId('')
+              }}
             />
           ) : (
             <Typography>

@@ -1,4 +1,4 @@
-import { isRecord, isString } from './normalizeLaunch';
+import { isConnectedViewSpec, isString } from './normalizeLaunch';
 const ANNOTATION_KEYS = [
     'uniprotId',
     'gene',
@@ -8,16 +8,6 @@ const ANNOTATION_KEYS = [
 ];
 function isAnnotationKey(key) {
     return ANNOTATION_KEYS.some(k => k === key);
-}
-function isTrackSpec(value) {
-    return isString(value) || isRecord(value);
-}
-function isConnectedViewSpec(value) {
-    return (isRecord(value) &&
-        (value.loc === undefined || isString(value.loc)) &&
-        (value.assembly === undefined || isString(value.assembly)) &&
-        (value.tracks === undefined ||
-            (Array.isArray(value.tracks) && value.tracks.every(isTrackSpec))));
 }
 /**
  * A `ProteinAnnotationView` spec out of untyped fields. An unknown key or a

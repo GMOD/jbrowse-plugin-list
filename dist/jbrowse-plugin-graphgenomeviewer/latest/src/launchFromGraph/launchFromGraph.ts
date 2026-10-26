@@ -253,8 +253,8 @@ function assemblyNamesOfTrack(
 // point of launching from the graph instead of from a linear view.
 //
 // Panels carry THE GRAPH'S OWN TRACK and nothing else, which is a narrower rule
-// than the single-view launch's (see launchTracks, which scans the session for
-// the assembly's annotation). Tried that here: a gene track per panel takes
+// than the single-view launch's (see showInLinearView, which adds the
+// assembly's gene track). Tried that here: a gene track per panel takes
 // about 160px of a row that is otherwise a ruler, so on five strains the
 // annotation is most of the viewport and the ribbons — the thing the launch
 // exists to draw — are squeezed into the gaps, and `collapseEmptyRows` is here

@@ -1,5 +1,6 @@
 import { resolveStructureUrl } from 'p2s_mapper'
 
+import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type {
   ProteinStructureSpec,
   ProteinViewSpec,
@@ -120,6 +121,22 @@ export function isPairwiseAlignment(
   )
 }
 
+function isTrackSpec(value: unknown) {
+  return isString(value) || isRecord(value)
+}
+
+export function isConnectedViewSpec(
+  value: unknown,
+): value is ConnectedViewSpec {
+  return (
+    isRecord(value) &&
+    (value.loc === undefined || isString(value.loc)) &&
+    (value.assembly === undefined || isString(value.assembly)) &&
+    (value.tracks === undefined ||
+      (Array.isArray(value.tracks) && value.tracks.every(isTrackSpec)))
+  )
+}
+
 const RANGES = '{ start, end } numbers or an array of them'
 
 /**
@@ -157,6 +174,18 @@ export interface LaunchViewSettings extends Omit<
   colorScheme?: string
 }
 
+/** What links the launch to a transcript and places the views. */
+export interface LaunchLinkage {
+  gene?: string
+  transcriptId?: string
+  uniprotId?: string
+  connectedView?: ConnectedViewSpec
+  connectedViewId?: string
+  sideBySide?: boolean
+  feature?: SimpleFeatureSerialized
+  userProvidedTranscriptSequence?: string
+}
+
 const LAUNCH_KEYS = [
   'structures',
   'gene',
@@ -164,6 +193,38 @@ const LAUNCH_KEYS = [
   'connectedView',
   'sideBySide',
 ]
+
+// `uniprotId` is a structure's source too, which readStructure reports, so
+// a wrongly typed one is left out here without a second warning
+function readLinkage(
+  fields: ReadonlyMap<string, unknown>,
+  warnings: string[],
+): LaunchLinkage {
+  const read = fieldReader<keyof LaunchLinkage>(
+    fields,
+    key => `\`${key}\``,
+    warnings,
+  )
+  const uniprotId = fields.get('uniprotId')
+  return {
+    gene: read('gene', isString, 'a string'),
+    transcriptId: read('transcriptId', isString, 'a string'),
+    uniprotId: isString(uniprotId) ? uniprotId : undefined,
+    connectedView: read(
+      'connectedView',
+      isConnectedViewSpec,
+      '{ assembly, loc, tracks }',
+    ),
+    connectedViewId: read('connectedViewId', isString, 'a string'),
+    sideBySide: read('sideBySide', isBoolean, 'true or false'),
+    feature: read('feature', isFeature, 'a feature object'),
+    userProvidedTranscriptSequence: read(
+      'userProvidedTranscriptSequence',
+      isString,
+      'a string',
+    ),
+  }
+}
 
 function readViewSettings(
   fields: ReadonlyMap<string, unknown>,
@@ -253,6 +314,7 @@ function withUrl(structure: LaunchStructure): LaunchStructure {
 export interface NormalizedLaunch {
   requested: LaunchStructure[]
   settings: LaunchViewSettings
+  linkage: LaunchLinkage
   warnings: string[]
   /**
    * What the `gene` lookup's AlphaFold model is to the one structure in
@@ -279,6 +341,7 @@ export function normalizeLaunch(
   const top = new Map<string, unknown>(Object.entries(launch))
   const warnings: string[] = []
   const settings = readViewSettings(top, warnings)
+  const linkage = readLinkage(top, warnings)
   const known = new Set([
     ...Object.keys(settings),
     ...STRUCTURE_KEYS,
@@ -288,9 +351,8 @@ export function normalizeLaunch(
   if (unknownKeys.length > 0) {
     warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`)
   }
-  const looksUpGene =
-    !!top.get('gene') && !top.get('userProvidedTranscriptSequence')
-  const noStructure = top.get('gene')
+  const looksUpGene = !!linkage.gene && !linkage.userProvidedTranscriptSequence
+  const noStructure = linkage.gene
     ? 'the launch names no structure, and `gene` is not looked up beside `userProvidedTranscriptSequence`'
     : 'No url, data, uniprotId, pdbId or gene provided when launching protein view'
 
@@ -315,6 +377,7 @@ export function normalizeLaunch(
       return {
         requested: [withUrl(structure)],
         settings,
+        linkage,
         warnings,
         geneModel:
           looksUpGene &&
@@ -326,7 +389,13 @@ export function normalizeLaunch(
       }
     }
     return looksUpGene
-      ? { requested: [structure], settings, warnings, geneModel: 'required' }
+      ? {
+          requested: [structure],
+          settings,
+          linkage,
+          warnings,
+          geneModel: 'required',
+        }
       : { error: noStructure, warnings }
   }
 
@@ -370,12 +439,18 @@ export function normalizeLaunch(
     return [withUrl(structure)]
   })
   if (requested.length > 0) {
-    return { requested, settings, warnings }
+    return { requested, settings, linkage, warnings }
   }
   return looksUpGene
-    ? { requested: [{}], settings, warnings, geneModel: 'required' }
+    ? {
+        requested: [{}],
+        settings,
+        linkage,
+        warnings,
+        geneModel: 'required',
+      }
     : {
-        error: top.get('gene')
+        error: linkage.gene
           ? noStructure
           : 'no entry of `structures` names a url, data, uniprotId or pdbId',
         warnings,

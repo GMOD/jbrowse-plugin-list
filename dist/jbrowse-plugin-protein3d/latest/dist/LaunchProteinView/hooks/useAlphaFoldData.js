@@ -8,14 +8,14 @@ import { launchAlphaFoldModel } from '../resolveGeneLaunch';
  * The AlphaFold DB model a launch opens for this gene's accession, the
  * canonical file when the API does not answer.
  */
-export default function useAlphaFoldData({ uniprotId, feature, view, }) {
+export default function useAlphaFoldData({ uniprotId, feature, view, preferredTranscriptId, }) {
     const { data, isLoading, isValidating, error } = useSWR(uniprotId ? ['alphafold-models', uniprotId] : null, ([, id]) => fetchAlphaFoldModels(id), { ...STATIC_SWR_OPTIONS, keepPreviousData: true });
     const { isoformSequences } = useIsoformProteinSequences({ feature, view });
     // keepPreviousData hands back the last accession's models after an error
     // and after the accession is cleared, when the key is null
     const model = useMemo(() => uniprotId && (data || error)
-        ? launchAlphaFoldModel(uniprotId, error ? undefined : data, isoformSequences)
-        : undefined, [uniprotId, data, error, isoformSequences]);
+        ? launchAlphaFoldModel(uniprotId, error ? undefined : data, isoformSequences, preferredTranscriptId)
+        : undefined, [uniprotId, data, error, isoformSequences, preferredTranscriptId]);
     const modelsUnreachable = uniprotId ? error : undefined;
     return {
         isLoading,

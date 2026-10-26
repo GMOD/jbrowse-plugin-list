@@ -520,6 +520,7 @@ export const withFitViews = withHostViews
         connectorThickness: self.connectorThickness,
         drawPaths,
         nodeWidth: self.nodeWidth,
+        edgeWidth: self.linkWidth,
         highlight,
         // Untracked, so a zoom does not eagerly rebuild geometry — the
         // debounced viewportDirty bump drives the scale-dependent rebuild
@@ -573,17 +574,21 @@ export const withFitViews = withHostViews
             facet: self.facetSpec,
             colorScheme: self.effectiveColorScheme,
             nodeWidth: self.nodeWidth,
+            edgeWidth: self.linkWidth,
             showDeletionEdges: self.showDeletionEdges,
             linearLayout: self.linearLayout,
             contigThickness: self.contigThickness,
             connectorThickness: self.connectorThickness,
             region: self.graphRegion,
             colorDomain: self.statedColorDomain,
-            genes: self.showGenes ? self.backboneGenes : undefined,
+            genes: self.showGenes
+              ? [...(self.backboneGenes ?? []), ...(self.ownGeneFeatures ?? [])]
+              : undefined,
             walkRows: self.walkRowBars,
             walkRowPitch: self.walkRowPitch,
             rowGenes: self.walkRowGenes,
             rowGeneGaps: self.walkRowGeneGaps,
+            rowAnnotation: self.walkRowAnnotation,
             walkStrip: self.walkStripRows && {
               rows: self.walkStripRows,
               rowGenes: self.walkRowGenes,

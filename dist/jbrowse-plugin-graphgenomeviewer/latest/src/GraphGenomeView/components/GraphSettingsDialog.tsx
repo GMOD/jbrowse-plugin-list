@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { BUBBLE_SPREADS } from '@jbrowse/bandage-core/bubbleSpreads'
+import { EDGE_WIDTHS } from '@jbrowse/bandage-core/edgeWidths'
 import { LAYOUT_ENGINES } from '@jbrowse/bandage-core/layoutEngines'
 import { LAYOUT_QUALITIES } from '@jbrowse/bandage-core/layoutQualities'
 import { NODE_WIDTHS } from '@jbrowse/bandage-core/nodeWidths'
@@ -224,6 +225,21 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
             <Caption>
               Depth as width. In a cut with walks, depth is how many haplotypes
               carry the node.
+            </Caption>
+          </SettingSelect>
+
+          <SettingSelect
+            label="Link width"
+            value={model.linkWidth}
+            options={EDGE_WIDTHS}
+            testId="graph-link-width-select"
+            onChange={links => {
+              model.setLinkWidth(links)
+            }}
+          >
+            <Caption>
+              Walks as width, so a common route reads heavy and a private one
+              thin.
             </Caption>
           </SettingSelect>
 

@@ -33,7 +33,7 @@ import {
 } from '@jbrowse/mobx-state-tree'
 import { autorun } from 'mobx'
 
-import { facetKeyRows } from './legendSections'
+import { facetKeyRows, legendSections } from './legendSections'
 import { MAX_GRAPH_REGION_BP, formatSpanBp } from './model'
 import { walkRowGeneKey } from './pane/fitViews'
 import { EMPTY_BATCH, SELECT_BRIGHTEN } from './pane/paneBase'
@@ -156,6 +156,7 @@ vi.mock('@jbrowse/core/util/io', () => ({
 }))
 
 const SIMPLE_GFA = 'H\tVN:Z:1.0\nS\t1\tACGT\nS\t2\tGGCC\nL\t1\t+\t2\t+\t0M\n'
+const WALKED_GFA = `${SIMPLE_GFA}W\tGRCh38\t0\tchr1\t0\t8\t>1>2\nW\tA\t1\tctg\t0\t8\t>1>2\n`
 
 const MOCK_LAYOUT = {
   nodePositions: {
@@ -218,7 +219,9 @@ function createAnchoredModel(props: { layers?: GraphLayers } = {}) {
 
 // A view attached to a tree, so afterAttach installs its reactions. A root
 // model never attaches.
-function attachedModel(props: { layoutMode?: LayoutModeValue } = {}) {
+function attachedModel(
+  props: { layoutMode?: LayoutModeValue; [key: string]: unknown } = {},
+) {
   return types
     .model({ view: stateModelFactory() })
     .create({ view: { type: 'GraphGenomeView', ...props } }).view
@@ -292,12 +295,24 @@ describe('rampDomain', () => {
     expect(model.rampDomain).toBeUndefined()
   })
 
+  test('a saved flat color is read as the channel object', () => {
+    const model = restoredView({
+      color: { field: 'position', domainMin: 5, domainMax: 50 },
+    })
+    expect(model.color).toEqual({
+      field: 'position',
+      scale: { domainMin: 5, domainMax: 50 },
+    })
+    expect(model.statedColorDomain).toEqual({ start: 5, end: 50 })
+    expect(restoredView({ color: 'uniform' }).chosenColorScheme).toBe('uniform')
+  })
+
   test('a stated color domain survives loading a GFA file, and wins', async () => {
     rpcRespond()
     const model = createModel()
     applySnapshot(model, {
       ...getSnapshot(model),
-      color: { domainMin: 1445000, domainMax: 1474500 },
+      color: { scale: { domainMin: 1445000, domainMax: 1474500 } },
       loadedRegion: TEST_REGION,
     })
     await model.loadGFA(SIMPLE_GFA)
@@ -364,6 +379,30 @@ describe('restoring a stated cut', () => {
         opts: { hops: 2, haplotypes: ['HG002#1', 'HG005#2'] },
       }),
     )
+  })
+
+  // Only a GBZ cut follows snarls past the window; a walk file cuts the same
+  // graph either way, so the strip's toggle has nothing to fetch.
+  test.each([
+    ['RgfaTabixAdapter', 0],
+    ['GbzBaseSyntenyAdapter', 1],
+  ])('the walk strip on a %s track cuts again %i times', async (type, n) => {
+    rpcRespond()
+    mockSession.tracks = [{ trackId: 'rgfa-track', adapter: { type } }]
+    const model = attachedModel({
+      layoutMode: 'force',
+      loadedTrackId: 'rgfa-track',
+      loadedRegion: TEST_REGION,
+    })
+    await vi.waitFor(() => {
+      expect(model.graph).toBeDefined()
+    })
+    const cuts = () =>
+      mockRpcCall.mock.calls.filter(c => c[1] === 'GetSubgraph').length
+    const before = cuts()
+    model.setWalkStrip(!model.walkStrip)
+    await layoutsSettled(model)
+    expect(cuts()).toBe(before + n)
   })
 
   test('a stated track the session lacks is reported without a fetch', async () => {
@@ -1136,7 +1175,7 @@ describe('layoutMode', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     rpcRespond()
     const model = attachedModel()
-    await model.loadGFA(SIMPLE_GFA, 'plain')
+    await model.loadGFA(WALKED_GFA, 'plain')
 
     model.setMaxGraphNodes(1)
     await layoutsSettled(model)
@@ -1434,12 +1473,27 @@ describe('node budget', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     rpcRespond()
     const model = withLimit(1)
-    await model.loadGFA(SIMPLE_GFA, 'two nodes')
+    await model.loadGFA(WALKED_GFA, 'two nodes')
     expect(String(model.error)).toMatch(/too large to draw/i)
 
     await model.switchLayout('walkrows')
 
     expect(model.error).toBeUndefined()
+    consoleSpy.mockRestore()
+  })
+
+  // walk rows hand a graph with no walks to the force engine, which draws
+  // every node
+  test('walk rows of a graph with no walks keep the budget', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    rpcRespond()
+    const model = withLimit(1)
+    model.setLayoutMode('walkrows')
+    await model.loadGFA(SIMPLE_GFA, 'two nodes')
+    expect(String(model.error)).toMatch(/too large to draw/i)
+    expect(
+      mockRpcCall.mock.calls.filter(c => c[1] === 'GraphComputeLayout'),
+    ).toHaveLength(0)
     consoleSpy.mockRestore()
   })
 
@@ -1466,7 +1520,7 @@ describe('node budget', () => {
     rpcRespond()
     const model = withLimit(1)
     model.setLayoutMode('walkrows')
-    await model.loadGFA(SIMPLE_GFA, 'two nodes')
+    await model.loadGFA(WALKED_GFA, 'two nodes')
     expect(model.error).toBeUndefined()
     expect(model.layoutResult).toBeDefined()
   })
@@ -2279,6 +2333,61 @@ describe('launching out of the graph', () => {
   // Where every contributor is a loaded assembly the graph offers one panel per
   // strain, and a synteny view of all of them — the item is disabled while no
   // synteny track aligns them, rather than absent.
+  // Sakai's allele is drawn bare unless Sakai's own annotation is read onto
+  // it: the reference's genes only reach the backbone
+  test("a loaded strain's own genes are read onto its nodes off the reference", async () => {
+    mockSession.assemblyNames = ['K12', 'Sakai']
+    mockSession.tracks = [
+      {
+        trackId: 'Sakai_genes',
+        name: 'Sakai genes',
+        assemblyNames: ['Sakai'],
+        adapter: { type: 'Gff3TabixAdapter' },
+      },
+    ]
+    const model = await loadedGraph(ECOLI_RGFA, {
+      refName: 'chr',
+      assemblyName: 'K12',
+      start: 1000,
+      end: 1020,
+    })
+    expect(model.ownGeneReads).toEqual([
+      {
+        stableRefName: 'Sakai#1#chr',
+        trackId: 'Sakai_genes',
+        region: {
+          assemblyName: 'Sakai',
+          refName: 'chr',
+          start: 90000,
+          end: 90004,
+        },
+      },
+    ])
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'CoreGetFeatures'
+        ? Promise.resolve([
+            {
+              name: 'stx2A',
+              refName: 'chr',
+              start: 90001,
+              end: 90003,
+              strand: 1,
+              subfeatures: [{ type: 'exon', start: 90001, end: 90003 }],
+            },
+          ])
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    await model.loadOwnGenes()
+    expect(model.ownGeneFeatures).toEqual([
+      expect.objectContaining({
+        name: 'stx2A · Sakai#1',
+        refName: 'Sakai#1#chr',
+        start: 90001,
+        end: 90003,
+      }),
+    ])
+  })
+
   test('loaded strains offer a per-strain linear view and a synteny item', async () => {
     mockSession.assemblyNames = ['K12', 'Sakai']
     const model = await loadedGraph(ECOLI_RGFA, {
@@ -2343,6 +2452,68 @@ describe('launching out of the graph', () => {
       ],
     ])
     expect(model.connectedViewId).toBe('view-1')
+  })
+
+  test('an opened view carries one gene track, not every feature track', async () => {
+    mockSession.assemblyNames = ['hg38']
+    const feature = (trackId: string, name: string, type: string) => ({
+      trackId,
+      name,
+      type: 'FeatureTrack',
+      assemblyNames: ['hg38'],
+      adapter: { type },
+    })
+    mockSession.tracks = [
+      feature('rgfa-track', 'graph', 'RgfaTabixAdapter'),
+      feature('clinvar', 'ClinVar', 'BigBedAdapter'),
+      feature('ncbi', 'NCBI RefSeq genes', 'Gff3TabixAdapter'),
+      feature('gwas', 'GWAS catalog', 'BedTabixAdapter'),
+    ]
+    const model = await loadedGraph(HPRC_RGFA)
+    const { reference } = model.nodeLaunchTargets('1+')
+    model.showInLinearView(reference!)
+
+    expect(mockSession.addedViews).toEqual([
+      [
+        'LinearGenomeView',
+        expect.objectContaining({
+          init: expect.objectContaining({ tracks: ['rgfa-track', 'ncbi'] }),
+        }),
+      ],
+    ])
+  })
+
+  // a BED named for no annotation is not picked as genes, but beats `No
+  // tracks active`
+  test('a strain with no gene-looking track opens on its first feature track', async () => {
+    mockSession.assemblyNames = ['K12', 'Sakai']
+    mockSession.tracks = [
+      {
+        trackId: 'Sakai_segments',
+        name: 'Sakai segments',
+        type: 'FeatureTrack',
+        assemblyNames: ['Sakai'],
+        adapter: { type: 'BedAdapter' },
+      },
+    ]
+    const model = await loadedGraph(ECOLI_RGFA, {
+      refName: 'chr',
+      assemblyName: 'K12',
+      start: 1000,
+      end: 1020,
+    })
+    model.showInLinearView(model.nodeLaunchTargets('3+').own!)
+    expect(mockSession.addedViews).toEqual([
+      [
+        'LinearGenomeView',
+        expect.objectContaining({
+          init: expect.objectContaining({
+            assembly: 'Sakai',
+            tracks: ['Sakai_segments'],
+          }),
+        }),
+      ],
+    ])
   })
 
   // A pairing is not stolen from a view still on screen: a graph launched from
@@ -2877,6 +3048,23 @@ describe('what the row axis draws, in pixels', () => {
     expect(hidden.hiddenEdgeIndexes!.size).toBe(0)
   })
 
+  test('the legend keys the dashed links only while they draw', async () => {
+    const deletionRows = (model: Awaited<ReturnType<typeof fitted>>) =>
+      legendSections(model)
+        .filter(s => s.testid === 'graph-deletion-legend')
+        .flatMap(s => s.rows)
+    const shown = await fitted()
+    expect(deletionRows(shown)).toMatchObject([
+      {
+        label: expect.stringMatching(/^skips .* sequence \(a deletion\)$/),
+        swatch: { kind: 'line', dashed: true },
+      },
+    ])
+    expect(
+      deletionRows(await fitted({ layers: { deletions: false } })),
+    ).toEqual([])
+  })
+
   // The panel-alignment half: the backbone is drawn across the pane rather than
   // squeezed into whatever the vertical fit left it. The recorded points are
   // the stroke's coordinates; the round caps the canvas adds past them are not
@@ -2978,7 +3166,7 @@ describe('the auto color scheme', () => {
     const model = createModel()
     applySnapshot(model, {
       ...getSnapshot(model),
-      color: { domainMin: 1000, domainMax: 5000 },
+      color: { scale: { domainMin: 1000, domainMax: 5000 } },
     })
     await model.loadGFA(RGFA, 'rgfa')
 
@@ -3242,6 +3430,71 @@ describe('walk rows', () => {
     model.setWalkStrip(false)
     expect(model.walkStripShown).toBe(false)
     expect(model.walkStripRows).toBeUndefined()
+  })
+
+  // node 2 is off GRCh38's path and both A#1 and B#1 walk it
+  test('the block two rows walk off the reference is lettered on both', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    expect(model.sharedBlocks).toBeUndefined()
+    model.setLayer('walkBlocks', true)
+    const rows = [model.walkRowBars!.reference, ...model.walkRowBars!.rows]
+    const lettered = model.sharedBlocks!.map(b => ({
+      label: rows[b.row]!.label,
+      start: b.start,
+      bp: b.bp,
+      block: b.block,
+    }))
+    expect(lettered.sort((a, b) => a.label.localeCompare(b.label))).toEqual([
+      { label: 'A#1', start: 4, bp: 8, block: 0 },
+      { label: 'B#1', start: 4, bp: 8, block: 0 },
+    ])
+  })
+
+  test('the shared order stacks rows that walk the same nodes together', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    model.setWalkRowSamples(['A', 'B'])
+    const before = model.walkRowBars!.rows.map(r => r.label)
+    model.setWalkRowOrder('shared')
+    const labels = model.walkRowBars!.rows.map(r => r.label)
+    expect(labels).not.toEqual(before)
+    // A#1 and B#1 share node 2, so B#1 stacks under A#1 rather than after
+    // A#2, which walks GRCh38's own route
+    expect(labels).toEqual(['A#1', 'B#1', 'A#2'])
+    // the sample filter and the order sit side by side in the grammar
+    expect(model.walkRowSamples).toEqual(['A', 'B'])
+    model.setWalkRowSamples(undefined)
+    expect(model.walkRowOrder).toBe('shared')
+  })
+
+  test('ribbons join neighbouring walk rows where they walk the same nodes', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    expect(model.walkRowRibbons).toBeUndefined()
+    model.setLayer('walkRibbons', true)
+    const ribbons = model.walkRowRibbons!
+    expect(ribbons.length).toBeGreaterThan(0)
+    // every row passes nodes 1 and 3, so each pair of neighbours shares a
+    // stretch that starts at both bars' left ends
+    const rows = [model.walkRowBars!.reference, ...model.walkRowBars!.rows]
+    for (let row = 0; row < rows.length - 1; row++) {
+      expect(ribbons.some(r => r.row === row && r.a0 === 0 && r.b0 === 0)).toBe(
+        true,
+      )
+    }
   })
 
   test('walk rows and tube maps take no strip', async () => {
@@ -3540,7 +3793,7 @@ describe('walk rows', () => {
     // the grid, then the key line under it
     expect(model.canvasHeight).toBe(Math.max(160, grid.total + 8 + 19))
     expect(facetKeyRows(model).map(r => r.label)).toEqual([
-      "not on the panel's walk",
+      'only in other haplotypes',
     ])
     expect(model.scale).toBeCloseTo(grid.scale, 10)
     expect(model.scale).not.toBeCloseTo(whole, 10)
@@ -3604,7 +3857,7 @@ describe('walk rows', () => {
     model.liftWalks(['B#1#ctg'])
     const svg = model.figure()!
     expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)
-    expect(svg).toContain('not on B#1')
+    expect(svg).toContain('only in other haplotypes')
   })
 
   test('a tube map lifts no walk: its tubes are the walks', async () => {
@@ -3801,6 +4054,33 @@ describe('walk rows', () => {
     model.setHoveredRowWalks([])
     expect(model.walkLift).toBeUndefined()
   })
+
+  // each lift rebuilds the drawing, and a sweep down a lane crosses many rows
+  test('moving between lane rows lifts the next once the pointer settles', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'auto',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    vi.useFakeTimers()
+    try {
+      model.setHoveredRowWalks(['A#1#ctg'])
+      expect(model.hoveredRowWalks).toEqual(['A#1#ctg'])
+      model.setHoveredRowWalks(['A#2#ctg'])
+      model.setHoveredRowWalks(['B#1#ctg'])
+      vi.advanceTimersByTime(40)
+      // more moves within the row do not put the lift off
+      model.setHoveredRowWalks(['B#1#ctg'])
+      expect(model.hoveredRowWalks).toEqual(['A#1#ctg'])
+      vi.advanceTimersByTime(60)
+      expect(model.hoveredRowWalks).toEqual(['B#1#ctg'])
+      model.setHoveredRowWalks([])
+      expect(model.hoveredRowWalks).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('annotation reads beside a cut', () => {
@@ -3898,6 +4178,43 @@ describe('annotation reads beside a cut', () => {
     await loaded
     expect(model.isLoading).toBe(false)
     expect(model.error).toBeUndefined()
+  })
+
+  // most graphs have no bubble index, and a pan re-cuts many times
+  test('a bubble index that failed to read is not asked for again', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const bubbleReads = () =>
+      mockRpcCall.mock.calls.filter(
+        c =>
+          (c[2] as { adapterConfig?: { type?: string } }).adapterConfig
+            ?.type === 'MinigraphBubbleAdapter',
+      ).length
+    const respond = mockRpcCall.getMockImplementation()!
+    mockRpcCall.mockImplementation(
+      (sid: unknown, method: string, args: Record<string, unknown>) =>
+        (args.adapterConfig as { type?: string } | undefined)?.type ===
+        'MinigraphBubbleAdapter'
+          ? Promise.reject(new Error('404'))
+          : respond(sid, method, args),
+    )
+    const model = attachedModel()
+    const settleAll = async () => {
+      await vi.waitFor(() => {
+        expect(reads.length).toBeGreaterThanOrEqual(2)
+      })
+      for (const read of reads.splice(0)) {
+        read.settle([])
+      }
+    }
+    let loaded = cut(model)
+    await settleAll()
+    await loaded
+    expect(bubbleReads()).toBe(1)
+    loaded = cut(model)
+    await settleAll()
+    await loaded
+    expect(bubbleReads()).toBe(1)
+    warn.mockRestore()
   })
 
   test('a cut too large to draw still reads its genes, for when the limit is raised', async () => {
@@ -4611,6 +4928,41 @@ describe('walk rows grouped by a sample column', () => {
         },
       ])
       expect(model.walkRowLaunchTarget(0)?.location.sample).toBe('GRCh38')
+    } finally {
+      vi.mocked(readConfObject).mockImplementation(was!)
+      mockSession.assemblyNames = []
+      mockSession.assemblyAliases = {}
+    }
+  })
+
+  test("beside a backbone of genes, a walk row reads its haplotype's genes, never its TEs", async () => {
+    const was = vi.mocked(readConfObject).getMockImplementation()
+    vi.mocked(readConfObject).mockImplementation(
+      (obj: Record<string, unknown>, key?: unknown) => obj[String(key)],
+    )
+    mockSession.assemblyNames = ['B.1']
+    mockSession.assemblyAliases = { 'B#1': 'B.1' }
+    const track = (trackId: string, name: string) => ({
+      trackId,
+      name,
+      assemblyNames: ['B#1'],
+      adapter: { type: 'Gff3TabixAdapter' },
+    })
+    try {
+      mockSession.tracks = [
+        { ...SAMPLES_TRACK, assemblyNames: [] },
+        track('b-tes', 'B TEs'),
+        track('b-genes', 'B genes'),
+      ]
+      const both = await groupedModel()
+      expect(both.walkRowAnnotation).toBe('gene')
+      expect(both.walkGeneReads!.reads.map(r => r.trackId)).toEqual(['b-genes'])
+      mockSession.tracks = [
+        { ...SAMPLES_TRACK, assemblyNames: [] },
+        track('b-tes', 'B TEs'),
+      ]
+      const tesOnly = await groupedModel()
+      expect(tesOnly.walkGeneReads!.reads).toEqual([])
     } finally {
       vi.mocked(readConfObject).mockImplementation(was!)
       mockSession.assemblyNames = []

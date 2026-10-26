@@ -11,8 +11,10 @@
  * from the live state tree, as color and removal read them.
  */
 import loadMolstar from './loadMolstar';
-import { structureRootCell } from './structureCells';
-export const SITES_TAG = 'jbrowse-alignment-sites';
+import { drawnTests } from './residueFilter';
+import { serialPerPlugin } from './serialPerPlugin';
+import { SITES_TAG, drawnUnder, structureRootCell } from './structureCells';
+export { SITES_TAG } from './structureCells';
 // Over twice the preset's 0.15, so a site's side chains stand out from the
 // ligand and focus sticks around them
 export const SITE_STICKS = { sizeFactor: 0.35, sizeAspectRatio: 0.6 };
@@ -21,13 +23,13 @@ let revision = 0;
  * Make each structure's sticks match its sites: create, update, or remove
  * them when `sites` is empty or undefined.
  */
-export async function syncSiteSticks({ plugin, structures, }) {
+async function drawSiteSticks({ plugin, structures, }) {
     const molstar = await loadMolstar();
     const { MolScriptBuilder: MS, ProteinBackboneAtoms, StateSelection, StateTransforms, createStructureColorThemeParams, createStructureRepresentationParams, registerPlacedValues, } = molstar;
     revision++;
     const update = plugin.state.data.build();
     let changed = false;
-    for (const { molstarStructure, sites, color } of structures) {
+    for (const { molstarStructure, sites, color, chains, filter } of structures) {
         const root = structureRootCell(plugin, molstar, molstarStructure);
         if (!root) {
             continue;
@@ -43,6 +45,11 @@ export async function syncSiteSticks({ plugin, structures, }) {
             continue;
         }
         const atom = (name) => MS.core.rel.eq([MS.ammp('label_atom_id'), name]);
+        const { chainTest, residueTest } = drawnTests(MS, { chains, filter });
+        const isSite = MS.core.set.has([
+            MS.set(...labelSeqIds),
+            MS.ammp('label_seq_id'),
+        ]);
         const component = {
             type: {
                 name: 'expression',
@@ -51,10 +58,10 @@ export async function syncSiteSticks({ plugin, structures, }) {
                         MS.ammp('label_entity_id'),
                         sites.entityId,
                     ]),
-                    'residue-test': MS.core.set.has([
-                        MS.set(...labelSeqIds),
-                        MS.ammp('label_seq_id'),
-                    ]),
+                    'residue-test': residueTest
+                        ? MS.core.logic.and([isSite, residueTest])
+                        : isSite,
+                    ...(chainTest ? { 'chain-test': chainTest } : {}),
                     'atom-test': MS.core.logic.or([
                         MS.core.logic.not([
                             MS.core.set.has([
@@ -90,14 +97,15 @@ export async function syncSiteSticks({ plugin, structures, }) {
         else {
             update
                 .to(root)
-                .apply(StateTransforms.Model.StructureComponent, component, {
-                tags: [SITES_TAG],
-            })
-                .apply(StateTransforms.Representation.StructureRepresentation3D, representation, { tags: [SITES_TAG] });
+                .apply(StateTransforms.Model.StructureComponent, component, drawnUnder(root, SITES_TAG))
+                .apply(StateTransforms.Representation.StructureRepresentation3D, representation, drawnUnder(root, SITES_TAG));
         }
         changed = true;
     }
     if (changed) {
         await update.commit();
     }
+}
+export function syncSiteSticks(args) {
+    return serialPerPlugin(args.plugin, () => drawSiteSticks(args));
 }

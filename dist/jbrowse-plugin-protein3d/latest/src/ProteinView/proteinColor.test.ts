@@ -196,3 +196,18 @@ test('a values field takes a list or an object keyed by residue number', () => {
   expect(colorProblems({ field: 'values', values: { a: 1 } })).toHaveLength(1)
   expect(colorProblems({ field: 'values', values: ['x'] })).toHaveLength(1)
 })
+
+// the genome-track dialog writes `labels: undefined` when the cuts change the
+// number of bands, and checking it as a list threw inside Apply
+test('a member left undefined is absent, not refused', () => {
+  expect(
+    colorProblems({
+      field: 'track',
+      trackId: 't',
+      scale: 'threshold',
+      domain: [0],
+      range: ['#d7191c', '#2c7bb6'],
+      labels: undefined,
+    }),
+  ).toEqual([])
+})

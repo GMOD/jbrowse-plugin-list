@@ -314,7 +314,8 @@ export function motionAllowed() {
 }
 
 // Calls `blend` with the eased progress once a frame for MORPH_MS while
-// `isLive` holds, then `onEnd`. `finish` jumps to the last frame.
+// `isLive` holds, then `onEnd`. `finish` jumps to the last frame, as does a
+// morph cut short, since the layout cache keeps the positions it blends.
 export function runMorph(
   blend: (t: number) => void,
   isLive: () => boolean,
@@ -330,6 +331,7 @@ export function runMorph(
   let last = performance.now()
   const step = () => {
     if (!isLive()) {
+      blend(1)
       onEnd()
       return
     }

@@ -1,7 +1,9 @@
 import { isBinaryStructureUrl, structureFormatFromContent, structureFormatFromName, } from 'p2s_mapper';
 import { CRYSTALLIZATION_ADDITIVES } from './crystallizationAdditives';
 import loadMolstar from './loadMolstar';
+import { removeWithGhosts } from './removeStructure';
 import { drawnTests } from './residueFilter';
+import { serialPerPlugin } from './serialPerPlugin';
 // Typed as always resolving to a trajectory, but Mol* reverts a parse that
 // fails and resolves with nothing
 function parseTrajectory(plugin, raw, format) {
@@ -31,6 +33,7 @@ export async function parseStructureTrajectory({ plugin, data, url, }) {
     }
     const trajectory = await parseTrajectory(plugin, raw, parsedAs);
     if (!trajectory?.obj?.data.frameCount) {
+        await removeWithGhosts(plugin, await loadMolstar(), raw.ref);
         throw new Error(`No model could be read from ${url ?? 'the structure data'} as ${parsedAs}`);
     }
     return trajectory;
@@ -177,12 +180,26 @@ async function collectPreset(plugin, source, preset, drawn) {
         modelIds: loaded.flatMap(s => s.models.map(m => m.id)),
     };
 }
-/** Load a structure from its text or its url, as the view shows one. */
-export async function loadStructure({ plugin, data, url, assembly, chains, filter, }) {
-    const trajectory = await parseStructureTrajectory({ plugin, data, url });
-    const source = url ?? 'the structure data';
-    return applyStructurePreset(plugin, trajectory, source, assembly, {
-        chains,
-        filter,
+/**
+ * Load a structure from its text or its url, as the view shows one. A load
+ * that fails after parsing takes its trajectory back out, or Mol* would draw a
+ * structure no model of the view owns and none can remove.
+ */
+export function loadStructure({ plugin, data, url, assembly, chains, filter, }) {
+    return serialPerPlugin(plugin, async () => {
+        const trajectory = await parseStructureTrajectory({ plugin, data, url });
+        const source = url ?? 'the structure data';
+        try {
+            return await applyStructurePreset(plugin, trajectory, source, assembly, {
+                chains,
+                filter,
+            });
+        }
+        catch (e) {
+            // a plugin disposed mid-load fails the removal too, and the load's
+            // own error is the one to report
+            await removeWithGhosts(plugin, await loadMolstar(), trajectory.ref).catch(() => { });
+            throw e;
+        }
     });
 }

@@ -18,6 +18,7 @@ import { resolveLocationAssembly } from '../../launchFromGraph/contributors'
 
 import type { SubgraphRegion } from '../../GetSubgraph'
 import type { WalkAxis, WalkRow } from '@jbrowse/bandage-core/layout/walkRows'
+import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 
 export const withWalkRowViews = withLaunchViews
   .views(self => ({
@@ -47,13 +48,23 @@ export const withWalkRowViews = withLaunchViews
       }
       return walkStripFrame(bars, { width: self.paneWidth })
     },
-    // Whether a cut must follow every snarl a walk leaves the window by, so
-    // walks come back whole: walk rows measure them, and so does the strip
+    // Whether a cut under `mode` must follow every snarl a walk leaves the
+    // window by, so walks come back whole: walk rows measure them, and so does
+    // the strip under a layout that draws nodes. Only a GBZ cut follows
+    // snarls; a walk file cuts the same either way, so asking would re-fetch
+    // an identical graph.
+    cutsWholeWalksIn(mode: LayoutModeValue, walkStrip = self.walkStrip) {
+      const m = layoutModeByValue(mode)
+      return (
+        self.sourceAdapter?.type === 'GbzBaseSyntenyAdapter' &&
+        wholeWalksRule(m, {
+          walkStrip: walkStrip && m.drawsNodes,
+          host: !!self.host,
+        })
+      )
+    },
     get cutsWholeWalks() {
-      return wholeWalksRule(layoutModeByValue(self.chosenLayoutMode), {
-        walkStrip: self.walkStrip,
-        host: !!self.host,
-      })
+      return this.cutsWholeWalksIn(self.chosenLayoutMode)
     },
     // Where each walk passes the hovered node, or the selected one
     get walkStripMarks() {

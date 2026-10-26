@@ -1369,3 +1369,27 @@ test('an assembly that is the whole model leaves no choice', async () => {
     { value: '1', label: 'Assembly 1', checked: true },
   ])
 })
+
+// 1TUP's file names its method only under _exptl, which Mol*'s pLDDT theme
+// does not read, so the theme painted the crystal's B-factors as bands
+test('a pLDDT color on an experimental structure says it shows no confidence', () => {
+  const ColoredParent = TestParent.views(() => ({
+    get color() {
+      return { field: 'plddt' as const }
+    },
+  }))
+  const entities = [
+    { entityId: '1', seq: 'MKA', seqIds: [1, 2, 3], chains: ['A'] },
+  ]
+  const [crystal, model] = ColoredParent.create({
+    structures: [{ url: '1tup.cif' }, { url: 'AF-P04637-F1.cif' }],
+  }).structures
+  expect(crystal!.plddtMissing).toBeUndefined()
+  crystal!.setStructureData({ entities })
+  model!.setStructureData({
+    entities,
+    confidence: [{ entityId: '1', byLabelSeqId: new Map([[1, 90]]) }],
+  })
+  expect(crystal!.plddtMissing).toMatch(/experimental/)
+  expect(model!.plddtMissing).toBeUndefined()
+})

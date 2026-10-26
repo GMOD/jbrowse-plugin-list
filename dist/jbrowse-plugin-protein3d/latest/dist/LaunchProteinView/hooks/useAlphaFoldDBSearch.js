@@ -4,7 +4,7 @@ import useAlphaFoldData from './useAlphaFoldData';
 import useTranscriptIsoformSelection from './useTranscriptIsoformSelection';
 export default function useAlphaFoldDBSearch({ feature, view, lookup, preferredTranscriptId, }) {
     const { uniprotId, isLookupLoading } = lookup;
-    const { isLoading: isAlphaFoldLoading, isValidating: isAlphaFoldValidating, modelsUnreachable, model, noModel, } = useAlphaFoldData({ uniprotId, feature, view });
+    const { isLoading: isAlphaFoldLoading, isValidating: isAlphaFoldValidating, modelsUnreachable, model, noModel, } = useAlphaFoldData({ uniprotId, feature, view, preferredTranscriptId });
     // a stable array, or the isoform picker realigns on every render
     const modelSequence = model?.sequence;
     const structureSequences = useMemo(() => (modelSequence ? [modelSequence] : undefined), [modelSequence]);

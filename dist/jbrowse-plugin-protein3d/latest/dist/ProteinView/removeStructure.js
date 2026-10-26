@@ -1,4 +1,5 @@
 import loadMolstar from './loadMolstar';
+import { serialPerPlugin } from './serialPerPlugin';
 import { structureRootCell } from './structureCells';
 /**
  * Take one load out of Mol*, by the trajectory it came from: removing the
@@ -9,21 +10,28 @@ import { structureRootCell } from './structureCells';
  * structure a superposition has transformed, or one that finished loading an
  * instant ago, is still found.
  */
-export async function removeMolstarStructure({ plugin, molstarStructure, }) {
-    if (!molstarStructure) {
-        return;
-    }
-    const molstar = await loadMolstar();
-    const { PluginCommands, PluginStateObject } = molstar;
-    const cell = structureRootCell(plugin, molstar, molstarStructure);
-    const trajectory = cell &&
-        plugin.state.data.selectQ(q => q.byValue(cell).ancestorOfType(PluginStateObject.Molecule.Trajectory))[0];
-    const target = trajectory ?? cell;
-    if (target) {
-        await PluginCommands.State.RemoveObject(plugin, {
-            state: plugin.state.data,
-            ref: target.transform.ref,
-            removeParentGhosts: true,
-        });
-    }
+export function removeMolstarStructure({ plugin, molstarStructure, }) {
+    return serialPerPlugin(plugin, async () => {
+        if (!molstarStructure) {
+            return;
+        }
+        const molstar = await loadMolstar();
+        const { PluginStateObject } = molstar;
+        const cell = structureRootCell(plugin, molstar, molstarStructure);
+        const trajectory = cell &&
+            plugin.state.data.selectQ(q => q.byValue(cell).ancestorOfType(PluginStateObject.Molecule.Trajectory))[0];
+        const target = trajectory ?? cell;
+        if (target) {
+            await removeWithGhosts(plugin, molstar, target.transform.ref);
+        }
+    });
+}
+/** Remove a cell and the ghost nodes above it, the download or pasted text
+ * and its parse. Unserialized, for a task already in the plugin's lane. */
+export async function removeWithGhosts(plugin, molstar, ref) {
+    await molstar.PluginCommands.State.RemoveObject(plugin, {
+        state: plugin.state.data,
+        ref,
+        removeParentGhosts: true,
+    });
 }

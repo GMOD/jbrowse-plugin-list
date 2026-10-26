@@ -3,6 +3,7 @@ import {
   BUBBLE_KIND_COLORS,
   BUBBLE_KIND_NAMES,
 } from '@jbrowse/bandage-core/bubbles/classifyBubble'
+import { deletionKey } from '@jbrowse/bandage-core/deletionEdges'
 import { EXON_COLOR } from '@jbrowse/bandage-core/genes/exonOutline'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
 import {
@@ -13,6 +14,7 @@ import {
   UNBACKED_TICK,
   walkRowsKey,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
+import { referenceLabel } from '@jbrowse/bandage-core/reference'
 import { RAMP_GRADIENT_STOPS } from '@jbrowse/bandage-core/referenceRampCss'
 import {
   LIFT_BACKDROP_CSS,
@@ -24,10 +26,12 @@ import {
   REVERSE_READ_COLORS,
 } from '@jbrowse/bandage-core/tubeMap/reads'
 import { encodingStops } from '@jbrowse/bandage-core/walkEncoding'
+import { fadedKey } from '@jbrowse/bandage-core/walkHighlight'
 import { walkKey } from '@jbrowse/bandage-core/walkKey'
 
 import { CALL_TOLERANCE } from './repeats/walkCalls'
 import { PANEL_REFERENCE_TUBE } from './tubeMapPanels'
+import { COLORED_BLOCKS, blockFill, blockLetter } from './walkRowBlocks'
 
 import type { GraphPaneModel } from './model'
 import type { KeySwatch } from '@jbrowse/bandage-core/layout/walkRowDraw'
@@ -42,6 +46,7 @@ const BAR_PX = 48
 // LIFT_BACKDROP_CSS reads paler alone than faded strokes do where they
 // overlap, so the key samples it darker
 const FADED_SWATCH = 'rgba(160, 160, 160, 0.45)'
+const DELETION_INK = '#18181c'
 
 const STRIP_SAMPLES = 6
 const TUBE_SWATCH_PX = 7
@@ -63,7 +68,7 @@ export type LegendSwatch =
     }
   // the reference strip, a band per lifted walk
   | { kind: 'bands'; bands: Stop[][] }
-  | { kind: 'line'; color: string }
+  | { kind: 'line'; color: string; dashed?: true }
   | { kind: 'halo'; color: string }
   | {
       kind: 'outline'
@@ -241,6 +246,23 @@ function haloRows(model: GraphPaneModel): LegendRow[] {
   })
 }
 
+function deletionRows(model: GraphPaneModel): LegendRow[] {
+  const { graph } = model
+  return graph && model.deletions.length > 0
+    ? [
+        {
+          key: 'deletion',
+          label: deletionKey(referenceLabel(graph)),
+          swatch: {
+            kind: 'line',
+            color: model.walkLift ? FADED_SWATCH : DELETION_INK,
+            dashed: true,
+          },
+        },
+      ]
+    : []
+}
+
 function geneRows(model: GraphPaneModel): LegendRow[] {
   return model.genePins.some(pin => pin.exonsByNode.length > 0)
     ? [
@@ -399,6 +421,36 @@ export function walkRowSwatch(swatch: KeySwatch): LegendSwatch {
       }
 }
 
+// The shared blocks the rows draw: each coloured one by its letter, then one
+// row for the grey rest
+function blockRows(model: GraphPaneModel): LegendRow[] {
+  const present = new Set(model.sharedBlocks?.map(b => b.block))
+  const swatch = (block: number) => ({
+    kind: 'fill' as const,
+    stops: flat(blockFill(block)),
+    height: WALK_ROW_SWATCH_PX,
+  })
+  return [
+    ...[...present]
+      .filter(block => block < COLORED_BLOCKS)
+      .sort((a, b) => a - b)
+      .map(block => ({
+        key: `block-${block}`,
+        label: `${blockLetter(block)}: off the reference, walked by several rows`,
+        swatch: swatch(block),
+      })),
+    ...([...present].some(block => block >= COLORED_BLOCKS)
+      ? [
+          {
+            key: 'block-more',
+            label: 'more shared blocks',
+            swatch: swatch(COLORED_BLOCKS),
+          },
+        ]
+      : []),
+  ]
+}
+
 // The walk rows' bar colours, genes and ticks; each tick row appears once
 // the rows hold one, so a catalogue with no genotypes keeps the plain key
 function walkRowsRows(model: GraphPaneModel): LegendRow[] {
@@ -416,11 +468,13 @@ function walkRowsRows(model: GraphPaneModel): LegendRow[] {
     ...walkRowsKey(bars, {
       ramp: model.referenceRampDomain,
       genes: model.walkRowGeneKey,
+      annotation: model.walkRowAnnotation,
     }).map(entry => ({
       key: `rows-${entry.label}`,
       label: entry.label,
       swatch: entry.note ? undefined : walkRowSwatch(entry.swatch),
     })),
+    ...blockRows(model),
     ...(calls.some(call => call.spanningReads !== 0)
       ? [tick('call', CALL_TICK, 'allele length called for this walk')]
       : []),
@@ -491,16 +545,29 @@ function walkReadoutRows(model: GraphPaneModel): LegendRow[] {
   const width = rows.some(r => swatchWidth(r.swatch!) === BAR_PX)
     ? BAR_PX
     : SWATCH_PX
-  return [
-    ...rows,
-    ...fadedRows(model, `not on ${model.liftedWalksLabel}`, width),
-  ]
+  const faded = model.graph
+    ? fadedKey(model.graph, lift, model.liftedWalksLabel)
+    : `not on ${model.liftedWalksLabel}`
+  return [...rows, ...fadedRows(model, faded, width)]
 }
 
 // The faceted pane's one key line under its panels: each panel's title keys
 // its walk, so this keys only what every panel greys
 export function facetKeyRows(model: GraphPaneModel): LegendRow[] {
-  return model.facetPanels ? fadedRows(model, "not on the panel's walk") : []
+  const { graph, facetPanels } = model
+  if (!graph || !facetPanels) {
+    return []
+  }
+  const keys = new Set(
+    facetPanels.map(panel => fadedKey(graph, panel, "the panel's walk")),
+  )
+  return [
+    ...fadedRows(
+      model,
+      keys.size === 1 ? [...keys][0]! : "not on the panel's walk",
+    ),
+    ...deletionRows(model),
+  ]
 }
 
 // The keys in the order the panel stacks them, top first
@@ -510,6 +577,7 @@ export function legendSections(model: GraphPaneModel): LegendSection[] {
     { testid: 'graph-ramp-legend', rows: rampRows(model) },
     { testid: 'graph-reference-strip-legend', rows: stripRows(model) },
     { testid: 'graph-halo-legend', rows: haloRows(model) },
+    { testid: 'graph-deletion-legend', rows: deletionRows(model) },
     { testid: 'graph-gene-legend', rows: geneRows(model) },
     { testid: 'graph-fold-legend', rows: foldRows(model) },
     { testid: 'graph-path-legend', rows: pathRows(model) },

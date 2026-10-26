@@ -1,5 +1,5 @@
 import { abgrAlpha, packAbgr } from '@jbrowse/bandage-core/renderer/colorBits'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 
 import {
   blendInto,
@@ -7,6 +7,7 @@ import {
   fadeEntering,
   morphStarts,
   routeStarts,
+  runMorph,
 } from './morph'
 
 import type { RenderBatch } from '@jbrowse/bandage-core/renderer/types'
@@ -247,4 +248,27 @@ test('a layout placed by rule on either side snaps', () => {
 test('a graph past the frame budget snaps', () => {
   expect(canMorph(free, free, 3000, false)).toBe(true)
   expect(canMorph(free, free, 3001, false)).toBe(false)
+})
+
+// The layout cache holds the positions a morph blends, so a morph abandoned
+// half way would leave a cached layout half blended for the next cache hit
+test('a morph cut short lands its last frame', () => {
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+    frames.push(cb),
+  )
+  const blends: number[] = []
+  let live = true
+  const ended = vi.fn()
+  runMorph(
+    t => blends.push(t),
+    () => live,
+    ended,
+  )
+  frames.shift()!(0)
+  live = false
+  frames.shift()!(0)
+  expect(blends.at(-1)).toBe(1)
+  expect(ended).toHaveBeenCalledTimes(1)
+  vi.unstubAllGlobals()
 })

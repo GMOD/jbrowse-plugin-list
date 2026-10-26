@@ -5,6 +5,7 @@ import { observer } from 'mobx-react'
 
 import ElTree, { useSvgId } from './ElTree'
 import { PaneOverlayCanvas, PaneSvgLayer } from './PaneLayer'
+import { paintWalkRowBlocks } from '../walkRowBlocks'
 import { SECTION_HEADER_PX, walkRowTrees } from '../walkRowGroups'
 import { paintWalkRowSpans, walkRowSpans } from '../walkRowSpans'
 
@@ -83,6 +84,82 @@ function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
   )
 }
 
+const RIBBON_FORWARD = 'rgba(160, 196, 232, 0.55)'
+const RIBBON_REVERSED = 'rgba(160, 140, 220, 0.55)'
+
+// Under the bars, a ribbon from each stretch of a row to where the row below
+// walks the same nodes, lavender where it walks them backwards, as ggbandage
+// draws them: neighbours that share a copy, an inversion or a duplication
+// read off the ribbons' shape
+function WalkRowRibbonsCanvas({ model }: { model: GraphPaneModel }) {
+  const paint = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const links = model.walkRowRibbons
+      const bars = model.walkRowBars
+      const place = model.walkRowPlacement
+      const pitch = model.walkRowPitch
+      if (!links || !bars || !place || !pitch) {
+        return
+      }
+      const { scaleX, scaleY, translateX, translateY } = model.screenTransform
+      const x = (offset: number) => (bars.origin + offset) * scaleX + translateX
+      const half = pitch.barPx / 2
+      for (const { row, a0, a1, b0, b1 } of links) {
+        const top = place.rowY(row) * scaleY + translateY + half
+        const bottom = place.rowY(row + 1) * scaleY + translateY - half
+        ctx.fillStyle = b0 > b1 ? RIBBON_REVERSED : RIBBON_FORWARD
+        ctx.beginPath()
+        ctx.moveTo(x(a0), top)
+        ctx.lineTo(x(a1), top)
+        ctx.lineTo(x(b1), bottom)
+        ctx.lineTo(x(b0), bottom)
+        ctx.closePath()
+        ctx.fill()
+      }
+    },
+    [model],
+  )
+  return (
+    <PaneOverlayCanvas
+      model={model}
+      zIndex={2}
+      testId="graph-walk-rows-ribbons"
+      paint={paint}
+    />
+  )
+}
+
+// Over the bars, the lettered blocks: copy A on two rows, and C where another
+// row has A, read at a glance
+function WalkRowBlocksCanvas({ model }: { model: GraphPaneModel }) {
+  const paint = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const blocks = model.sharedBlocks
+      const bars = model.walkRowBars
+      const place = model.walkRowPlacement
+      const pitch = model.walkRowPitch
+      if (!blocks || !bars || !place || !pitch) {
+        return
+      }
+      const { scaleX, scaleY, translateX, translateY } = model.screenTransform
+      paintWalkRowBlocks(ctx, blocks, {
+        x: offset => (bars.origin + offset) * scaleX + translateX,
+        rowCentre: row => place.rowY(row) * scaleY + translateY,
+        barPx: pitch.barPx,
+      })
+    },
+    [model],
+  )
+  return (
+    <PaneOverlayCanvas
+      model={model}
+      zIndex={3}
+      testId="graph-walk-rows-blocks"
+      paint={paint}
+    />
+  )
+}
+
 // Its own observer, so moving between rows redraws this rect and not every row
 const HoveredWalkRow = observer(function HoveredWalkRow({
   model,
@@ -142,7 +219,13 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
   }
   return (
     <>
+      {vector || !model.walkRowRibbons ? null : (
+        <WalkRowRibbonsCanvas model={model} />
+      )}
       {vector ? null : <WalkRowSpansCanvas model={model} />}
+      {vector || !model.sharedBlocks ? null : (
+        <WalkRowBlocksCanvas model={model} />
+      )}
       <PaneSvgLayer
         model={model}
         zIndex={3}

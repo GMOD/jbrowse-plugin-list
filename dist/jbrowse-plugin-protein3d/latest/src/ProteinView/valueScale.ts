@@ -34,7 +34,9 @@ export function isValueField(color: ProteinColor) {
 /**
  * The color object a theme paints with: for a field scaled by its data, any
  * end of the domain the session leaves out comes from `domain`, and the title
- * falls back to `label`.
+ * falls back to `label`. An end from the data that lands on the wrong side of
+ * the session's moves to one past it: a `domainMin` of 10 over values of 1 to
+ * 3 paints them all the low color rather than reversing the ramp.
  */
 export function paintedColor(
   color: ProteinColor,
@@ -44,8 +46,19 @@ export function paintedColor(
     return color
   }
   const fromData = color.scale !== 'threshold'
-  const min = color.domainMin ?? (fromData ? domain?.min : undefined)
-  const max = color.domainMax ?? (fromData ? domain?.max : undefined)
+  const dataMin = fromData ? domain?.min : undefined
+  const dataMax = fromData ? domain?.max : undefined
+  const given = { min: color.domainMin, max: color.domainMax }
+  const min =
+    given.min ??
+    (dataMin !== undefined && given.max !== undefined && dataMin >= given.max
+      ? given.max - 1
+      : dataMin)
+  const max =
+    given.max ??
+    (dataMax !== undefined && min !== undefined && dataMax <= min
+      ? min + 1
+      : dataMax)
   const title = color.title ?? label
   return {
     ...color,

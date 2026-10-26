@@ -309,3 +309,29 @@ test('a malformed selection is dropped by name', () => {
     '`initialResidues` is not { start, end } numbers or an array of them and was ignored',
   ])
 })
+
+// read raw, these failed far from the spec: `tracks.map is not a function`,
+// `gene.toLowerCase is not a function`, an MST snapshot error
+test('a linkage key of the wrong type is dropped by name', () => {
+  const { linkage, warnings } = accepted({
+    pdbId: '1TUP',
+    gene: 7157,
+    transcriptId: 'ENST00000269305',
+    connectedView: { tracks: 'genes' },
+    connectedViewId: 5,
+    sideBySide: 'yes',
+  })
+  expect(linkage).toMatchObject({
+    gene: undefined,
+    transcriptId: 'ENST00000269305',
+    connectedView: undefined,
+    connectedViewId: undefined,
+    sideBySide: undefined,
+  })
+  expect(warnings).toEqual([
+    '`gene` is not a string and was ignored',
+    '`connectedView` is not { assembly, loc, tracks } and was ignored',
+    '`connectedViewId` is not a string and was ignored',
+    '`sideBySide` is not true or false and was ignored',
+  ])
+})

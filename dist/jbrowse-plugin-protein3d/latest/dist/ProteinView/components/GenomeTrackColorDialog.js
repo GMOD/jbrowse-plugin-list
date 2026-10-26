@@ -67,16 +67,28 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model,
         React.createElement(DialogActions, null,
             React.createElement(Button, { onClick: handleClose }, "Cancel"),
             React.createElement(Button, { variant: "contained", disabled: !trackId || cutsInvalid, onClick: () => {
+                    // the same track on the same scale keeps what a session wrote
+                    // beside it: its palette, labels, title and domain
+                    const kept = color.field === 'track' &&
+                        color.trackId === trackId &&
+                        (color.scale === 'threshold') === (scale === 'threshold')
+                        ? color
+                        : undefined;
+                    const sameBands = kept?.range?.length === (cuts?.length ?? 0) + 1;
                     model.setColor(scale === 'threshold' && cuts
                         ? {
+                            ...kept,
                             field: 'track',
                             trackId,
                             stat,
                             scale,
                             domain: cuts,
-                            range: thresholdRange(cuts.length + 1),
+                            range: sameBands
+                                ? kept.range
+                                : thresholdRange(cuts.length + 1),
+                            labels: sameBands ? kept.labels : undefined,
                         }
-                        : { field: 'track', trackId, stat });
+                        : { ...kept, field: 'track', trackId, stat });
                     handleClose();
                 } }, "Color"))));
 });

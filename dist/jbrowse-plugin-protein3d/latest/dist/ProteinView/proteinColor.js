@@ -150,7 +150,8 @@ export function colorProblems(color) {
         return ["color is an object, such as { field: 'alphaMissense' }"];
     }
     const { field, ...members } = color;
-    const named = Object.keys(members);
+    // an undefined member names nothing, as a snapshot, which drops it, agrees
+    const named = Object.keys(members).filter(key => members[key] !== undefined);
     if (field === undefined) {
         return named.length > 0
             ? [`color names no field, so ${named.join(', ')} paints nothing`]
