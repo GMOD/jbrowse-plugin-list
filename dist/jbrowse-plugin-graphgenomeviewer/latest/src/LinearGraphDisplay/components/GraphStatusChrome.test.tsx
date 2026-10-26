@@ -39,6 +39,24 @@ test('a drawn graph sits in the chrome with its readiness attributes', () => {
   expect(screen.getByTestId('graph-canvas')).toBeTruthy()
 })
 
+// GraphCanvas shows it, with the retry that rebuilds the backend
+test('a render error alone is left to the canvas', () => {
+  render(
+    <GraphStatusChrome
+      model={model({ renderError: new Error('context lost') })}
+      phase="error"
+      drawn={false}
+      testid="linear-graph-display"
+    >
+      <canvas />
+    </GraphStatusChrome>,
+  )
+  expect(screen.queryByText(/context lost/)).toBeNull()
+  expect(screen.getByTestId('linear-graph-display').dataset.displayPhase).toBe(
+    'error',
+  )
+})
+
 test('a refused cut shows its notice over the graph', () => {
   const error = Object.assign(
     new Error('Zoom in to about 54Kbp to see the graph'),

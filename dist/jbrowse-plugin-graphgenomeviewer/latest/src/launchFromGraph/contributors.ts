@@ -44,6 +44,94 @@ function anchoredNodeLocation(node: AnchoredNode): GraphLocation {
   }
 }
 
+export interface AssemblySpan {
+  assemblyName: string
+  refName: string
+  start: number
+  end: number
+}
+
+// Where a node's sequence sits on each loaded assembly: its own rGFA
+// location, and where every walk through it passes it on that walk's contig.
+// `except` is the assembly the reference band is already drawn on.
+export function nodeAssemblySpans(
+  graph: Graph,
+  node: GraphNode,
+  resolve: (sample: string) => string | undefined,
+  except?: string,
+) {
+  const spans = new Map<string, AssemblySpan>()
+  const add = (loc: GraphLocation) => {
+    const assemblyName = resolveLocationAssembly(resolve, loc)
+    const key = `${assemblyName}\t${loc.refName}\t${loc.start}`
+    if (assemblyName !== undefined && assemblyName !== except) {
+      spans.set(key, {
+        assemblyName,
+        refName: loc.refName,
+        start: loc.start,
+        end: loc.end,
+      })
+    }
+  }
+  const own = nodeOwnLocation(node)
+  if (own) {
+    add(own)
+  }
+  for (const visit of graph.pathVisits?.get(node.name) ?? []) {
+    add({
+      sample: panSNSample(visit.path),
+      haplotype: panSNHaplotype(visit.path),
+      refName: panSNContig(visit.path),
+      start: visit.start,
+      end: visit.start + node.length,
+    })
+  }
+  return [...spans.values()]
+}
+
+// Each stable sequence off the reference that the cut's nodes lie on, with
+// the loaded assembly holding it and the span its nodes cover there. A gene
+// read over that span, renamed to `stableRefName`, lands on those nodes the
+// way the reference's genes land on the backbone.
+export function offReferenceContigs(
+  graph: Graph,
+  resolve: (sample: string) => string | undefined,
+  except?: string,
+) {
+  const contigs = new Map<string, AssemblySpan & { stableRefName: string }>()
+  // an HPRC cut names hundreds of haplotypes no session loads
+  const unloaded = new Set<string>()
+  for (const node of graph.nodes) {
+    if (!isAnchored(node) || node.stable.rank === 0) {
+      continue
+    }
+    const stableRefName = node.stable.refName
+    if (unloaded.has(stableRefName)) {
+      continue
+    }
+    const loc = anchoredNodeLocation(node)
+    const seen = contigs.get(stableRefName)
+    if (seen) {
+      seen.start = Math.min(seen.start, loc.start)
+      seen.end = Math.max(seen.end, loc.end)
+      continue
+    }
+    const assemblyName = resolveLocationAssembly(resolve, loc)
+    if (assemblyName === undefined || assemblyName === except) {
+      unloaded.add(stableRefName)
+    } else {
+      contigs.set(stableRefName, {
+        stableRefName,
+        assemblyName,
+        refName: loc.refName,
+        start: loc.start,
+        end: loc.end,
+      })
+    }
+  }
+  return [...contigs.values()]
+}
+
 export interface Contributor extends GraphLocation {
   // lowest rank this assembly holds here: 0 means it is the reference backbone
   rank: number
@@ -188,12 +276,28 @@ export function resolveLocationAssembly(
 // among its aliases; matching on names alone leaves that donor unopenable unless
 // the reader renames their assembly after the graph. The resolved (canonical)
 // name replaces the sample, so a launch opens the assembly the session knows.
+//
+// A bare sample stands in for a haplotype unless two haplotypes of it share a
+// contig name. HPRC's GenBank contigs differ per haplotype, so an `NA20809`
+// assembly can hold both; two haplotypes each on `chr6` cannot both be it, and
+// opening hap 2's coordinates on hap 1's sequence lands somewhere plausible
+// and wrong.
 export function resolveContributors(
   contributors: Contributor[],
   resolve: (sample: string) => string | undefined,
 ) {
+  const haplotypesOn = new Map<string, number>()
+  const contig = (c: Contributor) => `${c.sample}\t${c.refName}`
+  for (const c of contributors) {
+    if (c.haplotype !== undefined) {
+      haplotypesOn.set(contig(c), (haplotypesOn.get(contig(c)) ?? 0) + 1)
+    }
+  }
   return contributors.flatMap(c => {
-    const sample = resolveLocationAssembly(resolve, c)
+    const sample =
+      (haplotypesOn.get(contig(c)) ?? 0) > 1
+        ? resolve(c.haplotype!)
+        : resolveLocationAssembly(resolve, c)
     return sample === undefined ? [] : [{ ...c, sample }]
   })
 }

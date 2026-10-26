@@ -4,11 +4,7 @@ import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import { parseSegmentRow, rgfaCut, segmentSamples } from '@jbrowse/graph-walks'
 
 import { locationIsSet } from '../locationName.ts'
-import {
-  PanSNRefNames,
-  openTabixSlot,
-  unmappedRegionMessage,
-} from '../panSNTabix.ts'
+import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
 import { WalkIndex } from './walkReader.ts'
 
@@ -194,10 +190,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
   ): Promise<string | WalkCut> {
     const { hops, signal, tier } = opts
     const index = this.index(tier)
-    const tabixRefName = await index.refNames.resolve(region, { signal })
-    if (tabixRefName === undefined) {
-      throw new Error(unmappedRegionMessage(region))
-    }
+    const tabixRefName = await index.refNames.resolveForCut(region, { signal })
     if (index.walks) {
       return index.walks.subgraph(tabixRefName, region, opts)
     }

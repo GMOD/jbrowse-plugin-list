@@ -1,7 +1,4 @@
-import {
-  LAYOUT_MODE_VALUES,
-  layoutModeByValue,
-} from '@jbrowse/bandage-core/layoutModes'
+import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes/models'
 import { getSession } from '@jbrowse/core/util'
 import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
@@ -10,6 +7,7 @@ import { reaction } from 'mobx'
 import { HOVER_HIGHLIGHT_VALUES } from './hoverHighlight'
 import { lenientMaybeEnum } from './lenientEnum'
 import { GraphPane, fileName, formatSpanBp } from './model'
+import { liftFlatNodeColor } from './retiredNodeColor'
 import { canonicalRegion } from '../launchFromGraph/launchFromGraph'
 
 import type { GraphLayers } from './graphLayers'
@@ -51,11 +49,16 @@ export default function stateModelFactory() {
         hover: lenientMaybeEnum(HOVER_HIGHLIGHT_VALUES),
       }),
     )
+    .preProcessSnapshot(snap =>
+      snap.color === undefined
+        ? snap
+        : { ...snap, color: liftFlatNodeColor(snap.color) as NodeColor },
+    )
     .views(self => ({
       get grammar(): GraphGrammar {
         return {
           layoutMode: self.layoutMode,
-          color: self.color,
+          encoding: { color: self.color },
           size: self.size,
           layers: self.layers,
           facet: self.facet,
@@ -65,8 +68,11 @@ export default function stateModelFactory() {
       },
     }))
     .actions(self => ({
-      writeGrammar(settings: GraphGrammar) {
-        Object.assign(self, settings)
+      writeGrammar({ encoding, ...settings }: GraphGrammar) {
+        Object.assign(
+          self,
+          encoding ? { ...settings, color: encoding.color } : settings,
+        )
       },
     }))
     .volatile(() => ({
@@ -222,10 +228,11 @@ export default function stateModelFactory() {
           self,
           reaction(
             () => self.walkStrip,
-            () => {
+            on => {
               if (
                 self.loadedTrackId &&
-                !layoutModeByValue(self.chosenLayoutMode).wholeWalks
+                self.cutsWholeWalks !==
+                  self.cutsWholeWalksIn(self.chosenLayoutMode, !on)
               ) {
                 void self.load()
               }

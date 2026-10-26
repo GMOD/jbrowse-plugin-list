@@ -200,3 +200,56 @@ describe("the drawing view has to be on the highlight's assembly", () => {
     expect(graphViewHighlights(noAssembly, 'lgv1', ['Sakai'])).toHaveLength(1)
   })
 })
+
+describe("a hovered node's span on a haplotype's own assembly", () => {
+  const onHap = {
+    refName: 'CM094351.1',
+    start: 1200,
+    end: 1500,
+    assemblyName: 'HG002.1',
+  }
+
+  // the stack's rows and a view opened beside are not the graph's pair
+  test('draws in a view of that assembly, paired or not', () => {
+    const views = [
+      graphView({
+        connectedViewId: 'lgv-ref',
+        assemblyHoverHighlights: [onHap],
+      }),
+      linearView('lgv-ref'),
+      linearView('lgv-hap'),
+    ]
+    expect(graphViewHighlights(views, 'lgv-hap', ['HG002.1'])).toEqual([
+      { key: 'graph1-0', region: onHap },
+    ])
+  })
+
+  test('draws nowhere else, nor where the view states no assemblies', () => {
+    const views = [graphView({ assemblyHoverHighlights: [onHap] })]
+    expect(graphViewHighlights(views, 'lgv1', ['hg38'])).toEqual([])
+    expect(graphViewHighlights(views, 'lgv1')).toEqual([])
+  })
+
+  test("comes from a graph track's display too", () => {
+    const views = [
+      {
+        ...linearView('lgv-ref'),
+        tracks: [
+          {
+            displays: [
+              {
+                id: 'display1',
+                type: 'LinearGraphDisplay',
+                assemblyHoverHighlights: [onHap],
+              },
+            ],
+          },
+        ],
+      },
+      linearView('lgv-hap'),
+    ]
+    expect(graphViewHighlights(views, 'lgv-hap', ['HG002.1'])).toEqual([
+      { key: 'display1-0', region: onHap },
+    ])
+  })
+})

@@ -1,8 +1,10 @@
+import { PathVisits } from '@jbrowse/bandage-core/pathVisits'
 import { expect, test } from 'vitest'
 
 import {
   contributingAssemblies,
   locString,
+  nodeAssemblySpans,
   nodeOwnLocation,
   resolveContributors,
   resolveLocationAssembly,
@@ -141,6 +143,27 @@ test('a contributor resolves through an assembly alias, under its own name', () 
   ).toMatchObject({ refName: 'chr17', start: 83899576, end: 84041803 })
 })
 
+test('two haplotypes on one contig name do not share a bare-sample assembly', () => {
+  const contributors = contributingAssemblies(
+    graph([
+      node('s1', 'GRCh38#0#chr6', 31000000, 5000, 0),
+      node('s2', 'HG002#1#chr6', 31100000, 300, 1),
+      node('s3', 'HG002#2#chr6', 31050000, 300, 1),
+    ]),
+  )
+  const bySample = (sample: string) =>
+    ({ HG002: 'HG002', 'HG002#2': 'HG002.2', GRCh38: 'hg38' })[sample]
+  expect(
+    resolveContributors(contributors, bySample).map(c => [
+      c.sample,
+      c.haplotype,
+    ]),
+  ).toEqual([
+    ['hg38', 'GRCh38#0'],
+    ['HG002.2', 'HG002#2'],
+  ])
+})
+
 test('a locstring is 1-based inclusive', () => {
   expect(
     locString({
@@ -200,4 +223,33 @@ test('a haplotype-named graph contributes per haplotype, resolved at that depth 
   expect(
     resolveLocationAssembly(bySample, { sample: 'K12', haplotype: undefined }),
   ).toBeUndefined()
+})
+
+test("a node's spans are where each walk through it passes it, on loaded assemblies", () => {
+  const allele = node('s7', 'HG002#1#CM1', 500, 300, 1)
+  const g = {
+    ...graph([allele]),
+    pathVisits: PathVisits.from([
+      [
+        's7',
+        [
+          {
+            path: 'GRCh38#0#chr6',
+            sample: 'GRCh38',
+            start: 31000,
+            strand: '+',
+          },
+          { path: 'HG002#1#CM1', sample: 'HG002', start: 500, strand: '+' },
+          { path: 'HG002#2#CM2', sample: 'HG002', start: 9100, strand: '-' },
+          { path: 'NA1#1#chr6', sample: 'NA1', start: 40, strand: '+' },
+        ],
+      ],
+    ]),
+  }
+  const resolve = (sample: string) =>
+    ({ GRCh38: 'hg38', 'HG002#1': 'HG002.1', 'HG002#2': 'HG002.2' })[sample]
+  expect(nodeAssemblySpans(g, allele, resolve, 'hg38')).toEqual([
+    { assemblyName: 'HG002.1', refName: 'CM1', start: 500, end: 800 },
+    { assemblyName: 'HG002.2', refName: 'CM2', start: 9100, end: 9400 },
+  ])
 })

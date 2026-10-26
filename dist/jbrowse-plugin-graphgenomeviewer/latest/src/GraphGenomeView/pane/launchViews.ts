@@ -5,9 +5,12 @@ import {
 import { getSession } from '@jbrowse/core/util'
 
 import { withGraphViews } from './graphViews'
+import { OWN_GENE_CONTIGS } from './paneBase'
 import {
   contributingAssemblies,
+  nodeAssemblySpans,
   nodeOwnLocation,
+  offReferenceContigs,
   resolveContributors,
   resolveLocationAssembly,
 } from '../../launchFromGraph/contributors'
@@ -169,5 +172,48 @@ export const withLaunchViews = withGraphViews
             ? { location: onReference, assembly: region.assemblyName }
             : undefined,
       }
+    },
+    // The gene reads that put each loaded haplotype's own genes on its nodes
+    // off the reference: its assembly's gene track over the span those nodes
+    // cover, the first OWN_GENE_CONTIGS contigs of them
+    get ownGeneReads() {
+      const { graph } = self
+      if (!graph || !self.showGenes || !self.modeDrawsNodes) {
+        return []
+      }
+      return offReferenceContigs(
+        graph,
+        self.assemblyResolver,
+        self.graphRegion?.assemblyName,
+      )
+        .flatMap(({ stableRefName, assemblyName, refName, start, end }) => {
+          const track = self.geneTracksByAssembly.get(assemblyName)
+          return track
+            ? [
+                {
+                  stableRefName,
+                  trackId: track.trackId,
+                  region: { assemblyName, refName, start, end },
+                },
+              ]
+            : []
+        })
+        .slice(0, OWN_GENE_CONTIGS)
+    },
+    // The hovered node's own sequence on every loaded assembly but the
+    // reference, for linear views of those assemblies to band: an allele off
+    // the reference is a few hundred bp "instead of" on GRCh38, and here it
+    // is where it actually lives on each haplotype
+    get assemblyHoverHighlights() {
+      const id = self.hoveredNode
+      const node = id === null ? undefined : self.nodeById?.get(id)
+      return node && self.graph && self.chosenHover !== 'off'
+        ? nodeAssemblySpans(
+            self.graph,
+            node,
+            self.assemblyResolver,
+            self.graphRegion?.assemblyName,
+          )
+        : []
     },
   }))

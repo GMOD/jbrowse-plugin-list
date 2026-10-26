@@ -124,6 +124,31 @@ export function graphViewHighlights(
         }
       }
     }
+    // A hovered node's span on each haplotype's own assembly goes to any
+    // view of that assembly, paired or not: the assembly name says where it
+    // belongs, and those views are a synteny stack's rows or opened beside
+    for (const graph of isRecord(view)
+      ? [
+          ...trackGraphs(view),
+          ...(view.type === 'GraphGenomeView' ? [view] : []),
+        ]
+      : []) {
+      const spans = Array.isArray(graph.assemblyHoverHighlights)
+        ? graph.assemblyHoverHighlights
+        : []
+      spans.forEach((value: unknown, i) => {
+        const region = readRegion(value)
+        if (
+          region?.assemblyName !== undefined &&
+          linearAssemblyNames?.includes(region.assemblyName)
+        ) {
+          highlights.push({
+            key: `${typeof graph.id === 'string' ? graph.id : 'graph'}-${i}`,
+            region,
+          })
+        }
+      })
+    }
     if (
       isRecord(view) &&
       view.type === 'GraphGenomeView' &&
