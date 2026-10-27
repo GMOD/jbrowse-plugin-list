@@ -219,7 +219,11 @@ export function buildTrackConfig(args: {
     assemblyNames: [assembly],
     adapter: buildAdapterConfig(args),
     ...(choice === 'RgfaTabixAdapter' || choice === 'RgfaTabixWalks'
-      ? { displayDefaults: { showLabels: 'none' } }
+      ? {
+          displayDefaults: {
+            labels: { name: { show: false }, description: { show: false } },
+          },
+        }
       : {}),
   }
 }

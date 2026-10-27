@@ -1,15 +1,18 @@
 import { regionLabel } from '@jbrowse/bandage-core/hoverText'
-import { readConfObject } from '@jbrowse/core/configuration'
+import { getConfAssemblyNamesOrNone } from '@jbrowse/core/util/tracks'
 
 import { locString } from './contributors'
 import { linearViewTarget } from './linearViewTarget'
 
 import type { Contributor, GraphLocation } from './contributors'
 import type { SubgraphRegion } from '../GetSubgraph'
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type {
+  AnyConfigurationModel,
+  AnyTrackConfig,
+} from '@jbrowse/core/configuration'
 
 export interface TrackScanSession {
-  tracks: AnyConfigurationModel[]
+  tracks: AnyTrackConfig[]
   // core's getTrackName reads these
   assemblies: AnyConfigurationModel[]
   // optional, as a hand-built session in a test has none
@@ -55,14 +58,11 @@ export function canonicalRegion<
 // The assemblies a track config covers, by canonical name
 export function trackAssemblies(
   session: TrackScanSession,
-  track: AnyConfigurationModel,
+  track: AnyTrackConfig,
 ) {
-  const names: unknown = readConfObject(track, 'assemblyNames')
-  return Array.isArray(names)
-    ? names
-        .filter(n => typeof n === 'string')
-        .map(n => canonicalAssemblyName(session, n))
-    : []
+  return getConfAssemblyNamesOrNone(track).map(n =>
+    canonicalAssemblyName(session, n),
+  )
 }
 
 export interface GraphLaunchSession extends TrackScanSession {
@@ -240,7 +240,7 @@ function assemblyNamesOfTrack(
   const track =
     trackId === undefined
       ? undefined
-      : session.tracks.find(t => readConfObject(t, 'trackId') === trackId)
+      : session.tracks.find(t => t.trackId === trackId)
   return track ? trackAssemblies(session, track) : []
 }
 

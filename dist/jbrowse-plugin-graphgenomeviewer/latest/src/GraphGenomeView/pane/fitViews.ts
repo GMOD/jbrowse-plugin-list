@@ -304,26 +304,26 @@ export const withFitViews = withHostViews
     // The facet as a spec writes it: the bare field while nothing else is
     // written, the whole setting otherwise, and nothing while off
     get facetSpec(): string | FacetSetting | undefined {
-      const { field, domain, columns } = self.facetSetting
+      const { field, sort, columns } = self.facetSetting
       return field === ''
         ? undefined
-        : domain.length === 0 && columns === undefined
+        : sort.length === 0 && columns === undefined
           ? field
           : {
               field,
-              domain: [...domain],
+              sort: [...sort],
               ...(columns === undefined ? {} : { columns }),
             }
     },
     // Which grid cell each panel takes; see facetCells
     get facetPlacement() {
       const panels = self.facetPanels
-      const { field, domain } = self.facetSetting
+      const { field, sort } = self.facetSetting
       return panels
         ? facetCells(
             panels.map(p => p.walks[0]!.name),
             self.hostPlacesX || field === '' ? 'walk' : field,
-            domain,
+            sort,
           )
         : undefined
     },

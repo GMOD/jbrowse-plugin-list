@@ -1,12 +1,9 @@
-import { readConfObject } from '@jbrowse/core/configuration'
-import { getTrackName } from '@jbrowse/core/util/tracks'
-import { getEnv, isStateTreeNode } from '@jbrowse/mobx-state-tree'
+import { getTrackName, toTrackConfigEntry } from '@jbrowse/core/util/tracks'
 
 import { trackAssemblies } from './launchFromGraph'
 
 import type { TrackScanSession } from './launchFromGraph'
-import type PluginManager from '@jbrowse/core/PluginManager'
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 
 export interface LaunchableSyntenyTrack {
   trackId: string
@@ -19,20 +16,25 @@ export interface LaunchableSyntenyTrack {
 const SYNTENY_TRACK_TYPE = 'SyntenyTrack'
 const SYNTENY_ADAPTER_CATEGORY = 'Synteny adapters'
 
+export interface AdapterCategories {
+  hasAdapterType: (name: string) => boolean
+  getAdapterType: (name: string) => {
+    adapterMetadata?: { category?: string }
+  }
+}
+
 // A SyntenyTrack, or any track reading a synteny adapter (a GraphTrack over a
-// gbz-base database). Core's isSyntenyTrack makes the same test on newer hosts.
-function isSyntenyTrack(track: AnyConfigurationModel) {
-  if (readConfObject(track, 'type') === SYNTENY_TRACK_TYPE) {
+// gbz-base database). Core's isSyntenyTrack makes the same test.
+function isSyntenyTrack(track: AnyTrackConfig, adapters: AdapterCategories) {
+  const { type, adapter } = toTrackConfigEntry(track)
+  if (type === SYNTENY_TRACK_TYPE) {
     return true
   }
-  const adapterType: unknown = track.adapter?.type
-  if (typeof adapterType !== 'string' || !isStateTreeNode(track)) {
-    return false
-  }
-  const { pluginManager } = getEnv<{ pluginManager?: PluginManager }>(track)
+  const adapterType: unknown = (adapter as { type?: unknown } | undefined)?.type
   return (
-    !!pluginManager?.hasAdapterType(adapterType) &&
-    pluginManager.getAdapterType(adapterType).adapterMetadata?.category ===
+    typeof adapterType === 'string' &&
+    adapters.hasAdapterType(adapterType) &&
+    adapters.getAdapterType(adapterType).adapterMetadata?.category ===
       SYNTENY_ADAPTER_CATEGORY
   )
 }
@@ -45,12 +47,13 @@ function isSyntenyTrack(track: AnyConfigurationModel) {
 export function launchableSyntenyTracks(
   session: TrackScanSession,
   assemblyNames: string[],
+  adapters: AdapterCategories,
 ) {
   const wanted = new Set(assemblyNames)
   const found: LaunchableSyntenyTrack[] = []
   for (const track of session.tracks) {
-    const trackId: unknown = readConfObject(track, 'trackId')
-    if (isSyntenyTrack(track) && typeof trackId === 'string') {
+    const { trackId } = track
+    if (isSyntenyTrack(track, adapters)) {
       const coverage = trackAssemblies(session, track).filter(name =>
         wanted.has(name),
       ).length

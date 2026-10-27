@@ -33,12 +33,12 @@ export const TUBE_MAP_PANELS: { field: '' | FacetBy; label: string }[] = [
   { field: 'walk', label: 'A panel per haplotype' },
 ]
 
-// How the walks split: by sample or walk, the groups the domain names first
+// How the walks split: by sample or walk, the groups the sort names first
 // and the rest in the graph's order, or by a sample table column, its values
 // in the order a JBrowse Group by sorts them
 export type TubeMapPanelSplit =
-  | { by: FacetBy; domain?: readonly string[] }
-  | { by: 'column'; field: string; table: SampleRow[]; domain?: string[] }
+  | { by: FacetBy; sort?: readonly string[] }
+  | { by: 'column'; field: string; table: SampleRow[]; sort?: string[] }
 
 export interface TubeMapPanelGroup {
   key: string
@@ -158,9 +158,9 @@ export function tubeMapPanelGroups(
       groups.set(key, [name])
     }
   }
-  const domain = split.domain ?? []
-  const rank = new Map(domain.map((key, i) => [key, i]))
-  const listed = (key: string) => rank.get(key) ?? domain.length
+  const sort = split.sort ?? []
+  const rank = new Map(sort.map((key, i) => [key, i]))
+  const listed = (key: string) => rank.get(key) ?? sort.length
   return [...groups]
     .map(([key, paths], i) => ({ key, paths, i }))
     .sort((a, b) => listed(a.key) - listed(b.key) || a.i - b.i)

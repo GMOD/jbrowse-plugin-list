@@ -1,9 +1,9 @@
 import { readConfObject } from '@jbrowse/core/configuration'
 import { getSession } from '@jbrowse/core/util'
 
-import { walkIndexed } from '../graphTrackConfig'
+import { trackAdapterSnapshot, walkIndexed } from '../graphTrackConfig'
 
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 import type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
 
 export interface AssemblyAliases {
@@ -98,12 +98,9 @@ export const LANE_ADAPTERS = new Set([
  */
 export function trackAdapterConfig(
   node: IAnyStateTreeNode,
-  track: AnyConfigurationModel,
+  track: AnyTrackConfig,
 ) {
-  const adapterConfig = readConfObject(track, 'adapter') as Record<
-    string,
-    unknown
-  >
+  const adapterConfig = trackAdapterSnapshot(track)
   if (
     !LANE_ADAPTERS.has(adapterConfig.type as string) &&
     !walkIndexed(adapterConfig)

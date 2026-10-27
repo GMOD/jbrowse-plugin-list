@@ -51,7 +51,6 @@ import { tubeMapNodeColors } from '@jbrowse/bandage-core/tubeMap/nodeColors'
 import { axisScaleOf } from '@jbrowse/bandage-core/viewport'
 import { NO_VALUE_COLOR } from '@jbrowse/bandage-core/walkEncoding'
 import { facetLifts, walkLift } from '@jbrowse/bandage-core/walkHighlight'
-import { readConfObject } from '@jbrowse/core/configuration'
 import SerializableFilterChain from '@jbrowse/core/pluggableElementTypes/renderers/util/serializableFilterChain'
 import {
   getContainingTrack,
@@ -59,9 +58,11 @@ import {
   getEnv,
   getSession,
 } from '@jbrowse/core/util'
+import { getTrackName } from '@jbrowse/core/util/tracks'
 import { computed } from 'mobx'
 
 import { TUBE_MAP_MODES, dependOn, geometryPainted, paneBase } from './paneBase'
+import { trackAdapterSnapshot } from '../../graphTrackConfig'
 import {
   canonicalAssemblyName,
   trackAssemblies,
@@ -114,7 +115,7 @@ import type { Graph, GraphNode } from '@jbrowse/bandage-core/types'
 import type { NodeInk } from '@jbrowse/bandage-core/util/hitDetection'
 import type { WalkLayer } from '@jbrowse/bandage-core/walkEncoding'
 import type { WalkLift } from '@jbrowse/bandage-core/walkHighlight'
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 import type { FileLocation } from '@jbrowse/core/util/types'
 
 // A repeat pick slices the cut's walks again, by the repeat's own array
@@ -185,7 +186,7 @@ export interface GraphRows {
 export const withGraphViews = paneBase
   .views(self => ({
     // the session's config for a track, by id
-    sessionTrack(trackId: string): AnyConfigurationModel | undefined {
+    sessionTrack(trackId: string): AnyTrackConfig | undefined {
       return getSession(self).tracks.find(t => t.trackId === trackId)
     },
     get grammar(): GraphGrammar {
@@ -199,7 +200,7 @@ export const withGraphViews = paneBase
       return false
     },
     // the track the graph is cut from: the one the pane is a display of
-    get sourceTrack(): AnyConfigurationModel | undefined {
+    get sourceTrack(): AnyTrackConfig | undefined {
       return orUndefined(() => getContainingTrack(self).configuration)
     },
     get containingView(): object | undefined {
@@ -275,7 +276,7 @@ export const withGraphViews = paneBase
       // One section per value of a field, as a grammar of graphics splits a
       // plot. A node layout draws a panel per `walk` (each lifted walk alone,
       // on the same layout) or per `sample` (a sample's haplotypes in a row);
-      // `domain` orders the panels and `columns` fixes how many go across.
+      // `sort` orders the panels and `columns` fixes how many go across.
       // See facetPanels and facetCells.
       get facetSetting(): FacetSetting {
         return facet.get()
@@ -698,17 +699,16 @@ export const withGraphViews = paneBase
       return track ? trackAdapterConfig(self, track) : undefined
     },
     get sourceTrackId() {
-      const track = self.sourceTrack
-      return track ? (readConfObject(track, 'trackId') as string) : undefined
+      return self.sourceTrack?.trackId as string | undefined
     },
     // The session's tracks, each with the assemblies it covers by canonical
     // name, since a track may name one by an alias
     get sessionTracks() {
       const session = getSession(self)
       return session.tracks.map(t => ({
-        trackId: t.trackId as string,
-        name: readConfObject(t, 'name') as string,
-        adapterType: (readConfObject(t, 'adapter') as { type: string }).type,
+        trackId: t.trackId,
+        name: getTrackName(t, session),
+        adapterType: trackAdapterSnapshot(t).type as string,
         assemblies: trackAssemblies(session, t),
       }))
     },
@@ -966,10 +966,10 @@ export const withGraphViews = paneBase
     // How a tube map splits into panels: by sample or walk, or by a sample
     // table column
     get tubeMapPanelSplit(): TubeMapPanelSplit | undefined {
-      const { field, domain } = self.facetSetting
+      const { field, sort } = self.facetSetting
       const grouped = this.tableGroupBy
       return field !== ''
-        ? { by: field, domain }
+        ? { by: field, sort }
         : grouped
           ? { by: 'column', ...grouped.groupBy, table: grouped.table }
           : undefined

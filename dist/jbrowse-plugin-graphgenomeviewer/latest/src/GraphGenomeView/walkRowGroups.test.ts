@@ -32,9 +32,13 @@ test('a samples TSV keys rows by its first column, the first of a repeat kept', 
 
 test('the persisted setting reads a bare field or the object, anything else as ungrouped', () => {
   expect(groupByOf('superpopulation')).toEqual({ field: 'superpopulation' })
-  expect(groupByOf({ field: 'sex', domain: ['male', 3] })).toEqual({
+  expect(groupByOf({ field: 'sex', sort: ['male', 3] })).toEqual({
     field: 'sex',
-    domain: ['male'],
+    sort: ['male'],
+  })
+  expect(groupByOf({ field: 'sex', domain: ['female'] })).toEqual({
+    field: 'sex',
+    sort: ['female'],
   })
   expect(groupByOf('')).toBeUndefined()
   expect(groupByOf({ field: 3 })).toBeUndefined()
@@ -75,10 +79,10 @@ describe('grouping', () => {
     ])
   })
 
-  test('a haplotype row in the table wins over its sample, and a domain leads the order', () => {
+  test('a haplotype row in the table wins over its sample, and a sort leads the order', () => {
     const { rows: ordered, sections } = groupWalkRows(rows, table, {
       field: 'population',
-      domain: ['MXL'],
+      sort: ['MXL'],
     })
     expect(sections.map(s => s.key)).toEqual(['MXL', 'GBR', 'YRI', ''])
     expect(ordered[0]!.label).toBe('C#1')

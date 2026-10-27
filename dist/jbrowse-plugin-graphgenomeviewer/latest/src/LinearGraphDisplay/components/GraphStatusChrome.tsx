@@ -27,9 +27,6 @@ const ZOOM_IN_ADVICE =
 const FORCE_LOAD_ADVICE =
   'Force load this track for the rest of the session (may be slow)'
 
-// Hosts before the plain-props overlay change (jbrowse-components 3a5393f5a6)
-// read `model` and `visible`; later hosts read values and callbacks. Each
-// overlay gets both, so one build runs on either.
 function overlayProps(model: LinearGraphDisplayModel) {
   const { error } = model
   const regionTooLarge =
@@ -79,7 +76,7 @@ function overlayProps(model: LinearGraphDisplayModel) {
  * over it in the track's overlay layer. Core's `DisplayStatusChrome` drew this
  * until jbrowse-web main removed it on 2026-10-08 (d8db736896), and its named
  * import came back undefined there, failing the track with React error #130.
- * Built here from the overlays every host from 5.0.0-beta.11 serves.
+ * Built here from the overlays every host from 5.0.0-beta.18 serves.
  */
 export default observer(function GraphStatusChrome({
   model,
@@ -113,7 +110,7 @@ export default observer(function GraphStatusChrome({
       <div style={{ display: 'contents' }} {...attributes}>
         <TrackOverlayPortal>
           <div style={{ pointerEvents: 'auto' }}>
-            <TooLarge model={model} {...props.tooLarge} />
+            <TooLarge {...props.tooLarge} />
           </div>
         </TrackOverlayPortal>
       </div>
@@ -131,10 +128,9 @@ export default observer(function GraphStatusChrome({
         {/* a backend's render error is the canvas's banner, whose retry
         rebuilds the backend */}
         {phase === 'error' && model.error !== undefined ? (
-          <ErrorBar model={model} visible {...props.error} />
+          <ErrorBar {...props.error} />
         ) : null}
         <Loading
-          model={model}
           {...props.loading}
           visible={phase === 'loading' || phase === 'canceled'}
           immediate={!drawn}
@@ -153,7 +149,7 @@ export default observer(function GraphStatusChrome({
           }}
         >
           {phase === 'ready' && model.statusMessage ? (
-            <BackgroundProgress model={model} visible {...props.background} />
+            <BackgroundProgress {...props.background} />
           ) : null}
         </div>
       </TrackOverlayPortal>

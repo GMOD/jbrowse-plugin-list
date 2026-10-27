@@ -3820,23 +3820,23 @@ describe('walk rows', () => {
     expect(model.facetSpec).toBe('sample')
   })
 
-  test('a facet written as an object orders its panels by domain, and a change of field drops the order', async () => {
+  test('a facet written as an object orders its panels by sort, and a change of field drops the order', async () => {
     rpcRespond()
     const model = stateModelFactory().create({
       type: 'GraphGenomeView',
       layoutMode: 'auto',
-      facet: { field: 'sample', domain: ['B'], columns: 3 },
+      facet: { field: 'sample', sort: ['B'], columns: 3 },
     })
     await model.loadGFA(WALKS_GFA, 'walks')
     model.liftWalks(['GRCh38#0#chr1', 'A#1#ctg', 'A#2#ctg', 'B#1#ctg'])
     expect(model.facetPlacement!.cells).toEqual([2, 4, 5, 0])
     expect(model.facetSpec).toEqual({
       field: 'sample',
-      domain: ['B'],
+      sort: ['B'],
       columns: 3,
     })
     model.setFacet('walk')
-    expect(model.facetSpec).toEqual({ field: 'walk', domain: [], columns: 3 })
+    expect(model.facetSpec).toEqual({ field: 'walk', sort: [], columns: 3 })
     model.writeGrammar({ facet: { ...model.facetSetting, columns: undefined } })
     expect(model.facetSpec).toBe('walk')
     expect(
@@ -4840,7 +4840,7 @@ describe('walk rows grouped by a sample column', () => {
     expect(bare.walkRowGroupBy).toEqual({ field: 'superpopulation' })
     expect(getSnapshot(bare).facet).toBe('superpopulation')
     const ordered = await groupedModel({
-      facet: { field: 'superpopulation', domain: ['EUR', 7] },
+      facet: { field: 'superpopulation', sort: ['EUR', 7] },
     })
     expect(ordered.walkRowGroups!.sections.map(s => s.key)).toEqual([
       'EUR',

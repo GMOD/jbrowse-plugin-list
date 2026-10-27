@@ -238,7 +238,7 @@ export const withSettingActions = withTubeMapViews
           facet: {
             ...facet,
             field,
-            domain: field === facet.field ? facet.domain : [],
+            sort: field === facet.field ? facet.sort : [],
           },
         })
       }

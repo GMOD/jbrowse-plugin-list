@@ -74,7 +74,7 @@ export function configSchemaFactory() {
        * #slot
        * one section per value of a field: a node layout draws a panel per
        * `walk` or `sample`, and walk rows stack into a section per value of
-       * a sample table column. A bare field, or `{ field, domain, columns }`
+       * a sample table column. A bare field, or `{ field, sort, columns }`
        */
       facet: {
         type: 'frozen',

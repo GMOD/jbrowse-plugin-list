@@ -47,7 +47,9 @@ describe('buildTrackConfig', () => {
         },
         assemblyNameToPanSN: { hg38: 'GRCh38' },
       },
-      displayDefaults: { showLabels: 'none' },
+      displayDefaults: {
+        labels: { name: { show: false }, description: { show: false } },
+      },
     })
   })
 

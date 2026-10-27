@@ -1119,7 +1119,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     encoding: { color: { field: 'depth' } },
     size: { value: 6, links: 'walks' },
     layers: { bubbles: true },
-    facet: { field: 'walk', domain: [] },
+    facet: { field: 'walk', sort: [] },
     rows: { kept: ['HG1'], order: 'shared' },
     hover: 'off',
   })

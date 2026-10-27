@@ -16,7 +16,7 @@ export type SampleRow = { name: string } & Record<string, string>
 
 export interface WalkRowGroupBy {
   field: string
-  domain?: string[]
+  sort?: string[]
 }
 
 export interface WalkRowSection {
@@ -69,12 +69,14 @@ export function groupByOf(value: unknown): WalkRowGroupBy | undefined {
   if (typeof value === 'string') {
     return value ? { field: value } : undefined
   }
-  const { field, domain } = (value ?? {}) as Record<string, unknown>
+  // `domain` is the facet's order through 7.x
+  const { field, sort, domain } = (value ?? {}) as Record<string, unknown>
   if (typeof field !== 'string' || !field) {
     return undefined
   }
-  return Array.isArray(domain)
-    ? { field, domain: domain.filter(d => typeof d === 'string') }
+  const order = sort ?? domain
+  return Array.isArray(order)
+    ? { field, sort: order.filter(d => typeof d === 'string') }
     : { field }
 }
 
@@ -96,7 +98,7 @@ export function columnValueOf(field: string, table: SampleRow[]) {
 export function groupsByColumn<T>(
   items: readonly T[],
   valueOf: (item: T) => string,
-  { field, domain }: { field: string; domain?: readonly string[] },
+  { field, sort }: { field: string; sort?: readonly string[] },
   noun: string,
   nounOf: (item: T) => string,
 ) {
@@ -110,7 +112,7 @@ export function groupsByColumn<T>(
       groups.set(key, [item])
     }
   }
-  return [...groups.keys()].sort(groupKeyComparator(domain)).map(key => {
+  return [...groups.keys()].sort(groupKeyComparator(sort)).map(key => {
     const members = groups.get(key)!
     const n = new Set(members.map(nounOf)).size
     return {

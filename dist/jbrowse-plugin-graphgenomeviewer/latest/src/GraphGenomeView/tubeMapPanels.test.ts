@@ -49,7 +49,7 @@ test('a panel per sample holds its haplotypes, per walk each walk alone', () => 
     'B#1#c',
   ])
   expect(
-    tubeMapPanelGroups(g, { by: 'sample', domain: ['B'] }).map(p => p.key),
+    tubeMapPanelGroups(g, { by: 'sample', sort: ['B'] }).map(p => p.key),
   ).toEqual(['B', 'A'])
 })
 

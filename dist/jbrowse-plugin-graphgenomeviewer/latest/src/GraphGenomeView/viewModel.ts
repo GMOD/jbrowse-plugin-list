@@ -17,7 +17,7 @@ import type { SubgraphRegion } from '../GetSubgraph'
 import type { GraphGrammar, GraphRows } from './pane/graphViews'
 import type { FacetInput } from '@jbrowse/bandage-core/facetGrid'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 import type { FileLocation } from '@jbrowse/core/util/types'
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
@@ -99,7 +99,7 @@ export default function stateModelFactory() {
       get paneMeasured() {
         return self.widthMeasured
       },
-      get sourceTrack(): AnyConfigurationModel | undefined {
+      get sourceTrack(): AnyTrackConfig | undefined {
         return self.loadedTrackId
           ? self.sessionTrack(self.loadedTrackId)
           : undefined

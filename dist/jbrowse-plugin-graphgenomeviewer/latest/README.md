@@ -17,7 +17,7 @@
 
 ## Quick start
 
-1. Add the plugin to your JBrowse 5.0.0-beta.11 or later config:
+1. Add the plugin to your JBrowse 5.0.0-beta.18 or later config:
 
    ```json
    {

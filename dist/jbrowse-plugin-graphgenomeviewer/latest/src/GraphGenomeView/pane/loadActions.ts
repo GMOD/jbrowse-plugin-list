@@ -18,7 +18,6 @@ import { engineSettingsOf, loadGraph } from '@jbrowse/bandage-core/pipeline'
 import { assemblyWalk } from '@jbrowse/bandage-core/reference'
 import { bundleRoutes } from '@jbrowse/bandage-core/tubeMap/bundle'
 import { coarsenTubeMap } from '@jbrowse/bandage-core/tubeMap/coarsen'
-import { readConfObject } from '@jbrowse/core/configuration'
 import {
   getRpcSessionId,
   getSession,
@@ -36,6 +35,7 @@ import {
 } from './paneBase'
 import { withSettingActions } from './settingActions'
 import { namesReads } from '../../GetGraphReads'
+import { trackAdapterSnapshot } from '../../graphTrackConfig'
 import { geneModelsFrom } from '../genes/geneFeatures'
 import { gfaText } from '../gfaText'
 import { repeatArraysFrom } from '../repeats/repeatFeatures'
@@ -578,7 +578,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
       return undefined
     }
     return yield* readFeatures(
-      readConfObject(config, 'adapter'),
+      trackAdapterSnapshot(config),
       region,
       what,
       signal,

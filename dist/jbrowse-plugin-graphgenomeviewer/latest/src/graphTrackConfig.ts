@@ -1,8 +1,11 @@
-import { readConfObject } from '@jbrowse/core/configuration'
+import {
+  getConfAssemblyNamesOrNone,
+  toTrackConfigEntry,
+} from '@jbrowse/core/util/tracks'
 
 import { snapshotNamesFile } from './locationName.ts'
 
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string')
@@ -10,9 +13,8 @@ function isStringArray(value: unknown): value is string[] {
 
 // The assemblies the track names after its reference, which is what core's
 // MultiWaySyntenyDisplay opens a lane-declaring source on.
-export function trackLanes(track: AnyConfigurationModel) {
-  const assemblyNames: unknown = readConfObject(track, 'assemblyNames')
-  const lanes = isStringArray(assemblyNames) ? assemblyNames.slice(1) : []
+export function trackLanes(track: AnyTrackConfig) {
+  const lanes = getConfAssemblyNamesOrNone(track).slice(1)
   return lanes.length > 0 ? lanes : undefined
 }
 
@@ -52,9 +54,13 @@ export function configHaplotypes(adapterConfig: Record<string, unknown>) {
 // GbzBaseSyntenyAdapter states for its anchor. Every other assembly the track
 // names holds its sequence as rank>0 alleles off that reference's backbone, so
 // a window on one has no reference coordinates to frame the cut by.
-export function graphReferenceAssembly(track: AnyConfigurationModel) {
-  const assemblyNames: unknown = readConfObject(track, 'assemblyNames')
-  return isStringArray(assemblyNames) ? assemblyNames[0] : undefined
+export function graphReferenceAssembly(track: AnyTrackConfig) {
+  return getConfAssemblyNamesOrNone(track)[0]
+}
+
+// A track's adapter config, from a live node or a session's frozen entry
+export function trackAdapterSnapshot(track: AnyTrackConfig) {
+  return toTrackConfigEntry(track).adapter as Record<string, unknown>
 }
 
 export function offReferenceProblem(
