@@ -3,9 +3,9 @@ export declare function domainTrackId(viewId: string): string;
 /**
  * A session FeatureTrack drawing `domains` on the genome: one feature per
  * domain, one subfeature per region, so a domain spanning exons draws as boxes
- * joined across the intron. The display's color is the domains' color object,
- * a categorical scale over each feature's `accession`, so its key names each
- * color with its domain.
+ * joined across the intron. The display's `encoding.color` is the domains'
+ * color channel, a categorical scale over each feature's `accession`, so its
+ * key names each color with its domain.
  */
 export declare function domainTrackConf({ viewId, assemblyName, name, strand, domains, }: {
     viewId: string;
@@ -73,12 +73,18 @@ export declare function domainTrackConf({ viewId, assemblyName, name, strand, do
     displays: {
         type: string;
         displayId: string;
-        color: {
-            title: string;
-            field: "accession";
-            domain: string[];
-            range: string[];
-            labels: string[];
+        encoding: {
+            color: {
+                legend: {
+                    title: string;
+                };
+                field: "accession";
+                scale: {
+                    domain: string[];
+                    range: string[];
+                    names: string[];
+                };
+            };
         };
     }[];
 };

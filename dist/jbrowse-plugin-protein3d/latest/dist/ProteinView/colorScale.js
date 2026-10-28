@@ -1,4 +1,20 @@
 import { colord } from '@jbrowse/core/util/colord';
+/**
+ * A color object as a display's `encoding.color`, the spelling JBrowse 5
+ * reads: the scale's members under `scale`, `categorical` as `ordinal`,
+ * `labels` as `scale.names` and `title` as the key's `legend.title`.
+ */
+export function colorChannel({ field, scale, labels, title, ...members }) {
+    return {
+        field,
+        scale: {
+            type: scale === 'categorical' ? 'ordinal' : scale,
+            ...Object.fromEntries(Object.entries(members).filter(([, value]) => value !== undefined)),
+            ...(labels ? { names: labels } : {}),
+        },
+        ...(title === undefined ? {} : { legend: { title } }),
+    };
+}
 /** A CSS color as RGB. */
 export function rgbOf(css) {
     const { r, g, b } = colord(css).toRgb();

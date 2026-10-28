@@ -1,4 +1,5 @@
 import { CLINVAR_CATEGORIES, clinVarCategory } from '../../ProteinView/clinVar';
+import { colorChannel } from '../../ProteinView/colorScale';
 // The structure's ClinVar coloring counts pathogenic calls in reds; the track
 // shows every classification, so the reds are kept for the pathogenic end,
 // greens for the benign end, and greys for what ClinVar cannot decide.
@@ -74,7 +75,7 @@ export function clinVarTrackConf({ uniprotId, idPrefix, features, }) {
             {
                 type: 'LinearBasicDisplay',
                 displayId: `${trackId}-LinearBasicDisplay`,
-                color: CLINVAR_CATEGORY_COLOR,
+                encoding: { color: colorChannel(CLINVAR_CATEGORY_COLOR) },
             },
         ],
     };

@@ -1,4 +1,5 @@
 import { CLINVAR_CATEGORIES, clinVarCategory } from '../../ProteinView/clinVar'
+import { colorChannel } from '../../ProteinView/colorScale'
 
 import type { ProteinTrackConf } from './proteinTrackSetup'
 import type {
@@ -117,7 +118,7 @@ export function clinVarTrackConf({
       {
         type: 'LinearBasicDisplay',
         displayId: `${trackId}-LinearBasicDisplay`,
-        color: CLINVAR_CATEGORY_COLOR,
+        encoding: { color: colorChannel(CLINVAR_CATEGORY_COLOR) },
       },
     ],
   }

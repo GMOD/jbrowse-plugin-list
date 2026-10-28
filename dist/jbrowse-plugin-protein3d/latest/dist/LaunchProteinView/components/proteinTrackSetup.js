@@ -1,14 +1,15 @@
 import { myfetch, uniprotGffUrl } from 'p2s_mapper';
+import { colorChannel } from '../../ProteinView/colorScale';
 import { RESIDUE_COLORS } from '../../ProteinView/residueColors';
 import { UNIPROT_FEATURE_COLOR } from '../../ProteinView/uniprotFeatureTypes';
 // A quantitative display's color reads only `score`, and a linear one ramps
 // across the plot's y domain, so it takes the ramp's stops, middle and title
 function wiggleColor(color) {
     if (color.scale === 'threshold') {
-        return { ...color, field: 'score' };
+        return colorChannel({ ...color, field: 'score' });
     }
     const { scale, range, domainMid, title } = color;
-    return { field: 'score', scale, range, domainMid, title };
+    return colorChannel({ field: 'score', scale, range, domainMid, title });
 }
 export async function fetchUniProtFeatureTypes(uniprotId) {
     const data = await (await myfetch(uniprotGffUrl(uniprotId))).text();
@@ -41,8 +42,8 @@ function uniProtFeatureTrackConf({ uniprotId, featureTypes, idPrefix, }) {
             {
                 displayId: `${trackId}-LinearBasicDisplay`,
                 type: 'LinearBasicDisplay',
-                color: UNIPROT_FEATURE_COLOR,
-                facet: { field: 'type', domain: UNIPROT_FEATURE_COLOR.domain },
+                encoding: { color: colorChannel(UNIPROT_FEATURE_COLOR) },
+                facet: { field: 'type', sort: UNIPROT_FEATURE_COLOR.domain },
                 height: Math.min(450, 60 + 26 * featureTypes.length),
             },
         ],
@@ -78,7 +79,7 @@ function alphaFoldConfidenceTrackConf({ uniprotId, confidenceUrl, idPrefix, }) {
             {
                 type: 'LinearWiggleDisplay',
                 displayId: `${idPrefix}-AlphaFold-confidence-LinearWiggleDisplay`,
-                color: wiggleColor(RESIDUE_COLORS.plddt),
+                encoding: { color: wiggleColor(RESIDUE_COLORS.plddt) },
             },
         ],
     };
@@ -100,7 +101,7 @@ function alphaMissenseTrackConf(uniprotId, idPrefix) {
                 type: 'LinearWiggleDisplay',
                 displayId: `${idPrefix}-AlphaMissense-scores-LinearWiggleDisplay`,
                 defaultRendering: 'density',
-                color: wiggleColor(RESIDUE_COLORS.alphaMissense),
+                encoding: { color: wiggleColor(RESIDUE_COLORS.alphaMissense) },
             },
         ],
     };

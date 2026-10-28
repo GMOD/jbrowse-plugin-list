@@ -53,17 +53,19 @@ describe('connectedDomains on a reverse-strand transcript', () => {
             ],
             color: {
                 field: 'accession',
-                domain: ['site'],
-                range: ['fill-site'],
-                labels: ['legend site'],
+                scale: {
+                    domain: ['site'],
+                    range: ['fill-site'],
+                    names: ['legend site'],
+                },
             },
         });
     });
     test('the longest comes first, in the features and the color domain alike', () => {
         const { features, color } = connectedDomains(source([annotation('site', 2, 4), annotation('domain', 1, 5)]));
         expect(features.map(d => d.accession)).toEqual(['domain', 'site']);
-        expect(color.domain).toEqual(['domain', 'site']);
-        expect(color.range).toEqual(['fill-domain', 'fill-site']);
+        expect(color.scale.domain).toEqual(['domain', 'site']);
+        expect(color.scale.range).toEqual(['fill-domain', 'fill-site']);
         expect(features[0].regions).toEqual([
             { refName: 'chr1', start: 100, end: 107 },
             { refName: 'chr1', start: 200, end: 208 },
@@ -108,7 +110,10 @@ describe('connectedDomains on a reverse-strand transcript', () => {
         expect(connectedDomains(source(annotations)).features).toEqual([]);
         expect(connectedDomains(source([annotation('domain', 1, 5)], { showDomains: false }))).toEqual({
             features: [],
-            color: { field: 'accession', domain: [], range: [], labels: [] },
+            color: {
+                field: 'accession',
+                scale: { domain: [], range: [], names: [] },
+            },
         });
     });
 });

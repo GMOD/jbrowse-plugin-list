@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
 import { proteinTrackConfs } from './proteinTrackSetup'
-import { cssScaleOf } from '../../ProteinView/colorScale'
+import { colorChannel, cssScaleOf } from '../../ProteinView/colorScale'
 import { UNIPROT_FEATURE_COLOR } from '../../ProteinView/uniprotFeatureTypes'
 
 const GFF = 'https://rest.uniprot.org/uniprotkb/P04637.gff'
@@ -22,12 +22,16 @@ const alphaMissense = {
       type: 'LinearWiggleDisplay',
       displayId: 'P04637-AlphaMissense-scores-LinearWiggleDisplay',
       defaultRendering: 'density',
-      color: {
-        field: 'score',
-        scale: 'linear',
-        range: ['#2c7bb6', '#ffffff', '#d7191c'],
-        domainMid: 0.5,
-        title: 'AlphaMissense pathogenicity',
+      encoding: {
+        color: {
+          field: 'score',
+          scale: {
+            type: 'linear',
+            range: ['#2c7bb6', '#ffffff', '#d7191c'],
+            domainMid: 0.5,
+          },
+          legend: { title: 'AlphaMissense pathogenicity' },
+        },
       },
     },
   ],
@@ -57,8 +61,8 @@ function featureTrack(height: number) {
       {
         displayId: 'P04637-UniProt-features-LinearBasicDisplay',
         type: 'LinearBasicDisplay',
-        color: UNIPROT_FEATURE_COLOR,
-        facet: { field: 'type', domain: UNIPROT_FEATURE_COLOR.domain },
+        encoding: { color: colorChannel(UNIPROT_FEATURE_COLOR) },
+        facet: { field: 'type', sort: UNIPROT_FEATURE_COLOR.domain },
         height,
       },
     ],
@@ -89,18 +93,22 @@ test('prefixed by the accession, the configs are the ones the session used to ho
         {
           type: 'LinearWiggleDisplay',
           displayId: 'P04637-AlphaFold-confidence-LinearWiggleDisplay',
-          color: {
-            field: 'score',
-            scale: 'threshold',
-            domain: [50, 70, 90],
-            range: ['#ff7d45', '#ffdb13', '#65cbf3', '#0053d6'],
-            labels: [
-              'very low <50',
-              'low 50-70',
-              'confident 70-90',
-              'very high >90',
-            ],
-            title: 'AlphaFold per-residue confidence (pLDDT)',
+          encoding: {
+            color: {
+              field: 'score',
+              scale: {
+                type: 'threshold',
+                domain: [50, 70, 90],
+                range: ['#ff7d45', '#ffdb13', '#65cbf3', '#0053d6'],
+                names: [
+                  'very low <50',
+                  'low 50-70',
+                  'confident 70-90',
+                  'very high >90',
+                ],
+              },
+              legend: { title: 'AlphaFold per-residue confidence (pLDDT)' },
+            },
           },
         },
       ],
@@ -141,10 +149,19 @@ test("the 1D track paints a type the 3D bar's color, and an unlisted one grey", 
     confidenceUrl: undefined,
     idPrefix: 'P04637',
   })
-  const display = (
-    features?.displays as { color: typeof UNIPROT_FEATURE_COLOR }[]
-  )[0]!
-  const paint = cssScaleOf(display.color)
+  const { scale } = (
+    features?.displays as {
+      encoding: {
+        color: { scale: { type: string; domain: string[]; range: string[] } }
+      }
+    }[]
+  )[0]!.encoding.color
+  expect(scale.type).toBe('ordinal')
+  const paint = cssScaleOf({
+    ...UNIPROT_FEATURE_COLOR,
+    domain: scale.domain,
+    range: scale.range,
+  })
   expect(paint('Zinc finger')).toBe('#d62728')
   expect(paint('Region')).toBe('#2ca02c')
   expect(paint('Novel type')).toBe('#999999')

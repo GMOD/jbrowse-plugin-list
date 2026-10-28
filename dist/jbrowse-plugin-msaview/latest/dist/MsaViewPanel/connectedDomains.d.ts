@@ -18,12 +18,14 @@ export interface ConnectedDomain {
      */
     regions: GenomeRegion[];
 }
-/** A categorical color object, spelt as a JBrowse display's `color` config. */
+/** A categorical color channel, spelt as a JBrowse display's `encoding.color`. */
 export interface DomainColor {
     field: 'accession';
-    domain: string[];
-    range: string[];
-    labels: string[];
+    scale: {
+        domain: string[];
+        range: string[];
+        names: string[];
+    };
 }
 export interface ConnectedDomains {
     /** largest first by residues covered */

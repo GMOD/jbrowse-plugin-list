@@ -243,20 +243,25 @@ describe('connectedDomains', () => {
             ],
             color: {
                 field: 'accession',
-                domain: ['cd1', 'cd2'],
-                range: [fills.get('QUERY:cd1'), fills.get('QUERY:cd2')],
-                labels: ['Hb beta-like', 'heme binding site'],
+                scale: {
+                    domain: ['cd1', 'cd2'],
+                    range: [fills.get('QUERY:cd1'), fills.get('QUERY:cd2')],
+                    names: ['Hb beta-like', 'heme binding site'],
+                },
             },
         });
     });
     test('follows the overlay and the legend filter', () => {
         const model = domainView();
         model.setFilter('cd2', false);
-        expect(model.connectedDomains.color.domain).toEqual(['cd1']);
+        expect(model.connectedDomains.color.scale.domain).toEqual(['cd1']);
         model.setShowDomains(false);
         expect(model.connectedDomains).toEqual({
             features: [],
-            color: { field: 'accession', domain: [], range: [], labels: [] },
+            color: {
+                field: 'accession',
+                scale: { domain: [], range: [], names: [] },
+            },
         });
     });
 });

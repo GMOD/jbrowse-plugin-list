@@ -60,11 +60,17 @@ function featureOf(value) {
 }
 /**
  * The one reader of msaview's `connectedDomains`, duck-typed because a store
- * install can pair any two versions. Takes the current shape, features plus a
- * color object, and msaview 5.5.0's, an array of features each carrying its
- * own `color` and no `kind`, which it reads as domains. Undefined for anything
- * else and for no features. An accession past the end of `range` has no color,
- * so the reader drops it from `domain` and its feature is not drawn.
+ * install can pair any two versions. Takes three shapes:
+ *
+ * - features plus a color channel, `{ field, scale: { domain, range, names } }`
+ * - msaview 5.6.0 to 5.13.0's features plus a flat color object, `{ field,
+ *   domain, range, labels }`
+ * - msaview 5.5.0's array of features, each carrying its own `color` and no
+ *   `kind`, read as domains
+ *
+ * Undefined for anything else and for no features. An accession past the end
+ * of `range` has no color, so the reader drops it from `domain` and its
+ * feature is not drawn.
  */
 export function readConnectedDomains(value) {
     if (Array.isArray(value)) {
@@ -99,8 +105,9 @@ export function readConnectedDomains(value) {
     }
     const features = value.features.flatMap(f => featureOf(f) ?? []);
     const color = isRecord(value.color) ? value.color : {};
-    const domain = strings(color.domain);
-    const range = strings(color.range);
+    const scale = isRecord(color.scale) ? color.scale : color;
+    const domain = strings(scale.domain);
+    const range = strings(scale.range);
     if (features.length === 0 || !domain || !range) {
         return undefined;
     }
@@ -111,7 +118,7 @@ export function readConnectedDomains(value) {
             field: 'accession',
             domain: drawn,
             range,
-            labels: strings(color.labels) ?? drawn,
+            labels: strings(scale.names) ?? strings(scale.labels) ?? drawn,
         },
     };
 }

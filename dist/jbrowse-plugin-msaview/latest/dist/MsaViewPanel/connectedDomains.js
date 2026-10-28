@@ -5,10 +5,10 @@
  * In grammar-of-graphics terms, `features` is the data and `kind` the field a
  * consumer filters its layers on (protein3d draws `domain` as cartoon and
  * `site` as side chains). `color` is the color channel: a categorical scale
- * over `accession`, whose `domain` lists the accessions, `range` the fills
- * the alignment draws them in, and `labels` what a guide (a legend) names
- * them. Every surface reads that one object: the genome track's display, the
- * structure's layers, its overview rows and each legend.
+ * over `accession`, whose `scale.domain` lists the accessions, `scale.range`
+ * the fills the alignment draws them in, and `scale.names` what a guide (a
+ * legend) names them. Every surface reads that one object: the genome track's
+ * display, the structure's layers, its overview rows and each legend.
  */
 import { isSiteType } from 'react-msaview';
 import { seqPosToGenomeRegions } from './msaCoordToGenomeCoord';
@@ -89,9 +89,11 @@ export function connectedDomains(model) {
         features: placed.map(p => p.feature),
         color: {
             field: 'accession',
-            domain: placed.map(p => p.feature.accession),
-            range: placed.map(p => p.fill),
-            labels: placed.map(p => p.feature.name),
+            scale: {
+                domain: placed.map(p => p.feature.accession),
+                range: placed.map(p => p.fill),
+                names: placed.map(p => p.feature.name),
+            },
         },
     };
 }

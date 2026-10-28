@@ -4,9 +4,9 @@ export function domainTrackId(viewId) {
 /**
  * A session FeatureTrack drawing `domains` on the genome: one feature per
  * domain, one subfeature per region, so a domain spanning exons draws as boxes
- * joined across the intron. The display's color is the domains' color object,
- * a categorical scale over each feature's `accession`, so its key names each
- * color with its domain.
+ * joined across the intron. The display's `encoding.color` is the domains'
+ * color channel, a categorical scale over each feature's `accession`, so its
+ * key names each color with its domain.
  */
 export function domainTrackConf({ viewId, assemblyName, name, strand, domains, }) {
     const trackId = domainTrackId(viewId);
@@ -44,7 +44,9 @@ export function domainTrackConf({ viewId, assemblyName, name, strand, domains, }
             {
                 type: 'LinearBasicDisplay',
                 displayId: `${trackId}-LinearBasicDisplay`,
-                color: { ...domains.color, title: 'Domains' },
+                encoding: {
+                    color: { ...domains.color, legend: { title: 'Domains' } },
+                },
             },
         ],
     };

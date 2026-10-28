@@ -134,8 +134,22 @@ describe('two layers, one per kind', () => {
 })
 
 describe('readConnectedDomains', () => {
-  test('reads the current shape as it stands', () => {
+  test('reads the flat color object as it stands', () => {
     expect(readConnectedDomains(domains)).toEqual(domains)
+  })
+
+  test('reads a color channel, its scale.names as the labels', () => {
+    const { field, domain, range, labels } = domains.color
+    expect(
+      readConnectedDomains({
+        features: domains.features,
+        color: {
+          field,
+          scale: { domain, range, names: labels },
+          legend: { title: 'Domains' },
+        },
+      }),
+    ).toEqual(domains)
   })
 
   test("reads msaview 5.5.0's array, with no kind and a color on each record, as domains", () => {

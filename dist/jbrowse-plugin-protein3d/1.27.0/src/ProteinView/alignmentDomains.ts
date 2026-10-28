@@ -1,0 +1,446 @@
+/**
+ * The connected alignment's domains on a structure, in grammar-of-graphics
+ * terms:
+ *
+ * - data: jbrowse-plugin-msaview's `connectedDomains.features`, one per
+ *   accession, each a set of genome regions
+ * - filter and layer: `kind` splits the data into two layers. Layer 1 draws
+ *   `kind == 'domain'` with the cartoon mark, layer 2 `kind == 'site'` with
+ *   the sticks mark, on side chains only, over the cartoon
+ * - mark: a backbone mark (cartoon, trace) takes the domain color, and an
+ *   atom mark (sticks, spheres, lines) the site color where a site covers the
+ *   residue, so a site's residue has one color wherever its atoms draw, the
+ *   Mol* preset's ligand environment included
+ * - color channel: msaview's one categorical color object over `accession`,
+ *   whose scale maps each `domain` entry to the `range` color at its index
+ * - guide: the header legend, one group per layer, and the overview's rows,
+ *   each named from the color object's `labels`
+ *
+ * Within a layer, draw order puts the smaller entry on top, so a residue two
+ * domains cover shows the smaller. A site never hides its domain, since the
+ * two layers use different marks.
+ */
+import { placeValues } from './variantEffects'
+
+import type { GenomeNaming } from './util'
+import type { PlacedValues } from './variantEffects'
+
+export type DomainKind = 'domain' | 'site'
+
+export type DomainMark = 'backbone' | 'atoms'
+
+const ATOM_MARKS = new Set(['ball-and-stick', 'spacefill', 'line', 'point'])
+
+/** The mark a Mol* representation type draws, for the color it takes */
+export function domainMarkOf(representationType: string): DomainMark {
+  return ATOM_MARKS.has(representationType) ? 'atoms' : 'backbone'
+}
+
+interface GenomeRegion {
+  refName: string
+  start: number
+  end: number
+}
+
+/**
+ * One accession of msaview's `connectedDomains`. A CDD site is scattered
+ * residues, so its regions are many short pieces, often one codon, and a
+ * codon split by an intron is two.
+ */
+export interface ConnectedDomain {
+  name: string
+  accession: string
+  kind: DomainKind
+  /** 0-based half-open, one per exon piece, in the transcript's spelling */
+  regions: readonly GenomeRegion[]
+}
+
+/**
+ * msaview's categorical color over `accession`, flattened: `labels` holds what
+ * its channel spells `scale.names`
+ */
+export interface DomainColor {
+  field: 'accession'
+  domain: readonly string[]
+  range: readonly string[]
+  labels: readonly string[]
+}
+
+export interface ConnectedDomains {
+  features: readonly ConnectedDomain[]
+  color: DomainColor
+}
+
+export const EMPTY_DOMAIN_COLOR: DomainColor = {
+  field: 'accession',
+  domain: [],
+  range: [],
+  labels: [],
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function strings(value: unknown) {
+  return Array.isArray(value) &&
+    value.every((v): v is string => typeof v === 'string')
+    ? value
+    : undefined
+}
+
+function featureOf(value: unknown): ConnectedDomain | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.name !== 'string' ||
+    typeof value.accession !== 'string' ||
+    !Array.isArray(value.regions)
+  ) {
+    return undefined
+  }
+  return {
+    name: value.name,
+    accession: value.accession,
+    kind: value.kind === 'site' ? 'site' : 'domain',
+    regions: value.regions.filter(
+      (r): r is GenomeRegion =>
+        isRecord(r) &&
+        typeof r.refName === 'string' &&
+        typeof r.start === 'number' &&
+        typeof r.end === 'number',
+    ),
+  }
+}
+
+/**
+ * The one reader of msaview's `connectedDomains`, duck-typed because a store
+ * install can pair any two versions. Takes three shapes:
+ *
+ * - features plus a color channel, `{ field, scale: { domain, range, names } }`
+ * - msaview 5.6.0 to 5.13.0's features plus a flat color object, `{ field,
+ *   domain, range, labels }`
+ * - msaview 5.5.0's array of features, each carrying its own `color` and no
+ *   `kind`, read as domains
+ *
+ * Undefined for anything else and for no features. An accession past the end
+ * of `range` has no color, so the reader drops it from `domain` and its
+ * feature is not drawn.
+ */
+export function readConnectedDomains(
+  value: unknown,
+): ConnectedDomains | undefined {
+  if (Array.isArray(value)) {
+    const features: ConnectedDomain[] = []
+    const fills = new Map<string, { fill: string; label: string }>()
+    for (const record of value) {
+      const feature = featureOf(record)
+      if (feature && isRecord(record) && typeof record.color === 'string') {
+        features.push(feature)
+        if (!fills.has(feature.accession)) {
+          fills.set(feature.accession, {
+            fill: record.color,
+            label: feature.name,
+          })
+        }
+      }
+    }
+    return features.length > 0
+      ? {
+          features,
+          color: {
+            field: 'accession',
+            domain: [...fills.keys()],
+            range: [...fills.values()].map(f => f.fill),
+            labels: [...fills.values()].map(f => f.label),
+          },
+        }
+      : undefined
+  }
+  if (!isRecord(value) || !Array.isArray(value.features)) {
+    return undefined
+  }
+  const features = value.features.flatMap(f => featureOf(f) ?? [])
+  const color = isRecord(value.color) ? value.color : {}
+  const scale = isRecord(color.scale) ? color.scale : color
+  const domain = strings(scale.domain)
+  const range = strings(scale.range)
+  if (features.length === 0 || !domain || !range) {
+    return undefined
+  }
+  const drawn = domain.slice(0, range.length)
+  return {
+    features,
+    color: {
+      field: 'accession',
+      domain: drawn,
+      range,
+      labels: strings(scale.names) ?? strings(scale.labels) ?? drawn,
+    },
+  }
+}
+
+/** The part of msaview's MsaView model read here */
+interface MsaViewLike {
+  type: string
+  connectedViewId?: string
+  connectedDomains?: unknown
+}
+
+/**
+ * The alignments connected to a genome view, and the domains of the first
+ * that shows any
+ */
+export function connectedAlignmentDomains(
+  views: readonly MsaViewLike[],
+  connectedViewId: string | undefined,
+) {
+  const alignments = connectedViewId
+    ? views.filter(
+        v => v.type === 'MsaView' && v.connectedViewId === connectedViewId,
+      )
+    : []
+  let domains: ConnectedDomains | undefined
+  for (const view of alignments) {
+    domains ??= readConnectedDomains(view.connectedDomains)
+  }
+  return { alignments: alignments.length, domains }
+}
+
+/** A feature on the transcript, with its index into the color object's domain */
+export interface PlacedDomain {
+  feature: ConnectedDomain
+  index: number
+  /** 0-based transcript residues with a base of their codon in a region */
+  positions: ReadonlySet<number>
+}
+
+/**
+ * Each feature on the transcript through `g2p`. A feature the color object's
+ * domain leaves out has no color and is left out, as is one off the
+ * transcript.
+ */
+export function placeOnTranscript(
+  { features, color }: ConnectedDomains,
+  mapping: { g2p: Record<number, number>; refName: string },
+  { canonicalRefName }: GenomeNaming,
+): PlacedDomain[] {
+  const refName = canonicalRefName(mapping.refName)
+  return features.flatMap(feature => {
+    const index = color.domain.indexOf(feature.accession)
+    const positions = new Set<number>()
+    for (const region of feature.regions) {
+      if (canonicalRefName(region.refName) === refName) {
+        for (let base = region.start; base < region.end; base++) {
+          const pos = mapping.g2p[base]
+          if (pos !== undefined) {
+            positions.add(pos)
+          }
+        }
+      }
+    }
+    return index === -1 || positions.size === 0
+      ? []
+      : [{ feature, index, positions }]
+  })
+}
+
+/**
+ * One layer's color index for each transcript residue it covers. Draw order
+ * runs largest first, so the smaller of two entries covering a residue is on
+ * top.
+ */
+export function layerByTranscriptPos(
+  placed: readonly PlacedDomain[],
+  kind: DomainKind,
+) {
+  const byPos = new Map<number, number>()
+  for (const { index, positions } of placed
+    .filter(p => p.feature.kind === kind)
+    .toSorted((a, b) => b.positions.size - a.positions.size)) {
+    for (const pos of positions) {
+      byPos.set(pos, index)
+    }
+  }
+  return byPos
+}
+
+export interface AlignmentDomainStatus {
+  domains?: ConnectedDomains
+  /** layer 1, the cartoon: each residue's index into `color.domain` */
+  placed?: PlacedValues
+  /** layer 2, the side-chain sticks */
+  placedSites?: PlacedValues
+  /** why the structure stays grey */
+  message?: string
+}
+
+/**
+ * The domains of the first alignment connected to the structure's genome view
+ * that shows any, placed on the mapped entity through the genome: region →
+ * transcript residue (`g2p`) → structure residue, one layer per kind. Waits,
+ * with no message, for the structure's alignment to the transcript.
+ */
+export function alignmentDomainStatus({
+  views,
+  connectedViewId,
+  mapping,
+  naming,
+  entity,
+  transcriptToStructure,
+}: {
+  views: readonly MsaViewLike[]
+  connectedViewId: string | undefined
+  mapping: { g2p: Record<number, number>; refName: string } | undefined
+  /** the connected genome view's assembly */
+  naming: GenomeNaming
+  entity: { entityId: string; seqIds: readonly number[] } | undefined
+  transcriptToStructure: Record<number, number> | undefined
+}): AlignmentDomainStatus {
+  const { alignments, domains } = connectedAlignmentDomains(
+    views,
+    connectedViewId,
+  )
+  if (!connectedViewId) {
+    return { message: 'No genome view to read alignment domains through' }
+  }
+  if (alignments === 0) {
+    return {
+      message: "No alignment is connected to this structure's genome view",
+    }
+  }
+  if (!domains) {
+    return { message: 'The connected alignment shows no domains' }
+  }
+  if (!mapping) {
+    return { domains, message: 'No transcript to place alignment domains on' }
+  }
+  const placed = placeOnTranscript(domains, mapping, naming)
+  if (placed.length === 0) {
+    return {
+      domains,
+      message: "None of the alignment's domains fall on this transcript",
+    }
+  }
+  const layer = (kind: DomainKind) =>
+    entity && transcriptToStructure
+      ? placeValues(
+          layerByTranscriptPos(placed, kind),
+          pos => transcriptToStructure[pos],
+          entity,
+        )
+      : undefined
+  return { domains, placed: layer('domain'), placedSites: layer('site') }
+}
+
+/** A run of residues that sit in consecutive alignment columns */
+export interface DomainBar {
+  /** 0-based half-open structure positions */
+  structureStart: number
+  structureEnd: number
+  /** inclusive alignment columns */
+  alignmentStart: number
+  alignmentEnd: number
+}
+
+/** One row of the overview's "From the alignment" section */
+export interface DomainRow {
+  accession: string
+  label: string
+  color: string
+  kind: DomainKind
+  bars: DomainBar[]
+}
+
+/**
+ * The overview's rows: one per accession, in the color object's domain order,
+ * each with a bar per run of its residues that the structure has. A site's
+ * bars sit on its own residues only, so they are scattered.
+ */
+export function domainRows({
+  domains,
+  mapping,
+  naming,
+  transcriptToStructure,
+  structureToAlignment,
+}: {
+  domains: ConnectedDomains
+  mapping: { g2p: Record<number, number>; refName: string }
+  naming: GenomeNaming
+  transcriptToStructure: Record<number, number>
+  structureToAlignment: Record<number, number>
+}): DomainRow[] {
+  const { color } = domains
+  return placeOnTranscript(domains, mapping, naming)
+    .toSorted((a, b) => a.index - b.index)
+    .flatMap(({ feature, index, positions }) => {
+      const cells = [...positions]
+        .flatMap(pos => {
+          const structurePos = transcriptToStructure[pos]
+          const column =
+            structurePos === undefined
+              ? undefined
+              : structureToAlignment[structurePos]
+          return structurePos === undefined || column === undefined
+            ? []
+            : [{ structurePos, column }]
+        })
+        .toSorted((a, b) => a.column - b.column)
+      const bars: DomainBar[] = []
+      for (const { structurePos, column } of cells) {
+        const last = bars.at(-1)
+        if (
+          last?.alignmentEnd === column - 1 &&
+          last.structureEnd === structurePos
+        ) {
+          last.alignmentEnd = column
+          last.structureEnd = structurePos + 1
+        } else {
+          bars.push({
+            structureStart: structurePos,
+            structureEnd: structurePos + 1,
+            alignmentStart: column,
+            alignmentEnd: column,
+          })
+        }
+      }
+      return bars.length > 0
+        ? [
+            {
+              accession: feature.accession,
+              label: color.labels[index] ?? feature.name,
+              color: color.range[index]!,
+              kind: feature.kind,
+              bars,
+            },
+          ]
+        : []
+    })
+}
+
+export interface DomainLegendGroup {
+  title: string
+  entries: { label: string; color: string }[]
+}
+
+/**
+ * The legend for the color object, one group per layer in the domain's
+ * order: domains drawn as cartoon, then sites drawn as side chains
+ */
+export function domainLegend({
+  features,
+  color,
+}: ConnectedDomains): DomainLegendGroup[] {
+  const kindOf = new Map(features.map(f => [f.accession, f.kind]))
+  const group = (kind: DomainKind, title: string) => ({
+    title,
+    entries: color.domain.flatMap((accession, i) =>
+      kindOf.get(accession) === kind && color.range[i]
+        ? [{ label: color.labels[i] ?? accession, color: color.range[i] }]
+        : [],
+    ),
+  })
+  return [
+    group('domain', 'Domains (cartoon)'),
+    group('site', 'Sites (side chains)'),
+  ].filter(g => g.entries.length > 0)
+}

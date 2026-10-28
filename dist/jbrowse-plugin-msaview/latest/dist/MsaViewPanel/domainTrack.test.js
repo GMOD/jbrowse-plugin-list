@@ -20,9 +20,11 @@ const domains = {
     ],
     color: {
         field: 'accession',
-        domain: ['cd1', 'cd2'],
-        range: ['#1b9e77', '#d95f02'],
-        labels: ['Hb beta-like', 'heme binding site'],
+        scale: {
+            domain: ['cd1', 'cd2'],
+            range: ['#1b9e77', '#d95f02'],
+            names: ['Hb beta-like', 'heme binding site'],
+        },
     },
 };
 const conf = domainTrackConf({
@@ -49,13 +51,15 @@ test('one feature per domain, one subfeature per region, spanning them all', () 
         [200, 208],
     ]);
 });
-test('the display paints through the domains color object and names each in the key', () => {
-    expect(conf.displays[0].color).toEqual({
+test('the display paints through the domains color channel and titles its key', () => {
+    expect(conf.displays[0].encoding.color).toEqual({
         field: 'accession',
-        domain: ['cd1', 'cd2'],
-        range: ['#1b9e77', '#d95f02'],
-        labels: ['Hb beta-like', 'heme binding site'],
-        title: 'Domains',
+        scale: {
+            domain: ['cd1', 'cd2'],
+            range: ['#1b9e77', '#d95f02'],
+            names: ['Hb beta-like', 'heme binding site'],
+        },
+        legend: { title: 'Domains' },
     });
 });
 test('a MAF view knows no strand, and the features carry none', () => {
