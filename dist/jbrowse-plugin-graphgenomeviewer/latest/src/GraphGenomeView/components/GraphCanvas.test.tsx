@@ -40,7 +40,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(
     () => size.width,
   )
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
+  vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockImplementation(
     () => size.height,
   )
   vi.stubGlobal(

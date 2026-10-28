@@ -16,7 +16,7 @@ import { editPlotMenuItems } from '@jbrowse/display-kit/plotMenu'
 import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
 import {
   computeActivityPhase,
-  computeDisplayStatusPhase,
+  computeDisplayPhase,
 } from '@jbrowse/render-core/displayPhase'
 import BubbleChartIcon from '@mui/icons-material/BubbleChart'
 import RouteIcon from '@mui/icons-material/Route'
@@ -48,7 +48,7 @@ import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { MenuItem } from '@jbrowse/core/ui'
 import type { ExportSvgDisplayOptions } from '@jbrowse/display-kit/types'
 import type { Instance, SnapshotOut } from '@jbrowse/mobx-state-tree'
-import type { DisplayStatusPhase } from '@jbrowse/render-core/displayPhase'
+import type { DisplayPhase } from '@jbrowse/render-core/displayPhase'
 
 type GraphViewSpec = Omit<LaunchGraphGenomeViewArgs, 'session'>
 
@@ -225,15 +225,14 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
     }))
     .views(self => ({
-      // A backend that failed is an error the canvas reports with its retry;
-      // the status chrome has no renderError phase of its own. A cut refused
-      // over its node limit is an error marked regionTooLarge, which core's
-      // error bar shows as a zoom-in notice instead.
-      get displayPhase(): DisplayStatusPhase {
-        return computeDisplayStatusPhase(
+      // A cut refused over its node limit is an error marked regionTooLarge,
+      // which core's error bar shows with no retry
+      get displayPhase(): DisplayPhase {
+        return computeDisplayPhase(
           {
+            renderError: self.renderError,
             regionTooLarge: self.regionTooLarge,
-            error: self.error ?? self.renderError,
+            error: self.error,
           },
           () =>
             computeActivityPhase(
@@ -247,7 +246,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
                 fetchCanceled: self.loadCanceled,
                 awaitingDependentData: false,
                 rendersCanvas: true,
-                canvasDrawn: self.painted && self.geometryPainted,
+                canvasDrawn: self.painted,
               },
               () => true,
               () => self.host?.effectiveBodyMounted ?? true,

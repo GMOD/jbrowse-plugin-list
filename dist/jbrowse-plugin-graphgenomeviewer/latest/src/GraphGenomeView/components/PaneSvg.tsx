@@ -12,9 +12,12 @@ import { SvgSwatch } from './LegendSwatch'
 import { paintReferenceStrip } from './ReferenceStripOverlay'
 import { paintTubeMap } from './TubeMapOverlay'
 import WalkRowsOverlay from './WalkRowsOverlay'
+import { HEADING_GAP_PX, HEADING_INK } from './legendStyles'
 import {
   facetKeyRows,
   legendSections,
+  rowPitch,
+  swatchColumn,
   swatchWidth,
   walkKeyRow,
 } from '../legendSections'
@@ -85,14 +88,50 @@ interface KeyRow {
   draw: (left: number) => React.ReactNode
 }
 
+// A group's name in small capitals, a gap below the rows before it
+function svgHeading(
+  heading: string,
+  key: string,
+  pitch: number,
+  first: boolean,
+): KeyRow {
+  const gap = first ? 0 : HEADING_GAP_PX
+  const text = heading.toUpperCase()
+  return {
+    key,
+    width: text.length * LABEL_CHAR_PX,
+    height: pitch + gap,
+    draw: left => (
+      <text
+        key={key}
+        fontFamily="sans-serif"
+        fontSize={9.5}
+        fontWeight={600}
+        letterSpacing="0.06em"
+        x={left}
+        y={gap}
+        fill={HEADING_INK}
+      >
+        {text}
+      </text>
+    ),
+  }
+}
+
 // A legend row as the screen lays it out: its swatch, then its words, the
-// line under it if any; a note is grey words alone
-function svgRow(row: LegendRow, id: string): KeyRow {
+// line under it if any; a note is grey words alone. A `column` is the slot
+// every swatch of the key is centred in.
+function svgRow(
+  row: LegendRow,
+  id: string,
+  pitch = ROW_PX,
+  column?: number,
+): KeyRow {
   if (!row.swatch) {
     return {
       key: row.key,
       width: row.label.length * LABEL_CHAR_PX,
-      height: ROW_PX,
+      height: pitch,
       draw: left => (
         <text key={row.key} {...FONT} x={left} y={0} fill="#666">
           {row.label}
@@ -101,24 +140,29 @@ function svgRow(row: LegendRow, id: string): KeyRow {
     }
   }
   const swatch = row.swatch
-  const sw = swatchWidth(swatch)
+  const sw = column ?? swatchWidth(swatch)
+  const indent = column === undefined ? 0 : column + 5
   const words = (row.strong ?? '') + row.label
   return {
     key: row.key,
     width: Math.max(
       sw + 5 + words.length * LABEL_CHAR_PX,
-      (row.under?.length ?? 0) * LABEL_CHAR_PX,
+      indent + (row.under?.length ?? 0) * LABEL_CHAR_PX,
     ),
-    height: row.under ? ROW_PX * 2 : ROW_PX,
+    height: row.under ? pitch * 2 : pitch,
     draw: left => (
       <g key={row.key} {...FONT}>
-        <SvgSwatch swatch={swatch} x={left} id={id} />
+        <SvgSwatch
+          swatch={swatch}
+          x={left + (sw - swatchWidth(swatch)) / 2}
+          id={id}
+        />
         <text x={left + sw + 5} y={0}>
           {row.strong ? <tspan fontWeight="bold">{row.strong}</tspan> : null}
           {row.label}
         </text>
         {row.under ? (
-          <text x={left} y={ROW_PX}>
+          <text x={left + indent} y={pitch}>
             {row.under}
           </text>
         ) : null}
@@ -135,29 +179,43 @@ function Keys({
   model: GraphPaneModel
   idPrefix: string
 }) {
-  const sections = legendSections(model).map(({ testid, rows }) =>
-    rows.map((row, i) => svgRow(row, `${idPrefix}-${testid}-${i}`)),
-  )
+  const sections = legendSections(model)
   if (sections.length === 0) {
     return null
   }
+  const all = sections.flatMap(section => section.rows)
+  const pitch = rowPitch(all)
+  const column = swatchColumn(all)
+  const rows = sections.flatMap(({ testid, rows, heading, spaced }, s) => [
+    ...(heading
+      ? [svgHeading(heading, `${testid}-heading`, pitch, s === 0)]
+      : []),
+    ...(spaced
+      ? [
+          {
+            key: `${testid}-gap`,
+            width: 0,
+            height: HEADING_GAP_PX,
+            draw: () => null,
+          },
+        ]
+      : []),
+    ...rows.map((row, i) =>
+      svgRow(row, `${idPrefix}-${testid}-${i}`, pitch, column),
+    ),
+  ])
   const pad = 6
-  const rows = sections.flat()
   const boxWidth =
     rows.reduce((max, r) => Math.max(max, r.width), -Infinity) + pad * 2
-  const boxHeight =
-    rows.reduce((sum, r) => sum + r.height, 0) + sections.length * pad
+  const boxHeight = rows.reduce((sum, r) => sum + r.height, 0) + pad
   const right = model.paneWidth - LEGEND_INSET_PX
   const left = right - boxWidth + pad
   const top = LEGEND_INSET_PX + model.referenceStripZonePx
   const placed: { row: KeyRow; y: number }[] = []
-  let y = top + 12 - pad / 2
-  for (const section of sections) {
-    y += pad
-    for (const row of section) {
-      placed.push({ row, y })
-      y += row.height
-    }
+  let y = top + pad / 2 + pitch / 2 + 4
+  for (const row of rows) {
+    placed.push({ row, y })
+    y += row.height
   }
   return (
     <g data-testid="graph-svg-keys">
@@ -168,7 +226,6 @@ function Keys({
         height={boxHeight}
         rx={3}
         fill="#fff"
-        fillOpacity={0.82}
       />
       {placed.map(({ row, y }) => (
         <g key={row.key} transform={`translate(0 ${y})`}>

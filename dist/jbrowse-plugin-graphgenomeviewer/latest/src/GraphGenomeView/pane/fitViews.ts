@@ -104,7 +104,7 @@ export const withFitViews = withHostViews
         (self.walkRowGroups?.sections.length ?? 0) * SECTION_HEADER_PX
       return rowPitch(
         bars.rows.length + 1,
-        room - this.fitPadTopBase - FIT_PADDING - headersPx,
+        room - this.fitPadTop - FIT_PADDING - headersPx,
       )
     },
     // Where each walk row and section header sits at the rows' pitch
@@ -226,65 +226,15 @@ export const withFitViews = withHostViews
     },
     // Room over a tube map for the rows its genes need, one inside the
     // padding and one more for each further gene that overlaps it, and
-    // room for the reference strip
-    get fitPadTopBase() {
+    // room for the reference strip. The legend floats over the drawing, as
+    // a JBrowse track's legend does, so the fit leaves it no room.
+    get fitPadTop() {
       const rows = tubeMapGeneRows(self.tubeMapGenes)
       return (
         FIT_PADDING +
         Math.max(0, rows - 1) * GENE_ROW_PX +
         self.referenceStripZonePx
       )
-    },
-    // The fit draws nothing under the legend. It leaves the legend room on
-    // the side that costs the drawing less scale: beside a tall drawing,
-    // which has width to spare, or above a wide flat one, which takes the
-    // height instead. A drawing whose x the host places can only move down.
-    // Reads get no room: their letters, and the legend row naming them, come
-    // and go with the fit's scale.
-    get legendRoom(): 'right' | 'top' | undefined {
-      const bounds = this.layoutBounds
-      const { width, height } = self.legendSize
-      if (
-        !bounds ||
-        bounds.w <= 0 ||
-        width === 0 ||
-        self.facetPanels ||
-        self.tubeMapReads
-      ) {
-        return undefined
-      }
-      if (self.hostPlacesX) {
-        return 'top'
-      }
-      const base = this.fitPadTopBase
-      const room = this.fitRoom
-      const across = (padRight: number) =>
-        (self.paneWidth - this.fitPadLeft - padRight) / bounds.w
-      const down = (padTop: number) =>
-        self.pixelRows
-          ? bounds.h + padTop + FIT_PADDING <= room
-            ? Infinity
-            : 0
-          : (room - padTop - FIT_PADDING) / bounds.h
-      const beside = Math.min(across(width + 2 * LEGEND_INSET_PX), down(base))
-      const above = Math.min(
-        across(FIT_PADDING),
-        down(base + height + LEGEND_INSET_PX),
-      )
-      return above >= beside ? 'top' : 'right'
-    },
-    get fitPadTop() {
-      return (
-        this.fitPadTopBase +
-        (this.legendRoom === 'top'
-          ? self.legendSize.height + LEGEND_INSET_PX
-          : 0)
-      )
-    },
-    get fitPadRight() {
-      return this.legendRoom === 'right'
-        ? Math.max(FIT_PADDING, self.legendSize.width + 2 * LEGEND_INSET_PX)
-        : FIT_PADDING
     },
     // A tube map on its own axis reads by panning along it, as in
     // sequenceTubeMap. Rather than shrink a long cut to a strip, the fit
@@ -409,8 +359,7 @@ export const withFitViews = withHostViews
         : { width: self.paneWidth, height: this.canvasHeight }
     },
     // The fit's margins: a facet panel's all round, else room for the row
-    // labels, the genes and strip above, and the legend where legendRoom
-    // puts it
+    // labels and the genes and strip above
     get fitPads() {
       return this.facetGrid
         ? {
@@ -422,7 +371,7 @@ export const withFitViews = withHostViews
         : {
             left: this.fitPadLeft,
             top: this.fitPadTop,
-            right: this.fitPadRight,
+            right: FIT_PADDING,
             bottom: FIT_PADDING,
           }
     },

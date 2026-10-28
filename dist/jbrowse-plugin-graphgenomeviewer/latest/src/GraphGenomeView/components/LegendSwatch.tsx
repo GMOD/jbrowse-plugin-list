@@ -1,9 +1,11 @@
 import { rulerInk } from '@jbrowse/bandage-core/tubeMap/axis'
 
 import { useSvgId } from './ElTree'
-import { SWATCH_PX, swatchWidth } from '../legendSections'
+import { SWATCH_PX, bandPx, swatchHeight, swatchWidth } from '../legendSections'
 
 import type { LegendSwatch, Stop } from '../legendSections'
+
+const EDGE_INK = 'rgba(0, 0, 0, 0.28)'
 
 function Gradient({
   id,
@@ -13,6 +15,7 @@ function Gradient({
   width,
   height,
   square,
+  edged,
 }: {
   id: string
   x: number
@@ -21,15 +24,19 @@ function Gradient({
   width: number
   height: number
   square?: boolean
+  edged?: boolean
 }) {
+  // an edge's stroke sits half inside, so the chip keeps its size
+  const inset = edged ? 0.5 : 0
   const rect = (fill: string) => (
     <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
+      x={x + inset}
+      y={y + inset}
+      width={width - inset * 2}
+      height={height - inset * 2}
       rx={square ? 0 : 2}
       fill={fill}
+      stroke={edged ? EDGE_INK : undefined}
     />
   )
   return stops.length > 1 ? (
@@ -46,31 +53,6 @@ function Gradient({
   ) : (
     rect(stops[0]!.color)
   )
-}
-
-const bandPx = (bands: readonly unknown[]) => (bands.length > 1 ? 3 : 4)
-
-function swatchHeight(swatch: LegendSwatch) {
-  switch (swatch.kind) {
-    case 'fill':
-      return swatch.height ?? 8
-    case 'bands':
-      return bandPx(swatch.bands) * swatch.bands.length
-    case 'line':
-      return 3
-    case 'halo':
-    case 'overhang':
-      return 10
-    case 'outline':
-    case 'tick':
-      return swatch.height
-    case 'glyph':
-      return 15
-    case 'bracket':
-      return 7
-    case 'blank':
-      return 0
-  }
 }
 
 // A row's swatch with its left edge at x, centred on the row's text 5 px
@@ -97,6 +79,7 @@ export function SvgSwatch({
           width={swatchWidth(swatch)}
           height={height}
           square={swatch.square}
+          edged={swatch.edged}
         />
       )
     }

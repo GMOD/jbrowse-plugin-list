@@ -9,6 +9,7 @@ import {
   deletionDrawing,
   deletionEdges,
 } from '@jbrowse/bandage-core/deletionEdges'
+import { busiestEdge } from '@jbrowse/bandage-core/edgeWidths'
 import { facetSettingOf } from '@jbrowse/bandage-core/facetGrid'
 import { genePins } from '@jbrowse/bandage-core/genes/genePins'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
@@ -27,7 +28,7 @@ import {
   layoutModeByValue,
   modeUsesLayoutEngine,
 } from '@jbrowse/bandage-core/layoutModes'
-import { nodeInk } from '@jbrowse/bandage-core/nodeWidths'
+import { meanDepth, nodeInk } from '@jbrowse/bandage-core/nodeWidths'
 import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 import {
   pathColorsLegible,
@@ -351,6 +352,9 @@ export const withGraphViews = paneBase
     },
     get geometryPainted() {
       return geometryPainted(self)
+    },
+    get paintSuperseded() {
+      return !this.geometryPainted
     },
     // The app-wide readiness contract (AppReadyMarker, @jbrowse/capture)
     // reads this: a declared source still fetching, or a graph whose
@@ -878,6 +882,24 @@ export const withGraphViews = paneBase
         self.contigThickness,
         self.nodeWidth,
       )
+    },
+    // the depths the width key samples, swept once per graph rather than on
+    // each legend render
+    get depthRange() {
+      const nodes = self.graph?.nodes
+      if (!nodes?.length) {
+        return undefined
+      }
+      let min = Infinity
+      let max = -Infinity
+      for (const { depth } of nodes) {
+        min = Math.min(min, depth)
+        max = Math.max(max, depth)
+      }
+      return { min, max, mean: meanDepth(self.graph!) }
+    },
+    get busiestLink() {
+      return self.graph ? busiestEdge(self.graph) : 0
     },
     // Links that skip reference sequence, i.e. the deletions this graph
     // holds. Computed once per graph rather than per geometry rebuild: it is

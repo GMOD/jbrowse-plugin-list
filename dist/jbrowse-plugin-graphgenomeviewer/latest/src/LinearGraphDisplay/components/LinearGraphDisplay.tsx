@@ -1,7 +1,8 @@
+import DisplayChrome from '@jbrowse/display-kit/DisplayChrome'
 import { observer } from 'mobx-react'
 
-import GraphStatusChrome from './GraphStatusChrome'
 import GraphCanvas from '../../GraphGenomeView/components/GraphCanvas'
+import { createGraphRenderer } from '../../GraphGenomeView/renderer/GraphRenderer'
 
 import type { LinearGraphDisplayModel } from '../model'
 
@@ -11,10 +12,9 @@ const LinearGraphDisplay = observer(function LinearGraphDisplay({
   model: LinearGraphDisplayModel
 }) {
   return (
-    <GraphStatusChrome
+    <DisplayChrome
       model={model}
-      phase={model.displayPhase}
-      drawn={model.painted && model.geometryPainted}
+      factory={createGraphRenderer}
       testid="linear-graph-display"
       data-layout={model.chosenLayoutMode}
       data-cut-tier={model.cutTier}
@@ -27,8 +27,8 @@ const LinearGraphDisplay = observer(function LinearGraphDisplay({
         overflow: 'hidden',
       }}
     >
-      <GraphCanvas model={model} ownChrome={false} />
-    </GraphStatusChrome>
+      {handle => <GraphCanvas model={model} handle={handle} />}
+    </DisplayChrome>
   )
 })
 

@@ -1674,25 +1674,24 @@ describe('canvas height follows the drawing', () => {
 
     expect(model.canvasHeight).toBe(600)
     model.setLegendSize({ width: 150, height: 60 })
-    expect(model.legendRoom).toBe('right')
     expect(model.canvasHeight).toBe(600)
   })
 
-  // Beside a wide flat drawing the legend would cost it width; above, it
-  // costs the pane only height
-  test('a wide flat layout leaves the legend room above it', async () => {
+  // As a JBrowse track's legend does, the key floats over the drawing, which
+  // fits as though it were not there
+  test('the fit leaves the floating legend no room', async () => {
     rpcRespond()
     const model = createModel()
     await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
     model.zoomToFit()
-    const { scale, translateY, canvasHeight } = model
+    const { scale, translateX, translateY, canvasHeight } = model
 
     model.setLegendSize({ width: 150, height: 60 })
     model.zoomToFit()
-    expect(model.legendRoom).toBe('top')
     expect(model.scale).toBeCloseTo(scale, 10)
-    expect(model.translateY).toBeCloseTo(translateY + 66, 5)
-    expect(model.canvasHeight).toBe(canvasHeight + 66)
+    expect(model.translateX).toBeCloseTo(translateX, 5)
+    expect(model.translateY).toBeCloseTo(translateY, 5)
+    expect(model.canvasHeight).toBe(canvasHeight)
   })
 
   test('the hover tooltip moves beside a legend that reaches its corner', async () => {

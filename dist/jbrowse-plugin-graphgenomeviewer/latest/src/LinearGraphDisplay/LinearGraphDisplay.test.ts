@@ -724,6 +724,24 @@ test('the phase is loading until the graph is drawn, and a failed cut is an erro
   expect(String(display.error)).toMatch(/index gone/)
 })
 
+test('a canvas marked drawn before its geometry is painted is not painted', () => {
+  const { view } = createEnvironment()
+  view.showTrack('graph')
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.markCanvasDrawn()
+  expect(display.canvasDrawn).toBe(true)
+  expect(display.geometryPainted).toBe(false)
+  expect(display.painted).toBe(false)
+})
+
+test('a failed backend is the renderError phase, not the error a cut reports', async () => {
+  const { pane } = await shownGraph()
+  expect(pane.displayPhase).toBe('ready')
+  pane.setRenderError(new Error('context lost'))
+  expect(pane.displayPhase).toBe('renderError')
+  expect(pane.error).toBeUndefined()
+})
+
 test('a restored session cuts the region it saved', async () => {
   const { view, cuts } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
@@ -1531,7 +1549,7 @@ test('the track menu offers the layouts, colours and the settings dialog', async
     expect.arrayContaining([
       'Layout: Anchored',
       'Color: Auto (Reference position)',
-      'Show...',
+      'Show',
       'Graph settings...',
     ]),
   )

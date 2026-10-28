@@ -29,7 +29,7 @@ const SettingsMenu = observer(function SettingsMenu({
           : []),
         ...model.layoutOptionMenuItems({ repeat: false }),
         {
-          label: 'Show...',
+          label: 'Show',
           icon: VisibilityIcon,
           subMenu: [
             ...model.showMenuItems(),

@@ -26,6 +26,7 @@ import { PAPER_CSS } from '../pane/paneBase'
 import { createGraphRenderer } from '../renderer/GraphRenderer'
 
 import type { GraphPaneModel } from '../model'
+import type { CanvasHandle } from '@jbrowse/display-kit/DisplayChromeBase'
 
 const wrapperStyle = { position: 'relative' as const }
 
@@ -125,7 +126,8 @@ const legendStackStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   borderRadius: 3,
-  overflow: 'hidden' as const,
+  overflowX: 'hidden' as const,
+  overflowY: 'auto' as const,
   zIndex: 4,
 }
 
@@ -166,15 +168,20 @@ export const Legends = observer(function Legends({
     if (!el || !atRest) {
       return
     }
-    // the last callback can land after the track is closed
+    // the last callback can land after the track is closed. scrollHeight is
+    // the whole key, even where the pane caps it to scroll, so the pane
+    // still grows to show it all when it can.
     const measure = () => {
       if (isAlive(model) && model.legendAtRest) {
-        model.setLegendSize({ width: el.offsetWidth, height: el.offsetHeight })
+        model.setLegendSize({ width: el.offsetWidth, height: el.scrollHeight })
       }
     }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
+    if (el.firstElementChild) {
+      observer.observe(el.firstElementChild)
+    }
     return () => {
       observer.disconnect()
     }
@@ -185,6 +192,8 @@ export const Legends = observer(function Legends({
       style={{
         ...legendStackStyle,
         top: LEGEND_INSET_PX + model.referenceStripZonePx,
+        maxHeight:
+          model.canvasHeight - 2 * LEGEND_INSET_PX - model.referenceStripZonePx,
       }}
     >
       <LegendPanel model={model} />
@@ -247,23 +256,27 @@ const GraphSizeLabels = observer(function GraphSizeLabels({
   )
 })
 
-// `ownChrome` false for a pane inside a track, whose controls, loading state
-// and errors are the track's. A hosted pane whose x the host places takes no pan or wheel of its
-// own: those are the linear view's, as on any other track. One drawing its
-// own coordinates inside a track keeps them, and keeps them from the view.
-const GraphCanvas = observer(function GraphCanvas({
+type PaneCanvas = Pick<CanvasHandle, 'canvasRef' | 'canvas'>
+
+interface OwnChrome {
+  renderError: unknown
+  retryRender: () => void
+}
+
+// `ownChrome` absent for a pane inside a track, whose controls, loading
+// state and errors are the track's `DisplayChrome`. A hosted pane whose x the
+// host places takes no pan or wheel of its own: those are the linear view's,
+// as on any other track. One drawing its own coordinates inside a track keeps
+// them, and keeps them from the view.
+const GraphCanvasBody = observer(function GraphCanvasBody({
   model,
-  ownChrome = true,
+  handle: { canvasRef, canvas },
+  ownChrome,
 }: {
   model: GraphPaneModel
-  ownChrome?: boolean
+  handle: PaneCanvas
+  ownChrome?: OwnChrome
 }) {
-  const {
-    canvasRef,
-    canvas,
-    error: renderError,
-    retry: retryRender,
-  } = useRenderingBackend(createGraphRenderer, model)
   const {
     handlers,
     canvasStyle,
@@ -367,8 +380,11 @@ const GraphCanvas = observer(function GraphCanvas({
         onClose={closeContextMenu}
       />
 
-      {renderError ? (
-        <ErrorBanner error={renderError} onReset={retryRender} />
+      {ownChrome?.renderError ? (
+        <ErrorBanner
+          error={ownChrome.renderError}
+          onReset={ownChrome.retryRender}
+        />
       ) : null}
 
       {ownChrome && model.error ? (
@@ -384,6 +400,38 @@ const GraphCanvas = observer(function GraphCanvas({
         />
       ) : null}
     </div>
+  )
+})
+
+const StandaloneGraphCanvas = observer(function StandaloneGraphCanvas({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
+  const { canvasRef, canvas, error, retry } = useRenderingBackend(
+    createGraphRenderer,
+    model,
+  )
+  return (
+    <GraphCanvasBody
+      model={model}
+      handle={{ canvasRef, canvas }}
+      ownChrome={{ renderError: error, retryRender: retry }}
+    />
+  )
+})
+
+const GraphCanvas = observer(function GraphCanvas({
+  model,
+  handle,
+}: {
+  model: GraphPaneModel
+  handle?: PaneCanvas
+}) {
+  return handle ? (
+    <GraphCanvasBody model={model} handle={handle} />
+  ) : (
+    <StandaloneGraphCanvas model={model} />
   )
 })
 

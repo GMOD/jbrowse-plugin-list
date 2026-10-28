@@ -537,7 +537,7 @@ export const withLaunchActions = withRenderingActions
           ),
         },
         {
-          label: 'Show...',
+          label: 'Show',
           icon: VisibilityIcon,
           subMenu: this.showMenuItems(),
         },

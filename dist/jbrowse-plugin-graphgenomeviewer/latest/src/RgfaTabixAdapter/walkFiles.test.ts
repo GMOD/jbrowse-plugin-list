@@ -13,6 +13,7 @@ import { toArray } from 'rxjs/operators'
 
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
+import { EXPAND_NAMED_MAX } from './walkReader.ts'
 
 import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
@@ -210,6 +211,41 @@ test('a cut asked to expand walks hands the reader their names', async () => {
   const expand = cut.mock.calls[0]?.[2]?.expand
   expect(expand?.('HG002#1#chr1')).toBe(true)
   expect(expand?.('HG002#2#chr1')).toBe(false)
+  cut.mockRestore()
+})
+
+test('walk rows read the haplotypes they name in full', async () => {
+  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  await makeAdapter(headerPrefix).getSubgraph(chr1(1000, 2600), {
+    haplotypes: ['HG002#1'],
+    walkRows: true,
+  })
+  const expand = cut.mock.calls[0]?.[2]?.expand
+  expect(expand?.('HG002#1#chr1')).toBe(true)
+  expect(expand?.('HG002#2#chr1')).toBe(false)
+  cut.mockRestore()
+})
+
+test('a graph layout, every haplotype, or a long list keeps abridged walks', async () => {
+  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  const adapter = makeAdapter(headerPrefix)
+  const many = Array.from({ length: EXPAND_NAMED_MAX + 1 }, (_, i) => `S${i}#1`)
+  await adapter.getSubgraph(chr1(1000, 2600), { haplotypes: ['HG002#1'] })
+  await adapter.getSubgraph(chr1(1000, 2600), {
+    haplotypes: [],
+    walkRows: true,
+  })
+  await adapter.getSubgraph(chr1(1000, 2600), { walkRows: true })
+  await adapter.getSubgraph(chr1(1000, 2600), {
+    haplotypes: [...many, 'HG002#1'],
+    walkRows: true,
+  })
+  expect(cut.mock.calls.map(c => c[2]?.expand)).toEqual([
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ])
   cut.mockRestore()
 })
 

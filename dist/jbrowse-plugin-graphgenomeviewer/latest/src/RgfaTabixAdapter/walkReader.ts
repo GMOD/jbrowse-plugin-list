@@ -17,6 +17,10 @@ export const BUDGET_SLOTS = {
   bytes: 'walkByteBudget',
 }
 
+// Walk rows read a list this long or shorter in full where format 5 abridged
+// it; a longer list, or every haplotype, keeps the abridged rows
+export const EXPAND_NAMED_MAX = 64
+
 /**
  * A walk file and the answers both walk-indexed adapters give from it,
  * RgfaTabixAdapter and WalkTabixSyntenyAdapter, whose schemas declare the
@@ -52,7 +56,8 @@ export class WalkIndex {
   /**
    * The graph display's cut of a window: the reference walk, the walks of
    * `haplotypes` (every walk when unset), and the nodes and links they visit.
-   * Walk rows draw runs, so the step budget spares them.
+   * Walk rows draw runs, so the step budget spares them, and read a short
+   * list of named walks in full where format 5 abridged them.
    */
   async subgraph(
     refName: string,
@@ -60,16 +65,26 @@ export class WalkIndex {
     { signal, haplotypes, walkRows, expand }: SubgraphAdapterOptions,
   ) {
     const budgets = this.budgets()
+    const keep = walksKept(
+      haplotypes?.map(lane => resolvePanSNPrefix(this.adapter, lane)),
+      refName,
+    )
+    const named =
+      walkRows && keep && (haplotypes?.length ?? 0) <= EXPAND_NAMED_MAX
+        ? keep
+        : undefined
+    const asked = expand?.length
+      ? (name: string) => expand.includes(name)
+      : undefined
     const { graph, kept, fragments } = await this.reader.cut(refName, region, {
       ...budgets,
       stepBudget: walkRows ? Infinity : budgets.stepBudget,
       signal,
-      keep: walksKept(
-        haplotypes?.map(lane => resolvePanSNPrefix(this.adapter, lane)),
-        refName,
-      ),
-      ...(expand?.length
-        ? { expand: (name: string) => expand.includes(name) }
+      keep,
+      ...(named || asked
+        ? {
+            expand: (name: string) => !!named?.(name) || !!asked?.(name),
+          }
         : {}),
     })
     return walkCutFor(graph.tables(kept, fragments), region, walkRows)
