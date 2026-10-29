@@ -226,6 +226,20 @@ test('walk rows read the haplotypes they name in full', async () => {
   cut.mockRestore()
 })
 
+test('walk rows read the samples they show in full under every haplotype', async () => {
+  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  await makeAdapter(headerPrefix).getSubgraph(chr1(1000, 2600), {
+    haplotypes: [],
+    walkRows: true,
+    expandSamples: ['HG002'],
+  })
+  const expand = cut.mock.calls[0]?.[2]?.expand
+  expect(expand?.('HG002#1#chr1')).toBe(true)
+  expect(expand?.('HG002#2#chr1')).toBe(true)
+  expect(expand?.('HG00097#1#chr1')).toBe(false)
+  cut.mockRestore()
+})
+
 test('a graph layout, every haplotype, or a long list keeps abridged walks', async () => {
   const cut = vi.spyOn(WalkReader.prototype, 'cut')
   const adapter = makeAdapter(headerPrefix)

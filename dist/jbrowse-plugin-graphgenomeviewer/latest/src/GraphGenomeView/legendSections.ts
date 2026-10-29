@@ -3,7 +3,10 @@ import {
   BUBBLE_KIND_COLORS,
   BUBBLE_KIND_NAMES,
 } from '@jbrowse/bandage-core/bubbles/classifyBubble'
-import { deletionKey } from '@jbrowse/bandage-core/deletionEdges'
+import {
+  dashedDeletions,
+  deletionKey,
+} from '@jbrowse/bandage-core/deletionEdges'
 import { edgeWidthFactor } from '@jbrowse/bandage-core/edgeWidths'
 import { EXON_COLOR } from '@jbrowse/bandage-core/genes/exonOutline'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
@@ -312,7 +315,7 @@ function haloRows(model: GraphPaneModel): LegendRow[] {
 
 function deletionRows(model: GraphPaneModel): LegendRow[] {
   const { graph } = model
-  return graph && model.deletions.length > 0
+  return graph && dashedDeletions(model.deletions, model.walkLift).length > 0
     ? [
         {
           key: 'deletion',

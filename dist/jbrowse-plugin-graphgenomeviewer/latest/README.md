@@ -13,7 +13,13 @@
 - **Out:** a graph track in a linear view, or a separate graph genome view, with
   haplotypes, bubbles and genes marked
 
-![KIV-2 as a graph track under RefSeq genes and the curated KIV-2 annotation, its reference segments on a strip at their bp](img/force_kiv2.png)
+[![C4 as a syng graph under RefSeq genes and two haplotypes' callset rows, each walk threaded round the graph once per pass](img/syng_c4_view.png)](docs/syng.md)
+
+Each walk runs a thread per pass round the [syng graph](docs/syng.md)'s ring, so
+the threads count RCCX modules: GRCh38 (grey) has two and HG01978#2 (blue)
+three. HG01952#1 (orange) cuts across the HERV-K loop, and its callset row above
+shows a 6.4 kb deletion in C4A and another in C4B, so both its C4 copies are
+short.
 
 ## Quick start
 
@@ -99,7 +105,6 @@ In reading order:
 <td><a href="docs/maize.md"><img src="docs/maize/walk_rows_variants.png" width="260" alt="Maize NAM founders insertions and walk rows"></a><br>Maize NAM founders: insertions and walk rows</td>
 </tr>
 <tr>
-<td><a href="docs/syng.md"><img src="img/syng_c4.png" width="260" alt="C4 copies as threads round a syng graph from impg"></a><br>C4 copies as threads round a syng graph</td>
 <td><a href="docs/haplotypes.md#example-kiv-2-overlaid"><img src="img/force_kiv2_overlay.png" width="260" alt="KIV-2 expansions as extra loops, three walks overlaid"></a><br>KIV-2 expansions as extra loops</td>
 </tr>
 </table>

@@ -17,8 +17,9 @@ export const BUDGET_SLOTS = {
   bytes: 'walkByteBudget',
 }
 
-// Walk rows read a list this long or shorter in full where format 5 abridged
-// it; a longer list, or every haplotype, keeps the abridged rows
+// Walk rows read a list of haplotypes, or of the samples they show, this long or
+// shorter in full where format 5 abridged it; a longer list, or every
+// haplotype, keeps the abridged rows
 export const EXPAND_NAMED_MAX = 64
 
 /**
@@ -63,7 +64,13 @@ export class WalkIndex {
   async subgraph(
     refName: string,
     region: { start: number; end: number },
-    { signal, haplotypes, walkRows, expand }: SubgraphAdapterOptions,
+    {
+      signal,
+      haplotypes,
+      walkRows,
+      expand,
+      expandSamples,
+    }: SubgraphAdapterOptions,
   ) {
     const budgets = this.budgets()
     const keep = walksKept(
@@ -73,6 +80,15 @@ export class WalkIndex {
     const named =
       walkRows && keep && (haplotypes?.length ?? 0) <= EXPAND_NAMED_MAX
         ? keep
+        : undefined
+    const shown =
+      walkRows &&
+      expandSamples?.length &&
+      expandSamples.length <= EXPAND_NAMED_MAX
+        ? walksKept(
+            expandSamples.map(s => resolvePanSNPrefix(this.adapter, s)),
+            refName,
+          )
         : undefined
     const asked = expand?.length
       ? (name: string) => expand.includes(name)
@@ -85,9 +101,10 @@ export class WalkIndex {
         stepBudget: walkRows ? Infinity : budgets.stepBudget,
         signal,
         keep,
-        ...(named || asked
+        ...(named || shown || asked
           ? {
-              expand: (name: string) => !!named?.(name) || !!asked?.(name),
+              expand: (name: string) =>
+                !!named?.(name) || !!shown?.(name) || !!asked?.(name),
             }
           : {}),
       },
