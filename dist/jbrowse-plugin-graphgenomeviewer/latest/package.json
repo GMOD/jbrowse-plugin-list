@@ -1,6 +1,6 @@
 {
   "name": "jbrowse-plugin-graphgenomeviewer",
-  "version": "8.0.2",
+  "version": "8.3.0",
   "description": "JBrowse 2 graph genome (pangenome) view: rGFA reference-anchored layouts, the Bandage force-directed engine, and haplotype lanes read from a gbz-base database",
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -27,12 +27,12 @@
   "dependencies": {
     "@gmod/bgzf-filehandle": "^6.8.0",
     "@gmod/gbz-base": "^7.4.1",
-    "@gmod/tabix": "^3.11.0",
+    "@gmod/tabix": "^3.13.0",
     "@jbrowse/cigar-utils": "5.0.0-beta.18",
     "@jbrowse/core": "5.0.0-beta.18",
     "@jbrowse/display-kit": "5.0.0-beta.18",
     "@jbrowse/display-ui": "5.0.0-beta.18",
-    "@jbrowse/graph-walks": "^4.2.0",
+    "@jbrowse/graph-walks": "^4.4.0",
     "@jbrowse/render-core": "5.0.0-beta.18",
     "@jbrowse/synteny-core": "5.0.0-beta.18"
   },
@@ -40,7 +40,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@eslint/js": "^10.0.1",
-    "@jbrowse/bandage-core": "^12.0.2",
+    "@jbrowse/bandage-core": "^12.1.1",
     "@jbrowse/cli": "^4.3.0",
     "@jbrowse/mobx-state-tree": "^6.10.0",
     "@jbrowse/plugin-linear-genome-view": "5.0.0-beta.18",

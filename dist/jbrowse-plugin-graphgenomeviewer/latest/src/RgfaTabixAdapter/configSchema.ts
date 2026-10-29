@@ -1,6 +1,7 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { WALK_BUDGETS } from '@jbrowse/graph-walks'
 
+import { GRAPH_SUFFIX } from '../locationName.ts'
 import {
   fileLocationSlot,
   tabixIndexSchema,
@@ -21,7 +22,10 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * where the adapter follows links onto other contigs.
  *
  * The `uri` shorthand takes the prefix the build script was given and resolves
- * `<uri>.segs.bed.gz`, `<uri>.links.bed.gz` and their `.tbi` indexes. `coarse`
+ * `<uri>.segs.bed.gz`, `<uri>.links.bed.gz` and their `.tbi` indexes. With
+ * `format: 2` it resolves gfa-to-tabix's format 2 instead, `<uri>.graph.bed.gz`
+ * and its index: nodes and links in one file, a plain GFA's carriers as bits,
+ * from `gfa-to-tabix --format 2`. `coarse`
  * takes the same shorthand for a second pair at one node per bubble, built by
  * `gfa-to-tabix fold`, plus either the zoom past which a graph view following
  * a linear view cuts it (`aboveBpPerPx`) or the size it was folded at
@@ -56,16 +60,23 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  */
 
 function prefixLocations(snap: Record<string, unknown>) {
-  const { uri, baseUri, csi } = snap
-  return typeof uri === 'string'
+  const { uri, baseUri, csi, format } = snap
+  if (typeof uri !== 'string') {
+    return snap
+  }
+  return format === 2
     ? {
+        ...snap,
+        graphLocation: { uri: `${uri}${GRAPH_SUFFIX}`, baseUri },
+        graphIndex: tbiBeside(`${uri}${GRAPH_SUFFIX}`, baseUri, csi),
+      }
+    : {
         ...snap,
         segmentsLocation: { uri: `${uri}.segs.bed.gz`, baseUri },
         segmentsIndex: tbiBeside(`${uri}.segs.bed.gz`, baseUri, csi),
         linksLocation: { uri: `${uri}.links.bed.gz`, baseUri },
         linksIndex: tbiBeside(`${uri}.links.bed.gz`, baseUri, csi),
       }
-    : snap
 }
 
 function normalizeSnapshot(snap: Record<string, unknown>) {
@@ -119,6 +130,15 @@ const RgfaTabixCoarseTier = ConfigurationSchema('RgfaTabixCoarseTier', {
     'RgfaCoarseLinksIndex',
     '/path/to/graph.tier.links.bed.gz.tbi',
   ),
+  /**
+   * #slot
+   * format 2's one file in place of the pair; see the adapter's `graphLocation`
+   */
+  graphLocation: fileLocationSlot(''),
+  /**
+   * #slot
+   */
+  graphIndex: tabixIndexSchema('RgfaCoarseGraphIndex'),
 })
 
 const RgfaTabixAdapter = ConfigurationSchema(
@@ -150,6 +170,17 @@ const RgfaTabixAdapter = ConfigurationSchema(
       'RgfaLinksIndex',
       '/path/to/graph.links.bed.gz.tbi',
     ),
+    /**
+     * #slot
+     * gfa-to-tabix's format 2, `<prefix>.graph.bed.gz`: segments and links in
+     * one file, read in place of `segmentsLocation` and `linksLocation`.
+     * Unset means the graph is the pair.
+     */
+    graphLocation: fileLocationSlot(''),
+    /**
+     * #slot
+     */
+    graphIndex: tabixIndexSchema('RgfaGraphIndex'),
     /**
      * #slot
      * a `gfa-to-tabix --walks` file in walk format 5: per reference chunk,

@@ -270,6 +270,24 @@ describe('buildTrackConfig', () => {
       expect(conf.adapter).not.toHaveProperty('coarse.aboveBpPerPx')
     })
 
+    it('reads a format 2 tier as its one file', () => {
+      const conf = buildTrackConfig({
+        ...args,
+        manifest: { tier: { ...tier, format: 2 } },
+      })
+      expect(conf.adapter).toMatchObject({
+        coarse: {
+          foldBelowBp: 10000,
+          graphLocation: at('hprc.fold10000.graph.bed.gz'),
+          graphIndex: {
+            indexType: 'TBI',
+            location: at('hprc.fold10000.graph.bed.gz.tbi'),
+          },
+        },
+      })
+      expect(conf.adapter).not.toHaveProperty('coarse.segmentsLocation')
+    })
+
     it('maps the assembly onto its reference unless the user named one', () => {
       const reference = { reference: 'GRCh38' }
       expect(

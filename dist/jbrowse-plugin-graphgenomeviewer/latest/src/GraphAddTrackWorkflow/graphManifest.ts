@@ -1,6 +1,7 @@
 import { openLocation } from '@jbrowse/core/util/io'
 
 import {
+  GRAPH_SUFFIX,
   SEGMENTS_SUFFIX,
   locationName,
   readsSiblings,
@@ -14,7 +15,9 @@ import type { FileLocation } from '@jbrowse/core/util'
 // Open track reads
 export interface GraphManifest {
   reference?: string
-  tier?: { prefix: string; foldBelowBp: number }
+  // `format: 2` when the tier is one `<prefix>.graph.bed.gz`, as gfa-to-tabix
+  // 2 writes it, rather than a segments and links pair
+  tier?: { prefix: string; foldBelowBp: number; format?: 2 }
 }
 
 const FETCH_TIMEOUT_MS = 5000
@@ -66,7 +69,13 @@ export function parseGraphManifest(text: string): GraphManifest | undefined {
   return {
     ...(typeof reference === 'string' ? { reference: reference.trim() } : {}),
     ...(isTier(tier)
-      ? { tier: { prefix: tier.prefix, foldBelowBp: tier.foldBelowBp } }
+      ? {
+          tier: {
+            prefix: tier.prefix,
+            foldBelowBp: tier.foldBelowBp,
+            ...(tier.format === 2 ? { format: 2 as const } : {}),
+          },
+        }
       : {}),
   }
 }
@@ -76,21 +85,27 @@ export function besideSegments(segs: FileLocation, fileName: string) {
   return renamed(segs, name => name.replace(/[^/\\]*$/, fileName))
 }
 
-// A segments BED the links BED and the manifest can be found beside
-export function isSegmentsLocation(loc: FileLocation) {
-  return readsSiblings(loc) && locationName(loc).endsWith(SEGMENTS_SUFFIX)
+// The suffix of a gfa-to-tabix index file: format 1's segments BED or format
+// 2's graph BED
+function indexSuffix(loc: FileLocation) {
+  const name = locationName(loc)
+  return [SEGMENTS_SUFFIX, GRAPH_SUFFIX].find(suffix => name.endsWith(suffix))
 }
 
-// `<prefix><suffix>` beside `<prefix>.segs.bed.gz`
+// A segments BED, or format 2's graph BED, the rest of the index and the
+// manifest can be found beside
+export function isGraphIndexLocation(loc: FileLocation) {
+  return readsSiblings(loc) && indexSuffix(loc) !== undefined
+}
+
+// `<prefix><suffix>` beside `<prefix>.segs.bed.gz` or `<prefix>.graph.bed.gz`
 export function segmentsSibling(segs: FileLocation, suffix: string) {
-  return renamed(
-    segs,
-    name => `${name.slice(0, -SEGMENTS_SUFFIX.length)}${suffix}`,
-  )
+  const own = indexSuffix(segs) ?? SEGMENTS_SUFFIX
+  return renamed(segs, name => `${name.slice(0, -own.length)}${suffix}`)
 }
 
 export function manifestLocation(segs: FileLocation) {
-  return isSegmentsLocation(segs)
+  return isGraphIndexLocation(segs)
     ? segmentsSibling(segs, '.graph.json')
     : undefined
 }

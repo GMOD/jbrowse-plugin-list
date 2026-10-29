@@ -1,5 +1,5 @@
 import { buildAdapterConfig } from '../GraphAddTrackWorkflow/buildTrackConfig'
-import { isSegmentsLocation } from '../GraphAddTrackWorkflow/graphManifest'
+import { isGraphIndexLocation } from '../GraphAddTrackWorkflow/graphManifest'
 import {
   WALKS_SUFFIX,
   locationName,
@@ -86,7 +86,7 @@ export function guessGraphAdapter(
     return guess('GbzBaseSyntenyAdapter')
   }
   if (!adapterHint || adapterHint === 'RgfaTabixAdapter') {
-    if (isSegmentsLocation(file)) {
+    if (isGraphIndexLocation(file)) {
       return guess('RgfaTabixAdapter')
     }
     // a file picked in the browser has no index beside it to assume

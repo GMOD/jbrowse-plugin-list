@@ -7,7 +7,7 @@ import { viewportOf } from '@jbrowse/bandage-core/viewport'
 import { types } from '@jbrowse/mobx-state-tree'
 import { RenderLifecycleMixin } from '@jbrowse/render-core/RenderLifecycleMixin'
 
-import { SEGMENTS_SUFFIX } from '../../locationName.ts'
+import { GRAPH_SUFFIX, SEGMENTS_SUFFIX } from '../../locationName.ts'
 import { lenientOptionalEnum } from '../lenientEnum'
 
 import type { MorphEntering } from './morph'
@@ -76,18 +76,23 @@ export const TUBE_MAP_FOLDS = [
   { bp: 1000, label: 'Under 1 kb' },
 ]
 
-// The rGFA index prefix an adapter config names, from either spelling the
-// config schema accepts: the `uri` shorthand or an explicit segments location.
+// The rGFA index prefix an adapter config names, from any spelling the config
+// schema accepts: the `uri` shorthand, or an explicit segments location or
+// format 2 graph location.
 export function bubblePrefix(adapterConfig: Record<string, unknown>) {
   if (typeof adapterConfig.uri === 'string') {
     return adapterConfig.uri
   }
-  const segments = adapterConfig.segmentsLocation as
-    { uri?: string } | undefined
-  const uri = segments?.uri
-  return typeof uri === 'string' && uri.endsWith(SEGMENTS_SUFFIX)
-    ? uri.slice(0, -SEGMENTS_SUFFIX.length)
-    : undefined
+  for (const [slot, suffix] of [
+    ['segmentsLocation', SEGMENTS_SUFFIX],
+    ['graphLocation', GRAPH_SUFFIX],
+  ] as const) {
+    const uri = (adapterConfig[slot] as { uri?: string } | undefined)?.uri
+    if (typeof uri === 'string' && uri.endsWith(suffix)) {
+      return uri.slice(0, -suffix.length)
+    }
+  }
+  return undefined
 }
 export const HOVER_BRIGHTEN = 1.15
 export const SELECT_BRIGHTEN = 1.6

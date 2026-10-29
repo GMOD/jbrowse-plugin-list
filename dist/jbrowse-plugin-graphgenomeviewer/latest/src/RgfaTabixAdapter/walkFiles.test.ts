@@ -365,6 +365,27 @@ test('a walk leaving the window is measured to where it rejoins the reference', 
   ])
 })
 
+// gfa-to-tabix 1.5 --walks --chunk 10 of ten 10 bp reference nodes:
+//   W GRCh38 0 chr1 >1>2>3>4>5>6>7>8>9>10
+//   W HG002  1 ctg  >1>2>9>10   a deletion of 20-80, whose chunks hold skip rows
+const skipPrefix = fixture('walks5_skip')
+
+test('a haplotype that jumps over the window draws as a deletion row', async () => {
+  const cut = (await makeAdapter(skipPrefix).getSubgraph(chr1(31, 60), {
+    walkRows: true,
+  })) as WalkCut
+  const rows = walkRowsOf(cut.walkRowRuns!).rows
+  expect(
+    rows.map(({ label, bp, gapBp, complete }) => ({
+      label,
+      bp,
+      gapBp,
+      complete,
+    })),
+  ).toEqual([{ label: 'HG002#1', bp: 0, gapBp: 29, complete: true }])
+  expect(rows[0]!.runs.map(run => run.cause)).toEqual(['deleted'])
+})
+
 test('a walk the read cuts off is read on to the chunk its row names', async () => {
   const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
   const cut = (await makeAdapter(followPrefix).getSubgraph(chr1(1000, 1500), {

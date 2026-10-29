@@ -63,6 +63,14 @@ function hoverTip(
               {own.sample} {regionLabel(own)} (rank {node.stable?.rank})
             </>
           ) : null}
+          {/* gfa-to-tabix --max-component left its component off the
+              reference, so the cut holds only its ends */}
+          {node.moved ? (
+            <>
+              <br />
+              End of a component too large to draw here
+            </>
+          ) : null}
         </>
       ),
     }

@@ -49,6 +49,18 @@ test('reads the reference and tier, ignoring unknown fields', () => {
   })
 })
 
+test('reads a format 2 tier', () => {
+  expect(
+    parse({
+      ...manifest,
+      tier: { prefix: 'out.fold10000', foldBelowBp: 10000, format: 2 },
+    }),
+  ).toEqual({
+    reference: 'GRCh38',
+    tier: { prefix: 'out.fold10000', foldBelowBp: 10000, format: 2 },
+  })
+})
+
 test('a null reference, tier and companions leave those out', () => {
   expect(
     parse({

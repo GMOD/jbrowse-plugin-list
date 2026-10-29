@@ -55,9 +55,10 @@ export class WalkIndex {
 
   /**
    * The graph display's cut of a window: the reference walk, the walks of
-   * `haplotypes` (every walk when unset), and the nodes and links they visit.
-   * Walk rows draw runs, so the step budget spares them, and read a short
-   * list of named walks in full where format 5 abridged them.
+   * `haplotypes` (every walk when unset), and the nodes and links they visit,
+   * with the haplotypes whose deletion spans the window as `skips`, which walk
+   * rows draw. Walk rows draw runs, so the step budget spares them, and read a
+   * short list of named walks in full where format 5 abridged them.
    */
   async subgraph(
     refName: string,
@@ -76,18 +77,22 @@ export class WalkIndex {
     const asked = expand?.length
       ? (name: string) => expand.includes(name)
       : undefined
-    const { graph, kept, fragments } = await this.reader.cut(refName, region, {
-      ...budgets,
-      stepBudget: walkRows ? Infinity : budgets.stepBudget,
-      signal,
-      keep,
-      ...(named || asked
-        ? {
-            expand: (name: string) => !!named?.(name) || !!asked?.(name),
-          }
-        : {}),
-    })
-    return walkCutFor(graph.tables(kept, fragments), region, walkRows)
+    const { graph, kept, fragments, skips } = await this.reader.cut(
+      refName,
+      region,
+      {
+        ...budgets,
+        stepBudget: walkRows ? Infinity : budgets.stepBudget,
+        signal,
+        keep,
+        ...(named || asked
+          ? {
+              expand: (name: string) => !!named?.(name) || !!asked?.(name),
+            }
+          : {}),
+      },
+    )
+    return walkCutFor(graph.tables(kept, fragments, skips), region, walkRows)
   }
 
   /**

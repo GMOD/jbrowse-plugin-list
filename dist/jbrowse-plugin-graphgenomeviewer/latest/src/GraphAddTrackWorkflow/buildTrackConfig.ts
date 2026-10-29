@@ -2,6 +2,7 @@ import { makeIndexType } from '@jbrowse/core/util/tracks'
 
 import { besideSegments, segmentsSibling } from './graphManifest'
 import {
+  GRAPH_SUFFIX,
   SEGMENTS_SUFFIX,
   WALKS_SUFFIX,
   locationName,
@@ -21,7 +22,7 @@ export type GraphFileChoice =
   | 'MinigraphBubbleAdapter'
 
 export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
-  RgfaTabixAdapter: 'rGFA segments (tabix BED pair)',
+  RgfaTabixAdapter: 'Indexed GFA (gfa-to-tabix .segs.bed.gz or .graph.bed.gz)',
   RgfaTabixWalks: 'Haplotype walks (.walks.bed.gz)',
   GbzBaseSyntenyAdapter: 'GBZ database (.gbz.db)',
   MinigraphBubbleAdapter: 'Minigraph bubbles (tabix BED)',
@@ -29,7 +30,7 @@ export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
 
 export const GRAPH_FILE_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter:
-    'Path to segments BED (.segs.bed.gz from gfa-to-tabix; the .links.bed.gz, its index and any .graph.json are read beside it)',
+    "Path to segments BED (.segs.bed.gz from gfa-to-tabix; the .links.bed.gz, its index and any .graph.json are read beside it), or format 2's .graph.bed.gz",
   RgfaTabixWalks:
     'Path to a walk file (<prefix>.<sample>.walks.bed.gz from gfa-to-tabix --walks, for the sample this assembly is)',
   GbzBaseSyntenyAdapter: 'Path to the .gbz.db written by gbz-base construct',
@@ -92,6 +93,16 @@ function coarseTier(
 ) {
   if (!tier) {
     return {}
+  }
+  if (tier.format === 2) {
+    const graph = besideSegments(loc, `${tier.prefix}${GRAPH_SUFFIX}`)
+    return {
+      coarse: {
+        foldBelowBp: tier.foldBelowBp,
+        graphLocation: graph,
+        graphIndex: siblingIndex(graph, indexLoc),
+      },
+    }
   }
   const segs = besideSegments(loc, `${tier.prefix}${SEGMENTS_SUFFIX}`)
   const links = besideSegments(loc, `${tier.prefix}.links.bed.gz`)
@@ -185,6 +196,15 @@ export function buildAdapterConfig({
       bubblesLocation: loc,
       index: tabixIndex(loc, indexLoc),
       ...panSN(assembly, sample),
+    }
+  }
+  if (locationName(loc).endsWith(GRAPH_SUFFIX)) {
+    return {
+      type: 'RgfaTabixAdapter',
+      graphLocation: loc,
+      graphIndex: tabixIndex(loc, indexLoc),
+      ...referencePanSN(assembly, sample, manifest?.reference),
+      ...coarseTier(loc, indexLoc, manifest?.tier),
     }
   }
   const links = linksLocation(loc)
