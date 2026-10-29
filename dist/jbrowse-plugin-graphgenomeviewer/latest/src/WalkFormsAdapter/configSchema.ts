@@ -34,7 +34,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```js
  * {
  *   type: 'WalkFormsAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f5.GRCh38',
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f5s.GRCh38',
  *   pinned: { refName: 'chr1', start: 109680000, end: 109715000 },
  *   exclude: ['CHM13'],
  * }
