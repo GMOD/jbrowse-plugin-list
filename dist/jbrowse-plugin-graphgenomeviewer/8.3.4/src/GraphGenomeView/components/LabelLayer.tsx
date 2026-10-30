@@ -1,0 +1,198 @@
+import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
+import { BUBBLE_KIND_COLORS } from '@jbrowse/bandage-core/bubbles/classifyBubble'
+import { EXON_COLOR } from '@jbrowse/bandage-core/genes/exonOutline'
+import { geneCoverageNote, geneLeader } from '@jbrowse/bandage-core/labelLayout'
+import { labelWidth } from '@jbrowse/bandage-core/overlayLabels'
+import { isAlive } from '@jbrowse/mobx-state-tree'
+import { observer } from 'mobx-react'
+
+import LabelChip, { inChip } from './LabelChip'
+import { PaneSvgLayer } from './PaneLayer'
+
+import type { GraphPaneModel } from '../model'
+import type { BubbleHalo } from '@jbrowse/bandage-core/bubbles/bubbleHalos'
+import type { LabelLayout } from '@jbrowse/bandage-core/labelLayout'
+
+// Every chip drawn over the graph, above all of its ink: bubble names and gene
+// names on their pins. `overlayLabels` has placed
+// them against each other and against the row labels already.
+
+const GENE_INK = '#1c1c22'
+const TICK_PX = 9
+const TICK_WIDTH = 3
+
+// What the gene chip under a point reads out, for the hover tooltip: those
+// chips leave the pointer to the canvas, so a drag can start on one
+export function chipReadoutAt(
+  { genes }: Pick<LabelLayout, 'genes'>,
+  px: number,
+  py: number,
+) {
+  const pin = genes.find(chip => inChip(chip, px, py))?.item
+  if (!pin) {
+    return undefined
+  }
+  const { gene } = pin
+  const note = geneCoverageNote(pin)
+  return {
+    label: gene.name,
+    readout: `${gene.refName}:${gene.start.toLocaleString()}-${gene.end.toLocaleString()}${note ? `, ${note} in the cut` : ''}`,
+  }
+}
+
+const LabelLayer = observer(function LabelLayer({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
+  const { bubbles, genes, ticks } = model.overlayLabels
+  if (bubbles.length + genes.length + ticks.length === 0) {
+    return null
+  }
+  const { scaleY, translateY, contigThickness, hoveredBubble } = model
+  const hoveredTick = hoveredBubble
+    ? ticks.find(t => sameBubble(t.item.bubble, hoveredBubble))
+    : undefined
+  const tickAt = (target: EventTarget) =>
+    ticks[Number((target as Element).getAttribute('data-tick'))]
+  const dimmedBubble = (h: BubbleHalo) => model.bubbleFaded(h)
+  const isOpen = (h: BubbleHalo) => model.bubbleIsOpen(h.bubble)
+
+  return (
+    <PaneSvgLayer
+      model={model}
+      zIndex={3}
+      testId="graph-label-layer"
+      pansWithDrawing
+    >
+      <g
+        data-testid="graph-bubble-ticks"
+        onClick={e => {
+          const tick = tickAt(e.target)
+          if (tick) {
+            model.toggleBubble(tick.item.bubble)
+          }
+        }}
+        onMouseOver={e => {
+          const tick = tickAt(e.target)
+          if (tick) {
+            model.setHoveredBubble(tick.item.bubble)
+          }
+        }}
+        // a leave also fires as the view closing it unmounts the tick
+        onMouseOut={() => {
+          if (isAlive(model)) {
+            model.setHoveredBubble(null)
+          }
+        }}
+        onFocus={e => {
+          const tick = tickAt(e.target)
+          if (tick) {
+            model.setHoveredBubble(tick.item.bubble)
+          }
+        }}
+        onBlur={() => {
+          if (isAlive(model)) {
+            model.setHoveredBubble(null)
+          }
+        }}
+        onKeyDown={e => {
+          const tick = tickAt(e.target)
+          if (tick && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault()
+            model.toggleBubble(tick.item.bubble)
+          }
+        }}
+      >
+        {ticks.map(({ item: h, x, y }, i) => (
+          <rect
+            key={bubbleKey(h.bubble)}
+            data-tick={i}
+            role="button"
+            tabIndex={0}
+            aria-label={`${h.label}, ${isOpen(h) ? 'close' : 'open'} bubble`}
+            x={x - TICK_WIDTH / 2}
+            y={y - TICK_PX}
+            width={TICK_WIDTH}
+            height={TICK_PX}
+            rx={TICK_WIDTH / 2}
+            fill={BUBBLE_KIND_COLORS[h.kind]}
+            opacity={dimmedBubble(h) ? 0.35 : 1}
+            style={{ pointerEvents: 'all', cursor: 'pointer' }}
+          />
+        ))}
+      </g>
+      {genes.map(({ item: pin, x, y, w, text }) => {
+        const { gene } = pin
+        const { y1, y2 } = geneLeader(
+          { y },
+          pin.at.y * scaleY + translateY,
+          contigThickness,
+        )
+        return (
+          <g key={`${gene.name}-${gene.start}`}>
+            <line
+              x1={x}
+              x2={x}
+              y1={y1}
+              y2={y2}
+              stroke={GENE_INK}
+              strokeWidth={0.8}
+              strokeOpacity={0.6}
+            />
+            <LabelChip
+              x={x}
+              y={y}
+              w={w}
+              text={gene.name}
+              note={text.slice(gene.name.length) || undefined}
+              color={GENE_INK}
+              edge={EXON_COLOR}
+              italic
+              testId="graph-gene-pin-label"
+            />
+          </g>
+        )
+      })}
+      {bubbles.map(({ item: h, x, y, w, text }) => (
+        <LabelChip
+          key={bubbleKey(h.bubble)}
+          x={x}
+          y={y}
+          w={w}
+          text={text}
+          color={BUBBLE_KIND_COLORS[h.kind]}
+          dimmed={dimmedBubble(h)}
+          title={`${h.label}\n${h.bubble.segmentCount} segments${h.bubble.covering ? '' : isOpen(h) ? ' · click to close' : ' · click to open'}`}
+          testId="graph-bubble-halo-label"
+          // the bubble the drawing is would open into this same drawing
+          onClick={
+            h.bubble.covering
+              ? undefined
+              : () => {
+                  model.toggleBubble(h.bubble)
+                }
+          }
+          // a leave also fires as the view closing it unmounts the chip
+          onHover={hovered => {
+            if (isAlive(model)) {
+              model.setHoveredBubble(hovered ? h.bubble : null)
+            }
+          }}
+        />
+      ))}
+      {hoveredTick ? (
+        <LabelChip
+          x={hoveredTick.x}
+          y={hoveredTick.y - TICK_PX - 4}
+          w={labelWidth(hoveredTick.item.label)}
+          text={hoveredTick.item.label}
+          color={BUBBLE_KIND_COLORS[hoveredTick.item.kind]}
+          testId="graph-bubble-tick-label"
+        />
+      ) : null}
+    </PaneSvgLayer>
+  )
+})
+
+export default LabelLayer

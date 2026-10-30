@@ -1,8 +1,8 @@
 import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { BUBBLE_KIND_COLORS } from '@jbrowse/bandage-core/bubbles/classifyBubble'
 import { EXON_COLOR } from '@jbrowse/bandage-core/genes/exonOutline'
-import { geneCoverageNote } from '@jbrowse/bandage-core/labelLayout'
-import { LABEL_PX, labelWidth } from '@jbrowse/bandage-core/overlayLabels'
+import { geneCoverageNote, geneLeader } from '@jbrowse/bandage-core/labelLayout'
+import { labelWidth } from '@jbrowse/bandage-core/overlayLabels'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
@@ -124,13 +124,18 @@ const LabelLayer = observer(function LabelLayer({
       </g>
       {genes.map(({ item: pin, x, y, w, text }) => {
         const { gene } = pin
+        const { y1, y2 } = geneLeader(
+          { y },
+          pin.at.y * scaleY + translateY,
+          contigThickness,
+        )
         return (
           <g key={`${gene.name}-${gene.start}`}>
             <line
               x1={x}
               x2={x}
-              y1={y - LABEL_PX - 2}
-              y2={pin.at.y * scaleY + translateY + contigThickness / 2}
+              y1={y1}
+              y2={y2}
               stroke={GENE_INK}
               strokeWidth={0.8}
               strokeOpacity={0.6}
