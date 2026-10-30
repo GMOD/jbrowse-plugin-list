@@ -1033,6 +1033,13 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * from. IndexedDB holds exactly these.
      */
     readonly unsavedDocuments: MsaDataPayload;
+    /**
+     * #getter
+     * true while a launch, stored data or a file is still loading and no
+     * error has ended it. jb.waitReady, the app's ready marker and
+     * screenshot tools read it for a view.
+     */
+    readonly showLoading: boolean;
 } & {
     /**
      * #action
