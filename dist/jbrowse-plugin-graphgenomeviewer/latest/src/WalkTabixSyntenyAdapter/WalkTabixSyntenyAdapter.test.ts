@@ -247,6 +247,133 @@ test('a window on a haplotype lane answers nothing', async () => {
   expect(found).toEqual([])
 })
 
+// gfa-to-tabix --walks --chunk 1000 of ten 1 kb reference nodes, whose chunks
+// over 2000-8000 hold skip rows for HG002#1 and HG004#1:
+//   W GRCh38 0 chr1 >1>2>3>4>5>6>7>8>9>10
+//   W HG002  1 ctg  >1>2>9>10    a deletion of 2000-8000
+//   W HG003  1 ctg  >1>2>3>4>5>6>7>8>9>10
+//   W HG004  1 ctg  <10<9<2<1    the same deletion, walked backwards
+const skipWindow = { ...window, start: 3100, end: 6000 }
+const skipFeats = (opts: Record<string, unknown> = {}) =>
+  firstValueFrom(
+    makeAdapter({}, 'walks5_skippair')
+      .getFeaturesInMultipleRegions([skipWindow], opts as never)
+      .pipe(toArray()),
+  )
+
+test('a haplotype whose deletion spans the window is a lane, its record the skipped stretch with the point it crosses the deletion as its mate', async () => {
+  const found = await skipFeats()
+  expect(found.map(f => ({ ...summary(f), strand: f.get('strand') }))).toEqual([
+    {
+      lane: 'HG003#1',
+      refName: 'chr1',
+      start: 2000,
+      end: 7000,
+      mate: 'ctg:2000-7000',
+      cigar: '5000=',
+      strand: 1,
+    },
+    {
+      lane: 'HG002#1',
+      refName: 'chr1',
+      start: 2000,
+      end: 8000,
+      mate: 'ctg:2000-2000',
+      cigar: undefined,
+      strand: 1,
+    },
+    {
+      lane: 'HG004#1',
+      refName: 'chr1',
+      start: 2000,
+      end: 8000,
+      mate: 'ctg:2000-2000',
+      cigar: undefined,
+      strand: -1,
+    },
+  ])
+})
+
+test("the display's clip maps the whole window onto a skipping haplotype's crossing", async () => {
+  const found = await skipFeats({
+    haplotypes: ['HG002'],
+    clipToRegion: true,
+    splitAtGapBp: 10_000,
+  })
+  expect(found.map(summary)).toEqual([
+    {
+      lane: 'HG002#1',
+      refName: 'chr1',
+      start: 3100,
+      end: 6000,
+      mate: 'ctg:2000-2000',
+      cigar: undefined,
+    },
+  ])
+})
+
+// RgfaTabixAdapter/walkFiles.test.ts's walks5_skip: HG002#1 >1>2>9>10 over
+// ten 10 bp reference nodes in 10 bp chunks
+test('a named haplotype skipping the window opens its lane at the crossing', async () => {
+  const found = await firstValueFrom(
+    makeAdapter({}, 'walks5_skip')
+      .getFeatures(
+        { ...window, start: 31, end: 60 },
+        { haplotypes: ['HG002#1'] },
+      )
+      .pipe(toArray()),
+  )
+  expect(found.map(summary)).toEqual([
+    {
+      lane: 'HG002#1',
+      refName: 'chr1',
+      start: 20,
+      end: 80,
+      mate: 'ctg:20-20',
+      cigar: undefined,
+    },
+  ])
+})
+
+test('a skipping haplotype outside the lanes asked for opens no lane', async () => {
+  const found = await skipFeats({ haplotypes: ['HG003'] })
+  expect(found.map(f => mateOf(f).assemblyName)).toEqual(['HG003#1'])
+})
+
+test('a lane pair with one lane skipping the window joins the other lane to the crossing, either way round', async () => {
+  const found = await skipFeats({
+    lanePairs: [
+      { queryAssemblyName: 'HG003#1', targetAssemblyName: 'HG002#1' },
+      { queryAssemblyName: 'HG002#1', targetAssemblyName: 'HG003#1' },
+      { queryAssemblyName: 'HG002#1', targetAssemblyName: 'HG004#1' },
+    ],
+    clipToRegion: true,
+    splitAtGapBp: 10_000,
+  })
+  expect(
+    found.map(f => ({ assemblyName: f.get('assemblyName'), ...summary(f) })),
+  ).toEqual([
+    {
+      assemblyName: 'HG003#1',
+      lane: 'HG002#1',
+      refName: 'ctg',
+      start: 2000,
+      end: 7000,
+      mate: 'ctg:2000-2000',
+      cigar: undefined,
+    },
+    {
+      assemblyName: 'HG002#1',
+      lane: 'HG003#1',
+      refName: 'ctg',
+      start: 2000,
+      end: 2000,
+      mate: 'ctg:2000-7000',
+      cigar: undefined,
+    },
+  ])
+})
+
 test('clipToRegion cuts a record to the window on both axes', async () => {
   const found = await firstValueFrom(
     makeAdapter()

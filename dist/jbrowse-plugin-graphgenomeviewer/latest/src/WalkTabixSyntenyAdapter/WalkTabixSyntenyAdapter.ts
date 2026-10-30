@@ -10,7 +10,15 @@ import { updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import { walksKept } from '@jbrowse/graph-walks'
 
-import { anchorAligner, chainFeature, lanePairAligner } from './walkLanes.ts'
+import {
+  anchorAligner,
+  chainFeature,
+  crossingFeature,
+  crossingSide,
+  lanePairAligner,
+  skipCrossing,
+  walkSide,
+} from './walkLanes.ts'
 import { WalkIndex } from '../RgfaTabixAdapter/walkReader.ts'
 import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
 import { ComparativeAdapterBase } from '../synteny/ComparativeAdapterBase.ts'
@@ -24,13 +32,13 @@ import { laneZoomNotice } from '../synteny/laneZoomNotice.ts'
 import type { WalkTabixSyntenyAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
 import type { LaneFeatureOptions, LanePair } from '../synteny/lanePairs.ts'
+import type { MatchSide } from '../synteny/matchFeature.ts'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
-import type { WalkFragment } from '@jbrowse/graph-walks'
+import type { WalkSkip } from '@jbrowse/graph-walks'
 
-const haplotypeOf = (fragment: WalkFragment) =>
-  panSNHaplotype(fragment.name) ?? fragment.name
+const haplotypeOf = ({ name }: { name: string }) => panSNHaplotype(name) ?? name
 
 export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<WalkTabixSyntenyAdapterConfig> {
   private readonly walks: WalkIndex = new WalkIndex(
@@ -136,8 +144,61 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
   }
 
   /**
+   * Where each haplotype that skips the window crosses its deletion, read
+   * from cuts over the reference nodes they leave at, one cut per chunk those
+   * nodes fall in. A haplotype with a walk in the window draws that instead:
+   * NA19036#1 skips the IGL locus on one contig and walks it on another.
+   */
+  private async skipCrossings(
+    refName: string,
+    { skips, fragments }: { skips: WalkSkip[]; fragments: { name: string }[] },
+    opts: LaneFeatureOptions,
+  ) {
+    const { signal } = opts
+    const walked = new Set(fragments.map(haplotypeOf))
+    const crossing = skips.filter(skip => !walked.has(haplotypeOf(skip)))
+    const { chunk } = await this.walks.reader.header({ signal })
+    const byChunk = new Map<
+      number,
+      { group: WalkSkip[]; start: number; end: number }
+    >()
+    for (const skip of crossing) {
+      const cs = Math.floor((skip.refStart - 1) / chunk)
+      const held = byChunk.get(cs)
+      if (held) {
+        held.group.push(skip)
+        held.start = Math.min(held.start, skip.refStart - 1)
+        held.end = Math.max(held.end, skip.refStart)
+      } else {
+        byChunk.set(cs, {
+          group: [skip],
+          start: skip.refStart - 1,
+          end: skip.refStart,
+        })
+      }
+    }
+    const found = await Promise.all(
+      [...byChunk.values()].map(async ({ group, start, end }) => {
+        const names = new Set(group.map(skip => skip.name))
+        const keep = (name: string) => names.has(name)
+        const { graph, fragments } = await this.walks.reader.cut(
+          refName,
+          { start, end },
+          { signal, keep, expand: keep, context: 0, links: false },
+        )
+        return group.map(skip =>
+          skipCrossing(skip, refName, fragments, graph.nodes),
+        )
+      }),
+    )
+    return found.flat().filter(crossing => crossing !== undefined)
+  }
+
+  /**
    * One record per stretch a haplotype's walk shares with the reference's,
-   * on the reference with the haplotype as its mate
+   * on the reference with the haplotype as its mate. A haplotype whose
+   * deletion spans the window is one record of the skipped stretch, its mate
+   * the point where the haplotype crosses the deletion.
    */
   private async anchorFeatures(
     refName: string,
@@ -163,48 +224,79 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       return []
     }
     const { start, end } = region
-    const { graph, fragments } = await this.laneWalks(
+    const status = `Reading walks ${region.refName}:${start.toLocaleString()}-${end.toLocaleString()}`
+    const { graph, fragments, skips } = await this.laneWalks(
       refName,
       region,
       prefixes,
       opts,
-      `Reading walks ${region.refName}:${start.toLocaleString()}-${end.toLocaleString()}`,
+      status,
+    )
+    // lanes come back in the order the fetch names them, which is the order
+    // the display stacks lanes of equal weight in
+    const rank = ({ name }: { name: string }) =>
+      prefixes === undefined
+        ? 0
+        : prefixes.findIndex(prefix => panSNMatchesPrefix(name, prefix))
+    const crossings = await updateStatus(status, opts.statusCallback, () =>
+      this.skipCrossings(
+        refName,
+        { skips: skips.filter(skip => rank(skip) >= 0), fragments },
+        opts,
+      ),
     )
     const align = anchorAligner(graph.nodes)
     const asmByPrefix = assemblyByPanSNPrefix(this)
+    const laneOf = (walk: { name: string }) =>
+      laneAssemblyName(asmByPrefix, haplotypeOf(walk))
     const references = fragments.filter(f => f.name === refName)
-    // lanes come back in the order the fetch names them, which is the order
-    // the display stacks lanes of equal weight in
-    const rank = (fragment: WalkFragment) =>
-      prefixes === undefined
-        ? 0
-        : prefixes.findIndex(prefix =>
-            panSNMatchesPrefix(fragment.name, prefix),
-          )
-    const shown = fragments
+    const walked = fragments
       .filter(fragment => fragment.name !== refName && rank(fragment) >= 0)
-      .sort((a, b) => rank(a) - rank(b))
-    return shown.flatMap(query =>
-      references.flatMap(reference =>
-        align(query, reference).map(chain =>
-          chainFeature({
-            chain,
-            target: reference,
-            query,
-            assemblyName: region.assemblyName,
-            refName: region.refName,
-            mateAssemblyName: laneAssemblyName(asmByPrefix, haplotypeOf(query)),
-          }),
+      .map(query => ({
+        rank: rank(query),
+        features: references.flatMap(reference =>
+          align(query, reference).map(chain =>
+            chainFeature({
+              chain,
+              target: reference,
+              query,
+              assemblyName: region.assemblyName,
+              refName: region.refName,
+              mateAssemblyName: laneOf(query),
+            }),
+          ),
         ),
-      ),
-    )
+      }))
+    const skipped = crossings.map(crossing => {
+      const { skip } = crossing
+      return {
+        rank: rank(skip),
+        features: [
+          crossingFeature({
+            target: {
+              name: refName,
+              assemblyName: region.assemblyName,
+              refName: region.refName,
+              start: skip.refStart,
+              end: skip.refEnd,
+            },
+            query: crossingSide(crossing, laneOf(skip)),
+            strand: crossing.strand,
+          }),
+        ],
+      }
+    })
+    return [...walked, ...skipped]
+      .sort((a, b) => a.rank - b.rank)
+      .flatMap(lane => lane.features)
   }
 
   /**
    * Each pair's two lanes read out of the anchor window, all pairs in one
    * read, and each walk of a pair's query lane aligned to each walk of its
    * target lane. A pair's records sit on its query lane's contigs, the lane
-   * the display draws on top.
+   * the display draws on top. A lane that skips the window pairs as the
+   * point where it crosses its deletion.
    */
   private async pairFeatures(
     refName: string,
@@ -217,32 +309,57 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       featurePrefix: resolvePanSNPrefix(this, pair.queryAssemblyName),
       matePrefix: resolvePanSNPrefix(this, pair.targetAssemblyName),
     }))
-    const { graph, fragments } = await this.laneWalks(
+    const status = lanePairsStatus(pairs)
+    const { graph, fragments, skips } = await this.laneWalks(
       refName,
       region,
       sides.flatMap(side => [side.featurePrefix, side.matePrefix]),
       opts,
-      lanePairsStatus(pairs),
+      status,
+    )
+    const crossings = await updateStatus(status, opts.statusCallback, () =>
+      this.skipCrossings(refName, { skips, fragments }, opts),
     )
     const align = lanePairAligner(graph.nodes)
     const walksOf = (prefix: string) =>
       fragments.filter(f => panSNMatchesPrefix(f.name, prefix))
-    return sides.flatMap(({ pair, featurePrefix, matePrefix }) =>
-      walksOf(featurePrefix).flatMap(target =>
-        walksOf(matePrefix).flatMap(query =>
-          align(query, target).map(chain =>
-            chainFeature({
-              chain,
-              target,
-              query,
-              assemblyName: pair.queryAssemblyName,
-              refName: panSNContig(target.name),
-              mateAssemblyName: pair.targetAssemblyName,
-            }),
+    const walkSides = (prefix: string, assemblyName: string) =>
+      walksOf(prefix).map(walk => walkSide(walk, assemblyName))
+    const crossingSides = (prefix: string, assemblyName: string) =>
+      crossings
+        .filter(({ skip }) => panSNMatchesPrefix(skip.name, prefix))
+        .map(crossing => crossingSide(crossing, assemblyName))
+    const crossed = (own: MatchSide[], mates: MatchSide[]) =>
+      own.flatMap(target =>
+        mates.map(query => crossingFeature({ target, query, strand: '+' })),
+      )
+    return sides.flatMap(({ pair, featurePrefix, matePrefix }) => {
+      const { queryAssemblyName, targetAssemblyName } = pair
+      return [
+        ...walksOf(featurePrefix).flatMap(target =>
+          walksOf(matePrefix).flatMap(query =>
+            align(query, target).map(chain =>
+              chainFeature({
+                chain,
+                target,
+                query,
+                assemblyName: queryAssemblyName,
+                refName: panSNContig(target.name),
+                mateAssemblyName: targetAssemblyName,
+              }),
+            ),
           ),
         ),
-      ),
-    )
+        ...crossed(
+          walkSides(featurePrefix, queryAssemblyName),
+          crossingSides(matePrefix, targetAssemblyName),
+        ),
+        ...crossed(
+          crossingSides(featurePrefix, queryAssemblyName),
+          walkSides(matePrefix, targetAssemblyName),
+        ),
+      ]
+    })
   }
 
   // The files are filed under the reference alone, so a window on a

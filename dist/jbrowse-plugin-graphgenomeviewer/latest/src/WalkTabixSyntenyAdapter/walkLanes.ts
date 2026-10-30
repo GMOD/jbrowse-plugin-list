@@ -4,8 +4,9 @@ import { panSNContig } from '@jbrowse/bandage-core/pansn'
 
 import { matchFeature } from '../synteny/matchFeature.ts'
 
+import type { MatchSide } from '../synteny/matchFeature.ts'
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
-import type { WalkFragment, WalkNode } from '@jbrowse/graph-walks'
+import type { WalkFragment, WalkNode, WalkSkip } from '@jbrowse/graph-walks'
 
 // The longest bubble with equal bases on both sides that is written as
 // mismatches; a longer one stays an insertion and a deletion
@@ -292,5 +293,91 @@ export function chainFeature({
     cigar: pairCigar(edits),
     matches: edits.reduce((sum, [op, n]) => sum + (op === '=' ? n : 0), 0),
     columns: edits.reduce((sum, [, n]) => sum + n, 0),
+  })
+}
+
+/** The point on a haplotype's contig where it crosses a skipped stretch */
+export interface SkipCrossing {
+  skip: WalkSkip
+  at: number
+  strand: '+' | '-'
+}
+
+/**
+ * Where a haplotype that skips the window crosses its deletion, from a cut
+ * over the reference node it leaves at `skip.refStart`: past that node, or
+ * where it enters the node when it passes it backwards, arriving across the
+ * deletion
+ */
+export function skipCrossing(
+  skip: WalkSkip,
+  refName: string,
+  fragments: WalkFragment[],
+  nodes: Map<number, WalkNode>,
+): SkipCrossing | undefined {
+  for (const { name, fragStart, hapStart, ids, rev } of fragments) {
+    if (name === skip.name && fragStart === skip.fragStart) {
+      let at = hapStart
+      for (let i = 0; i < ids.length; i++) {
+        const node = nodes.get(ids[i]!)
+        const length = node === undefined ? 0 : node.end - node.start
+        if (
+          node?.rank === 0 &&
+          node.refName === refName &&
+          node.end === skip.refStart
+        ) {
+          return rev[i]
+            ? { skip, at, strand: '-' }
+            : { skip, at: at + length, strand: '+' }
+        }
+        at += length
+      }
+    }
+  }
+  return undefined
+}
+
+/** One side of a record: a walk fragment's extent on its contig */
+export function walkSide(fragment: WalkFragment, assemblyName: string) {
+  return {
+    name: fragment.name,
+    assemblyName,
+    refName: panSNContig(fragment.name),
+    start: fragment.hapStart,
+    end: fragment.hapEnd,
+  }
+}
+
+/** One side of a record: the point where a haplotype crosses its deletion */
+export function crossingSide({ skip, at }: SkipCrossing, assemblyName: string) {
+  return {
+    name: skip.name,
+    assemblyName,
+    refName: panSNContig(skip.name),
+    start: at,
+    end: at,
+  }
+}
+
+/**
+ * A record with one side a haplotype's deletion crossing. With no CIGAR, a
+ * display clipping it to a window maps the window onto that point, so the
+ * haplotype gets a lane that the window's ribbon narrows to.
+ */
+export function crossingFeature({
+  target,
+  query,
+  strand,
+}: {
+  target: MatchSide
+  query: MatchSide
+  strand: string
+}) {
+  return matchFeature({
+    target,
+    query,
+    strand,
+    matches: 0,
+    columns: Math.max(target.end - target.start, query.end - query.start),
   })
 }

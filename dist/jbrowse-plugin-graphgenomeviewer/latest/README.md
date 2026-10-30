@@ -4,8 +4,8 @@
   - a [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) walk file
     (`<prefix>.<sample>.walks.bed.gz` beside its `.tbi`), opened with File →
     **Open track**
-  - a gfa-to-tabix segments index (`<prefix>.segs.bed.gz` beside
-    `<prefix>.links.bed.gz` and a `.tbi` for each), opened the same way
+  - a gfa-to-tabix graph index (`<prefix>.graph.bed.gz` beside its `.tbi`, or
+    format 1's `.segs.bed.gz` and `.links.bed.gz` pair), opened the same way
   - a [gbz-base](https://github.com/jltsiren/gbz-base) database (`.gbz.db`),
     opened the same way
   - a GFA file (`.gfa` or `.gfa.gz`), opened whole with Add → **Graph genome
