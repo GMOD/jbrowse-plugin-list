@@ -1,9 +1,11 @@
+import { TabixIndexedFile } from '@gmod/tabix'
 import { graphTablesGFA } from '@jbrowse/bandage-core/gfa/graphTables'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 import PluginManager from '@jbrowse/core/PluginManager'
 import { readConfObject } from '@jbrowse/core/configuration'
+import { WalkReader } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -247,91 +249,77 @@ test('a window on a haplotype lane answers nothing', async () => {
   expect(found).toEqual([])
 })
 
-// gfa-to-tabix --walks --chunk 1000 of ten 1 kb reference nodes, whose chunks
-// over 2000-8000 hold skip rows for HG002#1 and HG004#1:
-//   W GRCh38 0 chr1 >1>2>3>4>5>6>7>8>9>10
-//   W HG002  1 ctg  >1>2>9>10    a deletion of 2000-8000
-//   W HG003  1 ctg  >1>2>3>4>5>6>7>8>9>10
-//   W HG004  1 ctg  <10<9<2<1    the same deletion, walked backwards
-const skipWindow = { ...window, start: 3100, end: 6000 }
-const skipFeats = (opts: Record<string, unknown> = {}) =>
+// gfa-to-tabix --walks --chunk 1000 of twenty 1 kb reference nodes; every
+// haplotype but HG003 skips 2000-5000, so chunks 2000-4000 hold skip rows:
+//   W GRCh38 0      chr1 >1>2>3>...>20
+//   W HG002  1      ctg  >1>2>6>...>20
+//   W HG004  1      ctg  <20<...<6<2<1     the same walk backwards
+//   W HG003  1      ctg  >1>2>3>...>20
+//   W HG007  1      ctg  >1>2>6>...>20     a W line starting at 100,000
+//   W HG005  1      ctg  >1>2>99>6>...>20  500 bp of node 99 in the gap
+const skipWindow = { ...window, start: 3100, end: 3900 }
+const skipFeats = (
+  opts: Record<string, unknown> = {},
+  name = 'walks5_skipfollow',
+) =>
   firstValueFrom(
-    makeAdapter({}, 'walks5_skippair')
+    makeAdapter({}, name)
       .getFeaturesInMultipleRegions([skipWindow], opts as never)
       .pipe(toArray()),
   )
+const skipSummary = (f: { get: (k: string) => unknown }) => ({
+  ...summary(f),
+  strand: f.get('strand'),
+  spansWindow: f.get('spansWindow'),
+})
+const deletion = (lane: string, mate: string, strand: number) => ({
+  lane,
+  refName: 'chr1',
+  start: 2000,
+  end: 5000,
+  mate,
+  cigar: undefined,
+  strand,
+  spansWindow: true,
+})
+const crossings = [
+  deletion('HG002#1', 'ctg:2000-2000', 1),
+  deletion('HG004#1', 'ctg:15000-15000', -1),
+  deletion('HG005#1', 'ctg:2000-2000', 1),
+  deletion('HG007#1', 'ctg:102000-102000', 1),
+]
 
-test('a haplotype whose deletion spans the window is a lane, its record the skipped stretch with the point it crosses the deletion as its mate', async () => {
+test('a haplotype whose deletion spans the window is one spansWindow record of the whole deletion, its mate where it crosses', async () => {
   const found = await skipFeats()
-  expect(found.map(f => ({ ...summary(f), strand: f.get('strand') }))).toEqual([
+  expect(found.map(skipSummary)).toEqual([
     {
       lane: 'HG003#1',
       refName: 'chr1',
       start: 2000,
-      end: 7000,
-      mate: 'ctg:2000-7000',
-      cigar: '5000=',
+      end: 5000,
+      mate: 'ctg:2000-5000',
+      cigar: '3000=',
       strand: 1,
+      spansWindow: undefined,
     },
-    {
-      lane: 'HG002#1',
-      refName: 'chr1',
-      start: 2000,
-      end: 8000,
-      mate: 'ctg:2000-2000',
-      cigar: undefined,
-      strand: 1,
-    },
-    {
-      lane: 'HG004#1',
-      refName: 'chr1',
-      start: 2000,
-      end: 8000,
-      mate: 'ctg:2000-2000',
-      cigar: undefined,
-      strand: -1,
-    },
+    ...crossings,
   ])
+  expect(found[1]!.get('identity')).toBeUndefined()
 })
 
-test("the display's clip maps the whole window onto a skipping haplotype's crossing", async () => {
+test("the display's clip passes a deletion through whole, so its extent is the deletion's length", async () => {
   const found = await skipFeats({
     haplotypes: ['HG002'],
     clipToRegion: true,
     splitAtGapBp: 10_000,
   })
-  expect(found.map(summary)).toEqual([
-    {
-      lane: 'HG002#1',
-      refName: 'chr1',
-      start: 3100,
-      end: 6000,
-      mate: 'ctg:2000-2000',
-      cigar: undefined,
-    },
-  ])
+  expect(found.map(skipSummary)).toEqual([crossings[0]])
 })
 
-// RgfaTabixAdapter/walkFiles.test.ts's walks5_skip: HG002#1 >1>2>9>10 over
-// ten 10 bp reference nodes in 10 bp chunks
-test('a named haplotype skipping the window opens its lane at the crossing', async () => {
-  const found = await firstValueFrom(
-    makeAdapter({}, 'walks5_skip')
-      .getFeatures(
-        { ...window, start: 31, end: 60 },
-        { haplotypes: ['HG002#1'] },
-      )
-      .pipe(toArray()),
-  )
-  expect(found.map(summary)).toEqual([
-    {
-      lane: 'HG002#1',
-      refName: 'chr1',
-      start: 20,
-      end: 80,
-      mate: 'ctg:20-20',
-      cigar: undefined,
-    },
+test('a walk passing the node it leaves at inverted still crosses after it', async () => {
+  const found = await skipFeats({ haplotypes: ['HG008'] }, 'walks5_skipinv')
+  expect(found.map(skipSummary)).toEqual([
+    deletion('HG008#1', 'ctg:2000-2000', 1),
   ])
 })
 
@@ -340,36 +328,75 @@ test('a skipping haplotype outside the lanes asked for opens no lane', async () 
   expect(found.map(f => mateOf(f).assemblyName)).toEqual(['HG003#1'])
 })
 
-test('a lane pair with one lane skipping the window joins the other lane to the crossing, either way round', async () => {
-  const found = await skipFeats({
-    lanePairs: [
-      { queryAssemblyName: 'HG003#1', targetAssemblyName: 'HG002#1' },
-      { queryAssemblyName: 'HG002#1', targetAssemblyName: 'HG003#1' },
-      { queryAssemblyName: 'HG002#1', targetAssemblyName: 'HG004#1' },
-    ],
-    clipToRegion: true,
-    splitAtGapBp: 10_000,
-  })
-  expect(
-    found.map(f => ({ assemblyName: f.get('assemblyName'), ...summary(f) })),
-  ).toEqual([
+test('the crossing cut reads only the chunks before the node a haplotype leaves', async () => {
+  const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
+  await skipFeats({ haplotypes: ['HG002'] })
+  const reads = getLines.mock.calls.map(call => `${call[1]}-${call[2]}`)
+  getLines.mockRestore()
+  expect(reads.at(-1)).toBe('0-2000')
+})
+
+test('a haplotype whose leaving node the cut lacks is crossed from the node it rejoins', async () => {
+  const cut = WalkReader.prototype.cut
+  const spy = vi
+    .spyOn(WalkReader.prototype, 'cut')
+    .mockImplementation(async function (
+      this: WalkReader,
+      refName,
+      region,
+      opts,
+    ) {
+      const found = await cut.call(this, refName, region, opts)
+      return opts?.contained && region.end === 2000
+        ? { ...found, fragments: [] }
+        : found
+    })
+  const found = await skipFeats()
+  spy.mockRestore()
+  // HG005 rejoins past the 500 bp it carries in the gap
+  expect(found.slice(1).map(skipSummary)).toEqual([
+    crossings[0],
+    crossings[1],
+    deletion('HG005#1', 'ctg:2500-2500', 1),
+    crossings[3],
+  ])
+})
+
+test('a failed crossing cut drops only its own lanes', async () => {
+  const cut = WalkReader.prototype.cut
+  const spy = vi
+    .spyOn(WalkReader.prototype, 'cut')
+    .mockImplementation(function (this: WalkReader, refName, region, opts) {
+      return opts?.contained
+        ? Promise.reject(new Error('no such chunk'))
+        : cut.call(this, refName, region, opts)
+    })
+  const found = await skipFeats()
+  spy.mockRestore()
+  expect(found.map(f => mateOf(f).assemblyName)).toEqual(['HG003#1'])
+})
+
+// RgfaTabixAdapter/walkFiles.test.ts's walks5_skip: HG002#1 >1>2>9>10 over
+// ten 10 bp reference nodes in 10 bp chunks
+test('a named haplotype skipping the window is a deletion of the skipped stretch', async () => {
+  const found = await firstValueFrom(
+    makeAdapter({}, 'walks5_skip')
+      .getFeatures(
+        { ...window, start: 31, end: 60 },
+        { haplotypes: ['HG002#1'] },
+      )
+      .pipe(toArray()),
+  )
+  expect(found.map(skipSummary)).toEqual([
     {
-      assemblyName: 'HG003#1',
       lane: 'HG002#1',
-      refName: 'ctg',
-      start: 2000,
-      end: 7000,
-      mate: 'ctg:2000-2000',
+      refName: 'chr1',
+      start: 20,
+      end: 80,
+      mate: 'ctg:20-20',
       cigar: undefined,
-    },
-    {
-      assemblyName: 'HG002#1',
-      lane: 'HG003#1',
-      refName: 'ctg',
-      start: 2000,
-      end: 2000,
-      mate: 'ctg:2000-7000',
-      cigar: undefined,
+      strand: 1,
+      spansWindow: true,
     },
   ])
 })

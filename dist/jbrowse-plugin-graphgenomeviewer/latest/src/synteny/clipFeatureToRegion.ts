@@ -151,7 +151,8 @@ function clippedFeature(
  * record the piece was cut from, so a display can tell two runs of one record
  * from two records; `keepAlignment` hands back its
  * own stretch of them as packed ops in `alignmentOps`. A feature with no
- * `mate` is not a pairwise record and passes through whole.
+ * `mate` is not a pairwise record, and a `spansWindow` one is a deletion
+ * whose length the display reads off its extent; both pass through whole.
  *
  * A copy of `@jbrowse/plugin-comparative-adapters`' own, which a runtime plugin
  * cannot import: the worker serves that package as a stub too.
@@ -163,7 +164,7 @@ export function clipFeatureToRegion(
   keepAlignment = false,
 ): Feature[] {
   const mate = mateOf(feature)
-  if (mate === undefined) {
+  if (mate === undefined || feature.get('spansWindow')) {
     return [feature]
   } else {
     const pieces = clipIntervals(

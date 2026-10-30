@@ -12,7 +12,6 @@ export interface MatchSide {
  * One record of a walk aligned to another, on the target walk's contig with
  * the query walk as its mate and the CIGAR read along the target, a `D` being
  * target bases the query lacks. Each side's walk name and extent make the id.
- * A record without a CIGAR maps its two extents onto each other in proportion.
  */
 export function matchFeature({
   target,
@@ -25,7 +24,7 @@ export function matchFeature({
   target: MatchSide
   query: MatchSide
   strand: string
-  cigar?: string
+  cigar: string
   matches: number
   columns: number
 }) {
@@ -38,7 +37,7 @@ export function matchFeature({
     end: target.end,
     type: 'match',
     strand: strand === '-' ? -1 : 1,
-    ...(cigar === undefined ? {} : { CIGAR: cigar }),
+    CIGAR: cigar,
     syntenyId: id,
     identity: matches / Math.max(columns, 1),
     numMatches: matches,

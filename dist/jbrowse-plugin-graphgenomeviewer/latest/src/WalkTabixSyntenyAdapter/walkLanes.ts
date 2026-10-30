@@ -2,11 +2,16 @@ import { weightedLcs } from '@gmod/gbz-base/lcs'
 import { pairAlignments, pairCigar } from '@gmod/gbz-base/pairAlignment'
 import { panSNContig } from '@jbrowse/bandage-core/pansn'
 
+import SyntenyFeature from '../synteny/SyntenyFeature.ts'
 import { matchFeature } from '../synteny/matchFeature.ts'
 
-import type { MatchSide } from '../synteny/matchFeature.ts'
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
-import type { WalkFragment, WalkNode, WalkSkip } from '@jbrowse/graph-walks'
+import type {
+  WalkFragment,
+  WalkNode,
+  WalkSkip,
+  WalkStop,
+} from '@jbrowse/graph-walks'
 
 // The longest bubble with equal bases on both sides that is written as
 // mismatches; a longer one stays an insertion and a deletion
@@ -304,18 +309,34 @@ export interface SkipCrossing {
 }
 
 /**
+ * The reference node either side of a skipped stretch: the one a haplotype
+ * leaves, ending at `refStart`, or the one it rejoins, starting at `refEnd`
+ */
+export type SkipSide = 'leave' | 'rejoin'
+
+/**
  * Where a haplotype that skips the window crosses its deletion, from a cut
- * over the reference node it leaves at `skip.refStart`: past that node, or
- * where it enters the node when it passes it backwards, arriving across the
- * deletion
+ * over the reference node on one `side` of it. The jump lies on whichever end
+ * of the walk's fragment goes on to a chunk across the stretch; with neither
+ * or both, on the end the fragment's other steps leave free, and failing that
+ * on the end the node's own direction points to. A walk that passes the node
+ * inverted between two forward steps still crosses after it.
  */
 export function skipCrossing(
   skip: WalkSkip,
   refName: string,
   fragments: WalkFragment[],
   nodes: Map<number, WalkNode>,
+  side: SkipSide,
 ): SkipCrossing | undefined {
-  for (const { name, fragStart, hapStart, ids, rev } of fragments) {
+  const leaving = side === 'leave'
+  const across = (stop: WalkStop) =>
+    stop.kind === 'elsewhere' &&
+    (leaving
+      ? stop.chunk.start >= skip.refStart
+      : stop.chunk.start < skip.refStart)
+  for (const fragment of fragments) {
+    const { name, fragStart, hapStart, ids, rev, before, after } = fragment
     if (name === skip.name && fragStart === skip.fragStart) {
       let at = hapStart
       for (let i = 0; i < ids.length; i++) {
@@ -324,11 +345,19 @@ export function skipCrossing(
         if (
           node?.rank === 0 &&
           node.refName === refName &&
-          node.end === skip.refStart
+          (leaving ? node.end === skip.refStart : node.start === skip.refEnd)
         ) {
-          return rev[i]
-            ? { skip, at, strand: '-' }
-            : { skip, at: at + length, strand: '+' }
+          const jumpsAfter =
+            across(after) !== across(before)
+              ? across(after)
+              : i > 0 !== i < ids.length - 1
+                ? i > 0
+                : leaving !== (rev[i] === 1)
+          return {
+            skip,
+            at: jumpsAfter ? at + length : at,
+            strand: jumpsAfter === leaving ? '+' : '-',
+          }
         }
         at += length
       }
@@ -337,47 +366,41 @@ export function skipCrossing(
   return undefined
 }
 
-/** One side of a record: a walk fragment's extent on its contig */
-export function walkSide(fragment: WalkFragment, assemblyName: string) {
-  return {
-    name: fragment.name,
-    assemblyName,
-    refName: panSNContig(fragment.name),
-    start: fragment.hapStart,
-    end: fragment.hapEnd,
-  }
-}
-
-/** One side of a record: the point where a haplotype crosses its deletion */
-export function crossingSide({ skip, at }: SkipCrossing, assemblyName: string) {
-  return {
-    name: skip.name,
-    assemblyName,
-    refName: panSNContig(skip.name),
-    start: at,
-    end: at,
-  }
-}
-
 /**
- * A record with one side a haplotype's deletion crossing. With no CIGAR, a
- * display clipping it to a window maps the window onto that point, so the
- * haplotype gets a lane that the window's ribbon narrows to.
+ * A haplotype whose deletion spans the whole window, as the record a
+ * multi-way display lifts out as a deletion: `spansWindow`, the skipped
+ * stretch whole so its length heads the lane, and the crossing as its mate.
+ * The record carries no CIGAR and no identity, so no ramp or identity filter
+ * reads it as an alignment.
  */
-export function crossingFeature({
-  target,
-  query,
-  strand,
+export function skipFeature({
+  crossing,
+  refName,
+  assemblyName,
+  mateAssemblyName,
 }: {
-  target: MatchSide
-  query: MatchSide
-  strand: string
+  crossing: SkipCrossing
+  refName: string
+  assemblyName: string
+  mateAssemblyName: string
 }) {
-  return matchFeature({
-    target,
-    query,
-    strand,
-    matches: 0,
-    columns: Math.max(target.end - target.start, query.end - query.start),
+  const { skip, at, strand } = crossing
+  const id = `${skip.name}:${skip.fragStart}:${skip.piece}:skip`
+  return new SyntenyFeature({
+    uniqueId: id,
+    assemblyName,
+    refName,
+    start: skip.refStart,
+    end: skip.refEnd,
+    type: 'deletion',
+    strand: strand === '-' ? -1 : 1,
+    syntenyId: id,
+    spansWindow: true,
+    mate: {
+      refName: panSNContig(skip.name),
+      start: at,
+      end: at,
+      assemblyName: mateAssemblyName,
+    },
   })
 }
