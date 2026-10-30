@@ -3,6 +3,7 @@ import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { trackHeightConfigSchemaFields } from '@jbrowse/display-kit/trackHeightConfigSchemaFields'
 import { types } from '@jbrowse/mobx-state-tree'
 
+import { graphFacetConfigSchema } from './graphFacetConfigSchema'
 import { HOVER_HIGHLIGHT_VALUES } from '../GraphGenomeView/hoverHighlight'
 import { retiredGraphColor } from '../GraphGenomeView/retiredNodeColor'
 
@@ -76,11 +77,7 @@ export function configSchemaFactory() {
        * `walk` or `sample`, and walk rows stack into a section per value of
        * a sample table column. A bare field, or `{ field, sort, columns }`
        */
-      facet: {
-        type: 'frozen',
-        defaultValue: {},
-        plot: true,
-      },
+      facet: graphFacetConfigSchema,
       /**
        * #slot
        * the rows walk rows draw: `{ kept: [...] }` names the samples shown

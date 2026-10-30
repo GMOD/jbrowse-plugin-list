@@ -93,6 +93,18 @@ function normalizeSnapshot(snap: Record<string, unknown>) {
 const RgfaTabixCoarseTier = ConfigurationSchema('RgfaTabixCoarseTier', {
   /**
    * #slot
+   * The adapter's `uri` shorthand for this pair: the prefix `gfa-to-tabix
+   * fold` was given, from which the locations below resolve.
+   */
+  uri: { type: 'maybeString' },
+  /**
+   * #slot
+   * The adapter's `format` for this pair: `2` resolves format 2's one
+   * `<uri>.graph.bed.gz`.
+   */
+  format: { type: 'maybeNumber' },
+  /**
+   * #slot
    * The linear view's bp per px past which a graph following it cuts this
    * pair. Unset, with `foldBelowBp` unset too, means the track has no coarse
    * tier. There is no default,

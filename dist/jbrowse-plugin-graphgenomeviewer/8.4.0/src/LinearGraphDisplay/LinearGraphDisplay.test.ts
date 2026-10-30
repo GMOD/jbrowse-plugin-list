@@ -1117,14 +1117,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setWalkRowSamples(['HG1'])
   display.setWalkRowOrder('shared')
   display.setHover('off')
-  const slots = [
-    'layoutMode',
-    'encoding',
-    'size',
-    'layers',
-    'facet',
-    'rows',
-  ] as const
+  const slots = ['layoutMode', 'encoding', 'size', 'layers', 'rows'] as const
   expect(
     Object.fromEntries(
       [...slots, 'hover' as const].map(s => [
@@ -1137,10 +1130,10 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     encoding: { color: { field: 'depth' } },
     size: { value: 6, links: 'walks' },
     layers: { bubbles: true },
-    facet: { field: 'walk', sort: [] },
     rows: { kept: ['HG1'], order: 'shared' },
     hover: 'off',
   })
+  expect(readConfObject(display.configuration, ['facet', 'field'])).toBe('walk')
   expect([
     display.chosenLayoutMode,
     display.chosenColorScheme,

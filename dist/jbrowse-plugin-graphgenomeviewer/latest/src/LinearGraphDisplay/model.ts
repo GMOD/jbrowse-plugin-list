@@ -132,7 +132,11 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           encoding: getConf(self, 'encoding'),
           size: getConf(self, 'size'),
           layers: getConf(self, 'layers') as GraphLayers,
-          facet: getConf(self, 'facet'),
+          facet: {
+            field: getConf(self, ['facet', 'field']),
+            sort: getConf(self, ['facet', 'sort']),
+            columns: getConf(self, ['facet', 'columns']),
+          },
           rows: getConf(self, 'rows'),
           hover: getConf(self, 'hover'),
         }
