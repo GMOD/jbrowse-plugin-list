@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { Typography, useTheme } from '@mui/material'
 import { observer } from 'mobx-react'
 
@@ -95,6 +97,9 @@ function Legend({
   )
 }
 
+// Chrome's style recalc grows superlinearly in SVG <title>s under CssBaseline's
+// `* { box-sizing: inherit }`, and KIV-2's 9,000 copies froze the page for 10 s,
+// so a row renders its titles while hovered
 function Row({
   allele,
   repeat,
@@ -120,13 +125,22 @@ function Row({
   gap: string
   referenceBp: number
 }) {
+  const [hovered, setHovered] = useState(false)
   const top = y - barPx / 2
   const copies = copiesOf(allele, repeat.units)
   const unit = repeat.unitLength
   const ticked =
     !allele.runs && unit !== undefined && unit * scale >= MIN_COPY_PX
   return (
-    <g data-testid="tandem-repeat-row">
+    <g
+      data-testid="tandem-repeat-row"
+      onMouseEnter={() => {
+        setHovered(true)
+      }}
+      onMouseLeave={() => {
+        setHovered(false)
+      }}
+    >
       {labelled ? (
         <text
           x={labelRight}
@@ -150,9 +164,11 @@ function Row({
               height={barPx}
               fill={unitColor(copy.unit)}
             >
-              <title>
-                {`${allele.label}: copy ${i + 1} of ${copies.length}, ${unitLabel(repeat.units, copy.unit)}, ${copy.bp.toLocaleString()} bp`}
-              </title>
+              {hovered ? (
+                <title>
+                  {`${allele.label}: copy ${i + 1} of ${copies.length}, ${unitLabel(repeat.units, copy.unit)}, ${copy.bp.toLocaleString()} bp`}
+                </title>
+              ) : null}
             </rect>
           )
         })
@@ -164,7 +180,9 @@ function Row({
           height={barPx}
           fill={NO_RUNS}
         >
-          <title>{`${allele.label}: ${allele.bp.toLocaleString()} bp`}</title>
+          {hovered ? (
+            <title>{`${allele.label}: ${allele.bp.toLocaleString()} bp`}</title>
+          ) : null}
         </rect>
       )}
       {ticked

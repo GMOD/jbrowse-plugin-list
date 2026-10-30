@@ -1,6 +1,6 @@
 {
   "name": "jbrowse-plugin-tandem-repeat",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "JBrowse 2 view of a tandem repeat's alleles: one bar per haplotype, each copy coloured by its repeat unit, read from VCF 4.5 <CNV:TR> records",
   "license": "MIT",
   "repository": {
@@ -76,7 +76,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "figures": "node scripts/shoot-figures.mjs",
-    "preversion": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
+    "host-compat": "node scripts/host-compat-probe.mjs",
+    "preversion": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm host-compat",
     "version": "node scripts/version.mjs",
     "postversion": "git push --follow-tags"
   }
