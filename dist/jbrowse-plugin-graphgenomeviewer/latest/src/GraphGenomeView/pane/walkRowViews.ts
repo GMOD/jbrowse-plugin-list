@@ -118,6 +118,9 @@ export const withWalkRowViews = withLaunchViews
       let untrackedRows = 0
       let unplaced = 0
       for (const row of bars.rows) {
+        if (row.deletionBp !== undefined) {
+          continue
+        }
         if (!row.axis) {
           unplaced++
           continue
