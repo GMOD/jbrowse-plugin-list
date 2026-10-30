@@ -149,44 +149,55 @@ export function groupWalkRows<R extends { sample: string; label: string }>(
   }
 }
 
+export const sectionHeadersPx = (sections: WalkRowSection[]) =>
+  sections.length * SECTION_HEADER_PX
+
+// The index among `sections` of the one row i stacks in, -1 for the reference
+// row above them all
+export function sectionIndexOf(sections: WalkRowSection[], i: number) {
+  return sections.findLastIndex(s => s.first <= i)
+}
+
 // Where rows and section headers sit, in px down from the reference row's
 // centre, at one row pitch shared by every section: a header strip above
 // each section's first row pushes every row after it down
 export function sectionPlacement(sections: WalkRowSection[], rowPx: number) {
-  const sectionOf = (i: number) => {
-    let k = -1
-    while (k + 1 < sections.length && sections[k + 1]!.first <= i) {
-      k++
-    }
-    return k
-  }
-  const rowY = (i: number) => i * rowPx + (sectionOf(i) + 1) * SECTION_HEADER_PX
+  const rowY = (i: number) =>
+    i * rowPx + (sectionIndexOf(sections, i) + 1) * SECTION_HEADER_PX
   return {
     rowY,
     headers: sections.map((s, k) => ({
       ...s,
       top: (s.first - 0.5) * rowPx + k * SECTION_HEADER_PX,
     })),
-    headersPx: sections.length * SECTION_HEADER_PX,
-    // the row whose centre is nearest y
+    headersPx: sectionHeadersPx(sections),
+    // runs of `rows` rows each spaced one pitch apart: the reference row and
+    // each section, or every row while ungrouped
+    blocks(rows: number) {
+      return sections.length
+        ? [
+            { first: 0, count: 1, rowY: 0 },
+            ...sections.map(s => ({
+              first: s.first,
+              count: s.count,
+              rowY: rowY(s.first),
+            })),
+          ]
+        : [{ first: 0, count: rows, rowY: 0 }]
+    },
+    // the row whose centre is nearest y, the upper of two as near
     rowAt(y: number, rows: number) {
-      let best = 0
-      for (let k = -1; k < sections.length; k++) {
-        const lo = k < 0 ? 0 : sections[k]!.first
-        const hi =
-          k < 0
-            ? Math.min(rows, sections[0]?.first ?? rows)
-            : lo + sections[k]!.count
-        const shift = (k + 1) * SECTION_HEADER_PX
-        const i = Math.min(
-          hi - 1,
-          Math.max(lo, Math.round((y - shift) / rowPx)),
-        )
-        if (Math.abs(rowY(i) - y) < Math.abs(rowY(best) - y)) {
-          best = i
+      let lo = 0
+      let hi = rows - 1
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (rowY(mid) < y) {
+          lo = mid + 1
+        } else {
+          hi = mid
         }
       }
-      return best
+      return lo > 0 && y - rowY(lo - 1) <= rowY(lo) - y ? lo - 1 : lo
     },
   }
 }
@@ -202,33 +213,32 @@ export function walkRowTrees(
   frame: WalkRowsFrame & { rowPx: number },
   o: Parameters<typeof walkRowsTree>[2] & { idPrefix: string },
 ): El[] {
-  if (sections.length === 0) {
-    return [walkRowsTree(bars, frame, o)]
-  }
-  return [
-    walkRowsTree({ ...bars, rows: [] }, frame, o),
-    ...sections.flatMap((section, k) => {
-      const tree = walkRowsTree(
-        {
-          ...bars,
-          rows: bars.rows.slice(
-            section.first - 1,
-            section.first - 1 + section.count,
-          ),
-        },
-        {
-          ...frame,
-          translateY:
-            frame.translateY +
-            (rowY(section.first) - frame.rowPx) * frame.scaleY,
-        },
-        { ...o, idPrefix: `${o.idPrefix}-s${k}` },
-      )
-      return tree.children.filter(
-        (c): c is El =>
-          typeof c !== 'string' &&
-          c.attrs['data-testid'] !== 'graph-walk-reference',
-      )
-    }),
-  ]
+  return sections.length === 0
+    ? [walkRowsTree(bars, frame, o)]
+    : [
+        walkRowsTree({ ...bars, rows: [] }, frame, o),
+        ...sections.flatMap((section, k) => {
+          const tree = walkRowsTree(
+            {
+              ...bars,
+              rows: bars.rows.slice(
+                section.first - 1,
+                section.first - 1 + section.count,
+              ),
+            },
+            {
+              ...frame,
+              translateY:
+                frame.translateY +
+                (rowY(section.first) - frame.rowPx) * frame.scaleY,
+            },
+            { ...o, idPrefix: `${o.idPrefix}-s${k}` },
+          )
+          return tree.children.filter(
+            (c): c is El =>
+              typeof c !== 'string' &&
+              c.attrs['data-testid'] !== 'graph-walk-reference',
+          )
+        }),
+      ]
 }

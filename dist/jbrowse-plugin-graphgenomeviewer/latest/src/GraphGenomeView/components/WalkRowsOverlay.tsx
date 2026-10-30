@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 
+import { barEnd } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { computed } from 'mobx'
 import { observer } from 'mobx-react'
 
@@ -30,16 +31,15 @@ import type { GraphPaneModel } from '../model'
 function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
   const spans = useMemo(
     () =>
-      computed(() => {
-        const bars = model.walkRowBars
-        return bars
+      computed(() =>
+        model.walkRowBars
           ? walkRowSpans(
-              [bars.reference, ...bars.rows],
+              model.walkRowList,
               model.scaleX,
               model.referenceRampDomain,
             )
-          : undefined
-      }),
+          : undefined,
+      ),
     [model],
   )
   const paint = useCallback(
@@ -51,17 +51,6 @@ function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
       if (!bars || !place || !pitch || !painted) {
         return
       }
-      const sections = model.walkRowGroups?.sections
-      const blocks = sections?.length
-        ? [
-            { first: 0, count: 1, rowY: place.rowY(0) },
-            ...sections.map(s => ({
-              first: s.first,
-              count: s.count,
-              rowY: place.rowY(s.first),
-            })),
-          ]
-        : [{ first: 0, count: bars.rows.length + 1, rowY: place.rowY(0) }]
       paintWalkRowSpans(ctx, painted, {
         ...model.screenTransform,
         width: model.paneWidth,
@@ -69,7 +58,7 @@ function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
         rowPx: pitch.rowPx,
         barPx: pitch.barPx,
         origin: bars.origin,
-        blocks,
+        blocks: place.blocks(bars.rows.length + 1),
       })
     },
     [model, spans],
@@ -172,7 +161,7 @@ const HoveredWalkRow = observer(function HoveredWalkRow({
   if (!bars || !place || !pitch || !model.hoveredWalkRowText) {
     return null
   }
-  const rows = [bars.reference, ...bars.rows]
+  const rows = model.walkRowList
   const index = rows.findIndex(r => r.name === model.hoveredWalkRow)
   const row = rows[index]
   if (!row) {
@@ -184,7 +173,7 @@ const HoveredWalkRow = observer(function HoveredWalkRow({
       data-testid="graph-walk-row-hovered"
       x={start.x - 2}
       y={start.y - pitch.rowPx / 2 - 1}
-      width={row.bp * model.scaleX + 4}
+      width={barEnd(row) * model.scaleX + 4}
       height={pitch.rowPx + 2}
       fill="none"
       stroke="#111"

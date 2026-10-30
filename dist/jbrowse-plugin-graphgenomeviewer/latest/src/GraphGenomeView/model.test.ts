@@ -39,7 +39,11 @@ import { walkRowGeneKey } from './pane/fitViews'
 import { EMPTY_BATCH, SELECT_BRIGHTEN } from './pane/paneBase'
 import { PANEL_REFERENCE_TUBE, PANEL_TUBES } from './tubeMapPanels'
 import stateModelFactory from './viewModel'
-import { SECTION_HEADER_PX, walkRowTrees } from './walkRowGroups'
+import {
+  SECTION_HEADER_PX,
+  sectionIndexOf,
+  walkRowTrees,
+} from './walkRowGroups'
 import { walkCutFor } from '../RgfaTabixAdapter/walkCut.ts'
 
 import type { GraphLayers } from './graphLayers'
@@ -4797,6 +4801,21 @@ describe('walk rows grouped by a sample column', () => {
     expect(model.walkRowAt(x, y)).toBe(last)
   })
 
+  test('a ribbon stays inside its section rather than crossing a header', async () => {
+    const model = await groupedModel({ layers: { walkRibbons: true } })
+    const flat = model.walkRowRibbons!.length
+    model.setWalkRowGroupBy({ field: 'superpopulation' })
+    const sections = model.walkRowGroups!.sections
+    const ribbons = model.walkRowRibbons!
+    expect(ribbons.length).toBeGreaterThan(0)
+    expect(ribbons.length).toBeLessThan(flat)
+    for (const { row } of ribbons) {
+      expect(sectionIndexOf(sections, row)).toBe(
+        sectionIndexOf(sections, row + 1),
+      )
+    }
+  })
+
   test('a packed cohort fits its rows and headers into the pane', async () => {
     rpcRespond()
     const cohort = [
@@ -5168,6 +5187,42 @@ describe('a walk-file cut', () => {
     expect(model.graph!.nodes.map(n => n.depth)).toEqual(
       whole.nodes.map(n => n.depth),
     )
+  })
+
+  // HG004#1 jumps over chr1:1500-4500, so its row is a hairline of no bp
+  test("a deletion row's hairline takes the pointer along its length", async () => {
+    mockRpcCall.mockImplementation(
+      (_sid: unknown, method: string, args: { opts: SubgraphCutOptions }) =>
+        method === 'GetSubgraph'
+          ? Promise.resolve(
+              walkCutFor(
+                {
+                  ...WALK_TABLES,
+                  skips: {
+                    names: ['HG004#1#chr1'],
+                    starts: Float64Array.of(1500),
+                    ends: Float64Array.of(4500),
+                  },
+                },
+                TEST_REGION,
+                args.opts.walkRows,
+              ),
+            )
+          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const model = restoredView({ layoutMode: 'walkrows' })
+    await model.load()
+    const rows = model.walkRowList
+    const i = rows.findIndex(r => r.deletionBp !== undefined)
+    const row = rows[i]!
+    const run = row.runs[0]!
+    expect(row.bp).toBe(0)
+    expect(run).toMatchObject({ start: 500, bp: 3000 })
+    const x =
+      (model.walkRowBars!.origin + run.start + run.bp / 2) * model.scaleX +
+      model.translateX
+    const y = model.walkRowPlacement!.rowY(i) * model.scaleY + model.translateY
+    expect(model.walkRowAt(x, y)).toBe(i)
   })
 
   test('parses its walks whole for a layout that draws nodes', async () => {

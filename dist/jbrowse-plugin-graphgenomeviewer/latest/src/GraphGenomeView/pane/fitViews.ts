@@ -11,6 +11,7 @@ import {
   layoutLabels,
 } from '@jbrowse/bandage-core/labelLayout'
 import {
+  barEnd,
   boxesGenes,
   rowPitch,
   walkRowReadout,
@@ -35,7 +36,7 @@ import { padded } from '@jbrowse/bandage-core/viewport'
 import { walkPosition } from '@jbrowse/bandage-core/walkKey'
 import { untracked } from 'mobx'
 
-import { SECTION_HEADER_PX, sectionPlacement } from '../walkRowGroups'
+import { sectionHeadersPx, sectionPlacement } from '../walkRowGroups'
 import { withHostViews } from './hostViews'
 import { fadeEntering } from './morph'
 import {
@@ -99,12 +100,12 @@ export const withFitViews = withHostViews
       if (!bars) {
         return undefined
       }
-      const room = this.fitRoom
-      const headersPx =
-        (self.walkRowGroups?.sections.length ?? 0) * SECTION_HEADER_PX
       return rowPitch(
         bars.rows.length + 1,
-        room - this.fitPadTop - FIT_PADDING - headersPx,
+        this.fitRoom -
+          this.fitPadTop -
+          FIT_PADDING -
+          sectionHeadersPx(self.walkRowGroups?.sections ?? []),
       )
     },
     // Where each walk row and section header sits at the rows' pitch
@@ -214,13 +215,13 @@ export const withFitViews = withHostViews
         (screenY - self.translateY) / self.scaleY,
         bars.rows.length + 1,
       )
-      const row = [bars.reference, ...bars.rows][i]
+      const row = self.walkRowList[i]
       const y = place.rowY(i) * self.scaleY + self.translateY
       const bp = (screenX - self.translateX) / self.scaleX - bars.origin
       return row &&
         Math.abs(screenY - y) <= pitch.barPx / 2 + 2 &&
         bp >= 0 &&
-        bp <= row.bp
+        bp <= barEnd(row)
         ? i
         : undefined
     },

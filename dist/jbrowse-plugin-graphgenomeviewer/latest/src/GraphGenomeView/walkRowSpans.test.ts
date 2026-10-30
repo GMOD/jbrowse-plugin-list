@@ -122,6 +122,22 @@ test('a solid run under the ramp is one piece in its own hue', () => {
   expect(runPieces(off, ramp, frame.scaleX)).toHaveLength(1)
 })
 
+test('a hue printed in exponent form reads as the hue it is', () => {
+  const rounded = (css: string) => cssRgb(css).map(Math.round)
+  expect(rounded('hsl(1e-7, 70%, 50%)')).toEqual(rounded('hsl(0, 70%, 50%)'))
+  expect(cssRgb('rgb(10, 20.5, 30)')).toEqual([10, 20.5, 30])
+  expect(cssRgb('#0a141e')).toEqual([10, 20, 30])
+})
+
+test('each kind of span holds exactly its own pieces', () => {
+  const spans = walkRowSpans([bars.reference, ...bars.rows], frame.scaleX)
+  expect(spans.gaps.count).toBe(1)
+  expect(spans.gaps.x).toHaveLength(1)
+  expect(spans.hairlines.x).toHaveLength(0)
+  expect(spans.bars.x).toHaveLength(spans.bars.count)
+  expect(spans.gapRows.at(-1)).toBe(1)
+})
+
 test('the spans state how far the longest row reaches', () => {
   const all = [bars.reference, ...bars.rows]
   expect(walkRowSpans(all, frame.scaleX).longest).toBe(3500)

@@ -16,7 +16,6 @@ import { withLaunchViews } from './launchViews'
 import { WALK_GENE_ROWS } from './paneBase'
 import { resolveLocationAssembly } from '../../launchFromGraph/contributors'
 
-import type { SubgraphRegion } from '../../GetSubgraph'
 import type { WalkAxis, WalkRow } from '@jbrowse/bandage-core/layout/walkRows'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 
@@ -110,39 +109,28 @@ export const withWalkRowViews = withLaunchViews
       if (!bars || !self.showGenes) {
         return undefined
       }
-      const reads: {
-        row: string
-        trackId: string
-        region: SubgraphRegion
-      }[] = []
-      let untrackedRows = 0
-      let unplaced = 0
-      for (const row of bars.rows) {
-        if (row.deletionBp !== undefined) {
-          continue
-        }
-        if (!row.axis) {
-          unplaced++
-          continue
-        }
-        const { assembly, span } = self.rowLocation(row, row.axis)
+      const notDeleted = bars.rows.filter(row => row.deletionBp === undefined)
+      const reads = notDeleted.flatMap(row => {
+        const location = row.axis ? self.rowLocation(row, row.axis) : undefined
+        const assembly = location?.assembly
         const track = assembly
           ? self.geneTracksByAssembly.get(assembly)
           : undefined
-        if (!assembly || !track) {
-          untrackedRows++
-          continue
-        }
-        reads.push({
-          row: row.name,
-          trackId: track.trackId,
-          region: { assemblyName: assembly, ...span },
-        })
-      }
+        return location && assembly && track
+          ? [
+              {
+                row: row.name,
+                trackId: track.trackId,
+                region: { assemblyName: assembly, ...location.span },
+              },
+            ]
+          : []
+      })
+      const unplaced = notDeleted.filter(row => !row.axis).length
       return {
         reads: reads.slice(0, WALK_GENE_ROWS),
         gaps: {
-          untracked: untrackedRows,
+          untracked: notDeleted.length - unplaced - reads.length,
           unplaced,
           unread: Math.max(0, reads.length - WALK_GENE_ROWS),
         },

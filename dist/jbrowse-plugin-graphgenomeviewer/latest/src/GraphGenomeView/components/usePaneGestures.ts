@@ -380,11 +380,10 @@ export function usePaneGestures(model: GraphPaneModel) {
     setHoveredChip(was =>
       was?.label === chip?.label && was?.readout === chip?.readout ? was : chip,
     )
-    const bars = model.walkRowBars
-    if (bars) {
+    if (model.walkRowBars) {
       const i = model.walkRowAt(sx, sy)
       model.setHoveredWalkRow(
-        i === undefined ? null : [bars.reference, ...bars.rows][i]!.name,
+        i === undefined ? null : model.walkRowList[i]!.name,
       )
     }
     if (model.nodePositions && model.graph) {

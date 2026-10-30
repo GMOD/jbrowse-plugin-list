@@ -14,6 +14,14 @@ import type { MarkContext2D, SpanChannels } from '@jbrowse/render-core/marks'
 
 type Rgb = [number, number, number]
 
+type SpanKind = 'bars' | 'gaps' | 'hairlines'
+
+const SPAN_KINDS: SpanKind[] = ['bars', 'gaps', 'hairlines']
+
+// the numbers in a CSS colour, `1e-7` among them, as `${hue}` may print one
+const cssNumbers = (css: string) =>
+  (css.match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []).map(Number)
+
 // The colours runPaint writes: `#rrggbb`, `rgb(r, g, b)` and
 // `hsl(h, s%, l%)`
 export function cssRgb(css: string): Rgb {
@@ -21,7 +29,7 @@ export function cssRgb(css: string): Rgb {
     const v = Number.parseInt(css.slice(1), 16)
     return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff]
   }
-  const [a = 0, b = 0, c = 0] = css.match(/[\d.]+/g)!.map(Number)
+  const [a = 0, b = 0, c = 0] = cssNumbers(css)
   return css.startsWith('hsl')
     ? (hslToRgb(a, b / 100, c / 100).map(v => v * 255) as Rgb)
     : [a, b, c]
@@ -30,14 +38,19 @@ export function cssRgb(css: string): Rgb {
 const abgr = ([r, g, b]: Rgb) =>
   packAbgr(Math.round(r), Math.round(g), Math.round(b), 255)
 
-const cssAbgr = new Map<string, number>()
-function packCss(css: string) {
-  let v = cssAbgr.get(css)
-  if (v === undefined) {
-    v = abgr(cssRgb(css))
-    cssAbgr.set(css, v)
+const packCss = (css: string) => abgr(cssRgb(css))
+
+// packCss remembering each colour it packed, for one cut's runs
+function cssPacker() {
+  const packed = new Map<string, number>()
+  return (css: string) => {
+    let v = packed.get(css)
+    if (v === undefined) {
+      v = packCss(css)
+      packed.set(css, v)
+    }
+    return v
   }
-  return v
 }
 
 /**
@@ -50,14 +63,15 @@ export function runPieces(
   run: WalkRun,
   ramp: { start: number; end: number } | undefined,
   pxPerBp: number,
+  pack = packCss,
 ): [number, number, number][] {
   const end = run.start + run.bp
   const paint = runPaint(run, ramp)
   if ('fill' in paint) {
-    return [[run.start, end, packCss(paint.fill)]]
+    return [[run.start, end, pack(paint.fill)]]
   }
   const stops = paint.stops.map(cssRgb)
-  const hues = paint.stops.map(css => Number(/[\d.]+/.exec(css)![0]))
+  const hues = paint.stops.map(css => cssNumbers(css)[0]!)
   const hueSpan = Math.abs(hues.at(-1)! - hues[0]!)
   const n = Math.max(
     1,
@@ -79,11 +93,13 @@ export function runPieces(
   return pieces
 }
 
+type ColoredSpans = SpanChannels & { color: Uint32Array }
+
 export interface WalkRowSpans {
-  bars: SpanChannels & { color: Uint32Array }
-  gaps: SpanChannels & { color: Uint32Array }
+  bars: ColoredSpans
+  gaps: ColoredSpans
   // gaps of bases the graph lacks, which draw as a hairline
-  hairlines: SpanChannels & { color: Uint32Array }
+  hairlines: ColoredSpans
   // where each drawn row's spans start in `bars`, `gaps` and `hairlines`
   barRows: Uint32Array
   gapRows: Uint32Array
@@ -102,11 +118,7 @@ function channels(capacity: number) {
   }
 }
 
-function slice<T extends SpanChannels & { color: Uint32Array }>(
-  c: T,
-  a: number,
-  b: number,
-) {
+function slice(c: ColoredSpans, a: number, b: number) {
   return {
     x: c.x.subarray(a, b),
     x2: c.x2.subarray(a, b),
@@ -115,6 +127,13 @@ function slice<T extends SpanChannels & { color: Uint32Array }>(
     count: b - a,
   }
 }
+
+const kindOf = (run: WalkRun): SpanKind =>
+  !run.gap
+    ? 'bars'
+    : gapStyle(run.cause).px === MISSING_PX
+      ? 'hairlines'
+      : 'gaps'
 
 /**
  * Each row's runs as `walkRowsTree` coalesces and colours them at
@@ -127,49 +146,51 @@ export function walkRowSpans(
   pxPerBp: number,
   ramp?: { start: number; end: number },
 ): WalkRowSpans {
+  const pack = cssPacker()
   const pieces = rows.map(r =>
     coalesceRuns(r.runs, pxPerBp).map(run => ({
-      gap: run.gap,
-      hairline: run.gap && gapStyle(run.cause).px === MISSING_PX,
-      pieces: runPieces(run, ramp, pxPerBp),
+      kind: kindOf(run),
+      pieces: runPieces(run, ramp, pxPerBp, pack),
     })),
   )
-  let total = 0
+  const totals = { bars: 0, gaps: 0, hairlines: 0 }
   for (const runs of pieces) {
     for (const run of runs) {
-      total += run.pieces.length
+      totals[run.kind] += run.pieces.length
     }
   }
-  const bars = channels(total)
-  const gaps = channels(total)
-  const hairlines = channels(total)
-  const barRows = new Uint32Array(rows.length + 1)
-  const gapRows = new Uint32Array(rows.length + 1)
-  const hairlineRows = new Uint32Array(rows.length + 1)
+  const spans = {
+    bars: channels(totals.bars),
+    gaps: channels(totals.gaps),
+    hairlines: channels(totals.hairlines),
+  }
+  const starts = {
+    bars: new Uint32Array(rows.length + 1),
+    gaps: new Uint32Array(rows.length + 1),
+    hairlines: new Uint32Array(rows.length + 1),
+  }
   let longest = 1
   pieces.forEach((runs, row) => {
     for (const run of runs) {
-      const c = run.hairline ? hairlines : run.gap ? gaps : bars
+      const c = spans[run.kind]
       for (const [x, x2, color] of run.pieces) {
         const i = c.count++
         c.x[i] = x
         c.x2[i] = x2
         c.row[i] = row
         c.color[i] = color
-        longest = Math.max(longest, c.x2[i])
+        longest = Math.max(longest, x2)
       }
     }
-    barRows[row + 1] = bars.count
-    gapRows[row + 1] = gaps.count
-    hairlineRows[row + 1] = hairlines.count
+    for (const kind of SPAN_KINDS) {
+      starts[kind][row + 1] = spans[kind].count
+    }
   })
   return {
-    bars: slice(bars, 0, bars.count),
-    gaps: slice(gaps, 0, gaps.count),
-    hairlines: slice(hairlines, 0, hairlines.count),
-    barRows,
-    gapRows,
-    hairlineRows,
+    ...spans,
+    barRows: starts.bars,
+    gapRows: starts.gaps,
+    hairlineRows: starts.hairlines,
     longest,
   }
 }

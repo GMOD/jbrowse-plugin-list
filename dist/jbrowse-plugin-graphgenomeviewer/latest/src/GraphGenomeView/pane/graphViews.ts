@@ -14,7 +14,6 @@ import { facetSettingOf } from '@jbrowse/bandage-core/facetGrid'
 import { genePins } from '@jbrowse/bandage-core/genes/genePins'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
 import {
-  ribbonJoin,
   sharedRowOrder,
   walkRowBlocks,
   walkRowLinks,
@@ -92,7 +91,12 @@ import {
   valueTubeColors,
   valueTubePalette,
 } from '../tubeMapPanels'
-import { groupByOf, groupWalkRows, metadataColumns } from '../walkRowGroups'
+import {
+  groupByOf,
+  groupWalkRows,
+  metadataColumns,
+  sectionIndexOf,
+} from '../walkRowGroups'
 
 import type { ScreenTransform } from './keepInView'
 import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
@@ -1027,26 +1031,33 @@ export const withGraphViews = paneBase
         ? { ...bars, rows: this.walkRowGroups?.rows ?? rows }
         : undefined
     },
-    // Where each row walks the same nodes as the row below it, as bar
-    // offsets on both, the reference row first
-    get walkRowRibbons() {
+    // The reference row and the rows under it, as walk rows index them
+    get walkRowList() {
       const bars = this.walkRowBars
-      if (!self.walkRibbons || !self.rowVisitsNeeded || !bars) {
-        return undefined
-      }
-      const rows = [bars.reference, ...bars.rows]
-      return walkRowLinks(rows, ribbonJoin(rows))
+      return bars ? [bars.reference, ...bars.rows] : []
+    },
+    // Where each row walks the same nodes as the row below it, as bar
+    // offsets on both, the reference row first. While grouped, a ribbon
+    // stays inside its section rather than crossing a header.
+    get walkRowRibbons() {
+      const sections = this.walkRowGroups?.sections ?? []
+      return self.walkRibbons && self.rowVisitsNeeded && this.walkRowBars
+        ? walkRowLinks(this.walkRowList).filter(
+            ({ row }) =>
+              sectionIndexOf(sections, row) ===
+              sectionIndexOf(sections, row + 1),
+          )
+        : undefined
     },
     // The stretches of each row through a block of nodes off the
     // reference's path that two or more rows walk, block 0 the one with the
     // most bp, which the bars letter A, B, C...
     get sharedBlocks() {
-      const bars = this.walkRowBars
-      if (!self.layerSet.has('walkBlocks') || !self.rowVisitsNeeded || !bars) {
-        return undefined
-      }
-      const rows = [bars.reference, ...bars.rows]
-      return walkRowBlocks(rows, ribbonJoin(rows))
+      return self.layerSet.has('walkBlocks') &&
+        self.rowVisitsNeeded &&
+        this.walkRowBars
+        ? walkRowBlocks(this.walkRowList)
+        : undefined
     },
     // Whether the canvas draws the graph's nodes. A tube map and walk rows
     // draw a picture of their own over it, so what sits on nodes (genes,

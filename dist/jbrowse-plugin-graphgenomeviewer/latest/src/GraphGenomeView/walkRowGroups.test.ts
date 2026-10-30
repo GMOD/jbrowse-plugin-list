@@ -4,6 +4,7 @@ import {
   groupWalkRows,
   metadataColumns,
   parseSamplesTsv,
+  sectionIndexOf,
   sectionPlacement,
 } from './walkRowGroups'
 
@@ -115,4 +116,31 @@ test('one row pitch across sections, a header strip above each', () => {
   expect(flat.rowY(3)).toBe(12)
   expect(flat.rowAt(13, 6)).toBe(3)
   expect(flat.headersPx).toBe(0)
+})
+
+test('each section is a block of rows one pitch apart, under the reference row', () => {
+  const sections = [
+    { key: 'a', title: 'a', first: 1, count: 2 },
+    { key: 'b', title: 'b', first: 3, count: 3 },
+  ]
+  const place = sectionPlacement(sections, 4)
+  expect(place.blocks(6)).toEqual([
+    { first: 0, count: 1, rowY: 0 },
+    { first: 1, count: 2, rowY: place.rowY(1) },
+    { first: 3, count: 3, rowY: place.rowY(3) },
+  ])
+  expect(sectionPlacement([], 4).blocks(6)).toEqual([
+    { first: 0, count: 6, rowY: 0 },
+  ])
+  expect([0, 1, 2, 3, 5].map(i => sectionIndexOf(sections, i))).toEqual([
+    -1, 0, 0, 1, 1,
+  ])
+})
+
+test('a point past either end names the end row, and a tie the upper row', () => {
+  const place = sectionPlacement([], 4)
+  expect(place.rowAt(-50, 6)).toBe(0)
+  expect(place.rowAt(500, 6)).toBe(5)
+  expect(place.rowAt(6, 6)).toBe(1)
+  expect(place.rowAt(0, 0)).toBe(0)
 })
