@@ -384,11 +384,13 @@ test('a walk leaving the window is measured to where it rejoins the reference', 
 //   W HG002  1 ctg  >1>2>9>10   a deletion of 20-80, whose chunks hold skip rows
 const skipPrefix = fixture('walks5_skip')
 
+// HG002's deletion runs under the whole of GRCh38's bar, flanks included
 test('a haplotype that jumps over the window draws as a deletion row', async () => {
   const cut = (await makeAdapter(skipPrefix).getSubgraph(chr1(31, 60), {
     walkRows: true,
   })) as WalkCut
-  const rows = walkRowsOf(cut.walkRowRuns!).rows
+  const { reference, rows } = walkRowsOf(cut.walkRowRuns!)
+  expect(reference.bp).toBe(40)
   expect(
     rows.map(({ label, bp, gapBp, complete }) => ({
       label,
@@ -396,8 +398,10 @@ test('a haplotype that jumps over the window draws as a deletion row', async () 
       gapBp,
       complete,
     })),
-  ).toEqual([{ label: 'HG002#1', bp: 0, gapBp: 29, complete: true }])
-  expect(rows[0]!.runs.map(run => run.cause)).toEqual(['deleted'])
+  ).toEqual([{ label: 'HG002#1', bp: 0, gapBp: 40, complete: true }])
+  expect(rows[0]!.runs).toEqual([
+    expect.objectContaining({ start: 0, bp: 40, cause: 'deleted' }),
+  ])
 })
 
 test('a walk the read cuts off is read on to the chunk its row names', async () => {
