@@ -13,6 +13,7 @@ import { walksKept } from '@jbrowse/graph-walks'
 import {
   anchorAligner,
   chainFeature,
+  crossingFeature,
   lanePairAligner,
   skipCrossing,
   skipFeature,
@@ -227,7 +228,8 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
    * One record per stretch a haplotype's walk shares with the reference's,
    * on the reference with the haplotype as its mate. A haplotype whose
    * deletion spans the window, with no walk there on any contig, is one
-   * `spansWindow` record of the skipped stretch.
+   * `spansWindow` record of the skipped stretch, as is one that crosses the
+   * window through steps of its own, its mate those steps' bp.
    */
   private async anchorFeatures(
     refName: string,
@@ -291,18 +293,28 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       .filter(fragment => fragment.name !== refName && rank(fragment) >= 0)
       .map(query => ({
         rank: rank(query),
-        features: references.flatMap(reference =>
-          align(query, reference).map(chain =>
-            chainFeature({
-              chain,
-              target: reference,
-              query,
-              assemblyName: region.assemblyName,
-              refName: region.refName,
-              mateAssemblyName: laneOf(query),
-            }),
-          ),
-        ),
+        features: query.crossing
+          ? [
+              crossingFeature({
+                fragment: query,
+                crossing: query.crossing,
+                assemblyName: region.assemblyName,
+                refName: region.refName,
+                mateAssemblyName: laneOf(query),
+              }),
+            ]
+          : references.flatMap(reference =>
+              align(query, reference).map(chain =>
+                chainFeature({
+                  chain,
+                  target: reference,
+                  query,
+                  assemblyName: region.assemblyName,
+                  refName: region.refName,
+                  mateAssemblyName: laneOf(query),
+                }),
+              ),
+            ),
       }))
     const skipped = crossings.map(crossing => ({
       rank: rank(crossing.skip),

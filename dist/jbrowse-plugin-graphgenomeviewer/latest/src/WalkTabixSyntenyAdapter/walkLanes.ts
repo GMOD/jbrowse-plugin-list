@@ -7,6 +7,7 @@ import { matchFeature } from '../synteny/matchFeature.ts'
 
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
 import type {
+  WalkCrossing,
   WalkFragment,
   WalkNode,
   WalkSkip,
@@ -385,22 +386,84 @@ export function skipFeature({
   mateAssemblyName: string
 }) {
   const { skip, at, strand } = crossing
-  const id = `${skip.name}:${skip.fragStart}:${skip.piece}:skip`
-  return new SyntenyFeature({
-    uniqueId: id,
+  return windowDeletion({
+    id: `${skip.name}:${skip.fragStart}:${skip.piece}:skip`,
     assemblyName,
     refName,
     start: skip.refStart,
     end: skip.refEnd,
-    type: 'deletion',
-    strand: strand === '-' ? -1 : 1,
-    syntenyId: id,
-    spansWindow: true,
+    reverse: strand === '-',
     mate: {
       refName: panSNContig(skip.name),
       start: at,
       end: at,
       assemblyName: mateAssemblyName,
     },
+  })
+}
+
+/**
+ * A haplotype that leaves the reference before the window and rejoins after
+ * it, through steps of its own, as the same record as a skip's, its mate the
+ * haplotype's bp between the two reference steps
+ */
+export function crossingFeature({
+  fragment,
+  crossing,
+  refName,
+  assemblyName,
+  mateAssemblyName,
+}: {
+  fragment: WalkFragment
+  crossing: WalkCrossing
+  refName: string
+  assemblyName: string
+  mateAssemblyName: string
+}) {
+  const { name, fragStart, hapStart, hapEnd } = fragment
+  return windowDeletion({
+    id: `${name}:${fragStart}:${hapStart}:crossing`,
+    assemblyName,
+    refName,
+    start: crossing.refStart,
+    end: crossing.refEnd,
+    reverse: crossing.reverse,
+    mate: {
+      refName: panSNContig(name),
+      start: hapStart,
+      end: hapEnd,
+      assemblyName: mateAssemblyName,
+    },
+  })
+}
+
+function windowDeletion({
+  id,
+  assemblyName,
+  refName,
+  start,
+  end,
+  reverse,
+  mate,
+}: {
+  id: string
+  assemblyName: string
+  refName: string
+  start: number
+  end: number
+  reverse: boolean
+  mate: { refName: string; start: number; end: number; assemblyName: string }
+}) {
+  return new SyntenyFeature({
+    uniqueId: id,
+    assemblyName,
+    refName,
+    start,
+    end,
+    type: 'deletion',
+    strand: reverse ? -1 : 1,
+    syntenyId: id,
+    spansWindow: true,
+    mate,
   })
 }

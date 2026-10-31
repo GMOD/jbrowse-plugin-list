@@ -256,7 +256,8 @@ test('a window on a haplotype lane answers nothing', async () => {
 //   W HG004  1      ctg  <20<...<6<2<1     the same walk backwards
 //   W HG003  1      ctg  >1>2>3>...>20
 //   W HG007  1      ctg  >1>2>6>...>20     a W line starting at 100,000
-//   W HG005  1      ctg  >1>2>99>6>...>20  500 bp of node 99 in the gap
+//   W HG005  1      ctg  >1>2>99>6>...>20  500 bp of node 99 in the gap,
+//                                          a crossing when chunk 1000 is read
 const skipWindow = { ...window, start: 3100, end: 3900 }
 const skipFeats = (
   opts: Record<string, unknown> = {},
@@ -285,9 +286,9 @@ const deletion = (lane: string, mate: string, strand: number) => ({
 const crossings = [
   deletion('HG002#1', 'ctg:2000-2000', 1),
   deletion('HG004#1', 'ctg:15000-15000', -1),
-  deletion('HG005#1', 'ctg:2000-2000', 1),
   deletion('HG007#1', 'ctg:102000-102000', 1),
 ]
+const ownSteps = deletion('HG005#1', 'ctg:2000-2500', 1)
 
 test('a haplotype whose deletion spans the window is one spansWindow record of the whole deletion, its mate where it crosses', async () => {
   const found = await skipFeats()
@@ -302,6 +303,7 @@ test('a haplotype whose deletion spans the window is one spansWindow record of t
       strand: 1,
       spansWindow: undefined,
     },
+    ownSteps,
     ...crossings,
   ])
   expect(found[1]!.get('identity')).toBeUndefined()
@@ -353,13 +355,7 @@ test('a haplotype whose leaving node the cut lacks is crossed from the node it r
     })
   const found = await skipFeats()
   spy.mockRestore()
-  // HG005 rejoins past the 500 bp it carries in the gap
-  expect(found.slice(1).map(skipSummary)).toEqual([
-    crossings[0],
-    crossings[1],
-    deletion('HG005#1', 'ctg:2500-2500', 1),
-    crossings[3],
-  ])
+  expect(found.slice(1).map(skipSummary)).toEqual([ownSteps, ...crossings])
 })
 
 test('a failed crossing cut drops only its own lanes', async () => {
@@ -373,7 +369,7 @@ test('a failed crossing cut drops only its own lanes', async () => {
     })
   const found = await skipFeats()
   spy.mockRestore()
-  expect(found.map(f => mateOf(f).assemblyName)).toEqual(['HG003#1'])
+  expect(found.map(f => mateOf(f).assemblyName)).toEqual(['HG003#1', 'HG005#1'])
 })
 
 // RgfaTabixAdapter/walkFiles.test.ts's walks5_skip: HG002#1 >1>2>9>10 over
