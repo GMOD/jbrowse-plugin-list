@@ -11,4 +11,4 @@ export default function configSchemaF(pluginManager: PluginManager): import("@jb
     } & {
         defaultValue: string;
     };
-}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<any, undefined, undefined, import("@jbrowse/core/configuration").ConfigurationSchemaRequirement<Partial<Record<string, string[]>>, string>>>;
+}, import("@jbrowse/core/configuration/configurationSchema").ConfigurationSchemaOptions<any, undefined, undefined, import("@jbrowse/core/configuration").ConfigurationSchemaRequirement<Partial<Record<string, string[]>>, string>, any>>;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog } from '@jbrowse/core/ui';
 import { getSession } from '@jbrowse/core/util';
 import { Tab, Tabs } from '@mui/material';
+import { observer } from 'mobx-react';
 import BlastPanel from './BlastQuery/BlastPanel';
 import HelpButton from './HelpButton';
 import ManualMSALoader from './ManualMSALoader/ManualMSALoader';
@@ -10,7 +11,7 @@ import PreLoadedMSA from './PreLoadedMSA/PreLoadedMSADataPanel';
 import { readMsaDatasets } from './PreLoadedMSA/types';
 import TabPanel from './TabPanel';
 import { LaunchPlacementProvider } from './launchPlacement';
-export default function LaunchMsaViewDialog({ handleClose, feature, model, preferredTranscriptId, }) {
+const LaunchMsaViewDialog = observer(function LaunchMsaViewDialog({ handleClose, feature, model, preferredTranscriptId, }) {
     const session = getSession(model);
     const datasets = readMsaDatasets(session.jbrowse);
     const hasPreloadedDatasets = !!datasets?.length;
@@ -36,4 +37,5 @@ export default function LaunchMsaViewDialog({ handleClose, feature, model, prefe
                 React.createElement(PreLoadedMSA, { model: model, feature: feature, handleClose: handleClose, preferredTranscriptId: preferredTranscriptId }))) : null,
             React.createElement(TabPanel, { value: value, index: "manual_msa" },
                 React.createElement(ManualMSALoader, { model: model, feature: feature, handleClose: handleClose, preferredTranscriptId: preferredTranscriptId })))));
-}
+});
+export default LaunchMsaViewDialog;

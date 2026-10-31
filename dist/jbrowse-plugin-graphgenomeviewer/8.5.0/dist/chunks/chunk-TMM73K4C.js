@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/util/tracks"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/core/util/tracks' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o});var s=t("getConfAssemblyNamesOrNone");var r=t("getTrackName");var n=t("makeIndexType");var a=t("toTrackConfigEntry");var c=e&&e.__esModule?e.default:e;export{s as a,r as b,n as c,a as d};
+//# sourceMappingURL=chunk-TMM73K4C.js.map

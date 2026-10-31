@@ -12,6 +12,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 import { uniprotEntryUrl } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
@@ -59,7 +60,7 @@ interface UniProtResultsTableProps {
   onSelect: (accession: string) => void
 }
 
-export default function UniProtResultsTable({
+const UniProtResultsTable = observer(function UniProtResultsTable({
   entries,
   selectedAccession,
   onSelect,
@@ -133,4 +134,6 @@ export default function UniProtResultsTable({
       </TableContainer>
     </div>
   )
-}
+})
+
+export default UniProtResultsTable

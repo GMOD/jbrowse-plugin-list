@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button, FormControl, InputLabel, MenuItem, Select, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { getDbIdLabel } from 'p2s_mapper';
-export default function IdentifierSelector({ recognizedIds, geneName, selectedId, onSelectedIdChange, }) {
+const IdentifierSelector = observer(function IdentifierSelector({ recognizedIds, geneName, selectedId, onSelectedIdChange, }) {
     const [expanded, setExpanded] = useState(false);
     // Build list of selectable options
     const options = [
@@ -27,4 +28,5 @@ export default function IdentifierSelector({ recognizedIds, geneName, selectedId
         React.createElement(Select, { value: selectedId, label: "Query UniProt by", onChange: e => {
                 onSelectedIdChange(e.target.value);
             } }, options.map(opt => (React.createElement(MenuItem, { key: opt.value, value: opt.value }, opt.label))))));
-}
+});
+export default IdentifierSelector;

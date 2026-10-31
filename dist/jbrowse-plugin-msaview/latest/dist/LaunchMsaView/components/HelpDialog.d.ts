@@ -1,4 +1,5 @@
 import React from 'react';
-export default function HelpDialog({ handleClose, }: {
+declare const HelpDialog: ({ handleClose, }: {
     handleClose: () => void;
-}): React.JSX.Element;
+}) => React.JSX.Element;
+export default HelpDialog;

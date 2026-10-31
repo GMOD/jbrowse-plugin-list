@@ -1,5 +1,5 @@
 import { getConf } from '@jbrowse/core/configuration';
-import { getSession } from '@jbrowse/core/util';
+import { getSession, statusProgressLabel } from '@jbrowse/core/util';
 import { translateTranscript } from '@jbrowse/core/util/translateTranscript';
 import { isAlive } from '@jbrowse/mobx-state-tree';
 import { transaction, untracked } from 'mobx';
@@ -43,14 +43,19 @@ export function searchWindows(view) {
 export function transcriptTracks(tracks) {
     return tracks.filter(t => t.type === 'FeatureTrack');
 }
-async function findTranscript(self, transcriptId) {
+async function findTranscript(self, transcriptId, signal, statusCallback) {
     const view = self.connectedView;
     const session = getSession(self);
     const sessionId = 'msaview-connectedTranscript';
     const tracks = transcriptTracks(view.tracks);
     for (const regions of searchWindows(view)) {
         for (const track of tracks) {
-            const feats = await session.rpcManager.call(sessionId, 'CoreGetFeatures', { adapterConfig: getConf(track, 'adapter'), regions });
+            const feats = await session.rpcManager.call(sessionId, 'CoreGetFeatures', {
+                adapterConfig: getConf(track, 'adapter'),
+                regions,
+                signal,
+                statusCallback,
+            });
             for (const feat of feats) {
                 const hit = getTranscriptFeatures(feat).find(t => transcriptMatches(t, transcriptId));
                 if (hit) {
@@ -61,27 +66,35 @@ async function findTranscript(self, transcriptId) {
     }
     return undefined;
 }
-async function translate(self, transcript) {
+async function translate(self, transcript, signal) {
     const sequence = await fetchSeq({
         start: transcript.get('start'),
         end: transcript.get('end'),
         refName: transcript.get('refName'),
         assemblyName: self.connectedView.assemblyNames[0],
         session: getSession(self),
+        signal,
     });
     return translateTranscript({ transcript, ...sequence })?.protein;
 }
-/** the latest lookup per view; an older one finishing late writes nothing */
+/** the latest lookup per view; a newer one aborts it, so it writes nothing */
 const latestLookup = new WeakMap();
-async function lookUp({ self, transcriptId, blastParams, orthologParams, isCurrent, }) {
+async function lookUp({ self, transcriptId, blastParams, orthologParams, signal, }) {
+    const isCurrent = () => isAlive(self) && !signal.aborted;
+    const searching = `Looking up ${transcriptId} in the genome view...`;
     const trackCount = transcriptTracks(self.connectedView.tracks).length;
     try {
-        self.setProgress(`Looking up ${transcriptId} in the genome view...`);
-        const transcript = await findTranscript(self, transcriptId);
+        self.setProgress(searching);
+        const transcript = await findTranscript(self, transcriptId, signal, (status) => {
+            const label = statusProgressLabel(status);
+            if (isCurrent()) {
+                self.setProgress(label ? `${searching} ${label}` : searching);
+            }
+        });
         if (!transcript) {
             throw new Error(`Transcript "${transcriptId}" was not found in the ${trackCount} feature track(s) open in the connected genome view. Open the gene track that carries it, and make sure the view is on its locus.`);
         }
-        const proteinSequence = await translate(self, transcript);
+        const proteinSequence = await translate(self, transcript, signal);
         if (!proteinSequence) {
             throw new Error(`Transcript "${transcriptId}" has no CDS to translate`);
         }
@@ -113,8 +126,8 @@ async function lookUp({ self, transcriptId, blastParams, orthologParams, isCurre
         });
     }
     catch (e) {
-        console.error(e);
         if (isCurrent()) {
+            console.error(e);
             self.setProgress('');
             self.setError(e);
         }
@@ -137,15 +150,16 @@ export function resolveConnectedTranscriptIfNeeded(self) {
         connectedView.tracks.length === 0) {
         return;
     }
-    const lookup = (latestLookup.get(self) ?? 0) + 1;
-    latestLookup.set(self, lookup);
+    latestLookup.get(self)?.abort();
+    const controller = new AbortController();
+    latestLookup.set(self, controller);
     untracked(() => {
         void lookUp({
             self,
             transcriptId: connectedTranscript,
             blastParams,
             orthologParams,
-            isCurrent: () => isAlive(self) && latestLookup.get(self) === lookup,
+            signal: controller.signal,
         });
     });
 }

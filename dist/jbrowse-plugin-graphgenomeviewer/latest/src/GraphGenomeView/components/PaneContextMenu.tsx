@@ -4,6 +4,7 @@ import FilterListIcon from '@mui/icons-material/FilterList'
 import FilterListOffIcon from '@mui/icons-material/FilterListOff'
 import InfoIcon from '@mui/icons-material/Info'
 import LineStyleIcon from '@mui/icons-material/LineStyle'
+import { observer } from 'mobx-react'
 
 import { nodeLaunchMenuItems } from '../../launchFromGraph/graphMenuItems'
 
@@ -132,7 +133,7 @@ function walkRowMenuItems(
 }
 
 // core's context menu, opened at the pointer itself rather than beside it
-export default function PaneContextMenu({
+export default observer(function PaneContextMenu({
   model,
   at,
   onClose,
@@ -155,4 +156,4 @@ export default function PaneContextMenu({
       }
     />
   )
-}
+})

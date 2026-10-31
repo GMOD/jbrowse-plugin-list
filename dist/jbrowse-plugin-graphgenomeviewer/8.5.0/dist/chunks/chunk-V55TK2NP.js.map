@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["jbrowse-host:@jbrowse/core/util/rxjs"],
+  "sourcesContent": ["const host = JBrowseExports[\"@jbrowse/core/util/rxjs\"]\nconst read = name =>\n  host != null && name in Object(host)\n    ? host[name]\n    : Object.assign(\n        function () {\n          throw new Error(\"This JBrowse does not provide '\" + name + \"' from '\" + \"@jbrowse/core/util/rxjs\" + \"' to plugins: \" + \"GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse\")\n        },\n        { jbrowseHostMissing: name },\n      )\nexport const ObservableCreate = /* @__PURE__ */ read(\"ObservableCreate\")\nexport const subscribeToObservable = /* @__PURE__ */ read(\"subscribeToObservable\")\nexport default host && host.__esModule ? host.default : host"],
+  "mappings": "AAAA,IAAMA,EAAO,eAAe,yBAAyB,EAC/CC,EAAOC,GACXF,GAAQ,MAAQE,KAAQ,OAAOF,CAAI,EAC/BA,EAAKE,CAAI,EACT,OAAO,OACL,UAAY,CACV,MAAM,IAAI,MAAM,kCAAoCA,EAAO,yIAAwJ,CACrN,EACA,CAAE,mBAAoBA,CAAK,CAC7B,EACOC,EAAmCF,EAAK,kBAAkB,EAEvE,IAAOG,EAAQC,GAAQA,EAAK,WAAaA,EAAK,QAAUA",
+  "names": ["host", "read", "name", "ObservableCreate", "rxjs_default", "host"]
+}

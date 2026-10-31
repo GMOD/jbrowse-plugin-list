@@ -1,8 +1,9 @@
 import React from 'react';
 import { Button, FormControl, FormControlLabel, Radio, RadioGroup, TextField, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import HelpButton from './HelpButton';
 import { STRUCTURE_FILE_ACCEPT } from '../utils/readStructureFile';
-export default function StructureSourcePicker({ choice, setChoice, structureURL, setStructureURL, file, setFile, }) {
+const StructureSourcePicker = observer(function StructureSourcePicker({ choice, setChoice, structureURL, setStructureURL, file, setFile, }) {
     return (React.createElement("div", { style: { display: 'flex', margin: 30 } },
         React.createElement(Typography, null,
             "Open your structure file ",
@@ -30,4 +31,5 @@ export default function StructureSourcePicker({ choice, setChoice, structureURL,
                         target.value = '';
                     } })),
             file ? React.createElement(Typography, { variant: "body2" }, file.name) : null))));
-}
+});
+export default StructureSourcePicker;

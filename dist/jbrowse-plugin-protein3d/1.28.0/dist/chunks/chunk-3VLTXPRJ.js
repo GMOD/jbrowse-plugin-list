@@ -1,0 +1,2 @@
+var e=JBrowseExports["tss-react/mui"],o=s=>e!=null&&s in Object(e)?e[s]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+s+"' from 'tss-react/mui' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:s});var t=o("makeStyles"),r=e&&e.__esModule?e.default:e;export{t as a};
+//# sourceMappingURL=chunk-3VLTXPRJ.js.map

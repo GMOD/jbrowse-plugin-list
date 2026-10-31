@@ -1,0 +1,2 @@
+import{q as e,r as o}from"./chunk-BKGWP5O6.js";import{a as t}from"./chunk-PFO3G4CM.js";import{u as n}from"./chunk-EXFKF6XR.js";import{r}from"./chunk-TEYYBCMF.js";var i=e(o("path",{d:"M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3z"}),"OpenInNew");var l=t(function(m){let{children:p,...f}=m;return r.createElement(n,{...f,target:"_blank",rel:"noreferrer"},p," ",r.createElement(i,{fontSize:"small"}))}),v=l;export{v as a};
+//# sourceMappingURL=chunk-MLATYHL2.js.map

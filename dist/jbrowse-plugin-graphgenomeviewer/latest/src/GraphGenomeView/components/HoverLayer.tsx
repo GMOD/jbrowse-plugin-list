@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
 import { autorun } from 'mobx'
+import { observer } from 'mobx-react'
 
 import { paneLayerStyle } from './PaneLayer'
 import { dependOn } from '../pane/paneBase'
@@ -12,7 +13,11 @@ import type { GraphPaneModel } from '../model'
 export const hoverLayerStyle = paneLayerStyle(1)
 
 // The pane's hover, on a transparent canvas over its drawing and tube map
-export default function HoverLayer({ model }: { model: GraphPaneModel }) {
+export default observer(function HoverLayer({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   useEffect(() => {
     if (!canvas) {
@@ -36,4 +41,4 @@ export default function HoverLayer({ model }: { model: GraphPaneModel }) {
       style={hoverLayerStyle}
     />
   )
-}
+})

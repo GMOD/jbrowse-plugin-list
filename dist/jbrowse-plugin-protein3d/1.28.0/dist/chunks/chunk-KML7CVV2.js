@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/mobx-state-tree"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/mobx-state-tree' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o}),n=t("addDisposer");var s=t("getParent");var r=t("getPath");var p=t("isAlive");var c=t("types");var i=e&&e.__esModule?e.default:e;export{n as a,s as b,r as c,p as d,c as e};
+//# sourceMappingURL=chunk-KML7CVV2.js.map

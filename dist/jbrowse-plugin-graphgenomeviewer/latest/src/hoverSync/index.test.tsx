@@ -1,4 +1,4 @@
-import GraphHoverSyncF from './index'
+import contributeGraphHoverSync from './index'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
 
@@ -27,7 +27,7 @@ test('registers one contributed element on the accumulating point', () => {
       throw new Error('an accumulating point is contributed to, not added to')
     },
   } as unknown as PluginManager
-  GraphHoverSyncF(manager)
+  contributeGraphHoverSync(manager)
 
   expect(calls).toHaveLength(1)
   expect(calls[0]!.name).toBe(POINT)

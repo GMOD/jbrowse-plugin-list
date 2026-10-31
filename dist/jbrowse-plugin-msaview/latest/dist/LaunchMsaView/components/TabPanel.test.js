@@ -1,25 +1,26 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
+import { observer } from 'mobx-react';
 import { afterEach, expect, test, vi } from 'vitest';
 import TabPanel from './TabPanel';
 afterEach(() => {
     cleanup();
 });
-function Panels({ value }) {
+const Panels = observer(function Panels({ value }) {
     return (React.createElement(React.Fragment, null,
         React.createElement(TabPanel, { value: value, index: "a" },
             React.createElement(Probe, { name: "a" })),
         React.createElement(TabPanel, { value: value, index: "b" },
             React.createElement(Probe, { name: "b" }))));
-}
+});
 const mounted = vi.fn();
-function Probe({ name }) {
+const Probe = observer(function Probe({ name }) {
     React.useEffect(() => {
         mounted(name);
     }, [name]);
     return React.createElement("input", { defaultValue: name });
-}
+});
 test('a visited panel keeps its state while another tab is shown', () => {
     const { rerender } = render(React.createElement(Panels, { value: "a" }));
     const typed = screen.getByDisplayValue('a');

@@ -1,4 +1,5 @@
 import React from 'react';
-export default function ReadOnlyTextField2({ value }: {
+declare const ReadOnlyTextField2: ({ value, }: {
     value: string;
-}): React.JSX.Element;
+}) => React.JSX.Element;
+export default ReadOnlyTextField2;

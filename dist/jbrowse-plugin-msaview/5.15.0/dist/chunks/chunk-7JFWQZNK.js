@@ -1,0 +1,2 @@
+import{b as a}from"./chunk-ECXGXFKO.js";import{g as u}from"./chunk-EXFKF6XR.js";import{j as r,o as i,p as n,r as c}from"./chunk-TEYYBCMF.js";function m({text:e,label:p="Copy to clipboard"}){let[f,o]=n(!1),t=i(void 0);return r(()=>()=>{clearTimeout(t.current)},[]),c.createElement(u,{variant:"contained",color:"primary",onClick:()=>{a(typeof e=="string"?e:e()),o(!0),clearTimeout(t.current),t.current=setTimeout(()=>{o(!1)},500)}},f?"Copied!":p)}export{m as a};
+//# sourceMappingURL=chunk-7JFWQZNK.js.map

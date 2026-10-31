@@ -1,6 +1,5 @@
 import type { OrthologRow } from './ncbiOrthologs';
-declare const unirefIdentities: readonly [50, 90];
-export type UnirefIdentity = (typeof unirefIdentities)[number];
+export type UnirefIdentity = 50 | 90;
 export declare const UNIPROT_ACCESSION: RegExp;
 interface UniProtEntry {
     primaryAccession?: string;

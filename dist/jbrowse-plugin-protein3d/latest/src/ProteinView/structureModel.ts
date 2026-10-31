@@ -1365,10 +1365,9 @@ const Structure = types
             naming: self.genomeNaming,
             entity,
             transcriptToStructure,
-            labels: !(
-              'highlightLabelsVisible' in session &&
-              session.highlightLabelsVisible === false
-            ),
+            labels:
+              !('highlightLabelsVisible' in session) ||
+              session.highlightLabelsVisible,
           })
         : []
     },

@@ -1,8 +1,9 @@
 import React from 'react';
 import { MenuItem, TextField } from '@mui/material';
+import { observer } from 'mobx-react';
 import { stripStopCodon } from 'p2s_mapper';
 import { getGeneDisplayName, getTranscriptDisplayName } from '../utils/util';
-export default function TranscriptSelector({ val, setVal, isoforms, ranking, structureSequence, feature, disabled, }) {
+const TranscriptSelector = observer(function TranscriptSelector({ val, setVal, isoforms, ranking, structureSequence, feature, disabled, }) {
     const geneName = getGeneDisplayName(feature);
     const byId = new Map(isoforms.map(f => [f.id(), f]));
     // A ranked isoform carries an id rather than the feature, so the name is a
@@ -32,4 +33,5 @@ export default function TranscriptSelector({ val, setVal, isoforms, ranking, str
             " - ",
             nameOf(id),
             " (no data)")))));
-}
+});
+export default TranscriptSelector;

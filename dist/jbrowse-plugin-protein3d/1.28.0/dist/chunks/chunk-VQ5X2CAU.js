@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/ui"],o=t=>e!=null&&t in Object(e)?e[t]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+t+"' from '@jbrowse/core/ui' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:t});var r=o("Dialog");var n=o("ErrorMessage");var s=o("LoadingEllipses");var c=o("ResizeHandle");var a=o("addExtensionElement");var l=e&&e.__esModule?e.default:e;export{r as a,n as b,s as c,c as d,a as e};
+//# sourceMappingURL=chunk-VQ5X2CAU.js.map

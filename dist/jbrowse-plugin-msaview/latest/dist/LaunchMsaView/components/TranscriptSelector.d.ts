@@ -1,7 +1,7 @@
 import React from 'react';
 import type { SequenceStatus } from './SequenceStatus';
 import type { Feature } from '@jbrowse/core/util';
-export default function TranscriptSelector({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, sequenceStatus, validIds, }: {
+declare const TranscriptSelector: ({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, sequenceStatus, validIds, }: {
     feature: Feature;
     options: Feature[];
     selectedId: string;
@@ -10,4 +10,5 @@ export default function TranscriptSelector({ feature, options, selectedId, selec
     proteinSequence: string | undefined;
     sequenceStatus?: SequenceStatus;
     validIds?: string[];
-}): React.JSX.Element;
+}) => React.JSX.Element;
+export default TranscriptSelector;

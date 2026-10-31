@@ -54,7 +54,7 @@ export async function placeClinVarOnTranscript({ build, feature, assemblyName, s
     const assembly = await session.assemblyManager.waitForAssembly(assemblyName);
     const [variants, genome] = await Promise.all([
         readMissense(build, [refName, ...(assembly?.getAliasesForRefName(refName) ?? [])], start, end, signal),
-        fetchRegionSequence({ session, assemblyName, refName, start, end }),
+        fetchRegionSequence({ session, assemblyName, refName, start, end, signal }),
     ]);
     const { seq, assemblyGeneticCodeId } = genome;
     if (!seq) {

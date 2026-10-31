@@ -1,5 +1,6 @@
 import React from 'react';
 import { TextField, Typography } from '@mui/material';
+import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import IdentifierSelector from './IdentifierSelector';
 import PartialFailureNotice from './PartialFailureNotice';
@@ -16,7 +17,7 @@ const useStyles = makeStyles()({
 // search runs on, which organism scopes it, and what to do when the feature
 // carries nothing to search at all. One component because the tabs share one
 // lookup and drifted apart when they each rendered their own copy.
-export default function UniProtLookupControls({ lookup, }) {
+const UniProtLookupControls = observer(function UniProtLookupControls({ lookup, }) {
     const { classes } = useStyles();
     return (React.createElement(React.Fragment, null,
         React.createElement(UniProtIdInput, { lookupMode: lookup.lookupMode, onLookupModeChange: lookup.setLookupMode, manualUniprotId: lookup.manualUniprotId, onManualUniprotIdChange: lookup.setManualUniprotId, manualUniprotIdInvalid: lookup.manualUniprotIdInvalid, featureUniprotId: lookup.featureUniprotId, hasSearchableIdentifier: lookup.hasSearchableIdentifier, endContent: lookup.showIdentifierSelector ? (React.createElement("div", { className: classes.endRow },
@@ -29,4 +30,5 @@ export default function UniProtLookupControls({ lookup, }) {
         lookup.showIdentifierSelector ? (React.createElement(Typography, { variant: "body2", color: "textSecondary" }, lookup.organismDescription)) : null,
         lookup.nothingToSearch ? (React.createElement(Typography, { variant: "body2", color: "textSecondary" }, "This feature carries no Ensembl, RefSeq, CCDS or HGNC identifier and no gene name; enter a UniProt accession")) : null,
         React.createElement(PartialFailureNotice, { message: lookup.lookupPartialFailure })));
-}
+});
+export default UniProtLookupControls;

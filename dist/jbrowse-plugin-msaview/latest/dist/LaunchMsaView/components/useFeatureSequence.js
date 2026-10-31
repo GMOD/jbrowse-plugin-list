@@ -7,7 +7,7 @@ export function useFeatureSequence({ view, feature, }) {
     const assemblyName = view?.assemblyNames?.[0];
     const { data: sequence, error, isLoading, } = useFetch(feature && assemblyName
         ? [feature.id(), assemblyName, 'feature-sequence']
-        : null, async () => {
+        : null, async (signal) => {
         const { start, end, refName } = feature.toJSON();
         return fetchSeq({
             start,
@@ -15,6 +15,7 @@ export function useFeatureSequence({ view, feature, }) {
             refName,
             assemblyName: assemblyName,
             session: getSession(view),
+            signal,
         });
     });
     const proteinSequence = useMemo(() => sequence && feature

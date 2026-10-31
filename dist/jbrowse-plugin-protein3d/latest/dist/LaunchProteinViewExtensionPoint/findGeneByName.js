@@ -1,6 +1,6 @@
 import { readConfObject } from '@jbrowse/core/configuration';
 import { parseLocString } from '@jbrowse/core/util';
-import { getTrackId, isFeatureTrack, transcriptMatches, } from './resolveShortLaunch';
+import { featureTrackConfig, getTrackId, transcriptMatches, } from './resolveShortLaunch';
 import { codingTranscripts, isCodingFeature, } from '../LaunchProteinView/codingFeature';
 import { resolveGeneLaunch, sessionGeneLaunchHost, } from '../LaunchProteinView/resolveGeneLaunch';
 import { formatViewName } from '../LaunchProteinView/utils/launchViewUtils';
@@ -105,9 +105,11 @@ export async function findGeneByName({ session, gene, assemblyName, trackIds = [
                     ...(hitTrackId ? [hitTrackId] : []),
                     ...trackIds,
                 ])) {
-                    const conf = session.getTrackById(trackId);
-                    if (conf && isFeatureTrack(conf)) {
-                        const feature = geneNamed(await rpcManager.call('getFeatures', 'CoreGetFeatures', {
+                    const conf = featureTrackConfig(session, trackId);
+                    if (conf) {
+                        const feature = geneNamed(
+                        // eslint-disable-next-line no-restricted-syntax -- a declarative launch's lookup has no dialog to cancel it or report into
+                        await rpcManager.call('getFeatures', 'CoreGetFeatures', {
                             adapterConfig: readConfObject(conf, 'adapter'),
                             regions: [region],
                         }), name);

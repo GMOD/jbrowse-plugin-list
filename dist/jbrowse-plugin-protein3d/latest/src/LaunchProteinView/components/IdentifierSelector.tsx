@@ -7,6 +7,7 @@ import {
   MenuItem,
   Select,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 import { getDbIdLabel } from 'p2s_mapper'
 
 interface IdentifierSelectorProps {
@@ -16,7 +17,7 @@ interface IdentifierSelectorProps {
   onSelectedIdChange: (id: string) => void
 }
 
-export default function IdentifierSelector({
+const IdentifierSelector = observer(function IdentifierSelector({
   recognizedIds,
   geneName,
   selectedId,
@@ -73,4 +74,6 @@ export default function IdentifierSelector({
       </Select>
     </FormControl>
   )
-}
+})
+
+export default IdentifierSelector

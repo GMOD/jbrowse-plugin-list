@@ -1,5 +1,6 @@
 import React from 'react';
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { getStructureUrlFromTarget } from 'p2s_mapper';
 import { makeStyles } from 'tss-react/mui';
 import FoldseekActionMenu from './FoldseekActionMenu';
@@ -33,7 +34,7 @@ function flattenResults(results) {
     hits.sort((a, b) => (a.eval ?? Infinity) - (b.eval ?? Infinity));
     return hits;
 }
-export default function FoldseekResultsTable({ results, session, view, feature, selectedTranscript, userProvidedTranscriptSequence, onClose, }) {
+const FoldseekResultsTable = observer(function FoldseekResultsTable({ results, session, view, feature, selectedTranscript, userProvidedTranscriptSequence, onClose, }) {
     const { classes } = useStyles();
     const allHits = flattenResults(results);
     const flatHits = allHits.slice(0, MAX_HITS);
@@ -79,4 +80,5 @@ export default function FoldseekResultsTable({ results, session, view, feature, 
                     React.createElement(TableCell, null, hit.eval != null ? hit.eval.toExponential(2) : '-'),
                     React.createElement(TableCell, null,
                         React.createElement(FoldseekActionMenu, { hit: hit, session: session, view: view, feature: feature, selectedTranscript: selectedTranscript, userProvidedTranscriptSequence: userProvidedTranscriptSequence, onClose: onClose }))))))))));
-}
+});
+export default FoldseekResultsTable;

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/trackConfigNode.ts"],
+  "sourcesContent": ["import {\n  hydrateTrackConfig,\n  isConfigurationModel,\n} from '@jbrowse/core/configuration'\nimport { getEnv } from '@jbrowse/core/util'\n\nimport type { AnyTrackConfig } from '@jbrowse/core/configuration'\nimport type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'\n\n// A session track is a frozen entry holding only what was written: an adapter\n// given as a track-level `uri` and a slot at its default are absent until the\n// entry hydrates, so a slot read goes through the node\nexport function trackConfigNode(\n  session: IAnyStateTreeNode,\n  conf: AnyTrackConfig,\n) {\n  return isConfigurationModel(conf)\n    ? conf\n    : hydrateTrackConfig(getEnv(session).pluginManager, conf)\n}\n"],
+  "mappings": "uFAYO,SAASA,EACdC,EACAC,EACA,CACA,OAAOC,EAAqBD,CAAI,EAC5BA,EACAE,EAAmBC,EAAOJ,CAAO,EAAE,cAAeC,CAAI,CAC5D",
+  "names": ["trackConfigNode", "session", "conf", "isConfigurationModel", "hydrateTrackConfig", "getEnv"]
+}

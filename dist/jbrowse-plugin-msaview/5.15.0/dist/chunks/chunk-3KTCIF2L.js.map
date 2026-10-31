@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["jbrowse-host:tss-react/mui"],
+  "sourcesContent": ["const host = JBrowseExports[\"tss-react/mui\"]\nconst read = name =>\n  host != null && name in Object(host)\n    ? host[name]\n    : Object.assign(\n        function () {\n          throw new Error(\"This JBrowse does not provide '\" + name + \"' from '\" + \"tss-react/mui\" + \"' to plugins: \" + \"MsaView was built for a different JBrowse version, so update the plugin or JBrowse\")\n        },\n        { jbrowseHostMissing: name },\n      )\nexport const cx = /* @__PURE__ */ read(\"cx\")\nexport const keyframes = /* @__PURE__ */ read(\"keyframes\")\nexport const makeStyles = /* @__PURE__ */ read(\"makeStyles\")\nexport default host && host.__esModule ? host.default : host"],
+  "mappings": "AAAA,IAAMA,EAAO,eAAe,eAAe,EACrCC,EAAOC,GACXF,GAAQ,MAAQE,KAAQ,OAAOF,CAAI,EAC/BA,EAAKE,CAAI,EACT,OAAO,OACL,UAAY,CACV,MAAM,IAAI,MAAM,kCAAoCA,EAAO,uHAAsI,CACnM,EACA,CAAE,mBAAoBA,CAAK,CAC7B,EAGC,IAAMC,EAA6BC,EAAK,YAAY,EACpDC,EAAQC,GAAQA,EAAK,WAAaA,EAAK,QAAUA",
+  "names": ["host", "read", "name", "makeStyles", "read", "mui_default", "host"]
+}

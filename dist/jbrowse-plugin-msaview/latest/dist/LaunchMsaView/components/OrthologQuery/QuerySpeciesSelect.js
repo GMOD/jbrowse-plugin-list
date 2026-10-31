@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { observer } from 'mobx-react';
 import TextField2 from '../../../components/TextField2';
 import { resolveAssemblySpecies, resolveTaxId, } from '../../../utils/ncbiTaxonomy';
 import { fetchTaxonomyInfo } from '../../../utils/taxonomyNames';
@@ -32,7 +33,7 @@ async function describeTaxon(query, signal) {
  * organism rather than to nothing, and the only place that surfaces is the gene
  * lookup, as "could not resolve NLRP1 in taxon 9986".
  */
-export default function QuerySpeciesSelect({ value, assemblyName, onChange, className, }) {
+const QuerySpeciesSelect = observer(function QuerySpeciesSelect({ value, assemblyName, onChange, className, }) {
     // undefined until the user types, which is what makes the two lookups
     // exclusive rather than both firing on open
     const [typed, setTyped] = useState();
@@ -71,4 +72,5 @@ export default function QuerySpeciesSelect({ value, assemblyName, onChange, clas
         }, error: !!error, helperText: error
             ? `${error}`
             : (resolved ?? `the species this gene is from (taxon ${value})`) }));
-}
+});
+export default QuerySpeciesSelect;

@@ -28,7 +28,11 @@ import type { GraphPaneModel } from '../model'
 // off. Colouring each copy by its unit is jbrowse-plugin-tandem-repeat's.
 
 // The spans are recut only when the rows, the zoom or the ramp change
-function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
+const WalkRowSpansCanvas = observer(function WalkRowSpansCanvas({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
   const spans = useMemo(
     () =>
       computed(() =>
@@ -71,7 +75,7 @@ function WalkRowSpansCanvas({ model }: { model: GraphPaneModel }) {
       paint={paint}
     />
   )
-}
+})
 
 const RIBBON_FORWARD = 'rgba(160, 196, 232, 0.55)'
 const RIBBON_REVERSED = 'rgba(160, 140, 220, 0.55)'
@@ -80,7 +84,11 @@ const RIBBON_REVERSED = 'rgba(160, 140, 220, 0.55)'
 // walks the same nodes, lavender where it walks them backwards, as ggbandage
 // draws them: neighbours that share a copy, an inversion or a duplication
 // read off the ribbons' shape
-function WalkRowRibbonsCanvas({ model }: { model: GraphPaneModel }) {
+const WalkRowRibbonsCanvas = observer(function WalkRowRibbonsCanvas({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const links = model.walkRowRibbons
@@ -116,11 +124,15 @@ function WalkRowRibbonsCanvas({ model }: { model: GraphPaneModel }) {
       paint={paint}
     />
   )
-}
+})
 
 // Over the bars, the lettered blocks: copy A on two rows, and C where another
 // row has A, read at a glance
-function WalkRowBlocksCanvas({ model }: { model: GraphPaneModel }) {
+const WalkRowBlocksCanvas = observer(function WalkRowBlocksCanvas({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const blocks = model.sharedBlocks
@@ -147,7 +159,7 @@ function WalkRowBlocksCanvas({ model }: { model: GraphPaneModel }) {
       paint={paint}
     />
   )
-}
+})
 
 // Its own observer, so moving between rows redraws this rect and not every row
 const HoveredWalkRow = observer(function HoveredWalkRow({

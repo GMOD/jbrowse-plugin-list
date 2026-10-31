@@ -701,7 +701,6 @@ test('removing the track aborts its cut', async () => {
 
 test('the phase is loading until the graph is drawn, and a failed cut is an error the track shows', async () => {
   const { view, holdCuts, rpcCall } = createEnvironment()
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const answers = holdCuts()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
@@ -1386,7 +1385,6 @@ test('past the bp cap a GBZ track is too large to cut, as any graph track is, an
 })
 
 test('a cut over its node limit shows its zoom-in notice at that span and wider without cutting again, and zooming in cuts', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const { view, display, cuts } = await shownWalks(1_000_000, env => {
     env.setDenseAbove(1_500_000)
   })
@@ -1410,7 +1408,6 @@ test('a cut over its node limit shows its zoom-in notice at that span and wider 
 })
 
 test('a refused cut stands only near where it was refused: far along the contig the same zoom cuts again', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = await shownWalks(1_000_000, e => {
     e.setDenseAbove(1_500_000)
   })
@@ -1428,7 +1425,6 @@ test('a refused cut stands only near where it was refused: far along the contig 
 })
 
 test('a cut refused while the window moved stands for the moved window too, and is not tried again', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = createEnvironment()
   env.setDenseAbove(500_000)
   const answers = env.holdCuts()
@@ -1452,7 +1448,6 @@ test('a cut refused while the window moved stands for the moved window too, and 
 })
 
 test('an outrun cut that lands after the newer one was refused leaves the refused window as it was', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = createEnvironment()
   env.setDenseAbove(1_000_000)
   const answers = env.holdCuts()
@@ -1476,7 +1471,6 @@ test('an outrun cut that lands after the newer one was refused leaves the refuse
 })
 
 test('editing the haplotypes forgets a refused cut, since the next cut is for other walks', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const { display } = await shownWalks(1_000_000, env => {
     env.setDenseAbove(1_500_000)
   })
@@ -1488,7 +1482,6 @@ test('editing the haplotypes forgets a refused cut, since the next cut is for ot
 })
 
 test('after a refused cut, a haplotype choice from the menu cuts the window again', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = await shownWalks(1_000_000, e => {
     e.setDenseAbove(1_500_000)
   })
@@ -1508,7 +1501,6 @@ test('after a refused cut, a haplotype choice from the menu cuts the window agai
 })
 
 test('after a refused cut, a context change cuts the window again', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = await shownWalks(1_000_000, e => {
     e.setDenseAbove(1_500_000)
   })
@@ -1653,7 +1645,6 @@ test('the graph genome view a track opens takes every pane setting but where its
 })
 
 test('after a cut refused over its node limit, the graph genome view launch is disabled', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
   const env = await shownWalks(60_000)
   const { view, display } = env
   expect(graphViewItem(display)!.disabled).toBe(false)

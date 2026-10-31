@@ -12,7 +12,7 @@ import type PluginManager from '@jbrowse/core/PluginManager'
 // of that whole plugin.
 const POINT = 'LinearGenomeView-TracksContainerComponent'
 
-export default function GraphHoverSyncF(pluginManager: PluginManager) {
+export default function contributeGraphHoverSync(pluginManager: PluginManager) {
   pluginManager.contributeToExtensionPoint(POINT, ({ model }) => (
     <GraphNodeHighlight key="graphgenomeview-hover-highlight" model={model} />
   ))

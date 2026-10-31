@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { getConf } from '@jbrowse/core/configuration'
+import { readConfObject } from '@jbrowse/core/configuration'
 import { getSession } from '@jbrowse/core/util'
 
 import useDebouncedValue from './useDebouncedValue'
@@ -59,11 +59,11 @@ export default function useUniProtIdLookup({
   // runs unscoped and the organism column makes the choice visible; a user
   // override (taxonIdInput) always wins.
   const assemblyName = view.assemblyNames[0]
-  const assembly = assemblyName
-    ? getSession(view).assemblyManager.get(assemblyName)
+  const assemblyConf = assemblyName
+    ? getSession(view).assemblyManager.get(assemblyName)?.configuration
     : undefined
-  const assemblyTaxonId = assembly
-    ? extractTaxonId(getConf(assembly, ['sequence', 'metadata']))
+  const assemblyTaxonId = assemblyConf
+    ? extractTaxonId(readConfObject(assemblyConf, ['sequence', 'metadata']))
     : undefined
 
   // Debounced for the same reason the accession is: the value keys the SWR

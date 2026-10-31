@@ -8,7 +8,7 @@ const featureTypeColor = cssScaleOf(UNIPROT_FEATURE_COLOR);
 // UniProt numbers a feature on the full-length protein. For a crystal fragment
 // the ruler under the bar counts the authors' way, so name both when they
 // differ rather than leave the reader to reconcile two numberings.
-function FeatureTooltipContent({ feature, layout, model, }) {
+const FeatureTooltipContent = observer(function FeatureTooltipContent({ feature, layout, model, }) {
     const first = model.residueNumber(layout.structureStart);
     const last = model.residueNumber(layout.structureEnd - 1);
     const differs = first !== feature.start || last !== feature.end;
@@ -27,7 +27,7 @@ function FeatureTooltipContent({ feature, layout, model, }) {
             last,
             layout.clipped ? ' (the structure lacks the rest)' : '')) : null,
         feature.description ? React.createElement("div", null, feature.description) : null));
-}
+});
 // `selected` comes from the track rather than each bar reading the model's
 // selection itself, so a click re-renders the two bars it changes instead of
 // every bar of every track (p53 has 1,363 natural variants).

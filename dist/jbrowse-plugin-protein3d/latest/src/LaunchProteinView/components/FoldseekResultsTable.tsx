@@ -11,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 import { getStructureUrlFromTarget } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
@@ -57,7 +58,7 @@ function flattenResults(results: FoldseekResult): FlattenedHit[] {
   return hits
 }
 
-export default function FoldseekResultsTable({
+const FoldseekResultsTable = observer(function FoldseekResultsTable({
   results,
   session,
   view,
@@ -160,4 +161,6 @@ export default function FoldseekResultsTable({
       </TableContainer>
     </div>
   )
-}
+})
+
+export default FoldseekResultsTable

@@ -3,6 +3,7 @@ import { readConfObject } from '@jbrowse/core/configuration'
 import { scoreByBase, scoreByResidue } from './trackScores'
 import { VariantEffectRefusal } from './variantEffects'
 import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings'
+import { trackConfigNode } from '../trackConfigNode'
 
 import type { TrackStat } from './proteinColor'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
@@ -34,7 +35,8 @@ export async function fetchTrackScores({
   assemblyName,
   signal,
 }: TrackScoresArgs) {
-  const conf = session.getTrackById(trackId)
+  const entry = session.getTrackById(trackId)
+  const conf = entry ? trackConfigNode(session, entry) : undefined
   if (!conf) {
     throw new VariantEffectRefusal(`This session has no track "${trackId}"`)
   }
@@ -59,6 +61,7 @@ export async function fetchTrackScores({
   const features = await session.rpcManager.call(
     'residueValues',
     'CoreGetFeatures',
+    // eslint-disable-next-line no-restricted-syntax -- the structure shows the load as variantEffectsPending, which has no place for the worker's phases
     {
       adapterConfig: readConfObject(conf, 'adapter'),
       regions: spans.map(([start, end]) => ({

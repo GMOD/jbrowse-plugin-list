@@ -1,12 +1,13 @@
 import React from 'react'
 
 import { Typography } from '@mui/material'
+import { observer } from 'mobx-react'
 
 // What came back short of what was asked for: identifiers a UniProt outage
 // swallowed, transcripts with no protein sequence. Not an error — the dialog
 // still works — but not silence either, which is what makes 18 isoforms of a
 // 20-isoform gene read as the whole gene.
-export default function PartialFailureNotice({
+const PartialFailureNotice = observer(function PartialFailureNotice({
   message,
 }: {
   message?: string
@@ -16,4 +17,6 @@ export default function PartialFailureNotice({
       {message}
     </Typography>
   ) : null
-}
+})
+
+export default PartialFailureNotice

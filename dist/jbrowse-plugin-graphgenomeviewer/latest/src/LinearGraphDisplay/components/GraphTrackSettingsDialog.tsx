@@ -1,10 +1,12 @@
+import { observer } from 'mobx-react'
+
 import SubgraphContextSelect from './SubgraphContextSelect'
 import SubgraphHaplotypesField from './SubgraphHaplotypesField'
 import GraphSettingsDialog from '../../GraphGenomeView/components/GraphSettingsDialog'
 
 import type { LinearGraphCutModel } from '../model'
 
-export default function GraphTrackSettingsDialog({
+export default observer(function GraphTrackSettingsDialog({
   model,
   onClose,
 }: {
@@ -17,4 +19,4 @@ export default function GraphTrackSettingsDialog({
       <SubgraphHaplotypesField model={model} />
     </GraphSettingsDialog>
   )
-}
+})

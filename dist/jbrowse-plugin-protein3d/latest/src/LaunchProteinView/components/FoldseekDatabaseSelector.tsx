@@ -7,6 +7,7 @@ import {
   FormGroup,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 import { FOLDSEEK_DATABASES } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
@@ -34,7 +35,7 @@ const useStyles = makeStyles()({
   },
 })
 
-export default function FoldseekDatabaseSelector({
+const FoldseekDatabaseSelector = observer(function FoldseekDatabaseSelector({
   selected,
   onChange,
   disabled,
@@ -94,4 +95,6 @@ export default function FoldseekDatabaseSelector({
       </FormGroup>
     </div>
   )
-}
+})
+
+export default FoldseekDatabaseSelector

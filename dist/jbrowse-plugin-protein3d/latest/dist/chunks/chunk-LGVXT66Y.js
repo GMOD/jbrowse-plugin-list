@@ -1,0 +1,2 @@
+var o=JBrowseExports["@jbrowse/core/configuration"],e=t=>o!=null&&t in Object(o)?o[t]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+t+"' from '@jbrowse/core/configuration' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:t});var n=e("ConfigurationSchema");var r=e("hydrateTrackConfig");var a=e("isConfigurationModel");var i=e("readConfObject");var s=o&&o.__esModule?o.default:o;export{n as a,r as b,a as c,i as d};
+//# sourceMappingURL=chunk-LGVXT66Y.js.map

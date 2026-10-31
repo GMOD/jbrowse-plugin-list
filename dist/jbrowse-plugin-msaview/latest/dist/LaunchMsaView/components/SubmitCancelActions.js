@@ -1,6 +1,7 @@
 import React from 'react';
 import { getSession } from '@jbrowse/core/util';
 import { Button, Checkbox, DialogActions, FormControlLabel, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { readLaunchPlacement, sessionSupportsPlacement, writeLaunchPlacement, } from '../../utils/workspaces';
 import { useLaunchPlacement } from './launchPlacement';
 /**
@@ -14,12 +15,12 @@ import { useLaunchPlacement } from './launchPlacement';
  * release that places views its own way — because the box would do nothing
  * there and every launch would quietly ignore it.
  */
-function PlacementToggle({ checked, onChange, }) {
+const PlacementToggle = observer(function PlacementToggle({ checked, onChange, }) {
     return (React.createElement(FormControlLabel, { label: "Open beside the genome view", control: React.createElement(Checkbox, { checked: checked, onChange: event => {
                 onChange(event.target.checked);
             } }) }));
-}
-export default function SubmitCancelActions({ onSubmit, onCancel, submitDisabled, hint, submitLabel = 'Submit', model, }) {
+});
+const SubmitCancelActions = observer(function SubmitCancelActions({ onSubmit, onCancel, submitDisabled, hint, submitLabel = 'Submit', model, }) {
     const [sideBySide, setSideBySide] = useLaunchPlacement();
     // The stored value is what the next dialog opens on, so it is written on
     // submit rather than on the click: a dialog the user backed out of must not
@@ -47,4 +48,5 @@ export default function SubmitCancelActions({ onSubmit, onCancel, submitDisabled
             React.createElement(Button, { sx: { flexShrink: 0 }, color: "secondary", variant: "contained", onClick: () => {
                     onCancel();
                 } }, "Cancel"))));
-}
+});
+export default SubmitCancelActions;

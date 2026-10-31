@@ -2,6 +2,7 @@ import { readConfObject } from '@jbrowse/core/configuration';
 import { scoreByBase, scoreByResidue } from './trackScores';
 import { VariantEffectRefusal } from './variantEffects';
 import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings';
+import { trackConfigNode } from '../trackConfigNode';
 function number(value) {
     return typeof value === 'number' ? value : Number.NaN;
 }
@@ -12,7 +13,8 @@ function number(value) {
  * its `score`; any feature track works if its features carry one.
  */
 export async function fetchTrackScores({ session, trackId, stat, feature, assemblyName, signal, }) {
-    const conf = session.getTrackById(trackId);
+    const entry = session.getTrackById(trackId);
+    const conf = entry ? trackConfigNode(session, entry) : undefined;
     if (!conf) {
         throw new VariantEffectRefusal(`This session has no track "${trackId}"`);
     }
@@ -30,7 +32,9 @@ export async function fetchTrackScores({ session, trackId, stat, feature, assemb
     const positions = Object.keys(p2gCodon).map(Number);
     const spans = codingSpans(p2gCodon, positions);
     const canonical = assembly.getCanonicalRefName(refName) ?? refName;
-    const features = await session.rpcManager.call('residueValues', 'CoreGetFeatures', {
+    const features = await session.rpcManager.call('residueValues', 'CoreGetFeatures', 
+    // eslint-disable-next-line no-restricted-syntax -- the structure shows the load as variantEffectsPending, which has no place for the worker's phases
+    {
         adapterConfig: readConfObject(conf, 'adapter'),
         regions: spans.map(([start, end]) => ({
             assemblyName: assembly.name,

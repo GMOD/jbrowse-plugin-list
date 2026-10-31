@@ -8,6 +8,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import ExternalLink from '../../components/ExternalLink'
 import { UNIPROT_ACCESSION_HINT } from '../utils/uniprotAccession'
@@ -32,7 +33,7 @@ interface UniProtIdInputProps {
   endContent?: React.ReactNode
 }
 
-export default function UniProtIdInput({
+const UniProtIdInput = observer(function UniProtIdInput({
   lookupMode,
   onLookupModeChange,
   manualUniprotId,
@@ -111,4 +112,6 @@ export default function UniProtIdInput({
       )}
     </>
   )
-}
+})
+
+export default UniProtIdInput

@@ -1,4 +1,4 @@
-import { getConf } from '@jbrowse/core/configuration';
+import { readConfObject } from '@jbrowse/core/configuration';
 import { fetchAlphaFoldModels, getAlphaFoldStructureUrl, pickAlphaFoldModel, searchUniProtEntries, stripStopCodon, } from 'p2s_mapper';
 import { codingTranscripts, flaggedTranscriptId } from './codingFeature';
 import { rankIsoforms, rankedTranscriptId, } from '../AlignTranscriptRpc/isoformRanking';
@@ -53,8 +53,9 @@ export function sessionGeneLaunchHost(session, assemblyName) {
         translate: transcripts => fetchTranscriptProteinSeqs({ transcripts, session, assemblyName }),
         taxonId: async () => {
             const assembly = await session.assemblyManager.waitForAssembly(assemblyName);
-            return assembly
-                ? extractTaxonId(getConf(assembly, ['sequence', 'metadata']))
+            const conf = assembly?.configuration;
+            return conf
+                ? extractTaxonId(readConfObject(conf, ['sequence', 'metadata']))
                 : undefined;
         },
         rankIsoforms: (isoforms, structureSequences) => alignOffThread({

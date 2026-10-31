@@ -1,20 +1,23 @@
-import { getConf } from '@jbrowse/core/configuration';
+import { readConfObject } from '@jbrowse/core/configuration';
 import { translateTranscript } from '@jbrowse/core/util/translateTranscript';
 function translate(transcript, seq, assemblyGeneticCodeId) {
     return translateTranscript({ transcript, seq, assemblyGeneticCodeId })
         ?.protein;
 }
 /** The genome under one span, with the assembly's code for that contig. */
-export async function fetchRegionSequence({ session, assemblyName, refName, start, end, }) {
+export async function fetchRegionSequence({ session, assemblyName, refName, start, end, signal, }) {
     const { assemblyManager, rpcManager } = session;
     const assembly = assemblyName
         ? await assemblyManager.waitForAssembly(assemblyName)
         : undefined;
-    if (!assembly) {
+    const conf = assembly?.configuration;
+    if (!assembly || !conf) {
         throw new Error('assembly not found');
     }
+    // eslint-disable-next-line no-restricted-syntax -- one span of sequence, whose callers show their own pending state
     const [feat] = await rpcManager.call('getSequence', 'CoreGetFeatures', {
-        adapterConfig: getConf(assembly, ['sequence', 'adapter']),
+        adapterConfig: readConfObject(conf, ['sequence', 'adapter']),
+        signal,
         regions: [
             {
                 start,

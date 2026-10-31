@@ -1,20 +1,21 @@
 import React from 'react'
 
 import { Typography } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import UniProtResultsTable from './UniProtResultsTable'
 import ExternalLink from '../../components/ExternalLink'
 
 import type { UniProtIdLookup } from '../hooks/useUniProtIdLookup'
 
-function UniProtLink() {
+const UniProtLink = observer(function UniProtLink() {
   return <ExternalLink href="https://www.uniprot.org/">UniProt</ExternalLink>
-}
+})
 
 // What the identifier search found, shared by the search tabs for the same
 // reason UniProtLookupControls is. A failed search shows neither: the tab
 // reports the error, and "no entries" would call an outage an empty answer.
-export default function UniProtLookupResults({
+const UniProtLookupResults = observer(function UniProtLookupResults({
   lookup,
 }: {
   lookup: UniProtIdLookup
@@ -43,4 +44,6 @@ export default function UniProtLookupResults({
       manually".
     </Typography>
   )
-}
+})
+
+export default UniProtLookupResults

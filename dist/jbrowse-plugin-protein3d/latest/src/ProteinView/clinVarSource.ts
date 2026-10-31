@@ -96,7 +96,7 @@ export async function placeClinVarOnTranscript({
       end,
       signal,
     ),
-    fetchRegionSequence({ session, assemblyName, refName, start, end }),
+    fetchRegionSequence({ session, assemblyName, refName, start, end, signal }),
   ])
   const { seq, assemblyGeneticCodeId } = genome
   if (!seq) {

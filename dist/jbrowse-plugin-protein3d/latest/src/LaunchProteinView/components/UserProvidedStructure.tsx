@@ -28,7 +28,7 @@ const useStyles = makeStyles()(theme => ({
   },
 }))
 
-function HelpText() {
+const HelpText = observer(function HelpText() {
   return (
     <div style={{ marginBottom: 20 }}>
       Manually supply a protein structure (PDB, mmCIF, etc) for a given
@@ -41,7 +41,7 @@ function HelpText() {
       slight differences in these two representations.
     </div>
   )
-}
+})
 
 const UserProvidedStructure = observer(function UserProvidedStructure({
   feature,

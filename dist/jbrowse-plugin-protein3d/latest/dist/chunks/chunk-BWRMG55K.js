@@ -1,0 +1,2 @@
+var e=JBrowseExports["mobx-react"],o=r=>e!=null&&r in Object(e)?e[r]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+r+"' from 'mobx-react' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:r});var t=o("observer");var s=e&&e.__esModule?e.default:e;export{t as a};
+//# sourceMappingURL=chunk-BWRMG55K.js.map

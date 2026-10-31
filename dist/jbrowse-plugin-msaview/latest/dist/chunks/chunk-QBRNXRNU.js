@@ -1,0 +1,2 @@
+var o=JBrowseExports["@jbrowse/core/configuration"],e=t=>o!=null&&t in Object(o)?o[t]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+t+"' from '@jbrowse/core/configuration' to plugins: MsaView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:t});var n=e("ConfigurationSchema");var r=e("getConf");var a=e("readConfObject");var s=o&&o.__esModule?o.default:o;export{n as a,r as b,a as c};
+//# sourceMappingURL=chunk-QBRNXRNU.js.map

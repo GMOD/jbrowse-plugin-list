@@ -23,7 +23,6 @@
 import { handleFetch, isAbortError, jsonfetch } from './fetch';
 import { cleanGeneCandidate, dedupeLabels, defaultMaxSpecies, } from './ncbiOrthologs';
 const UNIPROT = 'https://rest.uniprot.org';
-const unirefIdentities = [50, 90];
 // the "Reference proteome" keyword, KW-1185: one well-annotated proteome per
 // taxonomic neighbourhood, which is what keeps a cluster from being a hundred
 // near-identical strains
@@ -97,7 +96,7 @@ export async function resolveUniProtEntry(candidates, taxId, signal) {
 /** `uniref/search` -> the id of the cluster an accession belongs to at `identity`. */
 async function fetchClusterId(accession, identity, signal) {
     const query = `(uniprot_id:${accession}) AND (identity:${identity / 100})`;
-    const json = (await jsonfetch(`${UNIPROT}/uniref/search?query=${encodeURIComponent(query)}&fields=id,count&size=1`, { signal }));
+    const json = await jsonfetch(`${UNIPROT}/uniref/search?query=${encodeURIComponent(query)}&fields=id,count&size=1`, { signal });
     const cluster = json.results?.[0];
     return cluster?.id
         ? { id: cluster.id, memberCount: cluster.memberCount }

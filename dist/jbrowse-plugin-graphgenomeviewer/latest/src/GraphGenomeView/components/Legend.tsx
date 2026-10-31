@@ -20,7 +20,7 @@ import type { GraphPaneModel } from '../model'
 // `at`, where the hovered node sits on a walk, stands in for the line under
 // it. A `column` centres the swatch in a slot that wide and indents the line
 // under to the words.
-export function LegendRowView({
+export const LegendRowView = observer(function LegendRowView({
   row,
   at,
   hint,
@@ -64,7 +64,7 @@ export function LegendRowView({
   ) : (
     <div style={legendNoteStyle}>{row.label}</div>
   )
-}
+})
 
 const closeStyle = {
   pointerEvents: 'auto' as const,

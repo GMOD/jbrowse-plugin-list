@@ -1,11 +1,12 @@
 import React from 'react'
 
 import { Typography } from '@mui/material'
+import { observer } from 'mobx-react'
 import { uniprotEntryUrl } from 'p2s_mapper'
 
 import ExternalLink from '../../components/ExternalLink'
 
-export default function AlphaFoldDBSearchStatus({
+const AlphaFoldDBSearchStatus = observer(function AlphaFoldDBSearchStatus({
   uniprotId,
   url,
 }: {
@@ -25,4 +26,6 @@ export default function AlphaFoldDBSearchStatus({
       </Typography>
     </div>
   )
-}
+})
+
+export default AlphaFoldDBSearchStatus

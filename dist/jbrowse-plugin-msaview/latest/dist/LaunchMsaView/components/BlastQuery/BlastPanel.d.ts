@@ -17,11 +17,11 @@ declare const panelMap: {
     }) => React.JSX.Element;
 };
 export type BlastLookupMethod = keyof typeof panelMap;
-export default function BlastPanel({ handleClose, model, feature, preferredTranscriptId, }: {
+declare const BlastPanel: ({ handleClose, model, feature, preferredTranscriptId, }: {
     handleClose: () => void;
     model: AbstractTrackModel;
     feature: Feature;
     /** the isoform the user right-clicked, preselected in the picker */
     preferredTranscriptId?: string;
-}): React.JSX.Element;
-export {};
+}) => React.JSX.Element;
+export default BlastPanel;

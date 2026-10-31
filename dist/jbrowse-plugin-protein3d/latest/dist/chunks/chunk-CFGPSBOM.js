@@ -1,0 +1,2 @@
+var o=JBrowseExports["@mui/material/SvgIcon"],t=e=>o!=null&&e in Object(o)?o[e]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+e+"' from '@mui/material/SvgIcon' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:e}),r=t("createSvgIcon"),s=o&&o.__esModule?o.default:o;export{r as a};
+//# sourceMappingURL=chunk-CFGPSBOM.js.map

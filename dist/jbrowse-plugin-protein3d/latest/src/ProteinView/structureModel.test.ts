@@ -8,6 +8,7 @@ import Structure from './structureModel'
 import { parseStructure } from '../test_data/molstarStructure'
 
 import type { StructureAssembly } from './loadStructureData'
+import type { ProteinColor } from './proteinColor'
 import type * as JBrowseCoreUtil from '@jbrowse/core/util'
 import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
 
@@ -58,6 +59,9 @@ const TestParent = types
     },
     get alignmentAlgorithm(): AlignmentAlgorithm {
       return 'needleman_wunsch'
+    },
+    get color(): ProteinColor {
+      return {}
     },
     get molstarPluginContext() {
       return undefined

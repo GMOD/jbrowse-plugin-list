@@ -1,5 +1,5 @@
 import React from 'react';
-declare function JobLink({ jobId }: {
+declare const JobLink: ({ jobId }: {
     jobId: string;
-}): React.JSX.Element;
+}) => React.JSX.Element;
 export default JobLink;

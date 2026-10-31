@@ -16,6 +16,7 @@ vi.mock('./msaDataStore', () => ({
 // does, which used to make that name a reason to launch again
 test('a write the launch body read does not start a second launch', () => {
     vi.mocked(doLaunchBlast).mockImplementation(({ self }) => {
+        // eslint-disable-next-line @typescript-eslint/no-meaningless-void-operator -- the read is the point: it is what the launch tracks
         void self.querySeqName;
         return new Promise(() => { });
     });

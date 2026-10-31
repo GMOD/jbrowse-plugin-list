@@ -94,7 +94,7 @@ const ColorMenu = observer(function ColorMenu({
   )
 })
 
-function ToggleMenuItem({
+const ToggleMenuItem = observer(function ToggleMenuItem({
   checked,
   label,
   disabled,
@@ -119,7 +119,7 @@ function ToggleMenuItem({
       <ListItemText>{label}</ListItemText>
     </MenuItem>
   )
-}
+})
 
 // Every toggle the view has, in one menu. The view menu carries actions, so a
 // reader looking for a checkbox has one place to look rather than two lists

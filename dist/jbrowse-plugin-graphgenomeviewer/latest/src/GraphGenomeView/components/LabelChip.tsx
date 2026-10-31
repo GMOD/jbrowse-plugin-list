@@ -1,4 +1,5 @@
 import { LABEL_PAD, LABEL_PX } from '@jbrowse/bandage-core/overlayLabels'
+import { observer } from 'mobx-react'
 
 // A chip's box, its text's baseline at y and centred on x
 function chipBox(x: number, y: number, w: number) {
@@ -27,7 +28,7 @@ export function inChip(
 // One label on an overlay: a white chip with a coloured edge and text. A note
 // follows the text in plain type. A chip takes the pointer only with a
 // handler, so its title shows only then.
-export default function LabelChip({
+export default observer(function LabelChip({
   x,
   y,
   w,
@@ -117,4 +118,4 @@ export default function LabelChip({
       </text>
     </g>
   )
-}
+})

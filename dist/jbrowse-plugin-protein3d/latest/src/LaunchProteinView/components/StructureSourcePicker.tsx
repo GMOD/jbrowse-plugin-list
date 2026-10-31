@@ -9,11 +9,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import HelpButton from './HelpButton'
 import { STRUCTURE_FILE_ACCEPT } from '../utils/readStructureFile'
 
-export default function StructureSourcePicker({
+const StructureSourcePicker = observer(function StructureSourcePicker({
   choice,
   setChoice,
   structureURL,
@@ -83,4 +84,6 @@ export default function StructureSourcePicker({
       )}
     </div>
   )
-}
+})
+
+export default StructureSourcePicker

@@ -9,6 +9,7 @@ export type SequenceStatus = 'loading' | 'ready' | 'missing' | 'error';
  * An error says so through the panel's own ErrorMessage, so this stays quiet
  * for that one rather than saying it twice.
  */
-export default function SequenceStatusMessage({ status, }: {
+declare const SequenceStatusMessage: ({ status, }: {
     status: SequenceStatus;
-}): React.JSX.Element | null;
+}) => React.JSX.Element | null;
+export default SequenceStatusMessage;

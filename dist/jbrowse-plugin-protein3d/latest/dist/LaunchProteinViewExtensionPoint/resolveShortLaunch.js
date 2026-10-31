@@ -3,6 +3,7 @@ import { parseLocString } from '@jbrowse/core/util';
 import { stripTrailingVersion } from 'p2s_mapper';
 import { codingTranscripts } from '../LaunchProteinView/codingFeature';
 import { fetchProteinSeq } from '../LaunchProteinView/utils/translateTranscripts';
+import { trackConfigNode } from '../trackConfigNode';
 export function getTrackId(track) {
     if (typeof track === 'string') {
         return track;
@@ -24,12 +25,17 @@ export function transcriptMatches(transcript, transcriptId) {
 }
 // Gene models live on feature tracks; a spec's variant or alignments track
 // would be fetched for nothing
-export function isFeatureTrack(trackConf) {
-    return readConfObject(trackConf, 'type') === 'FeatureTrack';
+export function featureTrackConfig(session, trackId) {
+    const entry = session.getTrackById(trackId);
+    return entry?.type === 'FeatureTrack'
+        ? trackConfigNode(session, entry)
+        : undefined;
 }
 async function findTranscript({ session, trackConfs, region, transcriptId, }) {
     for (const trackConf of trackConfs) {
-        const feats = await session.rpcManager.call('getFeatures', 'CoreGetFeatures', {
+        const feats = await session.rpcManager.call('getFeatures', 'CoreGetFeatures', 
+        // eslint-disable-next-line no-restricted-syntax -- a declarative launch's lookup has no dialog to cancel it or report into
+        {
             adapterConfig: readConfObject(trackConf, 'adapter'),
             regions: [region],
         });
@@ -76,8 +82,8 @@ export async function resolveShortLaunch({ session, transcriptId, connectedView,
     const transcript = await findTranscript({
         session,
         trackConfs: trackIds.flatMap(trackId => {
-            const conf = session.getTrackById(trackId);
-            return conf && isFeatureTrack(conf) ? [conf] : [];
+            const conf = featureTrackConfig(session, trackId);
+            return conf ? [conf] : [];
         }),
         region,
         transcriptId,

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { ErrorMessage } from '@jbrowse/core/ui';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Button, ButtonGroup, Typography } from '@mui/material';
+import { observer } from 'mobx-react';
 import LaunchOptionsMenu from './LaunchOptionsMenu';
 import SequenceMismatchNotice from './SequenceMismatchNotice';
 import { useSafeLaunch } from '../hooks/useSafeLaunch';
 import { getLaunchMissingReasons } from '../utils/launchHelpers';
 import { PROTEIN_LAUNCH_LABELS, getConditionalProteinLaunches, launch3DProteinView, } from '../utils/launchViewUtils';
-export default function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, pdbId, confidenceUrl, feature, view, session, sideBySide, onSideBySideChange, sequencesMatch, isLoading, error, }) {
+const ProteinViewActions = observer(function ProteinViewActions({ handleClose, uniprotId, userSelectedProteinSequence, selectedTranscript, url, pdbId, confidenceUrl, feature, view, session, sideBySide, onSideBySideChange, sequencesMatch, isLoading, error, }) {
     const [menuAnchor, setMenuAnchor] = useState(null);
     const closeMenu = () => {
         setMenuAnchor(null);
@@ -77,4 +78,5 @@ export default function ProteinViewActions({ handleClose, uniprotId, userSelecte
                 }, "aria-label": "More launch options" },
                 React.createElement(ArrowDropDownIcon, null))),
         React.createElement(LaunchOptionsMenu, { anchorEl: menuAnchor, onClose: closeMenu, options: launchOptions, sideBySide: sideBySide, onSideBySideChange: onSideBySideChange })));
-}
+});
+export default ProteinViewActions;

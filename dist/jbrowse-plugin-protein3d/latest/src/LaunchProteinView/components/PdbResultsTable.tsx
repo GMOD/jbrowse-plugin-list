@@ -12,6 +12,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 import { rcsbEntryUrl } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
@@ -43,7 +44,7 @@ const useStyles = makeStyles()(theme => ({
 
 const MAX_ROWS = 100
 
-export default function PdbResultsTable({
+const PdbResultsTable = observer(function PdbResultsTable({
   entries,
   selectedPdbId,
   onSelect,
@@ -117,4 +118,6 @@ export default function PdbResultsTable({
       </TableContainer>
     </>
   )
-}
+})
+
+export default PdbResultsTable

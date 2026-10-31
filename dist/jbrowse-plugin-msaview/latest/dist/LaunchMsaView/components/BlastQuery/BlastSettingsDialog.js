@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import TextField2 from '../../../components/TextField2';
 import { DEFAULT_EBI_EMAIL } from '../../../utils/ebiJobDispatcher';
@@ -11,7 +12,7 @@ const useStyles = makeStyles()({
         marginBottom: 8,
     },
 });
-export default function BlastSettingsDialog({ handleClose, ebiEmail, }) {
+const BlastSettingsDialog = observer(function BlastSettingsDialog({ handleClose, ebiEmail, }) {
     const { classes } = useStyles();
     const [tempEbiEmail, setTempEbiEmail] = useState(ebiEmail);
     return (React.createElement(Dialog, { open: true, maxWidth: "lg", onClose: () => {
@@ -33,4 +34,5 @@ export default function BlastSettingsDialog({ handleClose, ebiEmail, }) {
             React.createElement(Button, { color: "primary", variant: "contained", onClick: () => {
                     handleClose({ ebiEmail: tempEbiEmail });
                 } }, "Save"))));
-}
+});
+export default BlastSettingsDialog;

@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { Dialog } from '@jbrowse/core/ui'
 import { getSession } from '@jbrowse/core/util'
 import { Tab, Tabs } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import AlphaFoldDBSearch from './AlphaFoldDBSearch'
 import FoldseekSearch from './FoldseekSearch'
@@ -16,7 +17,7 @@ import { getLaunchSideBySide, setLaunchSideBySide } from '../utils/sideBySide'
 import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
 
-export default function LaunchProteinViewDialog({
+const LaunchProteinViewDialog = observer(function LaunchProteinViewDialog({
   handleClose,
   feature,
   preferredTranscriptId,
@@ -116,4 +117,6 @@ export default function LaunchProteinViewDialog({
       </TabPanel>
     </Dialog>
   )
-}
+})
+
+export default LaunchProteinViewDialog

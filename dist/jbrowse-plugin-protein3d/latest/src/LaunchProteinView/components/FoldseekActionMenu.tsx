@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 
 import { ErrorMessage } from '@jbrowse/core/ui'
 import { Button, Menu, MenuItem } from '@mui/material'
+import { observer } from 'mobx-react'
 import {
   caCoordsToPdb,
   getConfidenceUrlFromTarget,
@@ -25,7 +26,7 @@ export interface FlattenedHit extends FoldseekAlignment {
   structureUrl?: string
 }
 
-export default function FoldseekActionMenu({
+const FoldseekActionMenu = observer(function FoldseekActionMenu({
   hit,
   session,
   view,
@@ -115,4 +116,6 @@ export default function FoldseekActionMenu({
       </Menu>
     </>
   )
-}
+})
+
+export default FoldseekActionMenu

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, MenuItem } from '@mui/material';
+import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import TextField2 from '../../components/TextField2';
 const useStyles = makeStyles()({
@@ -30,7 +31,7 @@ function partialCoverage({ identity, offset, }) {
  * itself in from the pasted alignment and offers that alignment's own row names
  * rather than a free text box the user can typo.
  */
-export default function QueryRowSelector({ names, detected, querySeqName, setQuerySeqName, isAutoDetected, }) {
+const QueryRowSelector = observer(function QueryRowSelector({ names, detected, querySeqName, setQuerySeqName, isAutoDetected, }) {
     const { classes } = useStyles();
     return (React.createElement(React.Fragment, null,
         names.length > 0 ? (React.createElement(TextField2, { variant: "outlined", label: "MSA row matching the selected transcript", select: true, fullWidth: true, className: classes.field, value: names.includes(querySeqName) ? querySeqName : '', onChange: event => {
@@ -51,4 +52,5 @@ export default function QueryRowSelector({ names, detected, querySeqName, setQue
             " to your protein sequence",
             detected.quality === 'exact' ? '' : partialCoverage(detected),
             ". Clicking the alignment will navigate the genome view."))) : names.length > 0 && !querySeqName ? (React.createElement(Alert, { severity: "warning", className: classes.alert }, "No row matched your protein sequence \u2014 pick the one for your gene above. Without it the alignment still renders, but clicking it will not navigate the genome view.")) : null));
-}
+});
+export default QueryRowSelector;

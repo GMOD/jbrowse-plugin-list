@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["jbrowse-host:@mui/material/SvgIcon"],
+  "sourcesContent": ["const host = JBrowseExports[\"@mui/material/SvgIcon\"]\nconst read = name =>\n  host != null && name in Object(host)\n    ? host[name]\n    : Object.assign(\n        function () {\n          throw new Error(\"This JBrowse does not provide '\" + name + \"' from '\" + \"@mui/material/SvgIcon\" + \"' to plugins: \" + \"Protein3d was built for a different JBrowse version, so update the plugin or JBrowse\")\n        },\n        { jbrowseHostMissing: name },\n      )\nexport const createSvgIcon = /* @__PURE__ */ read(\"createSvgIcon\")\nexport default host && host.__esModule ? host.default : host"],
+  "mappings": "AAAA,IAAMA,EAAO,eAAe,uBAAuB,EAC7CC,EAAOC,GACXF,GAAQ,MAAQE,KAAQ,OAAOF,CAAI,EAC/BA,EAAKE,CAAI,EACT,OAAO,OACL,UAAY,CACV,MAAM,IAAI,MAAM,kCAAoCA,EAAO,iIAAgJ,CAC7M,EACA,CAAE,mBAAoBA,CAAK,CAC7B,EACOC,EAAgCF,EAAK,eAAe,EAC1DG,EAAQJ,GAAQA,EAAK,WAAaA,EAAK,QAAUA",
+  "names": ["host", "read", "name", "createSvgIcon", "SvgIcon_default"]
+}

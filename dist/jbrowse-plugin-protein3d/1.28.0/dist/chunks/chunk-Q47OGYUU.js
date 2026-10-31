@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/pluggableElementTypes"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/core/pluggableElementTypes' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o});var n=t("BaseViewModel");var p=t("RpcMethodType");var s=t("ViewType");var r=e&&e.__esModule?e.default:e;export{n as a,p as b,s as c};
+//# sourceMappingURL=chunk-Q47OGYUU.js.map

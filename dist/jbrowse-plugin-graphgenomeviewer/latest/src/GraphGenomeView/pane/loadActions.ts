@@ -486,6 +486,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
       return (yield getSession(self).rpcManager.call(
         getRpcSessionId(self),
         'CoreGetFeatures',
+        // eslint-disable-next-line no-restricted-syntax -- several annotation reads run beside the layout, which owns the status line until they are all that is left
         { adapterConfig, regions: [region], signal },
       )) as Feature[]
     } catch (e) {
@@ -806,7 +807,21 @@ export const withLoadActions = withEngineSettings.actions(self => {
         const cut = (yield getSession(self).rpcManager.call(
           getRpcSessionId(self),
           'GetSubgraph',
-          { adapterConfig, region, opts, signal },
+          {
+            adapterConfig,
+            region,
+            opts,
+            signal,
+            // the cut itself reports nothing, but renaming its region first
+            // can download the adapter's refName index
+            statusCallback: status => {
+              if (isLive()) {
+                self.setStatusMessage(
+                  statusMessageText(status) ?? 'Fetching subgraph',
+                )
+              }
+            },
+          },
         )) as string | WalkCut
         if (!isLive()) {
           return
@@ -827,6 +842,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
                 getSession(self).rpcManager.call(
                   getRpcSessionId(self),
                   'GetGraphReads',
+                  // eslint-disable-next-line no-restricted-syntax -- GetGraphReads renames no region and its adapters report no phase, so the pane's own 'Reading alignments' is all there is
                   {
                     adapterConfig,
                     nodeNames: graph.nodes.map(n => n.name),

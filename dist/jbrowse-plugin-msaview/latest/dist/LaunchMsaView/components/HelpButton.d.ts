@@ -1,2 +1,3 @@
 import React from 'react';
-export default function HelpButton(): React.JSX.Element;
+declare const HelpButton: () => React.JSX.Element;
+export default HelpButton;

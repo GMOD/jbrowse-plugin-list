@@ -1,5 +1,6 @@
 import React from 'react';
 import { Paper, Radio, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { rcsbEntryUrl } from 'p2s_mapper';
 import { makeStyles } from 'tss-react/mui';
 import ExternalLink from '../../components/ExternalLink';
@@ -24,7 +25,7 @@ const useStyles = makeStyles()(theme => ({
     },
 }));
 const MAX_ROWS = 100;
-export default function PdbResultsTable({ entries, selectedPdbId, onSelect, }) {
+const PdbResultsTable = observer(function PdbResultsTable({ entries, selectedPdbId, onSelect, }) {
     const { classes } = useStyles();
     const shown = entries.slice(0, MAX_ROWS);
     return (React.createElement(React.Fragment, null,
@@ -69,4 +70,5 @@ export default function PdbResultsTable({ entries, selectedPdbId, onSelect, }) {
                             "%"),
                         React.createElement(TableCell, null, entry.chains.join(', '))));
                 }))))));
-}
+});
+export default PdbResultsTable;

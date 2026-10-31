@@ -1,4 +1,5 @@
 import { rulerInk } from '@jbrowse/bandage-core/tubeMap/axis'
+import { observer } from 'mobx-react'
 
 import { useSvgId } from './ElTree'
 import { SWATCH_PX, bandPx, swatchHeight, swatchWidth } from '../legendSections'
@@ -7,6 +8,7 @@ import type { LegendSwatch, Stop } from '../legendSections'
 
 const EDGE_INK = 'rgba(0, 0, 0, 0.28)'
 
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function Gradient({
   id,
   x,
@@ -212,7 +214,11 @@ export function SvgSwatch({
 
 // The same swatch on screen, in a box as tall as the swatch so the row
 // centres it on its words
-export function LegendSwatchView({ swatch }: { swatch: LegendSwatch }) {
+export const LegendSwatchView = observer(function LegendSwatchView({
+  swatch,
+}: {
+  swatch: LegendSwatch
+}) {
   const id = useSvgId()
   const height = swatchHeight(swatch)
   return (
@@ -227,4 +233,4 @@ export function LegendSwatchView({ swatch }: { swatch: LegendSwatch }) {
       </g>
     </svg>
   )
-}
+})

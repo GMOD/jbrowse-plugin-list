@@ -1,6 +1,7 @@
 import React from 'react'
 
 import Typography from '@mui/material/Typography'
+import { observer } from 'mobx-react'
 
 import type { Legend } from 'molstar/lib/mol-util/legend'
 
@@ -18,7 +19,7 @@ const swatch = {
 // 'inherit' for a key shown in a tooltip, whose text is light on dark
 type KeyColor = 'textSecondary' | 'inherit'
 
-function KeyRow({
+const KeyRow = observer(function KeyRow({
   title,
   testId,
   color,
@@ -48,9 +49,9 @@ function KeyRow({
       {children}
     </Typography>
   )
-}
+})
 
-export function ColorKey({
+export const ColorKey = observer(function ColorKey({
   title,
   entries,
   testId = 'track-legend',
@@ -74,9 +75,9 @@ export function ColorKey({
       ))}
     </KeyRow>
   )
-}
+})
 
-export function GradientKey({
+export const GradientKey = observer(function GradientKey({
   title,
   minLabel,
   maxLabel,
@@ -104,7 +105,7 @@ export function GradientKey({
       {maxLabel}
     </KeyRow>
   )
-}
+})
 
 // Mol*'s Color is a 0xRRGGBB number; formatted here so the header does not
 // pull Mol* into the bundle every host evaluates on boot.
@@ -121,7 +122,7 @@ export function words(name: string) {
   )
 }
 
-export function MolstarLegendKey({
+export const MolstarLegendKey = observer(function MolstarLegendKey({
   title,
   legend,
 }: {
@@ -150,4 +151,4 @@ export function MolstarLegendKey({
       )}
     />
   )
-}
+})

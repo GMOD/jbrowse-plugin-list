@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { IconButton, Tooltip } from '@mui/material';
+import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import { DEFAULT_EBI_EMAIL, EBI_EMAIL_STORAGE_KEY, } from '../../../utils/ebiJobDispatcher';
 import { useLocalStorage } from '../../../utils/useLocalStorage';
@@ -17,7 +18,7 @@ const panelMap = {
     automatic: BlastAutomaticPanel,
     manual: BlastManualPanel,
 };
-export default function BlastPanel({ handleClose, model, feature, preferredTranscriptId, }) {
+const BlastPanel = observer(function BlastPanel({ handleClose, model, feature, preferredTranscriptId, }) {
     const [lookupMethod, setLookupMethod] = useState('automatic');
     const [ebiEmail, setEbiEmail] = useLocalStorage(EBI_EMAIL_STORAGE_KEY, DEFAULT_EBI_EMAIL);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,4 +38,5 @@ export default function BlastPanel({ handleClose, model, feature, preferredTrans
                 }
                 setSettingsOpen(false);
             } })) : null));
-}
+});
+export default BlastPanel;

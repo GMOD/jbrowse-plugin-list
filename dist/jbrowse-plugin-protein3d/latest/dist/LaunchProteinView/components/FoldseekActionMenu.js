@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ErrorMessage } from '@jbrowse/core/ui';
 import { Button, Menu, MenuItem } from '@mui/material';
+import { observer } from 'mobx-react';
 import { caCoordsToPdb, getConfidenceUrlFromTarget, getUniprotIdFromAlphaFoldTarget, hasValidCaCoords, } from 'p2s_mapper';
 import { useSafeLaunch } from '../hooks/useSafeLaunch';
 import { PROTEIN_LAUNCH_LABELS, getConditionalProteinLaunches, launch3DProteinView, } from '../utils/launchViewUtils';
-export default function FoldseekActionMenu({ hit, session, view, feature, selectedTranscript, userProvidedTranscriptSequence, onClose, }) {
+const FoldseekActionMenu = observer(function FoldseekActionMenu({ hit, session, view, feature, selectedTranscript, userProvidedTranscriptSequence, onClose, }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
     const uniprotId = getUniprotIdFromAlphaFoldTarget(hit.target);
@@ -42,4 +43,5 @@ export default function FoldseekActionMenu({ hit, session, view, feature, select
         React.createElement(Menu, { anchorEl: anchorEl, open: open, onClose: handleMenuClose },
             React.createElement(MenuItem, { "data-testid": "protein-launch-option-3d", onClick: handleLaunch3D }, PROTEIN_LAUNCH_LABELS['3d']),
             launch1D ? (React.createElement(MenuItem, { "data-testid": "protein-launch-option-1d", onClick: runLaunch(launch1D) }, PROTEIN_LAUNCH_LABELS['1d'])) : null)));
-}
+});
+export default FoldseekActionMenu;

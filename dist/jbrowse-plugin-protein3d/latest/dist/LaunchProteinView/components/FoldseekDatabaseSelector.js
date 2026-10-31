@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Checkbox, FormControlLabel, FormGroup, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { FOLDSEEK_DATABASES } from 'p2s_mapper';
 import { makeStyles } from 'tss-react/mui';
 const useStyles = makeStyles()({
@@ -23,7 +24,7 @@ const useStyles = makeStyles()({
         gap: 0,
     },
 });
-export default function FoldseekDatabaseSelector({ selected, onChange, disabled, }) {
+const FoldseekDatabaseSelector = observer(function FoldseekDatabaseSelector({ selected, onChange, disabled, }) {
     const { classes } = useStyles();
     return (React.createElement("div", { className: classes.root },
         React.createElement("div", { className: classes.header },
@@ -43,4 +44,5 @@ export default function FoldseekDatabaseSelector({ selected, onChange, disabled,
                         onChange([...selected, db.id]);
                     }
                 }, disabled: disabled }), label: db.label }))))));
-}
+});
+export default FoldseekDatabaseSelector;

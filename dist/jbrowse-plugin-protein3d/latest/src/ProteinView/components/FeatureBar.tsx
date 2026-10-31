@@ -16,7 +16,7 @@ const featureTypeColor = cssScaleOf(UNIPROT_FEATURE_COLOR)
 // UniProt numbers a feature on the full-length protein. For a crystal fragment
 // the ruler under the bar counts the authors' way, so name both when they
 // differ rather than leave the reader to reconcile two numberings.
-function FeatureTooltipContent({
+const FeatureTooltipContent = observer(function FeatureTooltipContent({
   feature,
   layout,
   model,
@@ -45,7 +45,7 @@ function FeatureTooltipContent({
       {feature.description ? <div>{feature.description}</div> : null}
     </div>
   )
-}
+})
 
 // `selected` comes from the track rather than each bar reading the model's
 // selection itself, so a click re-renders the two bars it changes instead of

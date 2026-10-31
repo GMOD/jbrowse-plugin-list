@@ -64,7 +64,7 @@ const HighlightColorDialog = observer(function HighlightColorDialog({
 type Field = (typeof WALK_FIELDS)[number]['value']
 type Scheme = (typeof WALK_SCHEMES)[number]['value']
 
-function Row({
+const Row = observer(function Row({
   label,
   field,
   scheme,
@@ -120,6 +120,6 @@ function Row({
       </TextField>
     </>
   )
-}
+})
 
 export default HighlightColorDialog

@@ -8,9 +8,10 @@ import React from 'react';
  * organism rather than to nothing, and the only place that surfaces is the gene
  * lookup, as "could not resolve NLRP1 in taxon 9986".
  */
-export default function QuerySpeciesSelect({ value, assemblyName, onChange, className, }: {
+declare const QuerySpeciesSelect: ({ value, assemblyName, onChange, className, }: {
     value: number;
     assemblyName?: string;
     onChange: (taxId: number) => void;
     className?: string;
-}): React.JSX.Element;
+}) => React.JSX.Element;
+export default QuerySpeciesSelect;

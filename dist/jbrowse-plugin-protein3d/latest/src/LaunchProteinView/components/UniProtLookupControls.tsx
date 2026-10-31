@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { TextField, Typography } from '@mui/material'
+import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
 import IdentifierSelector from './IdentifierSelector'
@@ -22,7 +23,7 @@ const useStyles = makeStyles()({
 // search runs on, which organism scopes it, and what to do when the feature
 // carries nothing to search at all. One component because the tabs share one
 // lookup and drifted apart when they each rendered their own copy.
-export default function UniProtLookupControls({
+const UniProtLookupControls = observer(function UniProtLookupControls({
   lookup,
 }: {
   lookup: UniProtIdLookup
@@ -85,4 +86,6 @@ export default function UniProtLookupControls({
       <PartialFailureNotice message={lookup.lookupPartialFailure} />
     </>
   )
-}
+})
+
+export default UniProtLookupControls

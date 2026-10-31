@@ -81,7 +81,7 @@ export const PaneTransformGroup = observer(function PaneTransformGroup({
 
 // A canvas the pane's size that an autorun repaints, so a pan moves its ink in
 // the same frame as the drawing. `paint` draws in css px.
-export function PaneOverlayCanvas({
+export const PaneOverlayCanvas = observer(function PaneOverlayCanvas({
   model,
   zIndex,
   shown = true,
@@ -120,4 +120,4 @@ export function PaneOverlayCanvas({
       style={{ ...paneLayerStyle(zIndex), display: shown ? 'block' : 'none' }}
     />
   )
-}
+})

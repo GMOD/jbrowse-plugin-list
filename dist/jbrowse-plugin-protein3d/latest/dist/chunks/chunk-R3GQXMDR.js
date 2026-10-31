@@ -1,0 +1,2 @@
+var s=JBrowseExports["react/jsx-runtime"],t=o=>s!=null&&o in Object(s)?s[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from 'react/jsx-runtime' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o}),e=t("Fragment"),r=t("jsx"),n=t("jsxs"),i=s&&s.__esModule?s.default:s;export{e as a,r as b,n as c};
+//# sourceMappingURL=chunk-R3GQXMDR.js.map

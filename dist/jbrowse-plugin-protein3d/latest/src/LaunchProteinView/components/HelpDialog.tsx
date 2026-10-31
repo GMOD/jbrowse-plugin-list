@@ -8,12 +8,13 @@ import {
   Divider,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import ExternalLink from '../../components/ExternalLink'
 
 const ISSUES_URL = 'https://github.com/GMOD/jbrowse-plugin-protein3d/issues'
 
-export default function HelpDialog({
+const HelpDialog = observer(function HelpDialog({
   handleClose,
 }: {
   handleClose: () => void
@@ -75,4 +76,6 @@ export default function HelpDialog({
       </DialogActions>
     </Dialog>
   )
-}
+})
+
+export default HelpDialog

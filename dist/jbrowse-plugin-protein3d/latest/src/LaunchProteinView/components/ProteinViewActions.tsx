@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { ErrorMessage } from '@jbrowse/core/ui'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import { Button, ButtonGroup, Typography } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import LaunchOptionsMenu from './LaunchOptionsMenu'
 import SequenceMismatchNotice from './SequenceMismatchNotice'
@@ -42,7 +43,7 @@ interface ProteinViewActionsProps {
   error?: unknown
 }
 
-export default function ProteinViewActions({
+const ProteinViewActions = observer(function ProteinViewActions({
   handleClose,
   uniprotId,
   userSelectedProteinSequence,
@@ -184,4 +185,6 @@ export default function ProteinViewActions({
       />
     </>
   )
-}
+})
+
+export default ProteinViewActions

@@ -407,6 +407,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           const names = await getSession(self).rpcManager.call(
             getRpcSessionId(self),
             'GetGraphHaplotypes',
+            // eslint-disable-next-line no-restricted-syntax -- a background read for the haplotype picker, which has no status line; the display's belongs to the cut
             { adapterConfig, signal },
           )
           if (isAlive(self) && !signal?.aborted) {

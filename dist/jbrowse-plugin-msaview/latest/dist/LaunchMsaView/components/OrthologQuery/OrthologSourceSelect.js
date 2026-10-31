@@ -1,5 +1,6 @@
 import React from 'react';
 import { MenuItem } from '@mui/material';
+import { observer } from 'mobx-react';
 import TextField2 from '../../../components/TextField2';
 import { useLocalStorage } from '../../../utils/useLocalStorage';
 const ORTHOLOG_SOURCE_STORAGE_KEY = 'msaview-ortholog-source';
@@ -32,8 +33,9 @@ const hints = {
     panther: 'also yeast, worm, fly and plants',
     uniref: 'all of UniProtKB within 50% identity',
 };
-export default function OrthologSourceSelect({ value, onChange, className, }) {
+const OrthologSourceSelect = observer(function OrthologSourceSelect({ value, onChange, className, }) {
     return (React.createElement(TextField2, { variant: "outlined", label: "Source", className: className, select: true, value: value, helperText: hints[value], onChange: event => {
             onChange(event.target.value);
         } }, orthologSources.map(val => (React.createElement(MenuItem, { value: val, key: val }, orthologSourceLabels[val])))));
-}
+});
+export default OrthologSourceSelect;

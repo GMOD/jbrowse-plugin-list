@@ -18,7 +18,7 @@ import WalkFormsMenuF from './WalkFormsAdapter/formsMenu'
 import WalkFormsAdapterF from './WalkFormsAdapter/index'
 import WalkTabixSyntenyAdapterF from './WalkTabixSyntenyAdapter/index'
 import GraphTrackDefaultsF from './graphTrackDefaults/index'
-import GraphHoverSyncF from './hoverSync/index'
+import contributeGraphHoverSync from './hoverSync/index'
 import PanSNAliasesF from './panSNAliases/index'
 import { PLUGIN_NAME } from './pluginName'
 import { version } from './version'
@@ -35,7 +35,7 @@ export default class GraphGenomeViewPlugin extends Plugin {
     LinearGraphDisplayF(pluginManager)
     GraphTrackF(pluginManager)
     LaunchGraphGenomeViewF(pluginManager)
-    GraphHoverSyncF(pluginManager)
+    contributeGraphHoverSync(pluginManager)
     RgfaTabixAdapterF(pluginManager)
     MinigraphBubbleAdapterF(pluginManager)
     GbzBaseSyntenyAdapterF(pluginManager)

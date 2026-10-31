@@ -1,0 +1,2 @@
+var s=JBrowseExports["tss-react/mui"],o=e=>s!=null&&e in Object(s)?s[e]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+e+"' from 'tss-react/mui' to plugins: MsaView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:e});var t=o("makeStyles"),r=s&&s.__esModule?s.default:s;export{t as a};
+//# sourceMappingURL=chunk-3KTCIF2L.js.map

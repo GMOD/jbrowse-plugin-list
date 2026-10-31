@@ -1,6 +1,7 @@
 import React from 'react';
 import { LoadingEllipses } from '@jbrowse/core/ui';
 import { Typography } from '@mui/material';
+import { observer } from 'mobx-react';
 /**
  * Why Submit is grey. The query row is the selected transcript's translation,
  * and fetching and translating it takes a round trip to the sequence adapter,
@@ -10,6 +11,7 @@ import { Typography } from '@mui/material';
  * An error says so through the panel's own ErrorMessage, so this stays quiet
  * for that one rather than saying it twice.
  */
-export default function SequenceStatusMessage({ status, }) {
+const SequenceStatusMessage = observer(function SequenceStatusMessage({ status, }) {
     return status === 'loading' ? (React.createElement(LoadingEllipses, { message: "Translating transcript" })) : status === 'missing' ? (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "no coding sequence to align")) : null;
-}
+});
+export default SequenceStatusMessage;

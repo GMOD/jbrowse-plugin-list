@@ -1,0 +1,2 @@
+var e=JBrowseExports["mobx-react"],o=r=>e!=null&&r in Object(e)?e[r]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+r+"' from 'mobx-react' to plugins: MsaView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:r});var s=o("observer");var t=e&&e.__esModule?e.default:e;export{s as a};
+//# sourceMappingURL=chunk-PFO3G4CM.js.map

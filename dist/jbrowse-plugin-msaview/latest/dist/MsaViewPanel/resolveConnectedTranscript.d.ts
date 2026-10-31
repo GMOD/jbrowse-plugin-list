@@ -1,4 +1,5 @@
 import type { JBrowsePluginMsaViewModel } from './model';
+import type { AnyConfigurationModel } from '@jbrowse/core/configuration';
 interface Region {
     assemblyName: string;
     refName: string;
@@ -32,7 +33,8 @@ export declare function searchWindows(view: GenomeView): {
  */
 export declare function transcriptTracks<T extends {
     type: string;
-}>(tracks: T[]): T[];
+    configuration: AnyConfigurationModel;
+}>(tracks: readonly T[]): T[];
 /**
  * Resolve `connectedTranscript` into `connectedFeature` once the connected
  * genome view has its assembly and tracks, then hand the translation to

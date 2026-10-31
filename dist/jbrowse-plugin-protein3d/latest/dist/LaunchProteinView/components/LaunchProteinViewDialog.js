@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog } from '@jbrowse/core/ui';
 import { getSession } from '@jbrowse/core/util';
 import { Tab, Tabs } from '@mui/material';
+import { observer } from 'mobx-react';
 import AlphaFoldDBSearch from './AlphaFoldDBSearch';
 import FoldseekSearch from './FoldseekSearch';
 import HelpButton from './HelpButton';
@@ -10,7 +11,7 @@ import TabPanel from './TabPanel';
 import UserProvidedStructure from './UserProvidedStructure';
 import useUniProtIdLookup from '../hooks/useUniProtIdLookup';
 import { getLaunchSideBySide, setLaunchSideBySide } from '../utils/sideBySide';
-export default function LaunchProteinViewDialog({ handleClose, feature, preferredTranscriptId, model, view, }) {
+const LaunchProteinViewDialog = observer(function LaunchProteinViewDialog({ handleClose, feature, preferredTranscriptId, model, view, }) {
     const [choice, setChoice] = useState(0);
     const session = getSession(model);
     // One lookup for the whole dialog: the tabs stay mounted once visited, so a
@@ -46,4 +47,5 @@ export default function LaunchProteinViewDialog({ handleClose, feature, preferre
             React.createElement(FoldseekSearch, { session: session, view: view, feature: feature, preferredTranscriptId: preferredTranscriptId, handleClose: handleClose })),
         React.createElement(TabPanel, { value: choice, index: 3 },
             React.createElement(UserProvidedStructure, { session: session, view: view, feature: feature, preferredTranscriptId: preferredTranscriptId, handleClose: handleClose }))));
-}
+});
+export default LaunchProteinViewDialog;

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Dialog } from '@jbrowse/core/ui';
 import { Button, DialogActions, DialogContent, Divider, Typography, } from '@mui/material';
-export default function HelpDialog({ handleClose, }) {
+import { observer } from 'mobx-react';
+const HelpDialog = observer(function HelpDialog({ handleClose, }) {
     return (React.createElement(Dialog, { open: true, maxWidth: "md", onClose: handleClose, title: "Launching an MSA" },
         React.createElement(DialogContent, null,
             React.createElement(Typography, { gutterBottom: true }, "Every tab aligns the same thing: the protein the selected transcript translates to. That transcript is the query row, which is what ties alignment columns back to codons in the genome view \u2014 hovering one highlights the other, and clicking navigates."),
@@ -15,4 +16,5 @@ export default function HelpDialog({ handleClose, }) {
         React.createElement(Divider, null),
         React.createElement(DialogActions, null,
             React.createElement(Button, { onClick: handleClose, color: "primary" }, "Close"))));
-}
+});
+export default HelpDialog;

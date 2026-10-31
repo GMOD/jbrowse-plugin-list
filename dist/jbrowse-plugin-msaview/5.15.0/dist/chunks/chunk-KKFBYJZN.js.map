@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../node_modules/.pnpm/react-msaview@9.8.0_4d87629ce60f4a70309a0d727f3e914b/node_modules/react-msaview/src/components/Checkbox2.tsx"],
+  "sourcesContent": ["import React from 'react'\n\nimport { Checkbox, FormControlLabel } from '@mui/material'\n\nexport default function Checkbox2({\n  checked,\n  label,\n  disabled,\n  onChange,\n}: {\n  checked: boolean\n  label: string\n  disabled?: boolean\n  onChange: () => void\n}) {\n  return (\n    <div>\n      <FormControlLabel\n        control={\n          <Checkbox\n            disabled={disabled}\n            checked={checked}\n            onChange={() => {\n              onChange()\n            }}\n          />\n        }\n        label={label}\n      />\n    </div>\n  )\n}\n"],
+  "mappings": "uFAIc,SAAPA,EAA2B,CAChC,QAAAC,EACA,MAAAC,EACA,SAAAC,EACA,SAAAC,CAAQ,EAMT,CACC,OACEC,EAAA,cAAA,MAAA,KACEA,EAAA,cAACC,EAAgB,CACf,QACED,EAAA,cAACE,EAAQ,CACP,SAAUJ,EACV,QAASF,EACT,SAAU,IAAK,CACbG,EAAQ,CACV,CAAC,CAAA,EAGL,MAAOF,CAAK,CAAA,CACZ,CAGR",
+  "names": ["Checkbox2", "checked", "label", "disabled", "onChange", "react_default", "FormControlLabel", "Checkbox"]
+}

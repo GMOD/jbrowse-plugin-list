@@ -21,13 +21,13 @@ const useStyles = makeStyles()(theme => ({
         width: '80em',
     },
 }));
-function HelpText() {
+const HelpText = observer(function HelpText() {
     return (React.createElement("div", { style: { marginBottom: 20 } },
         "Manually supply a protein structure (PDB, mmCIF, etc) for a given transcript. You can open the file from the result of running, for example,",
         ' ',
         React.createElement(ExternalLink, { href: "https://github.com/sokrypton/ColabFold" }, "ColabFold"),
         ". This plugin will align the protein sequence calculated from the genome to the protein sequence embedded in the structure file which allows for slight differences in these two representations."));
-}
+});
 const UserProvidedStructure = observer(function UserProvidedStructure({ feature, preferredTranscriptId, session, view, handleClose, }) {
     const { classes } = useStyles();
     const [file, setFile] = useState();

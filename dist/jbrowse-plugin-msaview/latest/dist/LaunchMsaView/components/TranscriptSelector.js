@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button, MenuItem, TextField } from '@mui/material';
+import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import ReadOnlyTextField2 from '../../components/ReadOnlyTextField2';
 import { featureMatchesId, getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptLength, } from '../util';
@@ -15,7 +16,7 @@ const useStyles = makeStyles()({
         marginLeft: 20,
     },
 });
-export default function TranscriptSelector({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, sequenceStatus = 'ready', validIds, }) {
+const TranscriptSelector = observer(function TranscriptSelector({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, sequenceStatus = 'ready', validIds, }) {
     const { classes } = useStyles();
     const [showSequence, setShowSequence] = useState(false);
     return (React.createElement(React.Fragment, null,
@@ -53,4 +54,5 @@ export default function TranscriptSelector({ feature, options, selectedId, selec
                     : sequenceStatus === 'error'
                         ? 'The sequence could not be fetched.'
                         : 'Loading...' })) : null));
-}
+});
+export default TranscriptSelector;

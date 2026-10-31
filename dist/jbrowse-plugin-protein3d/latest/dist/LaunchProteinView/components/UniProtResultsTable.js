@@ -1,5 +1,6 @@
 import React from 'react';
 import { Chip, Paper, Radio, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import { uniprotEntryUrl } from 'p2s_mapper';
 import { makeStyles } from 'tss-react/mui';
 import ExternalLink from '../../components/ExternalLink';
@@ -35,7 +36,7 @@ const useStyles = makeStyles()(theme => ({
         height: 20,
     },
 }));
-export default function UniProtResultsTable({ entries, selectedAccession, onSelect, }) {
+const UniProtResultsTable = observer(function UniProtResultsTable({ entries, selectedAccession, onSelect, }) {
     const { classes, cx } = useStyles();
     return entries.length === 0 ? null : (React.createElement("div", null,
         React.createElement(Typography, { variant: "body2", sx: { mb: 1 } },
@@ -70,4 +71,5 @@ export default function UniProtResultsTable({ entries, selectedAccession, onSele
                         React.createElement(Chip, { label: entry.isReviewed ? 'Reviewed' : 'Unreviewed', size: "small", className: entry.isReviewed
                                 ? classes.reviewedChip
                                 : classes.unreviewedChip }))))))))));
-}
+});
+export default UniProtResultsTable;

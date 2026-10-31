@@ -11,9 +11,10 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 
 // A set of names picked by search, in the order picked, committed on confirm
-export default function PickNamesDialog({
+export default observer(function PickNamesDialog({
   title,
   label,
   caption,
@@ -85,4 +86,4 @@ export default function PickNamesDialog({
       </DialogActions>
     </Dialog>
   )
-}
+})

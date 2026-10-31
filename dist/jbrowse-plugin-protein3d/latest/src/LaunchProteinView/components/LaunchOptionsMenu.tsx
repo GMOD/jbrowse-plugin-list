@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { Checkbox, Divider, ListItemText, Menu, MenuItem } from '@mui/material'
+import { observer } from 'mobx-react'
 
 interface LaunchOption {
   // also the suffix of the row's data-testid, so a test or a screenshot spec
@@ -13,7 +14,7 @@ interface LaunchOption {
   onClick: () => void
 }
 
-export default function LaunchOptionsMenu({
+const LaunchOptionsMenu = observer(function LaunchOptionsMenu({
   anchorEl,
   onClose,
   options,
@@ -59,4 +60,6 @@ export default function LaunchOptionsMenu({
       </MenuItem>
     </Menu>
   )
-}
+})
+
+export default LaunchOptionsMenu

@@ -7,6 +7,7 @@ import {
   MenuItem,
   Select,
 } from '@mui/material'
+import { observer } from 'mobx-react'
 
 import type { SxProps } from '@mui/material'
 
@@ -20,7 +21,7 @@ interface SelectOption<T extends string> {
 }
 
 // One dropdown with its label tied to it, so a screen reader names the combobox
-export default function LabelledSelect<T extends string>({
+export default observer(function LabelledSelect<T extends string>({
   label,
   value,
   options,
@@ -80,4 +81,4 @@ export default function LabelledSelect<T extends string>({
       </Select>
     </FormControl>
   )
-}
+})

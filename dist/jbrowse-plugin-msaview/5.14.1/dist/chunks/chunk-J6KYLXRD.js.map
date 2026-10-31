@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["global-externals:react"],
-  "sourcesContent": ["module.exports = JBrowseExports[\"react\"];"],
-  "mappings": "wCAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAA,EAAO,QAAU,eAAe",
-  "names": ["require_react", "__commonJSMin", "exports", "module"]
-}

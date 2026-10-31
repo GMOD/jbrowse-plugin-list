@@ -297,6 +297,7 @@ export const withRenderingActions = withLoadActions
       // The second argument is a SETUP THUNK, not the callbacks themselves:
       // anything it closes over lives exactly as long as the callbacks that
       // read it, which is what lets a per-backend memo work.
+      // eslint-disable-next-line no-restricted-syntax -- the pane uploads one batch, not keyed cells, which installUpload has no form for; its callbacks keep no memo, reading only the model
       self.attachRenderingBackend<Renderer>(backend, () => ({
         // Autorun: rebuild geometry when graph data or display options
         // change. scale/translate are untracked so they don't trigger a full

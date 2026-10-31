@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import { observer } from 'mobx-react'
 
+import { trackConfigNode } from '../../trackConfigNode'
 import { TRACK_STATS } from '../proteinColor'
 import { parseCuts, thresholdRange } from '../thresholdPalette'
 
@@ -44,17 +45,20 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
     ...(assembly ? [assembly.name, ...assembly.aliases] : []),
   ])
   const tracks = session.tracks
-    .filter(
-      conf =>
-        readConfObject(conf, 'type') === 'QuantitativeTrack' &&
+    .filter(entry => entry.type === 'QuantitativeTrack')
+    .filter(entry => {
+      const conf = trackConfigNode(session, entry)
+      return (
+        conf !== undefined &&
         (assemblyNames.size === 0 ||
-          (readConfObject(conf, 'assemblyNames') as string[]).some(n =>
+          readConfObject(conf, 'assemblyNames').some((n: string) =>
             assemblyNames.has(n),
-          )),
-    )
-    .map(conf => ({
-      trackId: readConfObject(conf, 'trackId') as string,
-      name: getTrackName(conf, session),
+          ))
+      )
+    })
+    .map(entry => ({
+      trackId: entry.trackId,
+      name: getTrackName(entry, session),
     }))
     .toSorted((a, b) => a.name.localeCompare(b.name))
   const { color } = model

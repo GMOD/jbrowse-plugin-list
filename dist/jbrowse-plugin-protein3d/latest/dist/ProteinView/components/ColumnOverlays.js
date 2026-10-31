@@ -2,7 +2,7 @@ import React from 'react';
 import { observer } from 'mobx-react';
 import { HOVER_COLOR, HOVER_RANGE_COLOR, MATCH_COLOR, SELECTION_COLOR, SELECTION_OUTLINE, } from '../constants';
 import { positionRuns } from '../residueRanges';
-function Band({ start, end, columnWidth, background, border, }) {
+const Band = observer(function Band({ start, end, columnWidth, background, border, }) {
     return (React.createElement("div", { style: {
             position: 'absolute',
             top: 0,
@@ -14,10 +14,10 @@ function Band({ start, end, columnWidth, background, border, }) {
             boxSizing: 'border-box',
             pointerEvents: 'none',
         } }));
-}
-function Layer({ zIndex, children, }) {
+});
+const Layer = observer(function Layer({ zIndex, children, }) {
     return (React.createElement("div", { style: { position: 'absolute', inset: 0, pointerEvents: 'none', zIndex } }, children));
-}
+});
 /**
  * The persistent state, drawn beneath every row: a band on top would tint the
  * pLDDT cells and feature bars inside it, and those colors are data. The

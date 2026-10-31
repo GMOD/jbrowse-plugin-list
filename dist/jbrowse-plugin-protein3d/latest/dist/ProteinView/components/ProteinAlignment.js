@@ -43,7 +43,7 @@ const useStyles = makeStyles()(theme => ({
         color: theme.palette.error.main,
     },
 }));
-function GutterLabel({ label, title, }) {
+const GutterLabel = observer(function GutterLabel({ label, title, }) {
     return (React.createElement(Tooltip, { title: title, placement: "left" },
         React.createElement("div", { style: {
                 height: '100%',
@@ -51,7 +51,7 @@ function GutterLabel({ label, title, }) {
                 alignItems: 'center',
                 justifyContent: 'flex-end',
             } }, label)));
-}
+});
 const ProteinAlignment = observer(function ProteinAlignment({ model, }) {
     const { alignment, showProteinTracks, showAllFeatureTracks, label, confidenceCells, columnWidth, laneHeight, domainRows, } = model;
     const hydrophobicityCells = showAllFeatureTracks

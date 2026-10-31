@@ -1,4 +1,4 @@
-import { getConf } from '@jbrowse/core/configuration'
+import { readConfObject } from '@jbrowse/core/configuration'
 import {
   fetchAlphaFoldModels,
   getAlphaFoldStructureUrl,
@@ -120,8 +120,9 @@ export function sessionGeneLaunchHost(
     taxonId: async () => {
       const assembly =
         await session.assemblyManager.waitForAssembly(assemblyName)
-      return assembly
-        ? extractTaxonId(getConf(assembly, ['sequence', 'metadata']))
+      const conf = assembly?.configuration
+      return conf
+        ? extractTaxonId(readConfObject(conf, ['sequence', 'metadata']))
         : undefined
     },
     rankIsoforms: (isoforms, structureSequences) =>

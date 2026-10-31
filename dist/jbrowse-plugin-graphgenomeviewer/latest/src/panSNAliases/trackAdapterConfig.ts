@@ -109,8 +109,8 @@ export function trackAdapterConfig(
   }
   const assemblies = getSession(node).assemblyManager.assemblyList.map(
     conf => ({
-      name: readConfObject(conf, 'name') as string,
-      aliases: (readConfObject(conf, 'aliases') ?? []) as string[],
+      name: readConfObject(conf, 'name'),
+      aliases: readConfObject(conf, 'aliases'),
     }),
   )
   return withPanSNAliases(

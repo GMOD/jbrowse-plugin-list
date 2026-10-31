@@ -1,4 +1,4 @@
-import { getConf } from '@jbrowse/core/configuration'
+import { getSequenceAdapterConfig } from '@jbrowse/core/assemblyManager/assembly'
 
 import type { AbstractSessionModel } from '@jbrowse/core/util'
 
@@ -8,20 +8,28 @@ export async function fetchSeq({
   refName,
   session,
   assemblyName,
+  signal,
 }: {
   start: number
   end: number
   refName: string
   assemblyName: string
   session: AbstractSessionModel
+  signal: AbortSignal
 }) {
   const { assemblyManager, rpcManager } = session
   const assembly = await assemblyManager.waitForAssembly(assemblyName)
   if (!assembly) {
     throw new Error('assembly not found')
   }
+  const adapterConfig = getSequenceAdapterConfig(assembly)
+  if (!adapterConfig) {
+    throw new Error(`assembly ${assemblyName} has no sequence adapter`)
+  }
+  // eslint-disable-next-line no-restricted-syntax -- one transcript's span of reference sequence, and both callers already label the wait ("Translating transcript", "Looking up …")
   const feats = await rpcManager.call('getSequence', 'CoreGetFeatures', {
-    adapterConfig: getConf(assembly, ['sequence', 'adapter']),
+    adapterConfig,
+    signal,
     regions: [
       {
         start,

@@ -13,7 +13,7 @@ import { positionRuns } from '../residueRanges'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
 
-function Band({
+const Band = observer(function Band({
   start,
   end,
   columnWidth,
@@ -41,9 +41,9 @@ function Band({
       }}
     />
   )
-}
+})
 
-function Layer({
+const Layer = observer(function Layer({
   zIndex,
   children,
 }: {
@@ -57,7 +57,7 @@ function Layer({
       {children}
     </div>
   )
-}
+})
 
 /**
  * The persistent state, drawn beneath every row: a band on top would tint the

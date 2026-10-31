@@ -54,14 +54,14 @@ const ColorMenu = observer(function ColorMenu({ model, }) {
                 setAnchorEl(null);
             } }, label))))));
 });
-function ToggleMenuItem({ checked, label, disabled, onToggle, }) {
+const ToggleMenuItem = observer(function ToggleMenuItem({ checked, label, disabled, onToggle, }) {
     return (React.createElement(MenuItem, { onClick: () => {
             onToggle();
         }, disabled: disabled, dense: true },
         React.createElement(ListItemIcon, null,
             React.createElement(Checkbox, { checked: checked, size: "small", edge: "start", disableRipple: true })),
         React.createElement(ListItemText, null, label)));
-}
+});
 // Every toggle the view has, in one menu. The view menu carries actions, so a
 // reader looking for a checkbox has one place to look rather than two lists
 // that used to hold overlapping copies of the same four.

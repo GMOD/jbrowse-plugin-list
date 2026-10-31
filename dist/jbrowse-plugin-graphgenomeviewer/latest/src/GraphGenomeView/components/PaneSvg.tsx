@@ -35,6 +35,7 @@ const asCanvasCtx = (ctx: Ctx2D) => ctx as CanvasRenderingContext2D
 
 // The drawing's nodes and edges through the pane's own transform, so the
 // export lines up with the linear view's ruler wherever the screen does
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function Body({
   model,
   lift,
@@ -172,6 +173,7 @@ function svgRow(
 }
 
 // The screen's legend panel, section by section
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function Keys({
   model,
   idPrefix,
@@ -237,6 +239,7 @@ function Keys({
 }
 
 // Words on a pale rounded backing, as the screen's labels sit
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function Chip({
   x,
   y,
@@ -280,6 +283,7 @@ function Chip({
 }
 
 // The node and deletion lengths written on the drawing, with their leaders
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function SizeLabels({ model }: { model: GraphPaneModel }) {
   return (
     <g fontFamily={FONT.fontFamily}>
@@ -308,6 +312,7 @@ function SizeLabels({ model }: { model: GraphPaneModel }) {
   )
 }
 
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function RowLabels({ model }: { model: GraphPaneModel }) {
   return (
     <g fontFamily={FONT.fontFamily}>
@@ -326,6 +331,7 @@ function RowLabels({ model }: { model: GraphPaneModel }) {
 }
 
 // Each lifted walk in a panel of its own, its key as the panel's title
+// eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function Facets({
   model,
   rasterize,

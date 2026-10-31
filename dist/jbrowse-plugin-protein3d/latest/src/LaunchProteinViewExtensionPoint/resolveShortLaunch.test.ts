@@ -1,3 +1,4 @@
+import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { SimpleFeature } from '@jbrowse/core/util'
 import { expect, test, vi } from 'vitest'
 
@@ -69,7 +70,14 @@ function fakeSession(
     getTrackById: (trackId: string) => {
       const track = tracks[trackId]
       return track
-        ? { trackId, type: track.type, adapter: { uri: track.uri } }
+        ? ConfigurationSchema(
+            track.type,
+            {
+              trackId: { type: 'string', defaultValue: '' },
+              adapter: { type: 'frozen', defaultValue: {} },
+            },
+            { explicitlyTyped: true },
+          ).create({ trackId, type: track.type, adapter: { uri: track.uri } })
         : undefined
     },
   }

@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { MenuItem, TextField } from '@mui/material'
+import { observer } from 'mobx-react'
 import { stripStopCodon } from 'p2s_mapper'
 
 import { getGeneDisplayName, getTranscriptDisplayName } from '../utils/util'
@@ -8,7 +9,7 @@ import { getGeneDisplayName, getTranscriptDisplayName } from '../utils/util'
 import type { Feature } from '@jbrowse/core/util'
 import type { ClassifiedIsoforms, RankedIsoform } from 'p2s_mapper'
 
-export default function TranscriptSelector({
+const TranscriptSelector = observer(function TranscriptSelector({
   val,
   setVal,
   isoforms,
@@ -65,4 +66,6 @@ export default function TranscriptSelector({
       ))}
     </TextField>
   )
-}
+})
+
+export default TranscriptSelector

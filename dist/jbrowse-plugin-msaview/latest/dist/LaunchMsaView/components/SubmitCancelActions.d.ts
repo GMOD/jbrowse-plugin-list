@@ -1,7 +1,7 @@
 import React from 'react';
 import type { MsaViewPlacement } from '../../utils/workspaces';
 import type { AbstractTrackModel } from '@jbrowse/core/util';
-export default function SubmitCancelActions({ onSubmit, onCancel, submitDisabled, hint, submitLabel, model, }: {
+declare const SubmitCancelActions: ({ onSubmit, onCancel, submitDisabled, hint, submitLabel, model, }: {
     /** handed the placement the box states, so no launch re-reads storage */
     onSubmit: (placement: MsaViewPlacement) => void;
     onCancel: () => void;
@@ -11,4 +11,5 @@ export default function SubmitCancelActions({ onSubmit, onCancel, submitDisabled
     submitLabel?: string;
     /** omitted by a panel that submits something other than a view launch */
     model?: AbstractTrackModel;
-}): React.JSX.Element;
+}) => React.JSX.Element;
+export default SubmitCancelActions;

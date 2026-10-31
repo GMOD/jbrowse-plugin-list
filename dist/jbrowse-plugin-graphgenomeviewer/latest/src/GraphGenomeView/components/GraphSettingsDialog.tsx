@@ -36,7 +36,7 @@ const useStyles = makeStyles()({
   },
 })
 
-function Caption({
+const Caption = observer(function Caption({
   warn = false,
   children,
 }: {
@@ -52,9 +52,15 @@ function Caption({
       {children}
     </Typography>
   )
-}
+})
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
+const Group = observer(function Group({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
   const { classes } = useStyles()
   return (
     <section className={classes.group}>
@@ -64,9 +70,9 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       {children}
     </section>
   )
-}
+})
 
-function SettingSwitch({
+const SettingSwitch = observer(function SettingSwitch({
   label,
   checked,
   onChange,
@@ -94,10 +100,10 @@ function SettingSwitch({
       {children}
     </div>
   )
-}
+})
 
 // one dropdown setting, at the dialog's width, and its caption
-function SettingSelect<T extends string>({
+const SettingSelect = observer(function SettingSelect<T extends string>({
   children,
   ...props
 }: Omit<Parameters<typeof LabelledSelect<T>>[0], 'size' | 'sx'> & {
@@ -110,7 +116,7 @@ function SettingSelect<T extends string>({
       {children}
     </div>
   )
-}
+})
 
 const NODE_LIMITS = [5000, 20_000, 50_000, 100_000]
 
@@ -127,7 +133,7 @@ interface NamedTrack {
 }
 
 // '' leaves the pick to the heuristic, so a session can go back to it
-function TrackPickSetting({
+const TrackPickSetting = observer(function TrackPickSetting({
   label,
   choices,
   stored,
@@ -161,7 +167,7 @@ function TrackPickSetting({
       {children}
     </SettingSelect>
   ) : null
-}
+})
 
 // Toggles the menus already offer (halos, genes, color) stay out of here.
 // `children` is the host's own part of the subgraph group.

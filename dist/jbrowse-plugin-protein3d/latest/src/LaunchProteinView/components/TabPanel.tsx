@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 
+import { observer } from 'mobx-react'
+
 // A panel mounts the first time its tab is selected and stays mounted after,
 // hidden via the `hidden` attribute. Mounting lazily keeps a tab's fetches
 // (PDBe, AlphaFold, molstar parsing) from firing for a tab nobody opened;
 // staying mounted preserves its in-progress work across tab switches.
-export default function TabPanel({
+const TabPanel = observer(function TabPanel({
   children,
   value,
   index,
@@ -24,4 +26,6 @@ export default function TabPanel({
       {visited ? children : null}
     </div>
   )
-}
+})
+
+export default TabPanel

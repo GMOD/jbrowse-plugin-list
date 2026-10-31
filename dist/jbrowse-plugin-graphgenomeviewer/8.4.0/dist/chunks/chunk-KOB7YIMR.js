@@ -1,2 +1,0 @@
-var e=JBrowseExports["@jbrowse/core/util/rxjs"],r=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/core/util/rxjs' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o}),s=r("ObservableCreate");var t=e&&e.__esModule?e.default:e;export{s as a};
-//# sourceMappingURL=chunk-KOB7YIMR.js.map

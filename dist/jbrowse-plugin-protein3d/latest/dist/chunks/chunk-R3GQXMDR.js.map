@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["jbrowse-host:react/jsx-runtime"],
+  "sourcesContent": ["const host = JBrowseExports[\"react/jsx-runtime\"]\nconst read = name =>\n  host != null && name in Object(host)\n    ? host[name]\n    : Object.assign(\n        function () {\n          throw new Error(\"This JBrowse does not provide '\" + name + \"' from '\" + \"react/jsx-runtime\" + \"' to plugins: \" + \"Protein3d was built for a different JBrowse version, so update the plugin or JBrowse\")\n        },\n        { jbrowseHostMissing: name },\n      )\nexport const Fragment = /* @__PURE__ */ read(\"Fragment\")\nexport const jsx = /* @__PURE__ */ read(\"jsx\")\nexport const jsxs = /* @__PURE__ */ read(\"jsxs\")\nexport default host && host.__esModule ? host.default : host"],
+  "mappings": "AAAA,IAAMA,EAAO,eAAe,mBAAmB,EACzCC,EAAOC,GACXF,GAAQ,MAAQE,KAAQ,OAAOF,CAAI,EAC/BA,EAAKE,CAAI,EACT,OAAO,OACL,UAAY,CACV,MAAM,IAAI,MAAM,kCAAoCA,EAAO,6HAA4I,CACzM,EACA,CAAE,mBAAoBA,CAAK,CAC7B,EACOC,EAA2BF,EAAK,UAAU,EAC1CG,EAAsBH,EAAK,KAAK,EAChCI,EAAuBJ,EAAK,MAAM,EACxCK,EAAQN,GAAQA,EAAK,WAAaA,EAAK,QAAUA",
+  "names": ["host", "read", "name", "Fragment", "jsx", "jsxs", "jsx_runtime_default"]
+}

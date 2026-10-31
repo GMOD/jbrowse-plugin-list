@@ -1,9 +1,10 @@
 import React from 'react';
 import { Dialog } from '@jbrowse/core/ui';
 import { Button, DialogActions, DialogContent, Divider, Typography, } from '@mui/material';
+import { observer } from 'mobx-react';
 import ExternalLink from '../../components/ExternalLink';
 const ISSUES_URL = 'https://github.com/GMOD/jbrowse-plugin-protein3d/issues';
-export default function HelpDialog({ handleClose, }) {
+const HelpDialog = observer(function HelpDialog({ handleClose, }) {
     return (React.createElement(Dialog, { open: true, maxWidth: "lg", onClose: handleClose, title: "Help" },
         React.createElement(DialogContent, null,
             React.createElement(Typography, { sx: { mb: 2 } }, "Each tab finds a structure a different way. All of them end in the same place: the plugin aligns the structure's residues to the protein sequence it translates from the transcript you pick, and that alignment maps genome coordinates onto positions in the 3D view."),
@@ -30,4 +31,5 @@ export default function HelpDialog({ handleClose, }) {
         React.createElement(Divider, null),
         React.createElement(DialogActions, null,
             React.createElement(Button, { onClick: handleClose, color: "primary" }, "Close"))));
-}
+});
+export default HelpDialog;

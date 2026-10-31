@@ -70,7 +70,7 @@ interface TrackRow {
   selectsResidue?: boolean
 }
 
-function GutterLabel({
+const GutterLabel = observer(function GutterLabel({
   label,
   title,
 }: {
@@ -91,7 +91,7 @@ function GutterLabel({
       </div>
     </Tooltip>
   )
-}
+})
 
 const ProteinAlignment = observer(function ProteinAlignment({
   model,

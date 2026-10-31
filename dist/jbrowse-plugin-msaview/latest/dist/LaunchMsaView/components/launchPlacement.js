@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { observer } from 'mobx-react';
 import { readLaunchPlacement } from '../../utils/workspaces';
 /**
  * Whether the launch opens beside the genome view — one answer for the whole
@@ -13,10 +14,10 @@ import { readLaunchPlacement } from '../../utils/workspaces';
  * other business with placement.
  */
 const LaunchPlacementContext = createContext(undefined);
-export function LaunchPlacementProvider({ children, }) {
+export const LaunchPlacementProvider = observer(function LaunchPlacementProvider({ children, }) {
     const state = useState(() => readLaunchPlacement() === 'splitRight');
     return (React.createElement(LaunchPlacementContext.Provider, { value: state }, children));
-}
+});
 /** the dialog's answer, or a private one for a panel rendered outside it */
 export function useLaunchPlacement() {
     const shared = useContext(LaunchPlacementContext);
