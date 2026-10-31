@@ -231,10 +231,10 @@ Point-in-time, checked 2026-08-26 — re-check rather than trust:
   above). [Issue 34](https://github.com/GMOD/jbrowse-plugin-list/issues/34)
   tracks restoring it.
 - **TandemRepeat is delisted (2026-10-30).** The Tandem repeat card in
-  jbrowse-components' variant feature widget draws the same `<CNV:TR>`
-  alleles; the plugin takes bug fixes but no new features. It was delisted by
-  removing the entry alone, with no range or `latest/` step, since no
-  published config named it. A formal delisting process is an open idea.
+  jbrowse-components' variant feature widget draws the same `<CNV:TR>` alleles;
+  the plugin takes bug fixes but no new features. It was delisted by removing
+  the entry alone, with no range or `latest/` step, since no published config
+  named it. A formal delisting process is an open idea.
 - **`plugins.json` lists 15 plugins** as of 2026-09-28, not the 17 several ADRs
   measured on 2026-08-06 or the 13 that stood after quantseq was retired and
   before GraphGenomeView and TandemRepeat joined. Those numbers are dated
