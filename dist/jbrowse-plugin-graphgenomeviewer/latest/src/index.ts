@@ -14,7 +14,9 @@ import LaunchGraphGenomeViewF from './LaunchGraphGenomeView'
 import LinearGraphDisplayF from './LinearGraphDisplay/index'
 import MinigraphBubbleAdapterF from './MinigraphBubbleAdapter/index'
 import RgfaTabixAdapterF from './RgfaTabixAdapter/index'
-import WalkFormsMenuF from './WalkFormsAdapter/formsMenu'
+import WalkFormsMenuF, {
+  warnIfNoFormsDisplay,
+} from './WalkFormsAdapter/formsMenu'
 import WalkFormsAdapterF from './WalkFormsAdapter/index'
 import WalkTabixSyntenyAdapterF from './WalkTabixSyntenyAdapter/index'
 import GraphTrackDefaultsF from './graphTrackDefaults/index'
@@ -56,6 +58,7 @@ export default class GraphGenomeViewPlugin extends Plugin {
   // jbrowse.org/ucsc launch by appending to a menu a released host defines as
   // a function. The view is still reachable without the entry.
   configure(pluginManager: PluginManager) {
+    warnIfNoFormsDisplay(pluginManager)
     try {
       if (isAbstractMenuManager(pluginManager.rootModel)) {
         pluginManager.rootModel.appendToSubMenu(['Add'], {

@@ -12,7 +12,14 @@ import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
 import type { MenuItem } from '@jbrowse/core/ui'
 import type { IAnyModelType, IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
 
-export const FORMS_DISPLAYS = ['LinearMultiSampleVariantDisplay']
+// By track type, not display name, which has changed across releases; the
+// mixin is inert off a WalkFormsAdapter track
+export function takesFormsMenu(display: DisplayType) {
+  return (
+    display.viewType === 'LinearGenomeView' &&
+    [display.trackType].flat().includes('VariantTrack')
+  )
+}
 
 export const FLOORS: { label: string; value: FloorBp }[] = [
   { label: 'Auto', value: 'auto' },
@@ -191,12 +198,18 @@ export function withFormsMenu(model: IAnyModelType) {
 
 export default function WalkFormsMenuF(pluginManager: PluginManager) {
   pluginManager.addToExtensionPoint('Core-extendPluggableElement', element => {
-    if (
-      element instanceof DisplayType &&
-      FORMS_DISPLAYS.includes(element.name)
-    ) {
+    if (element instanceof DisplayType && takesFormsMenu(element)) {
       element.extendStateModel(withFormsMenu)
     }
     return element
   })
+}
+
+export function warnIfNoFormsDisplay(pluginManager: PluginManager) {
+  const displays = pluginManager.getElementTypesInGroup('display')
+  if (!displays.some(d => d instanceof DisplayType && takesFormsMenu(d))) {
+    console.warn(
+      'jbrowse-plugin-graphgenomeviewer: no linear VariantTrack display is registered, so WalkFormsAdapter tracks get no pin or floor menu',
+    )
+  }
 }
