@@ -460,7 +460,7 @@ function windowDeletion({
     refName,
     start,
     end,
-    type: 'deletion',
+    type: 'skip',
     strand: reverse ? -1 : 1,
     syntenyId: id,
     spansWindow: true,
