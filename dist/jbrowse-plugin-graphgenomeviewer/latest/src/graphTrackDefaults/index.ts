@@ -1,14 +1,7 @@
-import { buildAdapterConfig } from '../GraphAddTrackWorkflow/buildTrackConfig'
-import { isGraphIndexLocation } from '../GraphAddTrackWorkflow/graphManifest'
-import {
-  WALKS_SUFFIX,
-  locationName,
-  readsSiblings,
-  walkFileSample,
-} from '../locationName'
+import { guessGraphAdapter } from './guessAdapter'
+import { walkFileSample } from '../locationName'
 import { LANE_ADAPTERS } from '../panSNAliases/trackAdapterConfig'
 
-import type { GraphFileChoice } from '../GraphAddTrackWorkflow/buildTrackConfig'
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { FileLocation } from '@jbrowse/core/util'
 import type {
@@ -18,14 +11,14 @@ import type {
 
 type TrackConfigSnapshot = Record<string, unknown>
 
-const GRAPH_ADAPTERS = new Set(['RgfaTabixAdapter', 'GbzBaseSyntenyAdapter'])
-
-export function isGbzLocation(loc: FileLocation) {
-  return locationName(loc).toLowerCase().endsWith('.gbz.db')
-}
+const GRAPH_ADAPTERS = new Set([
+  'RgfaTabixAdapter',
+  'GbzBaseSyntenyAdapter',
+  'WalkTabixSyntenyAdapter',
+])
 
 // A lanes adapter cuts on the first assembly it names. A track added through
-// Add track names that assembly on the track alone.
+// Open track names that assembly on the track alone.
 export function withLaneAnchor(snap: TrackConfigSnapshot) {
   const adapter = snap.adapter as
     { type?: string; assemblyNames?: unknown[] } | undefined
@@ -37,6 +30,8 @@ export function withLaneAnchor(snap: TrackConfigSnapshot) {
     ? { ...snap, adapter: { ...adapter, assemblyNames: snap.assemblyNames } }
     : snap
 }
+
+const WALK_ADAPTERS = new Set(['RgfaTabixAdapter', 'WalkTabixSyntenyAdapter'])
 
 // A walk file opened with no PanSN map reads as the sample its name gives, on
 // the track's assembly; a guessed adapter had no assembly to key that by
@@ -52,7 +47,9 @@ export function withWalkReference(snap: TrackConfigSnapshot) {
     ? (snap.assemblyNames as string[])
     : []
   const sample =
-    adapter?.type === 'RgfaTabixAdapter' && adapter.walksLocation
+    adapter?.type !== undefined &&
+    WALK_ADAPTERS.has(adapter.type) &&
+    adapter.walksLocation
       ? walkFileSample(adapter.walksLocation)
       : undefined
   return assembly &&
@@ -64,40 +61,6 @@ export function withWalkReference(snap: TrackConfigSnapshot) {
         adapter: { ...adapter, assemblyNameToPanSN: { [assembly]: sample } },
       }
     : snap
-}
-
-export function guessGraphAdapter(
-  file: FileLocation,
-  index?: FileLocation,
-  adapterHint?: string,
-) {
-  const guess = (choice: GraphFileChoice) =>
-    buildAdapterConfig({
-      choice,
-      loc: file,
-      indexLoc: index,
-      assembly: '',
-      sample: '',
-    })
-  if (
-    (!adapterHint || adapterHint === 'GbzBaseSyntenyAdapter') &&
-    isGbzLocation(file)
-  ) {
-    return guess('GbzBaseSyntenyAdapter')
-  }
-  if (!adapterHint || adapterHint === 'RgfaTabixAdapter') {
-    if (isGraphIndexLocation(file)) {
-      return guess('RgfaTabixAdapter')
-    }
-    // a file picked in the browser has no index beside it to assume
-    if (
-      locationName(file).endsWith(WALKS_SUFFIX) &&
-      (index !== undefined || readsSiblings(file))
-    ) {
-      return guess('RgfaTabixWalks')
-    }
-  }
-  return undefined
 }
 
 export default function GraphTrackDefaultsF(pluginManager: PluginManager) {
@@ -122,6 +85,8 @@ export default function GraphTrackDefaultsF(pluginManager: PluginManager) {
       (adapterName, file) =>
         GRAPH_ADAPTERS.has(adapterName)
           ? 'GraphTrack'
-          : next(adapterName, file),
+          : adapterName === 'MinigraphBubbleAdapter'
+            ? 'FeatureTrack'
+            : next(adapterName, file),
   )
 }

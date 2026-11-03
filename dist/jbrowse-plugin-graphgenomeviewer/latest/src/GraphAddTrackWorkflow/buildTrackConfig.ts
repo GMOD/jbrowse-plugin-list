@@ -14,25 +14,31 @@ import {
 import type { GraphManifest } from './graphManifest'
 import type { FileLocation } from '@jbrowse/core/util'
 
-// 'RgfaTabixWalks' is an RgfaTabixAdapter read from a walk file
+// 'RgfaTabixWalks' is an RgfaTabixAdapter read from a walk file, which draws
+// the graph without haplotype lanes
 export type GraphFileChoice =
   | 'RgfaTabixAdapter'
   | 'RgfaTabixWalks'
+  | 'WalkTabixSyntenyAdapter'
   | 'GbzBaseSyntenyAdapter'
   | 'MinigraphBubbleAdapter'
 
 export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter: 'Indexed GFA (gfa-to-tabix .segs.bed.gz or .graph.bed.gz)',
-  RgfaTabixWalks: 'Haplotype walks (.walks.bed.gz)',
+  RgfaTabixWalks: 'Haplotype walks without lanes (.walks.bed.gz)',
+  WalkTabixSyntenyAdapter: 'Haplotype walks (.walks.bed.gz)',
   GbzBaseSyntenyAdapter: 'GBZ database (.gbz.db)',
   MinigraphBubbleAdapter: 'Minigraph bubbles (tabix BED)',
 }
 
+const WALKS_FIELD =
+  'Path to a walk file (<prefix>.<sample>.walks.bed.gz from gfa-to-tabix --walks, for the sample this assembly is)'
+
 export const GRAPH_FILE_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter:
     "Path to segments BED (.segs.bed.gz from gfa-to-tabix; the .links.bed.gz, its index and any .graph.json are read beside it), or format 2's .graph.bed.gz",
-  RgfaTabixWalks:
-    'Path to a walk file (<prefix>.<sample>.walks.bed.gz from gfa-to-tabix --walks, for the sample this assembly is)',
+  RgfaTabixWalks: WALKS_FIELD,
+  WalkTabixSyntenyAdapter: WALKS_FIELD,
   GbzBaseSyntenyAdapter: 'Path to the .gbz.db written by gbz-base construct',
   MinigraphBubbleAdapter: 'Path to bubbles BED (.bed.gz from gfatools bubble)',
 }
@@ -43,6 +49,7 @@ const TABIX_INDEX_FIELD =
 export const GRAPH_INDEX_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter: TABIX_INDEX_FIELD,
   RgfaTabixWalks: TABIX_INDEX_FIELD,
+  WalkTabixSyntenyAdapter: TABIX_INDEX_FIELD,
   GbzBaseSyntenyAdapter:
     'Path to the haplotype index (optional; graph.haplotype-index.db beside the database is assumed)',
   MinigraphBubbleAdapter: TABIX_INDEX_FIELD,
@@ -167,14 +174,14 @@ export function buildAdapterConfig({
   // a walk file's haplotypes to cut for until the user picks others
   haplotypes?: string[]
 }) {
-  if (choice === 'RgfaTabixWalks') {
+  if (choice === 'RgfaTabixWalks' || choice === 'WalkTabixSyntenyAdapter') {
     if (!locationName(loc).endsWith(WALKS_SUFFIX)) {
       throw new Error(
         `Expected a walk file ending in ${WALKS_SUFFIX}, got ${locationName(loc)}`,
       )
     }
     return {
-      type: 'RgfaTabixAdapter',
+      type: choice === 'RgfaTabixWalks' ? 'RgfaTabixAdapter' : choice,
       walksLocation: loc,
       walksIndex: tabixIndex(loc, indexLoc),
       ...referencePanSN(assembly, sample, walkFileSample(loc)),

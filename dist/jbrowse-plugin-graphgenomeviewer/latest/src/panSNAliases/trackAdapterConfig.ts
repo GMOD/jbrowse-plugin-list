@@ -1,5 +1,6 @@
 import { readConfObject } from '@jbrowse/core/configuration'
 import { getSession } from '@jbrowse/core/util'
+import { getConfAssemblyNamesOrNone } from '@jbrowse/core/util/tracks'
 
 import { trackAdapterSnapshot, walkIndexed } from '../graphTrackConfig'
 
@@ -19,12 +20,31 @@ export interface AssemblyAliases {
 // parts name a contig, not a haplotype.
 const PANSN_HAPLOTYPE = /^[^#]+#\d+$/
 
-// The config's `assemblyNameToPanSN` with each assembly's PanSN alias added
-// beneath it: an entry wins for its assembly and for its prefix. Unchanged when
-// no alias qualifies, so such a track keeps its adapter cache key.
+// `HG00621.1`, as HPRC and the hosted configs name a haplotype's assembly, and
+// as a MAF names its rows
+const DOTTED_HAPLOTYPE = /^([^#]+)\.(\d+)$/
+
+function aliasHaplotype({ aliases }: AssemblyAliases) {
+  return aliases.find(a => PANSN_HAPLOTYPE.test(a))
+}
+
+function dottedHaplotype({ name }: AssemblyAliases) {
+  const dotted = DOTTED_HAPLOTYPE.exec(name)
+  return dotted ? `${dotted[1]}#${dotted[2]}` : undefined
+}
+
+// The config's `assemblyNameToPanSN` with each assembly's PanSN haplotype
+// added beneath it, so a lane on that haplotype draws on the assembly and its
+// genes. An entry wins for its assembly and for its prefix, then a
+// `sample#haplotype` alias, then the assembly's own name read as
+// `sample.haplotype`. The anchor's name is never read so, since an accession
+// such as GCA_000001405.15 has that shape and the anchor is the walk file's
+// reference, not one of its lanes. Unchanged when no assembly qualifies, so
+// such a track keeps its adapter cache key.
 export function withPanSNAliases(
   adapterConfig: Record<string, unknown>,
   assemblies: AssemblyAliases[],
+  anchor?: string,
 ) {
   const explicit = (adapterConfig.assemblyNameToPanSN ?? {}) as Record<
     string,
@@ -32,10 +52,22 @@ export function withPanSNAliases(
   >
   const claimed = new Set(Object.values(explicit))
   const fromAliases: Record<string, string> = {}
-  for (const { name, aliases } of assemblies) {
-    const prefix = aliases.find(alias => PANSN_HAPLOTYPE.test(alias))
-    if (prefix !== undefined && !claimed.has(prefix)) {
-      fromAliases[name] = prefix
+  const lanes = assemblies.filter(a => a.name !== anchor)
+  for (const [read, from] of [
+    [aliasHaplotype, assemblies],
+    [dottedHaplotype, lanes],
+  ] as const) {
+    for (const assembly of from) {
+      const prefix = read(assembly)
+      if (
+        prefix !== undefined &&
+        !claimed.has(prefix) &&
+        !(assembly.name in explicit) &&
+        !(assembly.name in fromAliases)
+      ) {
+        fromAliases[assembly.name] = prefix
+        claimed.add(prefix)
+      }
     }
   }
   return Object.keys(fromAliases).length === 0
@@ -46,6 +78,13 @@ export function withPanSNAliases(
       }
 }
 
+function canonicalName(assemblies: AssemblyAliases[], name: string) {
+  return (
+    assemblies.find(a => a.name === name || a.aliases.includes(name))?.name ??
+    name
+  )
+}
+
 // The config's `assemblyNames` and `assemblyNameToPanSN` keys by each
 // assembly's canonical name, the name a window arrives with. An alias renamed
 // here still resolves to itself as a PanSN prefix. Unchanged when every name is
@@ -54,9 +93,7 @@ export function withCanonicalAssemblyNames(
   adapterConfig: Record<string, unknown>,
   assemblies: AssemblyAliases[],
 ) {
-  const canonical = (name: string) =>
-    assemblies.find(a => a.name === name || a.aliases.includes(name))?.name ??
-    name
+  const canonical = (name: string) => canonicalName(assemblies, name)
   const names = (adapterConfig.assemblyNames ?? []) as string[]
   const explicit = (adapterConfig.assemblyNameToPanSN ?? {}) as Record<
     string,
@@ -113,8 +150,10 @@ export function trackAdapterConfig(
       aliases: readConfObject(conf, 'aliases'),
     }),
   )
+  const [anchor] = getConfAssemblyNamesOrNone(track)
   return withPanSNAliases(
     withCanonicalAssemblyNames(adapterConfig, assemblies),
     assemblies,
+    anchor === undefined ? undefined : canonicalName(assemblies, anchor),
   )
 }

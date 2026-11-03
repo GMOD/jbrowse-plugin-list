@@ -54,7 +54,7 @@ const useStyles = makeStyles()(theme => ({
 
 const CHOICES: GraphFileChoice[] = [
   'RgfaTabixAdapter',
-  'RgfaTabixWalks',
+  'WalkTabixSyntenyAdapter',
   'GbzBaseSyntenyAdapter',
   'MinigraphBubbleAdapter',
 ]
@@ -72,7 +72,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
   const [indexLoc, setIndexLoc] = useState<FileLocation>()
   const [readsLoc, setReadsLoc] = useState<FileLocation>()
   const gbz = choice === 'GbzBaseSyntenyAdapter'
-  const walks = choice === 'RgfaTabixWalks'
+  const walks = choice === 'WalkTabixSyntenyAdapter'
   const [sample, setSample] = useState('')
   const [haplotypes, setHaplotypes] = useState('')
   const [trackName, setTrackName] = useState('Pangenome graph')

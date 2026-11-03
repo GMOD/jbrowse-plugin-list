@@ -119,14 +119,84 @@ test("a walk lanes adapter naming no assemblies takes the track's", () => {
   })
 })
 
-test('a walk file guesses a walk-indexed rGFA adapter', () => {
+test('a walk file guesses the lanes adapter, so the track has graph and lanes', () => {
   const walks = uri('https://example.com/chr22.GRCh38.walks.bed.gz?sig=1')
-  expect(guessers().adapter(walks)).toEqual({
-    type: 'RgfaTabixAdapter',
+  const expected = {
     walksLocation: walks,
     walksIndex: {
       indexType: 'TBI',
       location: uri('https://example.com/chr22.GRCh38.walks.bed.gz.tbi?sig=1'),
+    },
+  }
+  const { adapter, trackType } = guessers()
+  expect(adapter(walks)).toEqual({
+    type: 'WalkTabixSyntenyAdapter',
+    ...expected,
+  })
+  expect(adapter(walks, undefined, 'WalkTabixSyntenyAdapter')).toEqual({
+    type: 'WalkTabixSyntenyAdapter',
+    ...expected,
+  })
+  expect(adapter(walks, undefined, 'RgfaTabixAdapter')).toEqual({
+    type: 'RgfaTabixAdapter',
+    ...expected,
+  })
+  expect(trackType('WalkTabixSyntenyAdapter')).toBe('GraphTrack')
+})
+
+test('a walk file picked in the browser needs its index picked too', () => {
+  const picked = (name: string) => ({
+    name,
+    blobId: name,
+    locationType: 'BlobLocation' as const,
+  })
+  const { adapter } = guessers()
+  expect(adapter(picked('g.GRCh38.walks.bed.gz'))).toEqual({
+    type: 'Fallback',
+  })
+  expect(
+    adapter(picked('g.GRCh38.walks.bed.gz'), picked('g.walks.bed.gz.csi')),
+  ).toMatchObject({
+    type: 'WalkTabixSyntenyAdapter',
+    walksIndex: { indexType: 'CSI' },
+  })
+})
+
+test("gfa-to-tabix's bubbles file guesses a bubble feature track", () => {
+  const bubbles = uri('https://example.com/hprc.bubbles.bed.gz')
+  const { adapter, trackType } = guessers()
+  expect(adapter(bubbles)).toEqual({
+    type: 'MinigraphBubbleAdapter',
+    bubblesLocation: bubbles,
+    index: {
+      indexType: 'TBI',
+      location: uri('https://example.com/hprc.bubbles.bed.gz.tbi'),
+    },
+  })
+  expect(
+    adapter(
+      uri('https://example.com/b.bed.gz'),
+      undefined,
+      'MinigraphBubbleAdapter',
+    ),
+  ).toMatchObject({ type: 'MinigraphBubbleAdapter' })
+  expect(adapter(bubbles, undefined, 'BedTabixAdapter')).toEqual({
+    type: 'Fallback',
+  })
+  expect(trackType('MinigraphBubbleAdapter')).toBe('FeatureTrack')
+})
+
+test('a CSI beside the segments implies one beside the links', () => {
+  expect(
+    guessers().adapter(
+      uri('https://example.com/hprc.segs.bed.gz'),
+      uri('https://example.com/hprc.segs.bed.gz.CSI'),
+    ),
+  ).toMatchObject({
+    segmentsIndex: { indexType: 'CSI' },
+    linksIndex: {
+      indexType: 'CSI',
+      location: { uri: 'https://example.com/hprc.links.bed.gz.csi' },
     },
   })
 })
@@ -150,4 +220,11 @@ test("a walk file with no PanSN map reads as its name's sample on the track's as
   expect(withWalkReference(mapped)).toBe(mapped)
   const same = { ...track, assemblyNames: ['GRCh38'] }
   expect(withWalkReference(same)).toBe(same)
+  const lanes = {
+    ...track,
+    adapter: { ...track.adapter, type: 'WalkTabixSyntenyAdapter' },
+  }
+  expect(withWalkReference(lanes).adapter).toMatchObject({
+    assemblyNameToPanSN: { hg38: 'GRCh38' },
+  })
 })

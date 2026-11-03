@@ -50,10 +50,31 @@ describe('the map a track sends', () => {
   test('a bare sample, a contig name or a non-numeric haplotype is not read', () => {
     const config = withPanSNAliases(GBZ, [
       { name: 'hg38', aliases: ['GRCh38', 'hg38.p14'] },
-      { name: 'HG002.1', aliases: ['HG002#1#chr6'] },
+      { name: 'HG002', aliases: ['HG002#1#chr6'] },
       { name: 'odd', aliases: ['odd#a', '#1', 'odd#'] },
+      { name: 'hg38.p14', aliases: [] },
     ])
     expect(config).toBe(GBZ)
+  })
+
+  test('an assembly named sample.haplotype maps to that haplotype, its alias first', () => {
+    expect(
+      withPanSNAliases(GBZ, [
+        { name: 'HG00621.1', aliases: [] },
+        { name: 'HG00621.2', aliases: ['HG00438#1'] },
+        { name: 'HG00438.1', aliases: [] },
+      ]).assemblyNameToPanSN,
+    ).toEqual({ 'HG00621.1': 'HG00621#1', 'HG00621.2': 'HG00438#1' })
+  })
+
+  test("the anchor's own name is not read as a haplotype", () => {
+    expect(
+      withPanSNAliases(
+        { ...GBZ, assemblyNames: ['GCA_000001405.15'] },
+        [{ name: 'GCA_000001405.15', aliases: [] }],
+        'GCA_000001405.15',
+      ),
+    ).toEqual({ ...GBZ, assemblyNames: ['GCA_000001405.15'] })
   })
 
   test("the config's own entry wins for its assembly and for its prefix", () => {
@@ -72,9 +93,9 @@ describe('the map a track sends', () => {
     })
   })
 
-  test('an assembly with no PanSN alias leaves the config as it was', () => {
+  test('an assembly with no PanSN alias or haplotype name leaves the config as it was', () => {
     const config = { ...GBZ, assemblyNameToPanSN: { hg38: 'GRCh38#0' } }
-    expect(withPanSNAliases(config, [{ name: 'HG00621.1', aliases: [] }])).toBe(
+    expect(withPanSNAliases(config, [{ name: 'HG00621', aliases: [] }])).toBe(
       config,
     )
   })
@@ -260,10 +281,18 @@ describe('the lanes the adapter reads with that map', () => {
     expect(await laneNamed(adapter, 'HG00621#1')).toBe('HG00621#1')
   })
 
-  test('an assembly with neither keeps its lane at the PanSN prefix', async () => {
+  test('an assembly named sample.haplotype names the lane and reads its contigs', async () => {
     const adapter = lanesAdapter([{ name: 'HG00621.1', aliases: [] }])
+    expect(await laneNamed(adapter, 'HG00621#1')).toBe('HG00621.1')
+    expect(
+      await adapter.getRefNames({ assemblyName: 'HG00621.1' }),
+    ).not.toEqual([])
+  })
+
+  test('an assembly with neither keeps its lane at the PanSN prefix', async () => {
+    const adapter = lanesAdapter([{ name: 'mine', aliases: [] }])
     expect(await laneNamed(adapter, 'HG00621#1')).toBe('HG00621#1')
-    expect(await adapter.getRefNames({ assemblyName: 'HG00621.1' })).toEqual([])
+    expect(await adapter.getRefNames({ assemblyName: 'mine' })).toEqual([])
   })
 })
 
@@ -337,7 +366,11 @@ test.each(['GbzBaseSyntenyAdapter', 'WalkTabixSyntenyAdapter'])(
       .volatile(() => ({
         rpcManager: {},
         assemblyManager: {
-          assemblyList: [{ name: 'hg38', aliases: ['GRCh38'] }, HG00621_1],
+          assemblyList: [
+            { name: 'hg38', aliases: ['GRCh38'] },
+            HG00621_1,
+            { name: 'HG00438.1', aliases: [] },
+          ],
           get: () => undefined,
           has: () => true,
           isValidRefName: () => true,
@@ -367,6 +400,7 @@ test.each(['GbzBaseSyntenyAdapter', 'WalkTabixSyntenyAdapter'])(
     expect(display.adapterConfig.assemblyNames).toEqual(['hg38'])
     expect(display.adapterConfig.assemblyNameToPanSN).toEqual({
       'HG00621.1': 'HG00621#1',
+      'HG00438.1': 'HG00438#1',
       hg38: 'GRCh38#0',
     })
   },

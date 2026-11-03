@@ -77,10 +77,10 @@ test('switching the file type forgets the index chosen for the last one', async 
   expect(added[0]!.adapter).not.toHaveProperty('haplotypeIndexLocation')
 })
 
-test('a walk file adds a walk-indexed rGFA track for the haplotypes typed', async () => {
+test('a walk file adds a track with lanes, cut for the haplotypes typed', async () => {
   added.length = 0
   picks.set(
-    GRAPH_FILE_FIELDS.RgfaTabixWalks,
+    GRAPH_FILE_FIELDS.WalkTabixSyntenyAdapter,
     'https://example.com/chr22.GRCh38.walks.bed.gz',
   )
   render(
@@ -93,8 +93,10 @@ test('a walk file adds a walk-indexed rGFA track for the haplotypes typed', asyn
       }
     />,
   )
-  fireEvent.click(screen.getByLabelText(GRAPH_FILE_LABELS.RgfaTabixWalks))
-  fireEvent.click(screen.getByText(GRAPH_FILE_FIELDS.RgfaTabixWalks))
+  fireEvent.click(
+    screen.getByLabelText(GRAPH_FILE_LABELS.WalkTabixSyntenyAdapter),
+  )
+  fireEvent.click(screen.getByText(GRAPH_FILE_FIELDS.WalkTabixSyntenyAdapter))
   fireEvent.change(screen.getByTestId('graph-haplotypes-input'), {
     target: { value: 'HG002, HG00733#1' },
   })
@@ -103,7 +105,7 @@ test('a walk file adds a walk-indexed rGFA track for the haplotypes typed', asyn
     expect(added).toHaveLength(1)
   })
   expect(added[0]!.adapter).toEqual({
-    type: 'RgfaTabixAdapter',
+    type: 'WalkTabixSyntenyAdapter',
     walksLocation: {
       uri: 'https://example.com/chr22.GRCh38.walks.bed.gz',
       locationType: 'UriLocation',

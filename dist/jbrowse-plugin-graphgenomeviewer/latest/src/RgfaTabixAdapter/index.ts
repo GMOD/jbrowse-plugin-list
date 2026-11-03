@@ -11,8 +11,9 @@ export default function RgfaTabixAdapterF(pluginManager: PluginManager) {
         name: 'RgfaTabixAdapter',
         displayName: 'Indexed rGFA adapter',
         configSchema,
-        // what a graph display needs of its track's adapter
-        adapterCapabilities: ['getSubgraph'],
+        // what a graph display needs of its track's adapter, and the
+        // reference's segments that its getFeatures gives the segments lane
+        adapterCapabilities: ['getSubgraph', 'referenceSegments'],
         adapterMetadata: {
           category: 'Graph adapters',
         },
