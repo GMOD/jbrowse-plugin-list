@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography, } from '@mui/material';
 import { parsePairwise } from 'clustal-js';
 import { observer } from 'mobx-react';
-import { entityAlignedTo, withoutStopColumn } from '../entityAlignedTo';
+import { entityAlignedTo, withoutStopColumns } from 'p2s_mapper';
 const ManualAlignmentDialog = observer(function ManualAlignmentDialog({ model, handleClose, }) {
     const [alignment, setAlignment] = useState('');
     const [parseError, setParseError] = useState();
@@ -26,7 +26,7 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({ model, h
                     setParseError(fit.problem);
                 }
                 else {
-                    alignmentStructure.importAlignment(withoutStopColumn(parsed));
+                    alignmentStructure.importAlignment(withoutStopColumns(parsed));
                     handleClose();
                 }
             }

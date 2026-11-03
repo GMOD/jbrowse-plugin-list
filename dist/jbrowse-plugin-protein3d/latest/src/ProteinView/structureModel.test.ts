@@ -1,6 +1,7 @@
 import { getSession } from '@jbrowse/core/util'
 import { destroy, getSnapshot, types } from '@jbrowse/mobx-state-tree'
 import { observable, reaction } from 'mobx'
+import { structurePos } from 'p2s_mapper'
 import { beforeEach, expect, test, vi } from 'vitest'
 
 import { structuresSettled } from './frameSelection'
@@ -598,7 +599,7 @@ async function loadFusedReceptor(snapshot: {
       },
     ],
   })
-  expect(model.structureSeqToTranscriptSeqPosition?.[5]).toBe(5)
+  expect(model.coordinateMapper?.structureToTranscript(structurePos(5))).toBe(5)
   await vi.waitFor(() => {
     expect(model.uniProtMappings).toBeDefined()
   })
@@ -607,14 +608,11 @@ async function loadFusedReceptor(snapshot: {
 
 test('residues SIFTS assigns to a fused partner leave the mapping, the stored alignment untouched', async () => {
   const model = await loadFusedReceptor({ alignmentImported: false })
-  const s2t = model.structureSeqToTranscriptSeqPosition!
-  expect([4, 5, 6, 7].map(p => s2t[p])).toEqual([
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-  ])
-  expect(s2t[8]).toBe(8)
+  const mapper = model.coordinateMapper!
+  expect(
+    [4, 5, 6, 7].map(p => mapper.structureToTranscript(structurePos(p))),
+  ).toEqual([undefined, undefined, undefined, undefined])
+  expect(mapper.structureToTranscript(structurePos(8))).toBe(8)
   expect(model.alignmentQuality?.aligned).toBe(8)
   expect(model.pairwiseAlignment).toEqual(FUSED_ALIGNMENT)
 })
@@ -623,11 +621,15 @@ test('residues SIFTS assigns to a fused partner leave the mapping, the stored al
 test('an imported alignment is used as given, fusion partner included', async () => {
   const fromSpec = await loadFusedReceptor({})
   expect(fromSpec.alignmentImported).toBe(true)
-  expect(fromSpec.structureSeqToTranscriptSeqPosition?.[5]).toBe(5)
+  expect(
+    fromSpec.coordinateMapper?.structureToTranscript(structurePos(5)),
+  ).toBe(5)
 
   const computed = await loadFusedReceptor({ alignmentImported: false })
   computed.setAlignment(FUSED_ALIGNMENT, true)
-  expect(computed.structureSeqToTranscriptSeqPosition?.[5]).toBe(5)
+  expect(
+    computed.coordinateMapper?.structureToTranscript(structurePos(5)),
+  ).toBe(5)
 })
 
 test('initialResidues seeds the selection by author numbering once the mapped entity is known', () => {
@@ -1247,7 +1249,9 @@ test('an alignment that spells no chain is set aside, reported, and replaced by 
   )
   expect(model.alignmentImported).toBe(false)
   expect(model.mappedEntityId).toBe('3')
-  expect(model.structureSeqToTranscriptSeqPosition?.[100]).toBe(100)
+  expect(model.coordinateMapper?.structureToTranscript(structurePos(100))).toBe(
+    100,
+  )
 })
 
 // An older session's alignment was computed from Mol*'s `label`, which a

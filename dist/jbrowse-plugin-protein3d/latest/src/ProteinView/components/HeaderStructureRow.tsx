@@ -16,6 +16,7 @@ import {
   SHORT_ALIGNMENT_IDENTITY,
   SHORT_ALIGNMENT_RESIDUES,
   describeAlignmentQuality,
+  describeCoverage,
   describeCoveredRange,
   describeTranscriptCoverage,
   isLowSimilarity,
@@ -23,7 +24,6 @@ import {
 } from 'p2s_mapper'
 
 import ChainSelect from './ChainSelect'
-import { describeCoverage } from '../describeCoverage'
 
 import type {
   JBrowsePluginProteinStructureModel,

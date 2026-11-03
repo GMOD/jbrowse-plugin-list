@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 
 import { rulerTicks } from './AlignmentRuler'
+import { alignmentToStructure } from '../../test_data/positionLookups'
 
 test('labels every tenth residue and ticks every fifth, in alignment columns', () => {
   // a gap at column 3 shifts structure positions right by one
@@ -10,7 +11,7 @@ test('labels every tenth residue and ticks every fifth, in alignment columns', (
       map[col] = col < 3 ? col : col - 1
     }
   }
-  expect(rulerTicks(map, 25, pos => pos + 1)).toEqual([
+  expect(rulerTicks(alignmentToStructure(map), 25, pos => pos + 1)).toEqual([
     { col: 5 }, // residue 5 sits at column 5 after the gap
     { col: 10, label: '10' },
     { col: 15 },
@@ -25,7 +26,7 @@ test('ticks follow the author numbering, not the position', () => {
   for (let col = 0; col < 12; col++) {
     map[col] = col
   }
-  expect(rulerTicks(map, 12, pos => pos + 94)).toEqual([
+  expect(rulerTicks(alignmentToStructure(map), 12, pos => pos + 94)).toEqual([
     { col: 1 }, // 95
     { col: 6, label: '100' },
     { col: 11 }, // 105

@@ -1,7 +1,7 @@
 import React from 'react';
 import { observer } from 'mobx-react';
+import { positionRuns } from 'p2s_mapper';
 import { HOVER_COLOR, HOVER_RANGE_COLOR, MATCH_COLOR, SELECTION_COLOR, SELECTION_OUTLINE, } from '../constants';
-import { positionRuns } from '../residueRanges';
 const Band = observer(function Band({ start, end, columnWidth, background, border, }) {
     return (React.createElement("div", { style: {
             position: 'absolute',

@@ -1,5 +1,4 @@
-import { isIdentical } from './alignOffThread';
-import { entityAlignedTo } from './entityAlignedTo';
+import { entityAlignedTo, sameProtein } from 'p2s_mapper';
 /**
  * Keeps an alignment computed here. Maps an imported one onto the chain it
  * spells, realigns one that spells none against the stored protein chain, and
@@ -27,7 +26,7 @@ export function decideAlignment(state) {
                 problem: fit.problem,
                 transcript,
                 entity,
-                identical: isIdentical(transcript, entity.seq),
+                identical: sameProtein(transcript, entity.seq),
             }
             : { kind: 'discard', problem: fit.problem };
     }
@@ -35,6 +34,6 @@ export function decideAlignment(state) {
         kind: 'choose',
         transcript,
         entities,
-        identical: entities.some(e => !e.nucleicAcid && isIdentical(transcript, e.seq)),
+        identical: entities.some(e => !e.nucleicAcid && sameProtein(transcript, e.seq)),
     };
 }

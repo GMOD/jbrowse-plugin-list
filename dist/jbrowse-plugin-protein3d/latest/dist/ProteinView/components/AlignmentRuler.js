@@ -1,5 +1,6 @@
 import React from 'react';
 import { observer } from 'mobx-react';
+import { alignmentCol } from 'p2s_mapper';
 import { ROW_HEIGHT } from '../constants';
 /** Which alignment columns get a tick, and which of those a label, in the
  * structure's author residue numbering (see residueNumber), so the ruler reads
@@ -11,7 +12,7 @@ export function rulerTicks(alignmentToStructure, columns, residueNumber) {
         return ticks;
     }
     for (let col = 0; col < columns; col++) {
-        const pos = alignmentToStructure[col];
+        const pos = alignmentToStructure(alignmentCol(col));
         if (pos === undefined) {
             continue;
         }
@@ -27,7 +28,7 @@ export function rulerTicks(alignmentToStructure, columns, residueNumber) {
 }
 const AlignmentRuler = observer(function AlignmentRuler({ model, columns, }) {
     const { columnWidth } = model;
-    const ticks = rulerTicks(model.pairwiseAlignmentToStructurePosition, columns, pos => model.residueNumber(pos));
+    const ticks = rulerTicks(model.coordinateMapper?.alignmentToStructure, columns, pos => model.residueNumber(pos));
     return (React.createElement("div", { style: {
             position: 'relative',
             height: '100%',

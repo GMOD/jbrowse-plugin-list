@@ -19,10 +19,9 @@ import {
 
 import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
-import type { FoldseekAlignment } from 'p2s_mapper'
+import type { FoldseekHit } from 'p2s_mapper'
 
-export interface FlattenedHit extends FoldseekAlignment {
-  db: string
+export interface FlattenedHit extends FoldseekHit {
   structureUrl?: string
 }
 

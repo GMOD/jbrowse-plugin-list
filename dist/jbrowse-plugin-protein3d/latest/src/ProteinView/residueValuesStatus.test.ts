@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 
 import { residueValuesStatus, valuesByPosition } from './residueValuesStatus'
+import { toStructure } from '../test_data/positionLookups'
 
 const entity = { entityId: '1', seqIds: [1, 2, 3, 4] }
 
@@ -19,7 +20,7 @@ test('places the values through the transcript to structure map', () => {
   const status = residueValuesStatus({
     values: { 1: 10, 2: 20, 3: 30 },
     entity,
-    transcriptToStructure: { 0: 0, 1: 1, 2: 3 },
+    transcriptToStructure: toStructure({ 0: 0, 1: 1, 2: 3 }),
   })
   expect(status.placed?.entityId).toBe('1')
   expect([...status.placed!.byLabelSeqId]).toEqual([
@@ -44,14 +45,14 @@ test('says so when no value lands on the structure', () => {
     residueValuesStatus({
       values: { 90: 1 },
       entity,
-      transcriptToStructure: { 0: 0 },
+      transcriptToStructure: toStructure({ 0: 0 }),
     }).message,
   ).toMatch(/None of the values/)
   expect(
     residueValuesStatus({
       values: undefined,
       entity,
-      transcriptToStructure: {},
+      transcriptToStructure: toStructure({}),
     }).message,
   ).toMatch(/No values/)
 })

@@ -13,6 +13,7 @@
  * a few.
  */
 import { colord } from '@jbrowse/core/util/colord';
+import { labelSeqIdAt, transcriptPos } from 'p2s_mapper';
 import loadMolstar from './loadMolstar';
 import { drawnTests } from './residueFilter';
 import { serialPerPlugin } from './serialPerPlugin';
@@ -78,8 +79,10 @@ export function sessionHighlightResidues({ highlights, mapping, naming, entity, 
         let firstPos;
         for (let base = h.start; base < h.end; base++) {
             const residue = mapping.g2p[base];
-            const structurePos = residue === undefined ? undefined : transcriptToStructure[residue];
-            const labelSeqId = structurePos === undefined ? undefined : entity.seqIds[structurePos];
+            const structurePos = residue === undefined
+                ? undefined
+                : transcriptToStructure(transcriptPos(residue));
+            const labelSeqId = labelSeqIdAt(entity, structurePos);
             if (structurePos !== undefined && labelSeqId !== undefined) {
                 labelSeqIds.add(labelSeqId);
                 firstPos = Math.min(firstPos ?? structurePos, structurePos);

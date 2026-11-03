@@ -1,7 +1,10 @@
+import { transcriptPos } from 'p2s_mapper'
+
 import { placeValues } from './variantEffects'
 
 import type { ResidueValues } from './proteinColor'
 import type { PlacedValues } from './variantEffects'
+import type { CoordinateMapper } from 'p2s_mapper'
 
 /** A session's values by 0-based transcript position. */
 export function valuesByPosition(values: ResidueValues) {
@@ -34,7 +37,7 @@ export function residueValuesStatus({
 }: {
   values: ResidueValues | undefined
   entity: { entityId: string; seqIds: readonly number[] } | undefined
-  transcriptToStructure: Record<number, number> | undefined
+  transcriptToStructure: CoordinateMapper['transcriptToStructure'] | undefined
 }): ResidueValuesStatus {
   if (!values) {
     return { message: 'No values to color the residues by' }
@@ -44,7 +47,7 @@ export function residueValuesStatus({
   }
   const placed = placeValues(
     valuesByPosition(values),
-    pos => transcriptToStructure[pos],
+    pos => transcriptToStructure(transcriptPos(pos)),
     entity,
   )
   return placed.byLabelSeqId.size > 0

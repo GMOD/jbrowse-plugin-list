@@ -2,6 +2,7 @@ import { genomeToTranscriptSeqMapping } from 'g2p_mapper'
 import { expect, test } from 'vitest'
 
 import { codonLocus, hoverReadout } from './hoverReadout'
+import { toTranscript } from '../test_data/positionLookups'
 
 import type { Entity } from 'p2s_mapper'
 
@@ -47,7 +48,7 @@ test('reads the author number, letter, chain and locus of a hovered residue', ()
     hoverReadout({
       hover: { structureSeqPos: 1, chain: 'A' },
       entity: CONSTRUCT,
-      structureToTranscript: { 0: 2, 1: 3, 2: 4, 3: 5 },
+      structureToTranscript: toTranscript({ 0: 2, 1: 3, 2: 4, 3: 5 }),
       transcript: 'PPMKAA',
       locus: 'chr1:10-12',
     }),
@@ -59,7 +60,7 @@ test('adds the transcript residue where the numbering disagrees with it', () => 
     hoverReadout({
       hover: { structureSeqPos: 1 },
       entity: CONSTRUCT,
-      structureToTranscript: { 1: 7 },
+      structureToTranscript: toTranscript({ 1: 7 }),
       transcript: 'PPPPPPPKAA',
       locus: undefined,
     }),
@@ -71,7 +72,7 @@ test('names the genome letter only where it differs from the structure', () => {
     hoverReadout({
       hover: { structureSeqPos: 1 },
       entity: CONSTRUCT,
-      structureToTranscript: { 1: 3 },
+      structureToTranscript: toTranscript({ 1: 3 }),
       transcript: 'PPMRAA',
       locus: undefined,
     }),
@@ -95,7 +96,7 @@ test('a hover naming only a chain reads out the chain', () => {
     hoverReadout({
       hover: { chain: 'B' },
       entity: CONSTRUCT,
-      structureToTranscript: { 1: 3 },
+      structureToTranscript: toTranscript({ 1: 3 }),
       transcript: 'PPMKAA',
       locus: undefined,
     }),

@@ -1,17 +1,19 @@
 import React from 'react'
 
 import { observer } from 'mobx-react'
+import { alignmentCol } from 'p2s_mapper'
 
 import { ROW_HEIGHT } from '../constants'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
+import type { CoordinateMapper } from 'p2s_mapper'
 
 /** Which alignment columns get a tick, and which of those a label, in the
  * structure's author residue numbering (see residueNumber), so the ruler reads
  * like the paper and Mol*'s hover label. Pure so it can be tested without the
  * DOM. */
 export function rulerTicks(
-  alignmentToStructure: Record<number, number> | undefined,
+  alignmentToStructure: CoordinateMapper['alignmentToStructure'] | undefined,
   columns: number,
   residueNumber: (pos: number) => number,
 ) {
@@ -20,7 +22,7 @@ export function rulerTicks(
     return ticks
   }
   for (let col = 0; col < columns; col++) {
-    const pos = alignmentToStructure[col]
+    const pos = alignmentToStructure(alignmentCol(col))
     if (pos === undefined) {
       continue
     }
@@ -43,7 +45,7 @@ const AlignmentRuler = observer(function AlignmentRuler({
 }) {
   const { columnWidth } = model
   const ticks = rulerTicks(
-    model.pairwiseAlignmentToStructurePosition,
+    model.coordinateMapper?.alignmentToStructure,
     columns,
     pos => model.residueNumber(pos),
   )

@@ -1,3 +1,4 @@
+import { transcriptPos } from 'p2s_mapper';
 import { placeValues } from './variantEffects';
 /** A session's values by 0-based transcript position. */
 export function valuesByPosition(values) {
@@ -24,7 +25,7 @@ export function residueValuesStatus({ values, entity, transcriptToStructure, }) 
     if (!entity || !transcriptToStructure) {
         return {};
     }
-    const placed = placeValues(valuesByPosition(values), pos => transcriptToStructure[pos], entity);
+    const placed = placeValues(valuesByPosition(values), pos => transcriptToStructure(transcriptPos(pos)), entity);
     return placed.byLabelSeqId.size > 0
         ? { placed }
         : { message: "None of the values fall on this structure's residues" };

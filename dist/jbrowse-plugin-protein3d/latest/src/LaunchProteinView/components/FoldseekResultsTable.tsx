@@ -12,7 +12,7 @@ import {
   Typography,
 } from '@mui/material'
 import { observer } from 'mobx-react'
-import { getStructureUrlFromTarget } from 'p2s_mapper'
+import { foldseekHits, getStructureUrlFromTarget } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
 import FoldseekActionMenu from './FoldseekActionMenu'
@@ -47,15 +47,12 @@ const useStyles = makeStyles()(theme => ({
 const MAX_HITS = 100
 
 function flattenResults(results: FoldseekResult): FlattenedHit[] {
-  const hits = results.results.flatMap(dbResult =>
-    (dbResult.alignments ?? []).flat().map(alignment => ({
-      ...alignment,
-      db: dbResult.db,
-      structureUrl: getStructureUrlFromTarget(alignment.target, dbResult.db),
-    })),
-  )
-  hits.sort((a, b) => (a.eval ?? Infinity) - (b.eval ?? Infinity))
-  return hits
+  return foldseekHits(results)
+    .map(hit => ({
+      ...hit,
+      structureUrl: getStructureUrlFromTarget(hit.target, hit.db),
+    }))
+    .toSorted((a, b) => (a.eval ?? Infinity) - (b.eval ?? Infinity))
 }
 
 const FoldseekResultsTable = observer(function FoldseekResultsTable({

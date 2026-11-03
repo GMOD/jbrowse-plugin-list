@@ -1,3 +1,6 @@
+import { structurePos } from 'p2s_mapper'
+
+import type { CoordinateMapper } from 'p2s_mapper'
 // Kyte-Doolittle hydropathy index. Positive = hydrophobic, negative =
 // hydrophilic. Residues absent from the table (X, gaps, non-standard) map to
 // undefined so they render as gaps in the track.
@@ -34,16 +37,16 @@ export function kyteDoolittleScores(seq: string): (number | undefined)[] {
 
 /**
  * Maps per-structure-residue values (indexed by 0-based structure sequence
- * position) onto alignment columns via structurePositionToAlignmentMap.
+ * position) onto alignment columns through `structureToAlignment`.
  * Residues with no value or no alignment column (gaps) are dropped.
  */
 export function mapResidueValuesToColumns(
   values: (number | undefined)[],
-  structurePositionToAlignmentMap: Record<number, number> | undefined,
+  structureToAlignment: CoordinateMapper['structureToAlignment'] | undefined,
 ): { col: number; value: number }[] {
-  return structurePositionToAlignmentMap
-    ? values.flatMap((value, structurePos) => {
-        const col = structurePositionToAlignmentMap[structurePos]
+  return structureToAlignment
+    ? values.flatMap((value, pos) => {
+        const col = structureToAlignment(structurePos(pos))
         return value !== undefined && col !== undefined ? [{ col, value }] : []
       })
     : []

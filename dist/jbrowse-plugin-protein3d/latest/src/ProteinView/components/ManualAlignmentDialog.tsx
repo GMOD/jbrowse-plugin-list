@@ -11,8 +11,7 @@ import {
 } from '@mui/material'
 import { parsePairwise } from 'clustal-js'
 import { observer } from 'mobx-react'
-
-import { entityAlignedTo, withoutStopColumn } from '../entityAlignedTo'
+import { entityAlignedTo, withoutStopColumns } from 'p2s_mapper'
 
 import type { JBrowsePluginProteinViewModel } from '../model'
 
@@ -50,7 +49,7 @@ const ManualAlignmentDialog = observer(function ManualAlignmentDialog({
         } else if ('problem' in fit) {
           setParseError(fit.problem)
         } else {
-          alignmentStructure.importAlignment(withoutStopColumn(parsed))
+          alignmentStructure.importAlignment(withoutStopColumns(parsed))
           handleClose()
         }
       } catch (e) {

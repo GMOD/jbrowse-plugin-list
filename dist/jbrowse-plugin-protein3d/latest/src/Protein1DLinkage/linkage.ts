@@ -3,20 +3,20 @@ import {
   DEFAULT_ALIGNMENT_ALGORITHM,
   alignTranscriptToEntity,
   alignmentQuality,
+  codingSpans,
   isLowSimilarity,
-  keepSharedStretches,
-  mappedStructureIdentity,
+  isoformAlignment,
+  sameProtein,
   structurePos,
   transcriptPos,
 } from 'p2s_mapper'
 
-import { isIdentical } from '../ProteinView/alignOffThread'
 import {
   assemblyNaming,
   genomeHoverToTranscriptPos,
   viewAssemblyName,
 } from '../ProteinView/util'
-import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings'
+import { genomeToTranscriptSeqMapping } from '../mappings'
 
 import type { NamingAssemblyManager } from '../ProteinView/util'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
@@ -182,21 +182,6 @@ export interface LinkageAlignmentHost {
 export type LinkageAlignment =
   { alignment: PairwiseAlignment } | { problem: string }
 
-// Two isoforms of one protein differ only in their alternative exons, so the
-// shared-stretch rule keeps most of their alignment: 92% for PKM1 on PKM2, 94%
-// for FGFR2 IIIc on IIIb. A homolog a Foldseek hit opened differs everywhere,
-// and the rule shreds it: mouse TP53 keeps 41%, HBB 28%, BRCA1 9%. Below this
-// the entry is another protein, and the alignment maps it column for column.
-const ISOFORM_KEPT_FRACTION = 0.8
-
-function isoformAlignment(pa: PairwiseAlignment) {
-  const kept = keepSharedStretches(pa)
-  return mappedStructureIdentity(kept).size >=
-    ISOFORM_KEPT_FRACTION * mappedStructureIdentity(pa).size
-    ? kept
-    : pa
-}
-
 /**
  * Align the linked transcript's translation to the sequence the 1D view
  * shows. Where that is another isoform, only the stretches the two spell
@@ -220,7 +205,7 @@ export async function resolveLinkageAlignment(
   if (!uniprot) {
     return { problem: 'the UniProt sequence could not be read' }
   }
-  const scored = isIdentical(transcript, uniprot)
+  const scored = sameProtein(transcript, uniprot)
     ? alignTranscriptToEntity(transcript, uniprot, DEFAULT_ALIGNMENT_ALGORITHM)
     : await host.align(transcript, uniprot)
   if (!scored) {

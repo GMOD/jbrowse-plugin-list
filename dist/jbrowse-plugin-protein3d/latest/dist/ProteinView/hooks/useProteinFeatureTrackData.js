@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { structurePos as toStructurePos } from 'p2s_mapper';
 import useUniProtFeatures from './useUniProtFeatures';
 // A bond's two positions are its whole meaning, so one residue of a pair says
 // nothing true about the structure.
@@ -15,12 +16,12 @@ const ENDPOINT_PAIR_TYPES = new Set(['Disulfide bond', 'Cross-link']);
  * lose every region straddling the construct's ends. Returns undefined when no
  * residue of the feature has an alignment column.
  */
-export function layoutFeature(feature, structurePositionToAlignmentMap, mapUniProtPosition) {
+export function layoutFeature(feature, structureToAlignment, mapUniProtPosition) {
     const placed = (uniprotPos) => {
         const structurePos = mapUniProtPosition(uniprotPos);
         const column = structurePos === undefined
             ? undefined
-            : structurePositionToAlignmentMap[structurePos];
+            : structureToAlignment(toStructurePos(structurePos));
         return structurePos === undefined || column === undefined
             ? undefined
             : { structurePos, column };
@@ -80,15 +81,16 @@ export function widestFirst(layouts) {
 }
 export default function useProteinFeatureTrackData(model, uniprotId, mapUniProtPosition) {
     const { features, isLoading, error } = useUniProtFeatures(uniprotId);
-    const { omittedFeatureTypes, structurePositionToAlignmentMap } = model;
+    const { omittedFeatureTypes, coordinateMapper } = model;
+    const structureToAlignment = coordinateMapper?.structureToAlignment;
     const groups = useMemo(() => {
-        if (!features || !structurePositionToAlignmentMap) {
+        if (!features || !structureToAlignment) {
             return undefined;
         }
         const byType = new Map();
         for (const feature of features) {
             if (!omittedFeatureTypes.has(feature.type)) {
-                const layout = layoutFeature(feature, structurePositionToAlignmentMap, mapUniProtPosition);
+                const layout = layoutFeature(feature, structureToAlignment, mapUniProtPosition);
                 if (layout) {
                     const list = byType.get(feature.type);
                     if (list) {
@@ -105,11 +107,6 @@ export default function useProteinFeatureTrackData(model, uniprotId, mapUniProtP
             laneCount: packLanes(layouts),
             layouts: widestFirst(layouts),
         }));
-    }, [
-        features,
-        omittedFeatureTypes,
-        structurePositionToAlignmentMap,
-        mapUniProtPosition,
-    ]);
+    }, [features, omittedFeatureTypes, structureToAlignment, mapUniProtPosition]);
     return { groups, isLoading, error };
 }

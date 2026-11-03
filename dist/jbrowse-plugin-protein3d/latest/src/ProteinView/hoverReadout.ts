@@ -1,6 +1,6 @@
-import { codonGenomeSpan, residueNumber } from 'p2s_mapper'
+import { codonGenomeSpan, residueNumber, structurePos } from 'p2s_mapper'
 
-import type { Entity } from 'p2s_mapper'
+import type { CoordinateMapper, Entity } from 'p2s_mapper'
 
 /**
  * A transcript residue's codon as a 1-based locString on the transcript's own
@@ -31,13 +31,13 @@ export function hoverReadout({
 }: {
   hover: { structureSeqPos?: number; chain?: string }
   entity: Entity | undefined
-  structureToTranscript: Record<number, number> | undefined
+  structureToTranscript: CoordinateMapper['structureToTranscript'] | undefined
   transcript: string
   locus: string | undefined
 }) {
   const pos = hover.structureSeqPos
   const transcriptPos =
-    pos === undefined ? undefined : structureToTranscript?.[pos]
+    pos === undefined ? undefined : structureToTranscript?.(structurePos(pos))
   const structureLetter = pos === undefined ? undefined : entity?.seq[pos]
   const genomeLetter =
     transcriptPos === undefined ? undefined : transcript[transcriptPos]

@@ -1,3 +1,4 @@
+import { labelSeqIdAt } from 'p2s_mapper';
 export const VARIANT_EFFECT_SCHEMES = [
     'alphamissense',
     'clinvar',
@@ -50,8 +51,7 @@ export function meanScoreByPosition(rows) {
 export function placeValues(byPosition, toStructurePosition, entity) {
     const byLabelSeqId = new Map();
     for (const [position, value] of byPosition) {
-        const structurePos = toStructurePosition(position);
-        const labelSeqId = structurePos === undefined ? undefined : entity.seqIds[structurePos];
+        const labelSeqId = labelSeqIdAt(entity, toStructurePosition(position));
         if (labelSeqId !== undefined) {
             byLabelSeqId.set(labelSeqId, value);
         }

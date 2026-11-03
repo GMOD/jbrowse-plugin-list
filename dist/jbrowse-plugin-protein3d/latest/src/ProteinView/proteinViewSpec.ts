@@ -2,9 +2,12 @@ import { resolveStructureUrl, structureDisplayLabel } from 'p2s_mapper'
 
 import type { ProteinColor } from './proteinColor'
 import type { StructureFilter } from './residueFilter'
-import type { ResidueRanges } from './residueRanges'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
-import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
+import type {
+  AlignmentAlgorithm,
+  PairwiseAlignment,
+  ResidueRanges,
+} from 'p2s_mapper'
 
 /**
  * One structure in a ProteinView, described declaratively. Every field maps

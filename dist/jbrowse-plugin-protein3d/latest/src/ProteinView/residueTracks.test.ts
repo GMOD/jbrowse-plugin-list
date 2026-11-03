@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
+import { toAlignment } from '../test_data/positionLookups'
 
 test('kyteDoolittleScores returns per-residue hydropathy, undefined for gaps', () => {
   // I=4.5 (most hydrophobic), R=-4.5 (most hydrophilic), X/'-' absent
@@ -10,7 +11,7 @@ test('kyteDoolittleScores returns per-residue hydropathy, undefined for gaps', (
 test('mapResidueValuesToColumns maps structure positions through alignment', () => {
   // structure pos -> alignment column (gaps shift columns)
   const map = { 0: 0, 1: 1, 2: 3 } // residue 2 lands in column 3 (gap at col 2)
-  const result = mapResidueValuesToColumns([90, 40, 75], map)
+  const result = mapResidueValuesToColumns([90, 40, 75], toAlignment(map))
   expect(result).toEqual([
     { col: 0, value: 90 },
     { col: 1, value: 40 },
@@ -20,7 +21,10 @@ test('mapResidueValuesToColumns maps structure positions through alignment', () 
 
 test('mapResidueValuesToColumns drops residues without value or column', () => {
   const map = { 0: 0, 2: 2 } // residue 1 has no alignment column
-  const result = mapResidueValuesToColumns([10, 20, undefined], map)
+  const result = mapResidueValuesToColumns(
+    [10, 20, undefined],
+    toAlignment(map),
+  )
   expect(result).toEqual([{ col: 0, value: 10 }])
 })
 

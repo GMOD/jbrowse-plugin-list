@@ -1,11 +1,10 @@
 import { getSession } from '@jbrowse/core/util'
+import { structureCodingSpans } from 'p2s_mapper'
 
-import { codingSpans } from '../mappings'
-
-import type { ResidueRange } from './residueRanges'
 import type { Region } from '@jbrowse/core/util/types'
 import type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
+import type { CoordinateMapper, ResidueRange } from 'p2s_mapper'
 
 interface GenomeToTranscriptSeqMapping {
   p2gCodon: Record<number, number[]>
@@ -18,7 +17,7 @@ interface GenomeToTranscriptSeqMapping {
  */
 interface ProteinGenomeMappingModel {
   genomeToTranscriptSeqMapping: GenomeToTranscriptSeqMapping | undefined
-  structureSeqToTranscriptSeqPosition: Record<number, number> | undefined
+  coordinateMapper: CoordinateMapper | undefined
 }
 
 type GenomeNavigator = Pick<
@@ -36,26 +35,17 @@ export type ClickProteinToGenomeModel = NavigateToProteinPositionModel & {
   setClickedStructureRanges: (ranges: readonly ResidueRange[]) => void
 }
 
-// The coding spans under structure-residue ranges, through the residues the
-// alignment pairs with the transcript
 function structureRangeSpans(
-  model: ProteinGenomeMappingModel,
+  { genomeToTranscriptSeqMapping, coordinateMapper }: ProteinGenomeMappingModel,
   ranges: readonly ResidueRange[],
 ) {
-  const mapping = model.genomeToTranscriptSeqMapping
-  if (!mapping) {
-    return []
-  }
-  const transcriptPositions: number[] = []
-  for (const range of ranges) {
-    for (let pos = range.start; pos < range.end; pos++) {
-      const transcriptPos = model.structureSeqToTranscriptSeqPosition?.[pos]
-      if (transcriptPos !== undefined) {
-        transcriptPositions.push(transcriptPos)
-      }
-    }
-  }
-  return codingSpans(mapping.p2gCodon, transcriptPositions)
+  return genomeToTranscriptSeqMapping && coordinateMapper
+    ? structureCodingSpans(
+        genomeToTranscriptSeqMapping.p2gCodon,
+        coordinateMapper,
+        ranges,
+      )
+    : []
 }
 
 /**

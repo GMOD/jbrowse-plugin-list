@@ -1,4 +1,4 @@
-import { resolveStructureUrl } from 'p2s_mapper';
+import { isPairwiseAlignment, resolveStructureUrl } from 'p2s_mapper';
 const STRUCTURE_KEY_ROLES = {
     url: 'source',
     data: 'source',
@@ -59,18 +59,6 @@ function isResidueRanges(value) {
     return Array.isArray(value)
         ? value.every(isResidueRange)
         : isResidueRange(value);
-}
-function isAlignmentRow(value) {
-    return (isRecord(value) &&
-        typeof value.id === 'string' &&
-        typeof value.seq === 'string');
-}
-export function isPairwiseAlignment(value) {
-    return (isRecord(value) &&
-        typeof value.consensus === 'string' &&
-        Array.isArray(value.alns) &&
-        value.alns.length === 2 &&
-        value.alns.every(isAlignmentRow));
 }
 function isTrackSpec(value) {
     return isString(value) || isRecord(value);

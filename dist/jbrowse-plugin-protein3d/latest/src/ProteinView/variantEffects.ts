@@ -1,3 +1,4 @@
+import { labelSeqIdAt } from 'p2s_mapper'
 export const VARIANT_EFFECT_SCHEMES = [
   'alphamissense',
   'clinvar',
@@ -86,9 +87,7 @@ export function placeValues(
 ): PlacedValues {
   const byLabelSeqId = new Map<number, number>()
   for (const [position, value] of byPosition) {
-    const structurePos = toStructurePosition(position)
-    const labelSeqId =
-      structurePos === undefined ? undefined : entity.seqIds[structurePos]
+    const labelSeqId = labelSeqIdAt(entity, toStructurePosition(position))
     if (labelSeqId !== undefined) {
       byLabelSeqId.set(labelSeqId, value)
     }

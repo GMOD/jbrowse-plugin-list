@@ -208,7 +208,7 @@ test('a source that fails says so beside the structure, and is asked again once 
     expect(structure.variantEffectsPending).toBe(false)
   })
   expect(structure.statusMessage).toBe(
-    'Could not fetch AlphaMissense scores for P0LATE: HTTP 404',
+    'Could not fetch AlphaMissense scores for P0LATE: AlphaFold DB publishes none for this entry',
   )
   expect(structure.error).toBeUndefined()
   expect(structure.placedVariantEffects).toBeUndefined()

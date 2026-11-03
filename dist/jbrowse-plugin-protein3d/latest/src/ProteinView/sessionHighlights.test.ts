@@ -21,6 +21,7 @@ import { setStructuresHidden } from './structureVisibility'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
 import { loadCaOnly } from '../test_data/molstarPlugin'
 import { residuesOf } from '../test_data/molstarStructure'
+import { toStructure } from '../test_data/positionLookups'
 
 import type { StructureFilter } from './residueFilter'
 import type { GenomeHighlight } from './sessionHighlights'
@@ -43,7 +44,7 @@ function residues(highlights: GenomeHighlight[], labels = true) {
       isAssembly: name => name === 'hg38',
     },
     entity: { entityId: '1', seqIds: [5, 6] },
-    transcriptToStructure: { 1: 0, 2: 1 },
+    transcriptToStructure: toStructure({ 1: 0, 2: 1 }),
     labels,
   })
 }
@@ -434,7 +435,7 @@ test('a protein change over two codons reads as its N-terminal residue', () => {
       isAssembly: name => name === 'hg38',
     },
     entity: { entityId: '1', seqIds: [5, 6], seq: 'GA' },
-    transcriptToStructure: { 1: 0, 2: 1 },
+    transcriptToStructure: toStructure({ 1: 0, 2: 1 }),
     labels: true,
   })
   expect(mark?.label).toBe('Gly12')

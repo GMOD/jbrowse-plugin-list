@@ -1,22 +1,9 @@
 import { getSession } from '@jbrowse/core/util';
-import { codingSpans } from '../mappings';
-// The coding spans under structure-residue ranges, through the residues the
-// alignment pairs with the transcript
-function structureRangeSpans(model, ranges) {
-    const mapping = model.genomeToTranscriptSeqMapping;
-    if (!mapping) {
-        return [];
-    }
-    const transcriptPositions = [];
-    for (const range of ranges) {
-        for (let pos = range.start; pos < range.end; pos++) {
-            const transcriptPos = model.structureSeqToTranscriptSeqPosition?.[pos];
-            if (transcriptPos !== undefined) {
-                transcriptPositions.push(transcriptPos);
-            }
-        }
-    }
-    return codingSpans(mapping.p2gCodon, transcriptPositions);
+import { structureCodingSpans } from 'p2s_mapper';
+function structureRangeSpans({ genomeToTranscriptSeqMapping, coordinateMapper }, ranges) {
+    return genomeToTranscriptSeqMapping && coordinateMapper
+        ? structureCodingSpans(genomeToTranscriptSeqMapping.p2gCodon, coordinateMapper, ranges)
+        : [];
 }
 /**
  * The genome structure-residue ranges cover, one region per stretch of

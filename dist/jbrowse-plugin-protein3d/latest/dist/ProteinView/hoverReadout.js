@@ -1,4 +1,4 @@
-import { codonGenomeSpan, residueNumber } from 'p2s_mapper';
+import { codonGenomeSpan, residueNumber, structurePos } from 'p2s_mapper';
 /**
  * A transcript residue's codon as a 1-based locString on the transcript's own
  * refName, outer bounds included when an intron splits it.
@@ -17,7 +17,7 @@ export function codonLocus(mapping, transcriptPos) {
  */
 export function hoverReadout({ hover, entity, structureToTranscript, transcript, locus, }) {
     const pos = hover.structureSeqPos;
-    const transcriptPos = pos === undefined ? undefined : structureToTranscript?.[pos];
+    const transcriptPos = pos === undefined ? undefined : structureToTranscript?.(structurePos(pos));
     const structureLetter = pos === undefined ? undefined : entity?.seq[pos];
     const genomeLetter = transcriptPos === undefined ? undefined : transcript[transcriptPos];
     const parts = [];

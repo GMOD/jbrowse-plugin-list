@@ -1,8 +1,9 @@
 import { readConfObject } from '@jbrowse/core/configuration'
+import { codingSpans } from 'p2s_mapper'
 
 import { scoreByBase, scoreByResidue } from './trackScores'
 import { VariantEffectRefusal } from './variantEffects'
-import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings'
+import { genomeToTranscriptSeqMapping } from '../mappings'
 import { trackConfigNode } from '../trackConfigNode'
 
 import type { TrackStat } from './proteinColor'

@@ -1,5 +1,5 @@
 import { readConfObject } from '@jbrowse/core/configuration';
-import { fetchAlphaFoldModels, getAlphaFoldStructureUrl, pickAlphaFoldModel, searchUniProtEntries, stripStopCodon, } from 'p2s_mapper';
+import { fetchAlphaFoldModels, getAlphaFoldStructureUrl, pickAlphaFoldModel, sameProtein, searchUniProtEntries, } from 'p2s_mapper';
 import { codingTranscripts, flaggedTranscriptId } from './codingFeature';
 import { rankIsoforms, rankedTranscriptId, } from '../AlignTranscriptRpc/isoformRanking';
 import { fetchTranscriptProteinSeqs } from './utils/translateTranscripts';
@@ -20,7 +20,7 @@ export function launchAlphaFoldModel(uniprotId, models, isoformSequences, prefer
     const preferred = preferredTranscriptId === undefined
         ? undefined
         : isoformSequences?.[preferredTranscriptId];
-    const own = preferred && models.find(m => m.sequence === stripStopCodon(preferred.seq));
+    const own = preferred && models.find(m => sameProtein(preferred.seq, m.sequence));
     return own ?? pickAlphaFoldModel(models, isoformSequences);
 }
 /** Why a resolved gene has no structure to open. */

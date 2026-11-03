@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 
+import { structurePos as toStructurePos } from 'p2s_mapper'
+
 import useUniProtFeatures from './useUniProtFeatures'
 
 import type { UniProtFeature } from './useUniProtFeatures'
 import type { JBrowsePluginProteinStructureModel } from '../model'
-import type { MapUniProtPosition } from 'p2s_mapper'
+import type { CoordinateMapper, MapUniProtPosition } from 'p2s_mapper'
 
 /** A UniProt feature placed in alignment columns; drawing it is the view's
  * business, through the model's column width. */
@@ -45,7 +47,7 @@ const ENDPOINT_PAIR_TYPES = new Set(['Disulfide bond', 'Cross-link'])
  */
 export function layoutFeature(
   feature: UniProtFeature,
-  structurePositionToAlignmentMap: Record<number, number>,
+  structureToAlignment: CoordinateMapper['structureToAlignment'],
   mapUniProtPosition: MapUniProtPosition,
 ): FeatureLayout | undefined {
   const placed = (uniprotPos: number) => {
@@ -53,7 +55,7 @@ export function layoutFeature(
     const column =
       structurePos === undefined
         ? undefined
-        : structurePositionToAlignmentMap[structurePos]
+        : structureToAlignment(toStructurePos(structurePos))
     return structurePos === undefined || column === undefined
       ? undefined
       : { structurePos, column }
@@ -128,10 +130,11 @@ export default function useProteinFeatureTrackData(
   error: unknown
 } {
   const { features, isLoading, error } = useUniProtFeatures(uniprotId)
-  const { omittedFeatureTypes, structurePositionToAlignmentMap } = model
+  const { omittedFeatureTypes, coordinateMapper } = model
+  const structureToAlignment = coordinateMapper?.structureToAlignment
 
   const groups = useMemo(() => {
-    if (!features || !structurePositionToAlignmentMap) {
+    if (!features || !structureToAlignment) {
       return undefined
     }
     const byType = new Map<string, FeatureLayout[]>()
@@ -139,7 +142,7 @@ export default function useProteinFeatureTrackData(
       if (!omittedFeatureTypes.has(feature.type)) {
         const layout = layoutFeature(
           feature,
-          structurePositionToAlignmentMap,
+          structureToAlignment,
           mapUniProtPosition,
         )
         if (layout) {
@@ -157,12 +160,7 @@ export default function useProteinFeatureTrackData(
       laneCount: packLanes(layouts),
       layouts: widestFirst(layouts),
     }))
-  }, [
-    features,
-    omittedFeatureTypes,
-    structurePositionToAlignmentMap,
-    mapUniProtPosition,
-  ])
+  }, [features, omittedFeatureTypes, structureToAlignment, mapUniProtPosition])
 
   return { groups, isLoading, error }
 }

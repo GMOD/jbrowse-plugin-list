@@ -13,6 +13,7 @@
  * a few.
  */
 import { colord } from '@jbrowse/core/util/colord'
+import { labelSeqIdAt, transcriptPos } from 'p2s_mapper'
 
 import loadMolstar from './loadMolstar'
 import { drawnTests } from './residueFilter'
@@ -30,6 +31,7 @@ import type { Camera } from 'molstar/lib/mol-canvas3d/camera'
 import type { Vec3 } from 'molstar/lib/mol-math/linear-algebra'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
+import type { CoordinateMapper } from 'p2s_mapper'
 
 type Molstar = Awaited<ReturnType<typeof loadMolstar>>
 
@@ -117,7 +119,7 @@ export function sessionHighlightResidues({
   mapping: { g2p: Record<number, number>; refName: string }
   naming: GenomeNaming
   entity: { entityId: string; seqIds: readonly number[]; seq?: string }
-  transcriptToStructure: Record<number, number>
+  transcriptToStructure: CoordinateMapper['transcriptToStructure']
   /** whether the session writes labels on its highlights */
   labels: boolean
 }): ResidueMark[] {
@@ -136,9 +138,10 @@ export function sessionHighlightResidues({
     for (let base = h.start; base < h.end; base++) {
       const residue = mapping.g2p[base]
       const structurePos =
-        residue === undefined ? undefined : transcriptToStructure[residue]
-      const labelSeqId =
-        structurePos === undefined ? undefined : entity.seqIds[structurePos]
+        residue === undefined
+          ? undefined
+          : transcriptToStructure(transcriptPos(residue))
+      const labelSeqId = labelSeqIdAt(entity, structurePos)
       if (structurePos !== undefined && labelSeqId !== undefined) {
         labelSeqIds.add(labelSeqId)
         firstPos = Math.min(firstPos ?? structurePos, structurePos)

@@ -1,4 +1,5 @@
 import { SimpleFeature } from '@jbrowse/core/util'
+import { HttpError, myfetch } from 'p2s_mapper'
 
 import { clinVarBuild, isUnnumberedMitochondrion } from './clinVar'
 import { fetchTrackScores } from './trackScoresSource'
@@ -227,13 +228,14 @@ async function load(
     }
   }
   if (request.scheme === 'alphamissense') {
-    const response = await fetch(
+    const response = await myfetch(
       `https://alphafold.ebi.ac.uk/files/AF-${request.accession}-F1-aa-substitutions.csv`,
       { signal },
-    )
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
+    ).catch((e: unknown) => {
+      throw e instanceof HttpError && e.status === 404
+        ? new Error('AlphaFold DB publishes none for this entry', { cause: e })
+        : e
+    })
     return meanScoreByPosition(parseAlphaMissense(await response.text()))
   }
   const { fetchClinVarCounts } = await import('./clinVarSource')

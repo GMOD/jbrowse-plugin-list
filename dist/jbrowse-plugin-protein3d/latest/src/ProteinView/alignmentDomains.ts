@@ -20,10 +20,13 @@
  * domains cover shows the smaller. A site never hides its domain, since the
  * two layers use different marks.
  */
+import { transcriptPos } from 'p2s_mapper'
+
 import { placeValues } from './variantEffects'
 
 import type { GenomeNaming } from './util'
 import type { PlacedValues } from './variantEffects'
+import type { CoordinateMapper } from 'p2s_mapper'
 
 export type DomainKind = 'domain' | 'site'
 
@@ -294,7 +297,7 @@ export function alignmentDomainStatus({
   /** the connected genome view's assembly */
   naming: GenomeNaming
   entity: { entityId: string; seqIds: readonly number[] } | undefined
-  transcriptToStructure: Record<number, number> | undefined
+  transcriptToStructure: CoordinateMapper['transcriptToStructure'] | undefined
 }): AlignmentDomainStatus {
   const { alignments, domains } = connectedAlignmentDomains(
     views,
@@ -325,7 +328,7 @@ export function alignmentDomainStatus({
     entity && transcriptToStructure
       ? placeValues(
           layerByTranscriptPos(placed, kind),
-          pos => transcriptToStructure[pos],
+          pos => transcriptToStructure(transcriptPos(pos)),
           entity,
         )
       : undefined
@@ -366,8 +369,8 @@ export function domainRows({
   domains: ConnectedDomains
   mapping: { g2p: Record<number, number>; refName: string }
   naming: GenomeNaming
-  transcriptToStructure: Record<number, number>
-  structureToAlignment: Record<number, number>
+  transcriptToStructure: CoordinateMapper['transcriptToStructure']
+  structureToAlignment: CoordinateMapper['structureToAlignment']
 }): DomainRow[] {
   const { color } = domains
   return placeOnTranscript(domains, mapping, naming)
@@ -375,11 +378,11 @@ export function domainRows({
     .flatMap(({ feature, index, positions }) => {
       const cells = [...positions]
         .flatMap(pos => {
-          const structurePos = transcriptToStructure[pos]
+          const structurePos = transcriptToStructure(transcriptPos(pos))
           const column =
             structurePos === undefined
               ? undefined
-              : structureToAlignment[structurePos]
+              : structureToAlignment(structurePos)
           return structurePos === undefined || column === undefined
             ? []
             : [{ structurePos, column }]

@@ -1,4 +1,3 @@
-import { stripStopCodon } from 'p2s_mapper';
 const ALIGNMENT_RPC_SESSION = 'protein3d-alignment';
 /**
  * Run an alignment in the host's RPC worker. A worker that cannot, say one an
@@ -17,13 +16,4 @@ export async function alignOffThread({ rpcManager, name, args, inPlace, current 
         console.warn(`${name} failed in the RPC worker, aligning in place`, e);
         return inPlace();
     }
-}
-/**
- * Whether the alignment is free: p2s_mapper skips the DP for an identical
- * sequence, so there is nothing to send to the worker, and the answer does not
- * wait behind the track renders queued there at launch.
- */
-export function isIdentical(transcript, seq) {
-    const t = stripStopCodon(transcript);
-    return t.length > 0 && t === stripStopCodon(seq);
 }

@@ -1,20 +1,18 @@
 import { SimpleFeature, getSession, getTrackName } from '@jbrowse/core/util';
 import { addDisposer, getParent, isAlive, types, } from '@jbrowse/mobx-state-tree';
 import { autorun, untracked, when } from 'mobx';
-import { alignTranscriptToEntity, alignmentCol, alignmentQuality, chooseMappedEntity, entityLabel, fetchUniProtStructureMappings, fusionPartnerPositions, getPdbIdFromUrl, getUniprotIdFromAlphaFoldTarget, looksLikePlddt, makeCoordinateMapper, makeLabelSeqIdIndex, mappedStructureIdentity, rangeToLabelSeqIds, residueNumber, resolveStructureUrl, stripStopCodon, structureDisplayLabel, structurePos, toLabelSeqIds, unmapStructurePositions, } from 'p2s_mapper';
-import { alignOffThread, isIdentical } from './alignOffThread';
+import { alignTranscriptToEntity, alignmentCol, alignmentQuality, chooseMappedEntity, entityAlignedTo, entityLabel, fetchUniProtStructureMappings, fusionPartnerPositions, getPdbIdFromUrl, getUniprotIdFromAlphaFoldTarget, looksLikePlddt, makeCoordinateMapper, makeLabelSeqIdIndex, mappedStructureIdentity, positionRangeRuns, rangeList, rangeToLabelSeqIds, residueNumber, residueRuns, resolveStructureUrl, sameProtein, stripStopCodon, structureDisplayLabel, structurePos, toLabelSeqIds, transcriptPos, transcriptRuns, unmapStructurePositions, } from 'p2s_mapper';
+import { alignOffThread } from './alignOffThread';
 import { decideAlignment } from './alignmentDecision';
 import { alignmentDomainStatus, connectedAlignmentDomains, domainRows, } from './alignmentDomains';
 import { cssScaleOf, rampKeyOf } from './colorScale';
 import { connectedHoverTranscriptPos } from './connectedHover';
 import { CHAR_WIDTH, MINOR_FEATURE_TYPES, trackGapOf, trackHeightOf, } from './constants';
-import { entityAlignedTo } from './entityAlignedTo';
 import { frameResidues } from './frameSelection';
 import { codonLocus, hoverReadout } from './hoverReadout';
 import { resolvedColor } from './proteinColor';
 import { clickProteinToGenome, navigateToProteinPosition, structureRangesToGenomeRegions, } from './proteinToGenomeMapping';
 import { RESIDUE_COLORS } from './residueColors';
-import { positionRangeRuns, rangeList, residueRuns, transcriptRuns, } from './residueRanges';
 import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks';
 import { residueValuesStatus } from './residueValuesStatus';
 import { sessionHighlightResidues, withoutLabelledResidues, } from './sessionHighlights';
@@ -609,31 +607,12 @@ const Structure = types
      * #getter
      * All structure/transcript/alignment coordinate conversions, built once
      * from the alignment (see p2s_mapper's coordinates.ts). Use its typed
-     * methods for point
-     * conversions; the getters below expose the raw maps for whole-map
-     * consumers.
+     * methods to convert a position, and its `maps` only to walk a whole
+     * map.
      */
     get coordinateMapper() {
         const { alignment } = this;
         return alignment ? makeCoordinateMapper(alignment) : undefined;
-    },
-    /**
-     * #getter
-     */
-    get structureSeqToTranscriptSeqPosition() {
-        return this.coordinateMapper?.maps.structureSeqToTranscriptSeqPosition;
-    },
-    /**
-     * #getter
-     */
-    get transcriptSeqToStructureSeqPosition() {
-        return this.coordinateMapper?.maps.transcriptSeqToStructureSeqPosition;
-    },
-    /**
-     * #getter
-     */
-    get structurePositionToAlignmentMap() {
-        return this.coordinateMapper?.maps.structurePositionToAlignmentMap;
     },
     /**
      * #getter
@@ -651,7 +630,7 @@ const Structure = types
         }
         const values = entity.seqIds.map(id => confidence.byLabelSeqId.get(id));
         return looksLikePlddt(values.filter(v => v !== undefined))
-            ? mapResidueValuesToColumns(values, this.structurePositionToAlignmentMap)
+            ? mapResidueValuesToColumns(values, this.coordinateMapper?.structureToAlignment)
             : [];
     },
     /**
@@ -661,14 +640,8 @@ const Structure = types
     get hydrophobicityCells() {
         const seq = this.mappedStructureSeq;
         return seq && !this.mappedEntity?.nucleicAcid
-            ? mapResidueValuesToColumns(kyteDoolittleScores(stripStopCodon(seq)), this.structurePositionToAlignmentMap)
+            ? mapResidueValuesToColumns(kyteDoolittleScores(stripStopCodon(seq)), this.coordinateMapper?.structureToAlignment)
             : [];
-    },
-    /**
-     * #getter
-     */
-    get pairwiseAlignmentToStructurePosition() {
-        return this.coordinateMapper?.maps.alignmentToStructurePosition;
     },
     /**
      * #getter
@@ -680,7 +653,7 @@ const Structure = types
             ? hoverReadout({
                 hover,
                 entity: this.mappedEntity,
-                structureToTranscript: this.structureSeqToTranscriptSeqPosition,
+                structureToTranscript: this.coordinateMapper?.structureToTranscript,
                 transcript: self.userProvidedTranscriptSequence,
                 locus: this.hoverGenomeLocus,
             })
@@ -695,7 +668,7 @@ const Structure = types
         const pos = this.structureSeqHoverPos;
         return codonLocus(this.genomeToTranscriptSeqMapping, pos === undefined
             ? undefined
-            : this.structureSeqToTranscriptSeqPosition?.[pos]);
+            : this.coordinateMapper?.structureToTranscript(structurePos(pos)));
     },
     /**
      * #getter
@@ -723,17 +696,17 @@ const Structure = types
     /**
      * #getter
      * Structure-residue range from a feature-bar hover, derived by mapping
-     * alignmentHoverRange through pairwiseAlignmentToStructurePosition.
+     * alignmentHoverRange through the coordinate mapper.
      * End is exclusive, matching clickedStructureRanges.
      */
     get hoverStructureRange() {
         const { alignmentHoverRange } = self;
-        const a2s = this.pairwiseAlignmentToStructurePosition;
-        if (!alignmentHoverRange || !a2s) {
+        const mapper = this.coordinateMapper;
+        if (!alignmentHoverRange || !mapper) {
             return undefined;
         }
-        const start = a2s[alignmentHoverRange.start];
-        const end = a2s[alignmentHoverRange.end];
+        const start = mapper.alignmentToStructure(alignmentCol(alignmentHoverRange.start));
+        const end = mapper.alignmentToStructure(alignmentCol(alignmentHoverRange.end));
         return start === undefined || end === undefined
             ? undefined
             : { start, end: end + 1 };
@@ -792,11 +765,11 @@ const Structure = types
      * run of clickedStructureRanges.
      */
     get clickAlignmentRanges() {
-        const s2a = this.structurePositionToAlignmentMap;
-        return s2a
+        const mapper = this.coordinateMapper;
+        return mapper
             ? self.clickedStructureRanges.flatMap(range => {
-                const start = s2a[range.start];
-                const end = s2a[range.end - 1];
+                const start = mapper.structureToAlignment(structurePos(range.start));
+                const end = mapper.structureToAlignment(structurePos(range.end - 1));
                 return start === undefined || end === undefined
                     ? []
                     : [{ start, end }];
@@ -993,7 +966,7 @@ const Structure = types
             assemblyName: self.connectedView?.assemblyNames[0],
             model: {
                 genomeToTranscriptSeqMapping: self.genomeToTranscriptSeqMapping,
-                structureSeqToTranscriptSeqPosition: self.structureSeqToTranscriptSeqPosition,
+                coordinateMapper: self.coordinateMapper,
             },
         });
     },
@@ -1090,7 +1063,7 @@ const Structure = types
             entity: self.mappedEntity,
             pdbId: self.pdbId,
             mapUniProtPosition: self.uniProtEntry.mapUniProtPosition,
-            transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
+            transcriptToStructure: self.coordinateMapper?.transcriptToStructure,
         });
     },
     /**
@@ -1125,7 +1098,7 @@ const Structure = types
                 mapping: self.genomeToTranscriptSeqMapping,
                 naming: self.genomeNaming,
                 entity: self.mappedEntity,
-                transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
+                transcriptToStructure: self.coordinateMapper?.transcriptToStructure,
             })
             : undefined;
     },
@@ -1154,7 +1127,7 @@ const Structure = types
             ? residueValuesStatus({
                 values,
                 entity: self.mappedEntity,
-                transcriptToStructure: self.transcriptSeqToStructureSeqPosition,
+                transcriptToStructure: self.coordinateMapper?.transcriptToStructure,
             })
             : undefined;
     },
@@ -1165,7 +1138,8 @@ const Structure = types
      */
     get sessionHighlightMarks() {
         const session = getSession(self);
-        const { genomeToTranscriptSeqMapping: mapping, mappedEntity: entity, transcriptSeqToStructureSeqPosition: transcriptToStructure, } = self;
+        const { genomeToTranscriptSeqMapping: mapping, mappedEntity: entity } = self;
+        const transcriptToStructure = self.coordinateMapper?.transcriptToStructure;
         return session.highlightsVisible &&
             mapping &&
             entity &&
@@ -1187,14 +1161,14 @@ const Structure = types
      * the view colors by
      */
     get domainRows() {
-        const { alignmentDomains: domains, genomeToTranscriptSeqMapping: mapping, transcriptSeqToStructureSeqPosition: transcriptToStructure, structurePositionToAlignmentMap: structureToAlignment, } = self;
-        return domains && mapping && transcriptToStructure && structureToAlignment
+        const { alignmentDomains: domains, genomeToTranscriptSeqMapping: mapping, coordinateMapper: mapper, } = self;
+        return domains && mapping && mapper
             ? domainRows({
                 domains,
                 mapping,
                 naming: self.genomeNaming,
-                transcriptToStructure,
-                structureToAlignment,
+                transcriptToStructure: mapper.transcriptToStructure,
+                structureToAlignment: mapper.structureToAlignment,
             })
             : [];
     },
@@ -1214,7 +1188,7 @@ const Structure = types
                 ? withoutLabelledResidues(self.clickedLabelSeqIds, self.sessionHighlightMarks)
                 : self.clickedLabelSeqIds;
         }
-        const covered = self.structureSeqToTranscriptSeqPosition;
+        const covered = self.coordinateMapper?.maps.structureSeqToTranscriptSeqPosition;
         return self.showHighlight && covered
             ? toLabelSeqIds(entity, Object.keys(covered).map(Number))
             : [];
@@ -1494,7 +1468,7 @@ const Structure = types
             }
         };
         self.runAlignment({
-            identical: isIdentical(transcript, entity.seq),
+            identical: sameProtein(transcript, entity.seq),
             name: 'ProteinAlignTranscriptToEntity',
             args: {
                 transcript,
@@ -1744,7 +1718,7 @@ const Structure = types
                 naming: self.genomeNaming,
             });
             if (hover) {
-                self.setConnectedHoveredPosition(self.transcriptSeqToStructureSeqPosition?.[hover.transcriptPos], hover.source);
+                self.setConnectedHoveredPosition(self.coordinateMapper?.transcriptToStructure(transcriptPos(hover.transcriptPos)), hover.source);
             }
             else if (self.hoverPosition?.source !== 'structure') {
                 // a hover from the 3D structure is cleared by Mol*'s leave event

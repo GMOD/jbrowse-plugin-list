@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { observer } from 'mobx-react'
+import { positionRuns } from 'p2s_mapper'
 
 import {
   HOVER_COLOR,
@@ -9,7 +10,6 @@ import {
   SELECTION_COLOR,
   SELECTION_OUTLINE,
 } from '../constants'
-import { positionRuns } from '../residueRanges'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
 

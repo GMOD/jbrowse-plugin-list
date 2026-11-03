@@ -1,5 +1,4 @@
-import { isIdentical } from './alignOffThread'
-import { entityAlignedTo } from './entityAlignedTo'
+import { entityAlignedTo, sameProtein } from 'p2s_mapper'
 
 import type { Entity, PairwiseAlignment } from 'p2s_mapper'
 
@@ -73,7 +72,7 @@ export function decideAlignment(state: AlignmentState): AlignmentDecision {
           problem: fit.problem,
           transcript,
           entity,
-          identical: isIdentical(transcript, entity.seq),
+          identical: sameProtein(transcript, entity.seq),
         }
       : { kind: 'discard', problem: fit.problem }
   }
@@ -82,7 +81,7 @@ export function decideAlignment(state: AlignmentState): AlignmentDecision {
     transcript,
     entities,
     identical: entities.some(
-      e => !e.nucleicAcid && isIdentical(transcript, e.seq),
+      e => !e.nucleicAcid && sameProtein(transcript, e.seq),
     ),
   }
 }

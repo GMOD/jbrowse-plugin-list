@@ -1,4 +1,5 @@
 import { SimpleFeature } from '@jbrowse/core/util';
+import { HttpError, myfetch } from 'p2s_mapper';
 import { clinVarBuild, isUnnumberedMitochondrion } from './clinVar';
 import { fetchTrackScores } from './trackScoresSource';
 import { VARIANT_EFFECT_SOURCE_NAMES, meanScoreByPosition, } from './variantEffects';
@@ -147,10 +148,11 @@ async function load(request, session, signal) {
         };
     }
     if (request.scheme === 'alphamissense') {
-        const response = await fetch(`https://alphafold.ebi.ac.uk/files/AF-${request.accession}-F1-aa-substitutions.csv`, { signal });
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        const response = await myfetch(`https://alphafold.ebi.ac.uk/files/AF-${request.accession}-F1-aa-substitutions.csv`, { signal }).catch((e) => {
+            throw e instanceof HttpError && e.status === 404
+                ? new Error('AlphaFold DB publishes none for this entry', { cause: e })
+                : e;
+        });
         return meanScoreByPosition(parseAlphaMissense(await response.text()));
     }
     const { fetchClinVarCounts } = await import('./clinVarSource');

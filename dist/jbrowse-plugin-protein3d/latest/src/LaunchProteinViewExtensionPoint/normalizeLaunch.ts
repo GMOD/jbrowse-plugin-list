@@ -1,4 +1,4 @@
-import { resolveStructureUrl } from 'p2s_mapper'
+import { isPairwiseAlignment, resolveStructureUrl } from 'p2s_mapper'
 
 import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type {
@@ -6,9 +6,8 @@ import type {
   ProteinViewSpec,
 } from '../ProteinView/proteinViewSpec'
 import type { StructureFilter } from '../ProteinView/residueFilter'
-import type { ResidueRange, ResidueRanges } from '../ProteinView/residueRanges'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
-import type { PairwiseAlignment } from 'p2s_mapper'
+import type { ResidueRange, ResidueRanges } from 'p2s_mapper'
 
 export type LaunchStructure = ProteinStructureSpec
 
@@ -97,28 +96,6 @@ function isResidueRanges(value: unknown): value is ResidueRanges {
   return Array.isArray(value)
     ? value.every(isResidueRange)
     : isResidueRange(value)
-}
-
-function isAlignmentRow(
-  value: unknown,
-): value is PairwiseAlignment['alns'][number] {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.seq === 'string'
-  )
-}
-
-export function isPairwiseAlignment(
-  value: unknown,
-): value is PairwiseAlignment {
-  return (
-    isRecord(value) &&
-    typeof value.consensus === 'string' &&
-    Array.isArray(value.alns) &&
-    value.alns.length === 2 &&
-    value.alns.every(isAlignmentRow)
-  )
 }
 
 function isTrackSpec(value: unknown) {

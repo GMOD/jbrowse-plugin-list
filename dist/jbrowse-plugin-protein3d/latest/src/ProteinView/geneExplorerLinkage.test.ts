@@ -119,8 +119,7 @@ function mappingModel(model: ReturnType<typeof makeModel>) {
   return {
     genomeToTranscriptSeqMapping: model.genomeToTranscriptSeqMapping,
     pairwiseAlignment: model.pairwiseAlignment,
-    structureSeqToTranscriptSeqPosition:
-      model.structureSeqToTranscriptSeqPosition,
+    coordinateMapper: model.coordinateMapper,
   }
 }
 

@@ -1,3 +1,5 @@
+import { transcriptPos } from 'p2s_mapper'
+
 import { errorMessage } from './util'
 import {
   VARIANT_EFFECT_SOURCE_NAMES,
@@ -10,7 +12,7 @@ import type {
   VariantEffectState,
 } from './variantEffectLoader'
 import type { PlacedValues } from './variantEffects'
-import type { MapUniProtPosition } from 'p2s_mapper'
+import type { CoordinateMapper, MapUniProtPosition } from 'p2s_mapper'
 
 export interface VariantEffectStatus {
   /**
@@ -54,7 +56,7 @@ export function variantEffectStatus({
     { entityId: string; seq: string; seqIds: readonly number[] } | undefined
   pdbId: string | undefined
   mapUniProtPosition: MapUniProtPosition
-  transcriptToStructure: Record<number, number> | undefined
+  transcriptToStructure: CoordinateMapper['transcriptToStructure'] | undefined
 }): VariantEffectStatus {
   if (ask?.status !== 'ready') {
     return {
@@ -94,7 +96,7 @@ export function variantEffectStatus({
     values.numbering === 'uniprot'
       ? mapUniProtPosition
       : transcriptToStructure &&
-        ((position: number) => transcriptToStructure[position])
+        ((position: number) => transcriptToStructure(transcriptPos(position)))
   return {
     pending: false,
     placed:

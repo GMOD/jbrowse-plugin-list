@@ -41,7 +41,7 @@ const structure = {
   entity: { entityId: '2', seq: 'GMKAL', seqIds: [11, 12, 13, 14, 15] },
   pdbId: '9XYZ',
   mapUniProtPosition: identityUniProtPositionMap,
-  transcriptToStructure: alignment.maps.transcriptSeqToStructureSeqPosition,
+  transcriptToStructure: alignment.transcriptToStructure,
 }
 
 function answered(ask: VariantEffectAsk, values: VariantEffectValues) {

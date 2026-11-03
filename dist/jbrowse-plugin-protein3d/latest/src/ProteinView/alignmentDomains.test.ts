@@ -10,6 +10,7 @@ import {
   readConnectedDomains,
 } from './alignmentDomains'
 import { literalNaming } from '../test_data/naming'
+import { toAlignment, toStructure } from '../test_data/positionLookups'
 
 import type { ConnectedDomains } from './alignmentDomains'
 import type { GenomeNaming } from './util'
@@ -221,8 +222,8 @@ describe('readConnectedDomains', () => {
         domains: read,
         mapping,
         naming,
-        transcriptToStructure: { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 },
-        structureToAlignment: { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 },
+        transcriptToStructure: toStructure({ 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 }),
+        structureToAlignment: toAlignment({ 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 }),
       }).map(r => r.color),
     ).toEqual(['#F8766D', '#7CAE00'])
   })
@@ -252,7 +253,14 @@ const views = [
 
 test("places each layer on the mapped entity through the structure's alignment", () => {
   // the crystal lacks residue 0 and starts at label_seq_id 1
-  const transcriptToStructure = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 }
+  const transcriptToStructure = toStructure({
+    1: 0,
+    2: 1,
+    3: 2,
+    4: 3,
+    5: 4,
+    6: 5,
+  })
   const status = alignmentDomainStatus({
     views,
     connectedViewId: 'lgv',
@@ -290,7 +298,7 @@ test('says why a structure stays grey', () => {
       mapping,
       naming,
       entity: { entityId: '1', seqIds: [1] },
-      transcriptToStructure: { 0: 0 },
+      transcriptToStructure: toStructure({ 0: 0 }),
       ...over,
     })
   expect(status({ connectedViewId: undefined }).message).toBe(
@@ -363,8 +371,22 @@ describe('the overview rows', () => {
   }
   // the structure lacks residue 0; an insertion in the structure puts
   // residue 4 two columns after residue 3
-  const transcriptToStructure = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 }
-  const structureToAlignment = { 0: 1, 1: 2, 2: 3, 3: 5, 4: 6, 5: 7 }
+  const transcriptToStructure = toStructure({
+    1: 0,
+    2: 1,
+    3: 2,
+    4: 3,
+    5: 4,
+    6: 5,
+  })
+  const structureToAlignment = toAlignment({
+    0: 1,
+    1: 2,
+    2: 3,
+    3: 5,
+    4: 6,
+    5: 7,
+  })
 
   const rows = domainRows({
     domains: site,

@@ -1,3 +1,4 @@
+import { transcriptPos } from 'p2s_mapper';
 import { errorMessage } from './util';
 import { VARIANT_EFFECT_SOURCE_NAMES, VariantEffectRefusal, placeValues, } from './variantEffects';
 /**
@@ -49,7 +50,7 @@ export function variantEffectStatus({ ask, state, entity, pdbId, mapUniProtPosit
     const toStructure = values.numbering === 'uniprot'
         ? mapUniProtPosition
         : transcriptToStructure &&
-            ((position) => transcriptToStructure[position]);
+            ((position) => transcriptToStructure(transcriptPos(position)));
     return {
         pending: false,
         placed: entity && toStructure

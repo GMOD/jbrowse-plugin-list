@@ -3,8 +3,8 @@ import {
   fetchAlphaFoldModels,
   getAlphaFoldStructureUrl,
   pickAlphaFoldModel,
+  sameProtein,
   searchUniProtEntries,
-  stripStopCodon,
 } from 'p2s_mapper'
 
 import { codingTranscripts, flaggedTranscriptId } from './codingFeature'
@@ -63,7 +63,7 @@ export function launchAlphaFoldModel(
       ? undefined
       : isoformSequences?.[preferredTranscriptId]
   const own =
-    preferred && models.find(m => m.sequence === stripStopCodon(preferred.seq))
+    preferred && models.find(m => sameProtein(preferred.seq, m.sequence))
   return own ?? pickAlphaFoldModel(models, isoformSequences)
 }
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import { stripStopCodon } from 'p2s_mapper'
+import { sameProtein } from 'p2s_mapper'
 
 import useAlphaFoldData from './useAlphaFoldData'
 import useTranscriptIsoformSelection from './useTranscriptIsoformSelection'
@@ -97,7 +97,7 @@ export default function useAlphaFoldDBSearch({
       !isAlphaFoldValidating &&
       userSelectedProteinSequence?.seq &&
       structureSequence
-        ? stripStopCodon(userSelectedProteinSequence.seq) === structureSequence
+        ? sameProtein(userSelectedProteinSequence.seq, structureSequence)
         : undefined,
     isLoading,
   }

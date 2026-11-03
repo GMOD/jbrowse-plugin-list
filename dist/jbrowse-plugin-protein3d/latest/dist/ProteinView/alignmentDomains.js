@@ -20,6 +20,7 @@
  * domains cover shows the smaller. A site never hides its domain, since the
  * two layers use different marks.
  */
+import { transcriptPos } from 'p2s_mapper';
 import { placeValues } from './variantEffects';
 const ATOM_MARKS = new Set(['ball-and-stick', 'spacefill', 'line', 'point']);
 /** The mark a Mol* representation type draws, for the color it takes */
@@ -207,7 +208,7 @@ export function alignmentDomainStatus({ views, connectedViewId, mapping, naming,
         };
     }
     const layer = (kind) => entity && transcriptToStructure
-        ? placeValues(layerByTranscriptPos(placed, kind), pos => transcriptToStructure[pos], entity)
+        ? placeValues(layerByTranscriptPos(placed, kind), pos => transcriptToStructure(transcriptPos(pos)), entity)
         : undefined;
     return { domains, placed: layer('domain'), placedSites: layer('site') };
 }
@@ -223,10 +224,10 @@ export function domainRows({ domains, mapping, naming, transcriptToStructure, st
         .flatMap(({ feature, index, positions }) => {
         const cells = [...positions]
             .flatMap(pos => {
-            const structurePos = transcriptToStructure[pos];
+            const structurePos = transcriptToStructure(transcriptPos(pos));
             const column = structurePos === undefined
                 ? undefined
-                : structureToAlignment[structurePos];
+                : structureToAlignment(structurePos);
             return structurePos === undefined || column === undefined
                 ? []
                 : [{ structurePos, column }];

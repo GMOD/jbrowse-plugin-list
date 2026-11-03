@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui'
 import { Button, DialogActions, DialogContent } from '@mui/material'
 import { observer } from 'mobx-react'
-import { stripStopCodon } from 'p2s_mapper'
+import { sameProtein } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
 import PartialFailureNotice from './PartialFailureNotice'
@@ -118,7 +118,7 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
   const sequencesDiffer =
     !!protein?.seq &&
     !!structureSequence &&
-    stripStopCodon(protein.seq) !== structureSequence
+    !sameProtein(protein.seq, structureSequence)
 
   const handleLaunch = runLaunch(async () => {
     if (protein && selectedTranscript) {

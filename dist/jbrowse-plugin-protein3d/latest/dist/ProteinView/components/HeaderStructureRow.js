@@ -10,9 +10,8 @@ import Link from '@mui/material/Link';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { observer } from 'mobx-react';
-import { LOW_IDENTITY_OVER_SHORTER, SHORT_ALIGNMENT_IDENTITY, SHORT_ALIGNMENT_RESIDUES, describeAlignmentQuality, describeCoveredRange, describeTranscriptCoverage, isLowSimilarity, uniprotEntryUrl, } from 'p2s_mapper';
+import { LOW_IDENTITY_OVER_SHORTER, SHORT_ALIGNMENT_IDENTITY, SHORT_ALIGNMENT_RESIDUES, describeAlignmentQuality, describeCoverage, describeCoveredRange, describeTranscriptCoverage, isLowSimilarity, uniprotEntryUrl, } from 'p2s_mapper';
 import ChainSelect from './ChainSelect';
-import { describeCoverage } from '../describeCoverage';
 const LOW_SIMILARITY_EXPLANATION = `Under ${Math.round(LOW_IDENTITY_OVER_SHORTER * 100)}% of the shorter sequence is identical (${Math.round(SHORT_ALIGNMENT_IDENTITY * 100)}% for an alignment of fewer than ${SHORT_ALIGNMENT_RESIDUES} residues): an alignment this weak is what two unrelated proteins produce, so the positions it maps may be unrelated. Check the mapped chain, the transcript isoform, or import a curated alignment.`;
 // Which UniProt entry the structure's mapped chain is, and so which one its
 // feature tracks annotate. For an AlphaFold model that is in the filename, but

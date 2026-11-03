@@ -1,7 +1,8 @@
 import { readConfObject } from '@jbrowse/core/configuration';
+import { codingSpans } from 'p2s_mapper';
 import { scoreByBase, scoreByResidue } from './trackScores';
 import { VariantEffectRefusal } from './variantEffects';
-import { codingSpans, genomeToTranscriptSeqMapping } from '../mappings';
+import { genomeToTranscriptSeqMapping } from '../mappings';
 import { trackConfigNode } from '../trackConfigNode';
 function number(value) {
     return typeof value === 'number' ? value : Number.NaN;
