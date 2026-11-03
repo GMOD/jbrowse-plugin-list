@@ -1,3 +1,4 @@
+import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes/models'
 import { getSession } from '@jbrowse/core/util'
@@ -5,7 +6,7 @@ import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
 import { reaction } from 'mobx'
 
 import { HOVER_HIGHLIGHT_VALUES } from './hoverHighlight'
-import { lenientMaybeEnum } from './lenientEnum'
+import { lenientMaybeEnum, lenientOptionalEnum } from './lenientEnum'
 import { GraphPane, fileName, formatSpanBp } from './model'
 import { liftFlatNodeColor } from './retiredNodeColor'
 import { canonicalRegion } from '../launchFromGraph/launchFromGraph'
@@ -40,6 +41,9 @@ export default function stateModelFactory() {
         loadedTrackId: types.optional(types.string, ''),
         // unset is force
         layoutMode: lenientMaybeEnum(LAYOUT_MODE_VALUES),
+        // Which engine draws the force layout: Bandage's FMMM, or the stress
+        // layout, which reads the reference straight. See LAYOUT_ENGINES.
+        layoutEngine: lenientOptionalEnum(LAYOUT_ENGINE_VALUES, 'fmmm'),
         color: types.maybe(types.frozen<NodeColor>()),
         size: types.maybe(types.frozen<NodeSize>()),
         layers: types.maybe(types.frozen<GraphLayers>()),
@@ -58,6 +62,7 @@ export default function stateModelFactory() {
       get grammar(): GraphGrammar {
         return {
           layoutMode: self.layoutMode,
+          layoutEngine: self.layoutEngine,
           encoding: { color: self.color },
           size: self.size,
           layers: self.layers,

@@ -113,6 +113,7 @@ import type {
 } from '@jbrowse/bandage-core/colorSchemes'
 import type { EdgeWidth } from '@jbrowse/bandage-core/edgeWidths'
 import type { FacetInput, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
+import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { NodeWidth } from '@jbrowse/bandage-core/nodeWidths'
 import type { AssemblyNames } from '@jbrowse/bandage-core/reference'
@@ -169,6 +170,7 @@ function spanIn(
 // as props, a track display in its config
 export interface GraphGrammar {
   layoutMode?: LayoutModeValue
+  layoutEngine?: LayoutEngineKind
   encoding?: GraphEncoding
   size?: NodeSize
   layers?: GraphLayers
@@ -231,6 +233,9 @@ export const withGraphViews = paneBase
     return {
       get chosenLayoutMode(): LayoutModeValue {
         return self.grammar.layoutMode ?? 'force'
+      },
+      get chosenLayoutEngine(): LayoutEngineKind {
+        return self.grammar.layoutEngine ?? 'fmmm'
       },
       get chosenColorScheme(): ColorScheme {
         return schemeOfColor(self.grammar.encoding?.color)

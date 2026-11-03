@@ -247,8 +247,14 @@ function createEnvironment({
         uri: 'graph',
         ...(tiered ? { coarse } : {}),
       },
+      // anchored, the layout whose cut margins and genomic x most tests here
+      // pin; a track naming no layout opens force-directed
       displays: [
-        { type: 'LinearGraphDisplay', displayId: 'graph-LinearGraphDisplay' },
+        {
+          type: 'LinearGraphDisplay',
+          displayId: 'graph-LinearGraphDisplay',
+          layoutMode: 'auto',
+        },
       ],
     },
     { pluginManager },
@@ -260,8 +266,14 @@ function createEnvironment({
       name: 'walks',
       assemblyNames: [ASM, 'HG1.1', 'HG2.1'],
       adapter: { type: 'GbzBaseSyntenyAdapter', assemblyNames: [ASM] },
+      // anchored, whose margined cut is what the refusal tests' dense
+      // thresholds are set against
       displays: [
-        { type: 'LinearGraphDisplay', displayId: 'walks-LinearGraphDisplay' },
+        {
+          type: 'LinearGraphDisplay',
+          displayId: 'walks-LinearGraphDisplay',
+          layoutMode: 'auto',
+        },
       ],
     },
     { pluginManager },
@@ -1108,6 +1120,7 @@ test('a launch that states one choice takes the rest from the config', async () 
 test('each grammar setter writes the track config, and the pane reads it back', async () => {
   const { display } = await shownGraph()
   display.setLayoutMode('ordered')
+  display.setLayoutEngine('fmmm')
   display.setColorScheme('depth')
   display.setNodeWidth('uniform')
   display.setLinkWidth('walks')
@@ -1116,7 +1129,14 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setWalkRowSamples(['HG1'])
   display.setWalkRowOrder('shared')
   display.setHover('off')
-  const slots = ['layoutMode', 'encoding', 'size', 'layers', 'rows'] as const
+  const slots = [
+    'layoutMode',
+    'layoutEngine',
+    'encoding',
+    'size',
+    'layers',
+    'rows',
+  ] as const
   expect(
     Object.fromEntries(
       [...slots, 'hover' as const].map(s => [
@@ -1126,6 +1146,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     ),
   ).toEqual({
     layoutMode: 'ordered',
+    layoutEngine: 'fmmm',
     encoding: { color: { field: 'depth' } },
     size: { value: 6, links: 'walks' },
     layers: { bubbles: true },
@@ -1135,6 +1156,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   expect(readConfObject(display.configuration, ['facet', 'field'])).toBe('walk')
   expect([
     display.chosenLayoutMode,
+    display.chosenLayoutEngine,
     display.chosenColorScheme,
     display.nodeWidth,
     display.linkWidth,
@@ -1144,6 +1166,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     display.chosenHover,
   ]).toEqual([
     'ordered',
+    'fmmm',
     'depth',
     'uniform',
     'walks',
@@ -1197,6 +1220,35 @@ test('a 4.0 FeatureTrack config still opens as the graph', async () => {
   await wait(SETTLE_MS)
   expect(cuts).toHaveLength(1)
   expect(display.hasGraph).toBe(true)
+})
+
+test('a track whose config names no layout opens force-directed, drawn by stress', async () => {
+  const { view } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack('graph-as-feature', {}, { type: 'LinearGraphDisplay' })
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(display.chosenLayoutMode).toBe('force')
+  expect(display.chosenLayoutEngine).toBe('stress')
+  expect(display.usesLayoutEngine).toBe(true)
+})
+
+test('a config that picks FMMM opens with it, and the graph view it launches keeps it', async () => {
+  const { view } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack(
+    'graph-as-feature',
+    {},
+    { type: 'LinearGraphDisplay', layoutEngine: 'fmmm' },
+  )
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(display.chosenLayoutEngine).toBe('fmmm')
+  expect(display.graphViewSpec).toMatchObject({ layoutEngine: 'fmmm' })
 })
 
 test("a track naming its reference by an alias of the view's assembly cuts the window", async () => {

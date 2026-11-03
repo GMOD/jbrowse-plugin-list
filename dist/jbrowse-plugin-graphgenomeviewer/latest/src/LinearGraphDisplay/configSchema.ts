@@ -1,3 +1,4 @@
+import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { trackHeightConfigSchemaFields } from '@jbrowse/display-kit/trackHeightConfigSchemaFields'
@@ -20,12 +21,24 @@ export function configSchemaFactory() {
     {
       /**
        * #slot
-       * the layout the track opens in
+       * the layout the track opens in: `force`, which the stress engine draws
+       * in reference order and keeps steady across a pan (ADR-046), or `auto`
+       * for the anchored layout, whose x is reference bp
        */
       layoutMode: {
         type: 'stringEnum',
         model: types.enumeration('LayoutMode', LAYOUT_MODE_VALUES),
-        defaultValue: 'auto',
+        defaultValue: 'force',
+      },
+      /**
+       * #slot
+       * the engine that draws `force`: `stress`, which keeps a re-cut's
+       * drawing in place (ADR-044), or Bandage's `fmmm`
+       */
+      layoutEngine: {
+        type: 'stringEnum',
+        model: types.enumeration('LayoutEngine', LAYOUT_ENGINE_VALUES),
+        defaultValue: 'stress',
       },
       /**
        * #slot

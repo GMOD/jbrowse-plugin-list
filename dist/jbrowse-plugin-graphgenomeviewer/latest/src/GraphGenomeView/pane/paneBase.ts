@@ -2,7 +2,6 @@ import { lazy } from 'react'
 
 import { BUBBLE_SPREAD_VALUES } from '@jbrowse/bandage-core/bubbleSpreads'
 import { createForceLayoutCache } from '@jbrowse/bandage-core/layout/forceCache'
-import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { viewportOf } from '@jbrowse/bandage-core/viewport'
 import { types } from '@jbrowse/mobx-state-tree'
 import { RenderLifecycleMixin } from '@jbrowse/render-core/RenderLifecycleMixin'
@@ -246,9 +245,6 @@ export const paneBase = types
       // Cost at the sizes this view draws is milliseconds, and the header
       // states the layout time.
       layoutQuality: types.optional(types.number, 2),
-      // Which engine draws the force layout: Bandage's FMMM, or the stress
-      // layout, which reads the reference straight. See LAYOUT_ENGINES.
-      layoutEngine: lenientOptionalEnum(LAYOUT_ENGINE_VALUES, 'fmmm'),
       linearLayout: types.optional(types.boolean, false),
       // How far the force layout opens a bubble, which on a variation graph is
       // the difference between a legible drawing and a rope. See

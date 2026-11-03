@@ -16,7 +16,7 @@ function shown(layoutEngine: string) {
     repeatTrackChoices: [],
     hasGraph: true,
     usesLayoutEngine: true,
-    layoutEngine,
+    chosenLayoutEngine: layoutEngine,
     layoutQuality: 2,
     bubbleSpread: 'auto',
     linearLayout: false,

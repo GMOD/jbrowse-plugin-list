@@ -308,7 +308,7 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
 
           <SettingSelect
             label="Engine"
-            value={model.layoutEngine}
+            value={model.chosenLayoutEngine}
             options={LAYOUT_ENGINES}
             testId="graph-layout-engine-select"
             onChange={engine => {
@@ -350,7 +350,7 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
             <Caption>How far the layout opens a bubble</Caption>
           </SettingSelect>
 
-          {model.layoutEngine === 'stress' ? null : (
+          {model.chosenLayoutEngine === 'stress' ? null : (
             <SettingSwitch
               label="Linear layout"
               checked={model.linearLayout}

@@ -130,7 +130,7 @@ export const withSettingActions = withTubeMapViews
       self.layoutQuality = quality
     },
     setLayoutEngine(engine: LayoutEngineKind) {
-      self.layoutEngine = engine
+      self.writeGrammar({ layoutEngine: engine })
     },
     setLinearLayout(linear: boolean) {
       self.linearLayout = linear

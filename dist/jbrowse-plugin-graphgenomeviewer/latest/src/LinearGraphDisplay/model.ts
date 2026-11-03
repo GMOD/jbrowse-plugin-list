@@ -1,7 +1,6 @@
 import { lazy } from 'react'
 import type { ReactNode } from 'react'
 
-import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
 import {
   ConfigurationReference,
@@ -26,7 +25,6 @@ import { reaction } from 'mobx'
 import { isNodeLimitError } from '../nodeLimitError'
 import { denseCovers } from './denseWindow'
 import { cutHolds, hostCut, hostWindow } from '../GraphGenomeView/host'
-import { lenientOptionalEnum } from '../GraphGenomeView/lenientEnum'
 import { GraphPane, formatSpanBp } from '../GraphGenomeView/model'
 import { FACET_KEY_PX } from '../GraphGenomeView/pane/fitViews'
 import { paneBase } from '../GraphGenomeView/pane/paneBase'
@@ -103,9 +101,6 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       types.model({
         type: types.literal('LinearGraphDisplay'),
         configuration: ConfigurationReference(configSchema),
-        // a zoom re-cuts the graph, and stress keeps the drawing's
-        // orientation across re-cuts where FMMM turns it (ADR-044)
-        layoutEngine: lenientOptionalEnum(LAYOUT_ENGINE_VALUES, 'stress'),
         // the window the graph on screen was asked for, so a restored
         // session cuts it again
         cutRegion: types.maybe(types.frozen<SubgraphRegion>()),
@@ -129,6 +124,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       get grammar(): GraphGrammar {
         return {
           layoutMode: getConf(self, 'layoutMode'),
+          layoutEngine: getConf(self, 'layoutEngine'),
           encoding: getConf(self, 'encoding'),
           size: getConf(self, 'size'),
           layers: getConf(self, 'layers') as GraphLayers,

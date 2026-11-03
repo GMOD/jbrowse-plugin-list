@@ -472,7 +472,9 @@ export const withLaunchActions = withRenderingActions
     graphMenuItems(): MenuItem[] {
       const options = this.layoutOptionMenuItems()
       const mode = layoutModeByValue(self.chosenLayoutMode)
-      const engine = ENGINE_NAMES.find(([e]) => e === self.layoutEngine)![1]
+      const engine = ENGINE_NAMES.find(
+        ([e]) => e === self.chosenLayoutEngine,
+      )![1]
       return [
         {
           label: `Layout: ${layoutMenuLabel(mode)}${mode.value === 'force' ? ` (${engine})` : ''}`,
@@ -490,7 +492,7 @@ export const withLaunchActions = withRenderingActions
                     label: `${layoutMenuLabel(mode)} (${name})`,
                     checked:
                       self.chosenLayoutMode === mode.value &&
-                      self.layoutEngine === engine,
+                      self.chosenLayoutEngine === engine,
                     onClick: () => {
                       void self.switchForceEngine(engine)
                     },

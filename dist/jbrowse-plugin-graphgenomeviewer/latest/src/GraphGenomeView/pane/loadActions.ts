@@ -61,7 +61,7 @@ import type { FileLocation } from '@jbrowse/core/util/types'
 const withEngineSettings = withSettingActions.views(self => ({
   get engineSettings() {
     return engineSettingsOf({
-      engine: self.layoutEngine,
+      engine: self.chosenLayoutEngine,
       quality: self.layoutQuality,
       linearLayout: self.linearLayout,
       bubbleSpread: self.bubbleSpread,
