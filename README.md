@@ -65,6 +65,9 @@ A plugin is described with the following data:
 - **jbrowseRange (optional):** the range the latest published version is offered
   under when `versions` is omitted, e.g. `">=5.0.0"` for a plugin built against
   JBrowse 5. Defaults to `"*"`; set this or `versions`, not both.
+- **unlisted (optional):** `true` for a plugin the store hosts for the configs
+  that name it by `storePlugin`, but never lists, because installing it does
+  nothing without the setup those configs carry.
 - **image (optional):** if you would like an image of your plugin to be
   displayed in the store, please provide an 800 x 200 screenshot of the feature
   you want to show to the img directory. Please provide the download URL for

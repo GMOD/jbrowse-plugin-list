@@ -53,6 +53,10 @@ export interface SourcePlugin {
   // The range an entry without `versions` publishes npm latest under; `*` when
   // omitted. For a plugin that needs a newer JBrowse but should track latest.
   jbrowseRange?: string
+  // Rehosted and resolvable by a config's `storePlugin`, but never offered in
+  // the store's list: it does nothing outside the setup the configs that name
+  // it carry, as BLAT needs a UCSC-hosted assembly.
+  unlisted?: boolean
 }
 
 export function latestRange(plugin: SourcePlugin) {
@@ -125,6 +129,7 @@ export interface V2Plugin {
   tags?: PluginTag[]
   license: string
   image?: string
+  unlisted?: boolean
   url?: string
   integrity?: string
   esmUrl?: string

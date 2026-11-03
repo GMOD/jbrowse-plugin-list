@@ -106,7 +106,16 @@ const v2: V2Plugin[] = plugins.flatMap(plugin => {
     assertValidRange(plugin.packageName, version.jbrowseRange)
   }
   const latest = latestVersion(built)
-  const { name, authors, description, location, tags, license, image } = plugin
+  const {
+    name,
+    authors,
+    description,
+    location,
+    tags,
+    license,
+    image,
+    unlisted,
+  } = plugin
   return [
     {
       name,
@@ -117,6 +126,7 @@ const v2: V2Plugin[] = plugins.flatMap(plugin => {
       ...(tags === undefined ? {} : { tags }),
       license,
       ...(image === undefined ? {} : { image }),
+      ...(unlisted ? { unlisted } : {}),
       ...builtUrlFields(latest),
       versions: built.versions,
       // Derived from plugins.json rather than carried through the build
