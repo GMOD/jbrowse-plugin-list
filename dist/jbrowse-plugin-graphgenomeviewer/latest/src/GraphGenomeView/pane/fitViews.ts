@@ -21,6 +21,7 @@ import {
   walkRowsExtent,
 } from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
+import { legendCorner } from '@jbrowse/bandage-core/legendCorner'
 import {
   FIT_PADDING,
   drawingBounds,
@@ -300,18 +301,6 @@ export const withFitViews = withHostViews
     get facetGrid() {
       return this.facetGridIn(this.fitRoom - FACET_KEY_PX)
     },
-    // The hover tooltip's distance from the pane's right edge: in the corner,
-    // unless the legend reaches down into its room, and then beside it. A
-    // faceted pane mounts no legend, so its last measured size is stale.
-    get tooltipRightPx() {
-      const { width, height } = self.legendSize
-      const legendBottom = LEGEND_INSET_PX + self.referenceStripZonePx + height
-      return !self.facetPanels &&
-        width > 0 &&
-        legendBottom > this.canvasHeight - TOOLTIP_ROOM_PX
-        ? width + 2 * LEGEND_INSET_PX
-        : TOOLTIP_INSET_PX
-    },
     // The pane is as tall as the drawing, rather than a fixed box the drawing
     // floats in. A row layout's rows are px, so its height is a sum; an
     // isotropic layout has no height of its own and takes its aspect ratio
@@ -396,6 +385,26 @@ export const withFitViews = withHostViews
             padBottom: pads.bottom,
           })
         : undefined
+    },
+  }))
+  .views(self => ({
+    // The corner the key takes: top right, or bottom left where the drawing
+    // runs under the top right and less of it under the bottom left
+    get legendCorner() {
+      return legendCorner(self)
+    },
+    // The hover tooltip's distance from the pane's right edge: in the corner,
+    // unless the legend reaches down into its room, and then beside it. A
+    // faceted pane mounts no legend, so its last measured size is stale.
+    get tooltipRightPx() {
+      const { width, height } = self.legendSize
+      const legendBottom = LEGEND_INSET_PX + self.referenceStripZonePx + height
+      return !self.facetPanels &&
+        width > 0 &&
+        this.legendCorner === 'top-right' &&
+        legendBottom > self.canvasHeight - TOOLTIP_ROOM_PX
+        ? width + 2 * LEGEND_INSET_PX
+        : TOOLTIP_INSET_PX
     },
   }))
   .views(self => ({

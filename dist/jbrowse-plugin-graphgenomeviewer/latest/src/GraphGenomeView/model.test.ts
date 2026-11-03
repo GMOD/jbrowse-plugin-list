@@ -1698,6 +1698,46 @@ describe('canvas height follows the drawing', () => {
     expect(model.canvasHeight).toBe(canvasHeight)
   })
 
+  test.each([
+    {
+      along: 'the top and right edges',
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+      ],
+      corner: 'bottom-left',
+    },
+    {
+      along: 'the left and bottom edges',
+      points: [
+        { x: 0, y: 0 },
+        { x: 0, y: 100 },
+        { x: 100, y: 100 },
+      ],
+      corner: 'top-right',
+    },
+  ])(
+    'a drawing along $along puts the key $corner',
+    async ({ points, corner }) => {
+      mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+        method === 'GraphComputeLayout'
+          ? Promise.resolve({
+              result: { nodePositions: { '1+': points } },
+              duration: 5,
+            })
+          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+      )
+      const model = createModel()
+      await model.loadGFA(SIMPLE_GFA, 'square')
+      model.zoomToFit()
+      // wide enough to reach the square drawing centred in the 800 px pane
+      model.setLegendSize({ width: 300, height: 200 })
+
+      expect(model.legendCorner).toBe(corner)
+    },
+  )
+
   test('the hover tooltip moves beside a legend that reaches its corner', async () => {
     rpcRespond()
     const model = createModel()

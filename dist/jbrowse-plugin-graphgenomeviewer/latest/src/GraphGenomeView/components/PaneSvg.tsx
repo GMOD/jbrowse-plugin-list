@@ -210,9 +210,13 @@ function Keys({
   const boxWidth =
     rows.reduce((max, r) => Math.max(max, r.width), -Infinity) + pad * 2
   const boxHeight = rows.reduce((sum, r) => sum + r.height, 0) + pad
-  const right = model.paneWidth - LEGEND_INSET_PX
-  const left = right - boxWidth + pad
-  const top = LEGEND_INSET_PX + model.referenceStripZonePx
+  const topRight = model.legendCorner === 'top-right'
+  const left = topRight
+    ? model.paneWidth - LEGEND_INSET_PX - boxWidth + pad
+    : LEGEND_INSET_PX + pad
+  const top = topRight
+    ? LEGEND_INSET_PX + model.referenceStripZonePx
+    : model.canvasHeight - LEGEND_INSET_PX - boxHeight
   const placed: { row: KeyRow; y: number }[] = []
   let y = top + pad / 2 + pitch / 2 + 4
   for (const row of rows) {

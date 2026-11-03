@@ -115,14 +115,11 @@ const RowLabels = observer(function RowLabels({
   )
 })
 
-// Top RIGHT: the row labels own the left edge and the hover tooltip owns the
-// bottom right, so this is the one corner nothing else claims. Every key
-// stretches to the widest, so together they read as one panel. It takes the
-// pointer, for its rows' titles and its close button.
+// In the corner model.legendCorner picks. Every key stretches to the widest,
+// so together they read as one panel. It takes the pointer, for its rows'
+// titles and its close button.
 const legendStackStyle = {
   position: 'absolute' as const,
-  top: LEGEND_INSET_PX,
-  right: LEGEND_INSET_PX,
   display: 'flex',
   flexDirection: 'column' as const,
   borderRadius: 3,
@@ -189,9 +186,15 @@ export const Legends = observer(function Legends({
   return (
     <div
       ref={ref}
+      data-legend-corner={model.legendCorner}
       style={{
         ...legendStackStyle,
-        top: LEGEND_INSET_PX + model.referenceStripZonePx,
+        ...(model.legendCorner === 'top-right'
+          ? {
+              top: LEGEND_INSET_PX + model.referenceStripZonePx,
+              right: LEGEND_INSET_PX,
+            }
+          : { bottom: LEGEND_INSET_PX, left: LEGEND_INSET_PX }),
         maxHeight:
           model.canvasHeight - 2 * LEGEND_INSET_PX - model.referenceStripZonePx,
       }}

@@ -347,7 +347,7 @@ export const paneBase = types
     layoutResult: undefined as PaneLayout | undefined,
     // the mode that drew layoutResult: force where the chosen one could not
     drawnLayoutMode: undefined as LayoutModeValue | undefined,
-    // what the legends in the pane's top-right corner measure, so no label
+    // what the legends in the pane's corner measure, so no label
     // is placed under them
     legendSize: { width: 0, height: 0 },
     // The bubble index rows over the cut window, when the source track has
