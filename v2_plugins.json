@@ -368,6 +368,33 @@
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/latest/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
+    },
+    {
+      "name": "Blat",
+      "packageName": "jbrowse-plugin-blat",
+      "authors": [
+        "JBrowse Team"
+      ],
+      "description": "UCSC BLAT search and in-silico PCR, through the jbrowse.org proxy",
+      "location": "https://github.com/GMOD/jbrowse-plugin-blat",
+      "tags": [
+        "needs-setup",
+        "sequence",
+        "remote-api"
+      ],
+      "license": "Apache-2.0",
+      "unlisted": true,
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-blat/1.0.0/dist/jbrowse-plugin-blat.umd.production.min.js",
+      "integrity": "sha384-kCCquzgfunfTTsh8HnxBhl1hvT77PfxAKhw/PERHjhIS5v1/NXwdtg5LM1fpDisn",
+      "versions": [
+        {
+          "pluginVersion": "1.0.0",
+          "jbrowseRange": "*",
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-blat/1.0.0/dist/jbrowse-plugin-blat.umd.production.min.js",
+          "integrity": "sha384-kCCquzgfunfTTsh8HnxBhl1hvT77PfxAKhw/PERHjhIS5v1/NXwdtg5LM1fpDisn"
+        }
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-blat/latest/dist/jbrowse-plugin-blat.umd.production.min.js"
     }
   ]
 }

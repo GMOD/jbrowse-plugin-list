@@ -1,0 +1,53 @@
+{
+  "name": "jbrowse-plugin-blat",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "JBrowse 2 plugin for UCSC BLAT and in-silico PCR, through the jbrowse.org proxy",
+  "keywords": [
+    "jbrowse",
+    "jbrowse2"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GMOD/jbrowse-plugin-blat.git"
+  },
+  "author": "JBrowse Team",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build-umd.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "floor": "node scripts/check-umd-floor.ts",
+    "format": "prettier --write .",
+    "preversion": "pnpm typecheck && pnpm test && pnpm build && pnpm floor && pnpm host-compat",
+    "postversion": "git push --follow-tags",
+    "host-compat": "node scripts/host-compat-probe.mjs --bundle dist/jbrowse-plugin-blat.umd.production.min.js",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@jbrowse/core": "5.0.0-beta.20",
+    "@jbrowse/mobx-state-tree": "^6.10.0",
+    "@jbrowse/plugin-alignments": "5.0.0-beta.20",
+    "@jbrowse/plugin-linear-genome-view": "5.0.0-beta.20",
+    "@mui/icons-material": "^9.5.0",
+    "@mui/material": "^9.5.0",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3",
+    "mobx": "^7.1.4",
+    "mobx-react": "^10.0.3",
+    "prettier": "^3.8.4",
+    "puppeteer-core": "^25.16.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "vitest-fetch-mock": "^0.4.5"
+  }
+}

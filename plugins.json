@@ -160,6 +160,17 @@
       "tags": ["bring-your-own-data", "pangenome"],
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
       "jbrowseRange": ">=5.0.0"
+    },
+    {
+      "name": "Blat",
+      "packageName": "jbrowse-plugin-blat",
+      "authors": ["JBrowse Team"],
+      "description": "UCSC BLAT search and in-silico PCR, through the jbrowse.org proxy",
+      "location": "https://github.com/GMOD/jbrowse-plugin-blat",
+      "umdPath": "dist/jbrowse-plugin-blat.umd.production.min.js",
+      "license": "Apache-2.0",
+      "tags": ["needs-setup", "sequence", "remote-api"],
+      "unlisted": true
     }
   ]
 }
