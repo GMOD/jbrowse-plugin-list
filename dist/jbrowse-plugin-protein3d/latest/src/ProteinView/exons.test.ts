@@ -3,6 +3,7 @@ import { genomeToTranscriptSeqMapping } from 'g2p_mapper'
 import { expect, test } from 'vitest'
 
 import {
+  MAX_ALIGNMENT_GAP_BP,
   codonExon,
   exonColor,
   exonKeyEntries,
@@ -91,16 +92,16 @@ test("numbers a minus-strand transcript from its 5′ end, the genome's right", 
 })
 
 test('a codon an intron splits takes the exon holding two of its bases', () => {
-  // minus strand: [20,25) then [7,14); codon 1 is G A at 21, 20 and A at 13
+  // minus strand: [30,35) then [7,14); codon 1 is G A at 31, 30 and A at 13
   const minus = {
     refName: 'chr17',
     start: 7,
-    end: 25,
+    end: 35,
     strand: -1,
-    subfeatures: [row('CDS', 20, 25), row('CDS', 7, 14)],
+    subfeatures: [row('CDS', 30, 35), row('CDS', 7, 14)],
   }
   const { p2gCodon } = genomeToTranscriptSeqMapping(minus)
-  expect(p2gCodon[1]).toEqual([21, 20, 13])
+  expect(p2gCodon[1]).toEqual([31, 30, 13])
   const byPosition = exonsByTranscriptPosition(transcriptExons(minus), p2gCodon)
   expect(byPosition.get(0)).toEqual({ exon: 1 })
   expect(byPosition.get(1)).toEqual({ exon: 1, codonExons: [1, 2] })
@@ -142,6 +143,49 @@ test('rebuilds exons from CDS and UTR rows that touch, as a bigBed transcript gi
     ],
   }
   expect(transcriptExons(bigBed)).toEqual(transcriptExons(plus))
+})
+
+// NM_001003035.1, canine SOD1, as UCSC's canFam4 ncbiRefSeq gives it: the
+// RefSeq's alignment to the genome opens a 1-bp gap at 27125696, inside the
+// fourth exon of a five-exon gene
+const sod1 = {
+  strand: 1,
+  subfeatures: [
+    row('five_prime_UTR', 27118828, 27118834),
+    row('CDS', 27118834, 27118906),
+    row('CDS', 27123011, 27123105),
+    row('CDS', 27124754, 27124824),
+    row('CDS', 27125647, 27125696),
+    row('CDS', 27125697, 27125766),
+    row('CDS', 27126823, 27126931),
+    row('three_prime_UTR', 27126931, 27126937),
+  ],
+}
+
+test('an alignment indel inside an exon is not an intron', () => {
+  const { blocks } = transcriptExons(sod1)
+  expect(blocks).toEqual([
+    { start: 27118828, end: 27118906 },
+    { start: 27123011, end: 27123105 },
+    { start: 27124754, end: 27124824 },
+    { start: 27125647, end: 27125766 },
+    { start: 27126823, end: 27126937 },
+  ])
+  expect(codonExon(blocks, [27125694, 27125695, 27125697])).toEqual({
+    exon: 4,
+  })
+})
+
+test('a short intron stays, Stentor’s 15 bp and a gap just past an indel', () => {
+  const exons = (gap: number) =>
+    transcriptExons({
+      strand: 1,
+      subfeatures: [row('exon', 0, 30), row('exon', 30 + gap, 60 + gap)],
+    }).blocks.length
+  expect(exons(1)).toBe(1)
+  expect(exons(MAX_ALIGNMENT_GAP_BP)).toBe(1)
+  expect(exons(MAX_ALIGNMENT_GAP_BP + 1)).toBe(2)
+  expect(exons(15)).toBe(2)
 })
 
 test('counts coding exons when the transcript names CDS alone', () => {

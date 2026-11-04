@@ -1,6 +1,12 @@
+import {
+  featureFilterLabel,
+  featureFilterProblems,
+  isFeatureFieldName,
+} from './featureFields'
 import { RESIDUE_COLORS } from './residueColors'
 
 import type { LinearColor, ThresholdColor } from './colorScale'
+import type { FeatureFilter } from './featureFields'
 
 /**
  * The fields the view colors its structures by, each with its menu label and
@@ -101,6 +107,11 @@ export interface ProteinColor {
    * as jbrowse-components' displays name one, such as `INFO.AF`
    */
   scoreField?: string
+  /**
+   * `track`: the predicates a feature passes to be read, each naming a field
+   * as `scoreField` does, such as `{ field: 'FILTER', equal: 'PASS' }`
+   */
+  filter?: FeatureFilter
   /** `values`: one number per residue of the transcript's protein */
   values?: ResidueValues
   scale?: 'linear' | 'threshold'
@@ -131,7 +142,7 @@ const SCALE_MEMBERS = {
  * member must be.
  */
 const FIELD_MEMBERS: Partial<Record<ColorField, readonly string[]>> = {
-  track: ['trackId', 'stat', 'scoreField'],
+  track: ['trackId', 'stat', 'scoreField', 'filter'],
   values: ['values'],
 }
 
@@ -204,7 +215,7 @@ const MEMBER_TYPES: Record<string, [(value: unknown) => boolean, string]> = {
     `one of ${TRACK_STATS.join(', ')}`,
   ],
   scoreField: [
-    v => typeof v === 'string' && v !== '' && !v.startsWith('jexl:'),
+    isFeatureFieldName,
     'a field name such as INFO.AF, not a jexl: expression',
   ],
   values: [
@@ -276,6 +287,9 @@ export function colorProblems(color: unknown): string[] {
       return value === preset.scale
         ? []
         : [`color.scale of ${field} is ${preset.scale}`]
+    }
+    if (key === 'filter') {
+      return featureFilterProblems(value, 'color.filter')
     }
     const [accepts, kind] = MEMBER_TYPES[key]!
     return accepts(value) ? [] : [`color.${key} is ${kind}`]
@@ -355,7 +369,7 @@ export function checkedColor(color: unknown): ProteinColor {
 export function resolvedColor(
   color: ProteinColor,
 ): LinearColor | ThresholdColor | undefined {
-  const { field, trackId, stat, scoreField, values, ...members } = color
+  const { field, trackId, stat, scoreField, filter, values, ...members } = color
   return field && isScaledField(field)
     ? ({ ...presetOf(field, members.scale), ...members } as
         LinearColor | ThresholdColor)
@@ -363,12 +377,20 @@ export function resolvedColor(
 }
 
 /** What a track color's legend says a residue's value is. */
-export function trackStatLabel({ stat = 'mean', scoreField }: ProteinColor) {
-  return stat === 'count'
-    ? 'features per codon'
-    : scoreField === undefined
-      ? `${stat} per codon`
-      : `${stat} ${scoreField} per codon`
+export function trackStatLabel({
+  stat = 'mean',
+  scoreField,
+  filter = [],
+}: ProteinColor) {
+  const reads =
+    stat === 'count'
+      ? 'features per codon'
+      : scoreField === undefined
+        ? `${stat} per codon`
+        : `${stat} ${scoreField} per codon`
+  return filter.length > 0
+    ? `${reads} where ${featureFilterLabel(filter)}`
+    : reads
 }
 
 /** The Mol* theme a color object paints with; undefined is Mol*'s default. */

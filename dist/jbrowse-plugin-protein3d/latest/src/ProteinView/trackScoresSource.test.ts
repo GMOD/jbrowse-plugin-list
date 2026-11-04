@@ -1,11 +1,8 @@
 import { SimpleFeature } from '@jbrowse/core/util'
 import { expect, test } from 'vitest'
 
-import {
-  numberOfField,
-  readFeatureField,
-  trackValuesByResidue,
-} from './trackScoresSource'
+import { numberOfField, readFeatureField } from './featureFields'
+import { trackValuesByResidue } from './trackScoresSource'
 import { VariantEffectRefusal } from './variantEffects'
 
 const p2gCodon = { 0: [100, 101, 102], 1: [103, 104, 105], 2: [106, 107, 108] }
@@ -131,6 +128,64 @@ test('a track with no features under the transcript says so rather than counting
     }),
   ).toThrow(
     'Track "cohort" has no features under this transcript\'s coding bases',
+  )
+})
+
+function called(
+  uniqueId: string,
+  pos: number,
+  FILTER: string | string[],
+  INFO: Record<string, unknown> = {},
+) {
+  return new SimpleFeature({ ...variant(uniqueId, pos, INFO).toJSON(), FILTER })
+}
+
+test('a filter counts only the records that pass it', () => {
+  const byPosition = trackValuesByResidue({
+    features: [
+      called('a', 100, 'PASS'),
+      called('b', 101, ['VQSRTrancheSNP99.00to99.90']),
+      called('c', 104, ['VQSRTrancheSNP99.90to100.00']),
+    ],
+    p2gCodon,
+    stat: 'count',
+    filter: [{ field: 'FILTER', equal: 'PASS' }],
+    trackId: 'dog10k',
+  })
+  expect([...byPosition]).toEqual([
+    [0, 1],
+    [1, 0],
+    [2, 0],
+  ])
+})
+
+test('a filter applies before a score is read', () => {
+  const byPosition = trackValuesByResidue({
+    features: [
+      called('a', 100, 'PASS', { AF: [0.1] }),
+      called('b', 101, ['LowQual'], { AF: [0.9] }),
+    ],
+    p2gCodon,
+    stat: 'max',
+    scoreField: 'INFO.AF',
+    filter: [{ field: 'FILTER', equal: 'PASS' }],
+    trackId: 'dog10k',
+  })
+  expect(byPosition.get(0)).toBe(0.1)
+})
+
+test('a filter no record passes says so rather than counting zeros', () => {
+  const read = () =>
+    trackValuesByResidue({
+      features: [called('a', 100, ['LowQual']), variant('b', 104, {})],
+      p2gCodon,
+      stat: 'count',
+      filter: [{ field: 'FILTER', equal: 'PASS' }],
+      trackId: 'dog10k',
+    })
+  expect(read).toThrow(VariantEffectRefusal)
+  expect(read).toThrow(
+    'None of track "dog10k"\'s 2 features under this transcript passes the filter FILTER = PASS',
   )
 })
 

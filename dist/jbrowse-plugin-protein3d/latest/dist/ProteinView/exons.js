@@ -5,11 +5,12 @@ export const EMPTY_EXON_COLOR = { ...RESIDUE_COLORS.exon };
 function isUtr(type) {
     return type !== undefined && /utr/i.test(type);
 }
+export const MAX_ALIGNMENT_GAP_BP = 9;
 function mergedBlocks(rows) {
     const merged = [];
     for (const { start, end } of rows.toSorted((a, b) => a.start - b.start)) {
         const last = merged.at(-1);
-        if (last && start <= last.end) {
+        if (last && start - last.end <= MAX_ALIGNMENT_GAP_BP) {
             last.end = Math.max(last.end, end);
         }
         else {
@@ -21,7 +22,8 @@ function mergedBlocks(rows) {
 /**
  * A transcript's exons in transcript order. Its `exon` rows when it has them;
  * otherwise its CDS and UTR rows, joined where they touch, which rebuilds the
- * exons a BED12 or bigBed transcript implies.
+ * exons a BED12 or bigBed transcript implies. Blocks a gap too short to be an
+ * intron separates are one exon.
  */
 export function transcriptExons(feature) {
     const rows = feature.subfeatures ?? [];

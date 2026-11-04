@@ -10,6 +10,7 @@ import {
 import { parseAlphaMissense } from '../AlphaMissensePathogenicityAdapter/parseAlphaMissense'
 
 import type { ClinVarBuild } from './clinVar'
+import type { FeatureFilter } from './featureFields'
 import type { TrackStat } from './proteinColor'
 import type { VariantEffectAsk } from './variantEffectLoader'
 import type { VariantEffectValues } from './variantEffects'
@@ -40,6 +41,7 @@ export type VariantEffectRequest = {
       trackId: string
       stat: TrackStat
       scoreField?: string
+      filter?: FeatureFilter
       assemblyName: string
       feature: SimpleFeatureSerialized
     }
@@ -148,6 +150,7 @@ export function genomeTrackAsk({
   trackName,
   stat,
   scoreField,
+  filter,
   feature,
   assemblyName,
 }: {
@@ -155,6 +158,7 @@ export function genomeTrackAsk({
   trackName: string | undefined
   stat: TrackStat
   scoreField?: string
+  filter?: FeatureFilter
   feature: SimpleFeatureSerialized | undefined
   assemblyName: string | undefined
 }): VariantEffectAsk {
@@ -179,11 +183,12 @@ export function genomeTrackAsk({
     status: 'ready',
     request: {
       scheme: 'genome-track',
-      key: `genome-track:${assemblyName}:${trackId}:${stat}:${scoreField}:${refName}:${start}-${end}:${uniqueId}`,
+      key: `genome-track:${assemblyName}:${trackId}:${stat}:${scoreField}:${JSON.stringify(filter)}:${refName}:${start}-${end}:${uniqueId}`,
       label: trackName ?? trackId,
       trackId,
       stat,
       scoreField,
+      filter,
       assemblyName,
       feature,
     },
@@ -226,6 +231,7 @@ async function load(
         trackId: request.trackId,
         stat: request.stat,
         scoreField: request.scoreField,
+        filter: request.filter,
         feature: new SimpleFeature(request.feature),
         assemblyName: request.assemblyName,
         signal,

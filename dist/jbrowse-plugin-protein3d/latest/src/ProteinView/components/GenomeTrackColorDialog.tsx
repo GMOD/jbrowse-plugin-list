@@ -176,7 +176,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
           onClick={() => {
             // the same track on the same scale keeps what a session wrote
             // beside it: its palette, labels, title and domain, and the same
-            // track its scoreField, which a count does not read
+            // track its filter, and its scoreField, which a count does not read
             const sameTrack =
               color.field === 'track' && color.trackId === trackId
             const kept =
@@ -186,6 +186,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
                 : undefined
             const scoreField =
               sameTrack && stat !== 'count' ? color.scoreField : undefined
+            const filter = sameTrack ? color.filter : undefined
             const sameBands = kept?.range?.length === (cuts?.length ?? 0) + 1
             model.setColor(
               scale === 'threshold' && cuts
@@ -195,6 +196,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
                     trackId,
                     stat,
                     scoreField,
+                    filter,
                     scale,
                     domain: cuts,
                     range: sameBands
@@ -202,7 +204,14 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
                       : thresholdRange(cuts.length + 1),
                     labels: sameBands ? kept.labels : undefined,
                   }
-                : { ...kept, field: 'track', trackId, stat, scoreField },
+                : {
+                    ...kept,
+                    field: 'track',
+                    trackId,
+                    stat,
+                    scoreField,
+                    filter,
+                  },
             )
             handleClose()
           }}

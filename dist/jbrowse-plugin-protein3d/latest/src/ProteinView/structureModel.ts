@@ -1201,7 +1201,12 @@ const Structure = types
         return alphaMissenseAsk(self.uniProtEntry)
       }
       if (field === 'track') {
-        const { trackId, stat = 'mean', scoreField } = self.parentView.color
+        const {
+          trackId,
+          stat = 'mean',
+          scoreField,
+          filter,
+        } = self.parentView.color
         const session = getSession(self)
         const conf = trackId ? session.getTrackById(trackId) : undefined
         return genomeTrackAsk({
@@ -1209,6 +1214,7 @@ const Structure = types
           trackName: conf ? getTrackName(conf, session) : undefined,
           stat,
           scoreField,
+          filter,
           feature: self.feature,
           assemblyName: self.connectedView?.assemblyNames[0],
         })

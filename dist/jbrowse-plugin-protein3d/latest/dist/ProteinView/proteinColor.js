@@ -1,3 +1,4 @@
+import { featureFilterLabel, featureFilterProblems, isFeatureFieldName, } from './featureFields';
 import { RESIDUE_COLORS } from './residueColors';
 /**
  * The fields the view colors its structures by, each with its menu label and
@@ -84,7 +85,7 @@ const SCALE_MEMBERS = {
  * member must be.
  */
 const FIELD_MEMBERS = {
-    track: ['trackId', 'stat', 'scoreField'],
+    track: ['trackId', 'stat', 'scoreField', 'filter'],
     values: ['values'],
 };
 function isDataScaledField(field) {
@@ -140,7 +141,7 @@ const MEMBER_TYPES = {
         `one of ${TRACK_STATS.join(', ')}`,
     ],
     scoreField: [
-        v => typeof v === 'string' && v !== '' && !v.startsWith('jexl:'),
+        isFeatureFieldName,
         'a field name such as INFO.AF, not a jexl: expression',
     ],
     values: [
@@ -209,6 +210,9 @@ export function colorProblems(color) {
                 ? []
                 : [`color.scale of ${field} is ${preset.scale}`];
         }
+        if (key === 'filter') {
+            return featureFilterProblems(value, 'color.filter');
+        }
         const [accepts, kind] = MEMBER_TYPES[key];
         return accepts(value) ? [] : [`color.${key} is ${kind}`];
     });
@@ -276,18 +280,21 @@ export function checkedColor(color) {
  * preset; undefined for a field whose colors are Mol*'s or the alignment's.
  */
 export function resolvedColor(color) {
-    const { field, trackId, stat, scoreField, values, ...members } = color;
+    const { field, trackId, stat, scoreField, filter, values, ...members } = color;
     return field && isScaledField(field)
         ? { ...presetOf(field, members.scale), ...members }
         : undefined;
 }
 /** What a track color's legend says a residue's value is. */
-export function trackStatLabel({ stat = 'mean', scoreField }) {
-    return stat === 'count'
+export function trackStatLabel({ stat = 'mean', scoreField, filter = [], }) {
+    const reads = stat === 'count'
         ? 'features per codon'
         : scoreField === undefined
             ? `${stat} per codon`
             : `${stat} ${scoreField} per codon`;
+    return filter.length > 0
+        ? `${reads} where ${featureFilterLabel(filter)}`
+        : reads;
 }
 /** The Mol* theme a color object paints with; undefined is Mol*'s default. */
 export function molstarThemeOf(color) {

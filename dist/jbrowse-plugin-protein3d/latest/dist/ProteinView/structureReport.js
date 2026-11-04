@@ -49,6 +49,10 @@ export function structureReport(s) {
         loading: s.loading,
         error: s.error === undefined ? undefined : errorMessage(s.error),
         status: s.statusMessage,
+        selection: s.clickedStructureRanges.map(({ start, end }) => ({
+            start,
+            end,
+        })),
         mapping: mappingReport(s),
     };
 }

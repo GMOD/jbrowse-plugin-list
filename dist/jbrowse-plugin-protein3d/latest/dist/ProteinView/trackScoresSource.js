@@ -1,5 +1,6 @@
 import { readConfObject } from '@jbrowse/core/configuration';
 import { codingSpans } from 'p2s_mapper';
+import { featureFilterLabel, numberOfField, passesFeatureFilter, readFeatureField, } from './featureFields';
 import { countByResidue, scoreByBase, scoreByResidue } from './trackScores';
 import { VariantEffectRefusal } from './variantEffects';
 import { genomeToTranscriptSeqMapping } from '../mappings';
@@ -7,34 +8,6 @@ import { trackConfigNode } from '../trackConfigNode';
 export const DEFAULT_SCORE_FIELD = 'score';
 function number(value) {
     return typeof value === 'number' ? value : Number.NaN;
-}
-/**
- * A field of a feature by the name jbrowse-components' displays read it by:
- * the whole name first, then a dotted path into a structured field, so
- * `INFO.AF` reads a VCF record's INFO and `INFO.AF.1` its second allele's.
- */
-export function readFeatureField(feature, name) {
-    const whole = feature.get(name);
-    const path = name.split('.');
-    return whole !== undefined || path.length === 1
-        ? whole
-        : path
-            .slice(1)
-            .reduce((value, key) => typeof value === 'object' && value !== null
-            ? Reflect.get(value, key)
-            : undefined, feature.get(path[0]));
-}
-/**
- * A field's value as one number. A list, such as a multi-allelic site's
- * `INFO.AF`, gives its highest entry, as overlapping features give a base
- * their highest score; a string a VCF header left untyped is read as a number.
- */
-export function numberOfField(value) {
-    const items = Array.isArray(value) ? value : [value];
-    const numbers = items
-        .map(v => typeof v === 'string' && v.trim() !== '' ? Number(v) : number(v))
-        .filter(Number.isFinite);
-    return numbers.length > 0 ? Math.max(...numbers) : Number.NaN;
 }
 const SEQUENCE_ALLELE = /^[ACGTN]+$/i;
 /**
@@ -61,20 +34,25 @@ function startsOnPaddingBase(feature) {
  * codon, because the request searched every codon; the other stats reduce
  * the number at `scoreField`, and a residue with none has no value. A feature
  * returned for two coding spans counts once, and a VCF indel reads from the
- * base after its padding base.
+ * base after its padding base. Only features every predicate of `filter`
+ * passes are read.
  */
-export function trackValuesByResidue({ features, p2gCodon, stat, scoreField = DEFAULT_SCORE_FIELD, trackId, }) {
+export function trackValuesByResidue({ features, p2gCodon, stat, scoreField = DEFAULT_SCORE_FIELD, filter = [], trackId, }) {
     const unique = [...new Map(features.map(f => [f.id(), f])).values()];
     if (unique.length === 0) {
         throw new VariantEffectRefusal(`Track "${trackId}" has no features under this transcript's coding bases`);
     }
-    const intervals = unique.map(f => ({
+    const kept = unique.filter(f => passesFeatureFilter(f, filter));
+    if (kept.length === 0) {
+        throw new VariantEffectRefusal(`None of track "${trackId}"'s ${unique.length} features under this transcript passes the filter ${featureFilterLabel(filter)}`);
+    }
+    const intervals = kept.map(f => ({
         start: number(f.get('start')) + (startsOnPaddingBase(f) ? 1 : 0),
         end: number(f.get('end')),
         score: numberOfField(readFeatureField(f, scoreField)),
     }));
     if (stat !== 'count' && !intervals.some(i => Number.isFinite(i.score))) {
-        throw new VariantEffectRefusal(`Track "${trackId}"'s ${unique.length} features under this transcript carry no number in ${scoreField}${scoreField === DEFAULT_SCORE_FIELD
+        throw new VariantEffectRefusal(`Track "${trackId}"'s ${kept.length} ${filter.length > 0 ? 'filtered ' : ''}features under this transcript carry no number in ${scoreField}${scoreField === DEFAULT_SCORE_FIELD
             ? '; name the field to read with scoreField, such as INFO.AF, or count the features with stat "count"'
             : ''}`);
     }
@@ -87,7 +65,7 @@ export function trackValuesByResidue({ features, p2gCodon, stat, scoreField = DE
  * three bases of its codon. Reads only the transcript's coding spans, in one
  * request, at the track's full resolution.
  */
-export async function fetchTrackScores({ session, trackId, stat, scoreField, feature, assemblyName, signal, }) {
+export async function fetchTrackScores({ session, trackId, stat, scoreField, filter, feature, assemblyName, signal, }) {
     const entry = session.getTrackById(trackId);
     const conf = entry ? trackConfigNode(session, entry) : undefined;
     if (!conf) {
@@ -124,6 +102,7 @@ export async function fetchTrackScores({ session, trackId, stat, scoreField, fea
         p2gCodon,
         stat,
         scoreField,
+        filter,
         trackId,
     });
 }

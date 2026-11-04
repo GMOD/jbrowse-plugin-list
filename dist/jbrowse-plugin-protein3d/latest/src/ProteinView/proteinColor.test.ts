@@ -287,4 +287,79 @@ test("a track's legend says what each residue's value is", () => {
   expect(
     trackStatLabel({ field: 'track', stat: 'max', scoreField: 'INFO.AF' }),
   ).toBe('max INFO.AF per codon')
+  expect(
+    trackStatLabel({
+      field: 'track',
+      stat: 'count',
+      filter: [
+        { field: 'FILTER', equal: 'PASS' },
+        { field: 'INFO.AF', gte: 0.01 },
+      ],
+    }),
+  ).toBe('features per codon where FILTER = PASS, INFO.AF ≥ 0.01')
+})
+
+test("a track field's filter is a list of predicates over feature fields", () => {
+  expect(
+    colorProblems({
+      field: 'track',
+      trackId: 'dog10k',
+      stat: 'count',
+      filter: [
+        { field: 'FILTER', equal: 'PASS' },
+        { field: 'INFO.AF', range: [0.01, 0.5] },
+        { field: 'INFO.CSQ', oneOf: ['missense_variant', 3] },
+      ],
+    }),
+  ).toEqual([])
+  expect(
+    colorProblems({ field: 'track', trackId: 'dog10k', filter: [] }),
+  ).toEqual([])
+  expect(
+    resolvedColor({
+      field: 'track',
+      trackId: 'dog10k',
+      filter: [{ field: 'FILTER', equal: 'PASS' }],
+    }),
+  ).toEqual(RESIDUE_COLORS.track)
+})
+
+test.each([
+  [
+    "color.filter is a list of predicates such as [{ field: 'FILTER', equal: 'PASS' }]",
+    { field: 'FILTER', equal: 'PASS' },
+  ],
+  [
+    'color.filter[0].field is a feature field name such as FILTER or INFO.AF, not a jexl: expression, not "jexl:feature.QUAL > 30"',
+    [{ field: 'jexl:feature.QUAL > 30', equal: true }],
+  ],
+  [
+    'color.filter[0].eq is not an operator: a predicate takes field and one of equal, lt, lte, gt, gte, range, oneOf',
+    [{ field: 'FILTER', eq: 'PASS' }],
+  ],
+  [
+    'color.filter[0].equal is a string or a number, not true',
+    [{ field: 'FILTER', equal: true }],
+  ],
+  ['color.filter[0].gte is a number, not "30"', [{ field: 'QUAL', gte: '30' }]],
+  [
+    'color.filter[0] selects nothing: its bounds run from 0.5 to 0.1',
+    [{ field: 'INFO.AF', gt: 0.5, lt: 0.1 }],
+  ],
+])('%s', (problem, filter) => {
+  expect(colorProblems({ field: 'track', trackId: 't', filter })).toEqual([
+    problem,
+  ])
+})
+
+test('a filter belongs to a track field', () => {
+  expect(
+    colorProblems({
+      field: 'values',
+      values: [1],
+      filter: [{ field: 'FILTER', equal: 'PASS' }],
+    }),
+  ).toEqual([
+    "color.filter is not a member of values's linear scale, which takes scale, domainMin, domainMax, domainMid, range, labels, title, values",
+  ])
 })

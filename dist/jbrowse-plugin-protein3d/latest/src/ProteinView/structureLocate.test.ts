@@ -174,6 +174,7 @@ test('the report says which chain maps and how well', () => {
     transcript: 'NM_HBB_TEST',
     loading: false,
     error: undefined,
+    selection: [],
     mapping: {
       entityId: '1',
       chains: ['A'],

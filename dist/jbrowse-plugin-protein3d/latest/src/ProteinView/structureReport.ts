@@ -24,6 +24,7 @@ export interface ReportedStructure {
   readonly alignment: PairwiseAlignment | undefined
   readonly alignmentImported: boolean
   readonly exactMatch: boolean
+  readonly clickedStructureRanges: readonly { start: number; end: number }[]
 }
 
 function text(value: unknown) {
@@ -78,6 +79,10 @@ export function structureReport(s: ReportedStructure) {
     loading: s.loading,
     error: s.error === undefined ? undefined : errorMessage(s.error),
     status: s.statusMessage,
+    selection: s.clickedStructureRanges.map(({ start, end }) => ({
+      start,
+      end,
+    })),
     mapping: mappingReport(s),
   }
 }
