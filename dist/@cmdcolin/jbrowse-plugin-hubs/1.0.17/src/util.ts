@@ -36,8 +36,8 @@ function mergeById(
 // Builds a desktop `.jbrowse` snapshot (a config plus a defaultSession) from a
 // web root config and its live session. Session-scoped tracks/assemblies are
 // hoisted into the config arrays so they open as first-class config entries in
-// desktop; the rest of the session becomes the defaultSession. Web sessions are
-// always UriLocation-based, so the result is fully portable to desktop.
+// desktop; the rest of the session becomes the defaultSession. A relative `uri`
+// is only portable with the `baseUri` beside it, so `jbrowse` must keep them.
 export function toDesktopSnapshot(
   jbrowse: Record<string, unknown>,
   session: Record<string, unknown>,

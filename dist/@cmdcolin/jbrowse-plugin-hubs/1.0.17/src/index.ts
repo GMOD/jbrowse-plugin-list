@@ -1,6 +1,6 @@
 import Plugin from '@jbrowse/core/Plugin'
 import { isAbstractMenuManager, isElectron } from '@jbrowse/core/util'
-import { getRoot, getSnapshot } from '@jbrowse/mobx-state-tree'
+import { getRoot, getSnapshot, isStateTreeNode } from '@jbrowse/mobx-state-tree'
 
 import { getConfigUrls } from './configUrls'
 import { describeAssemblies } from './describeAssemblies'
@@ -17,13 +17,30 @@ interface Session {
   connections: { connectionId: string }[]
 }
 
+// jbrowse-web's config node, on every host before 6ddcb6f886 (main, after
+// v5.0.0-beta.20), strips each `baseUri` from its own snapshot (a
+// postProcessor meant for the admin "save config" flow), which leaves each
+// relative `uri` bare, and desktop resolves a bare one against the directory
+// the .jbrowse file sits in: ENOENT ~/Downloads/hg38.chromAlias.txt. Its
+// children's snapshots don't pass through that processor, so the config is
+// read from them, baseUris intact, on old hosts and new alike.
+function configSnapshot(jbrowse: IAnyStateTreeNode) {
+  const node = jbrowse as Record<string, unknown>
+  return Object.fromEntries(
+    Object.keys(getSnapshot<Record<string, unknown>>(jbrowse)).map(key => {
+      const value = node[key]
+      return [key, isStateTreeNode(value) ? getSnapshot(value) : value]
+    }),
+  )
+}
+
 // Serializes the current web session as a desktop `.jbrowse` file. genomes
 // sessions are config-shaped already, so this just folds the live session into
 // a defaultSession and downloads it; desktop opens it via File > Open session.
 function downloadDesktopSession(session: AbstractSessionModel) {
   const { jbrowse } = getRoot<{ jbrowse: IAnyStateTreeNode }>(session)
   const snap = toDesktopSnapshot(
-    getSnapshot<Record<string, unknown>>(jbrowse),
+    configSnapshot(jbrowse),
     getSnapshot<Record<string, unknown>>(session),
   )
   saveAs(
