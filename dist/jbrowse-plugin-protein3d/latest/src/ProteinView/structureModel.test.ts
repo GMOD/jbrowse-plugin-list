@@ -68,15 +68,15 @@ const TestParent = types
       return undefined
     },
   }))
-  .volatile(() => ({ viewErrors: new Array<unknown>(), superposedCount: 0 }))
+  .volatile(() => ({ viewNotices: new Array<unknown>(), superposedCount: 0 }))
   .views(self => ({
     get settled() {
       return structuresSettled(self)
     },
   }))
   .actions(self => ({
-    setError(e: unknown) {
-      self.viewErrors.push(e)
+    addNotice(e: unknown) {
+      self.viewNotices.push(e)
     },
     setSuperposedCount(n: number) {
       self.superposedCount = n
@@ -1226,7 +1226,7 @@ test('a spec alignment without an entity maps onto the chain it spells, not enti
   expect(model.mappedEntityId).toBe('3')
   expect(model.alignmentImported).toBe(true)
   expect(model.clickedStructureRanges).toEqual([{ start: 154, end: 155 }])
-  expect(parent.viewErrors).toEqual([])
+  expect(parent.viewNotices).toEqual([])
 })
 
 test('an alignment saved against another chain moves to the chain it spells', () => {
@@ -1244,7 +1244,7 @@ test('an alignment that spells no chain is set aside, reported, and replaced by 
       `${P53_CORE.slice(0, 100)}W${P53_CORE.slice(101)}`,
     ),
   })
-  expect(String(parent.viewErrors)).toContain(
+  expect(String(parent.viewNotices)).toContain(
     'is not the sequence of any chain in this structure',
   )
   expect(model.alignmentImported).toBe(false)
@@ -1275,7 +1275,7 @@ test('a stale stored alignment is recomputed against its stored protein chain', 
       { entityId: '4', seq: paralog, seqIds: [], chains: ['D'] },
     ],
   })
-  expect(String(parent.viewErrors)).toContain(
+  expect(String(parent.viewNotices)).toContain(
     'no longer matches its chain and was recomputed',
   )
   expect(model.alignmentPending).toBe(true)
@@ -1327,9 +1327,9 @@ test('a rerun while a stale alignment realigns neither reports again nor restart
   const model = parent.structures[0]!
   model.setStructureData({ entities })
   expect(model.alignmentPending).toBe(true)
-  expect(parent.viewErrors).toHaveLength(1)
+  expect(parent.viewNotices).toHaveLength(1)
   model.setStructureData({ entities: [...entities] })
-  expect(parent.viewErrors).toHaveLength(1)
+  expect(parent.viewNotices).toHaveLength(1)
   await vi.waitFor(() => {
     expect(model.alignmentPending).toBe(false)
   })

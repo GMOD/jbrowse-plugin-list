@@ -1,4 +1,5 @@
 import { EMPTY_DOMAIN_COLOR, domainMarkOf } from './alignmentDomains';
+import { EMPTY_EXON_COLOR } from './exons';
 import loadMolstar from './loadMolstar';
 import { molstarThemeOf, resolvedColor } from './proteinColor';
 import { serialPerPlugin } from './serialPerPlugin';
@@ -12,11 +13,12 @@ export const PLACED_VALUE_SCHEMES = [
     ...VARIANT_EFFECT_SCHEMES,
     'alignment-domains',
     'residue-values',
+    'exon',
 ];
 function isPlacedValueScheme(theme) {
     return PLACED_VALUE_SCHEMES.some(s => s === theme);
 }
-function themeParams(color, { entityId, domainColor, revision, representationType = '', }) {
+function themeParams(color, { entityId, domainColor, exonColor, revision, representationType = '', }) {
     const scale = resolvedColor(color);
     return color.field === 'mappedChain'
         ? { entityId: entityId ?? '' }
@@ -26,9 +28,11 @@ function themeParams(color, { entityId, domainColor, revision, representationTyp
                 color: domainColor ?? EMPTY_DOMAIN_COLOR,
                 mark: domainMarkOf(representationType),
             }
-            : scale && isPlacedValueScheme(molstarThemeOf(color))
-                ? { revision, color: scale }
-                : scale && { color: scale };
+            : color.field === 'exon'
+                ? { revision, color: exonColor ?? EMPTY_EXON_COLOR }
+                : scale && isPlacedValueScheme(molstarThemeOf(color))
+                    ? { revision, color: scale }
+                    : scale && { color: scale };
 }
 let revision = 0;
 /**
@@ -53,7 +57,7 @@ async function recolor({ plugin, color, structures, }) {
     }
     const update = plugin.state.data.build();
     let recolored = 0;
-    for (const { molstarStructure, entityId, placedValues, placedSites, domainColor, } of structures) {
+    for (const { molstarStructure, entityId, placedValues, placedSites, domainColor, exonColor, } of structures) {
         if (placed) {
             registerPlacedValues(theme, molstarStructure, placedValues);
         }
@@ -69,6 +73,7 @@ async function recolor({ plugin, color, structures, }) {
                 prev.colorTheme = createStructureColorThemeParams(plugin, molstarStructure, prev.type.name, theme, themeParams(color, {
                     entityId,
                     domainColor,
+                    exonColor,
                     revision,
                     representationType: prev.type.name,
                 }));
@@ -88,9 +93,9 @@ export function applyColorTheme(args) {
  * and its hidden-by-default controls panel buries. Built on one structure, so a
  * data-dependent table (chain ids) names that structure's entries.
  */
-export function colorLegendOf({ plugin, color, structure, entityId, domainColor, }) {
+export function colorLegendOf({ plugin, color, structure, entityId, domainColor, exonColor, }) {
     const theme = molstarThemeOf(color);
     return theme === undefined
         ? undefined
-        : plugin.representation.structure.themes.colorThemeRegistry.create(theme, { structure }, themeParams(color, { entityId, domainColor }) ?? {}).legend;
+        : plugin.representation.structure.themes.colorThemeRegistry.create(theme, { structure }, themeParams(color, { entityId, domainColor, exonColor }) ?? {}).legend;
 }

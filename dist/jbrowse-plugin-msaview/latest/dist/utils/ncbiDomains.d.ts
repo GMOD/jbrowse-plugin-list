@@ -10,9 +10,22 @@ export type DomainMatch = InterProScanResults['matches'][number] & {
  */
 export declare function parseCddDomains(xml: string): Map<string, DomainMatch[]>;
 /**
+ * An efetch of 100 GenPept records answered in 1.5-2 s (measured 2026-11-04).
+ * Fifteen times that leaves a slow NCBI room, and bounds how long one stalled
+ * request holds the view's `showLoading`.
+ */
+export declare const DOMAIN_REQUEST_TIMEOUT_MS = 30000;
+/**
  * Fetch pre-computed CDD domain and site annotations for NCBI protein
  * accessions. These come baked into the GenPept records, so a single batched
  * efetch returns them with no job submission or polling. Results are cached in
  * IndexedDB so reopening a view doesn't refetch.
+ *
+ * A batch that fails or outlasts DOMAIN_REQUEST_TIMEOUT_MS ends the fetch and
+ * comes back as `failure` beside the batches already answered, so the caller
+ * can say which part is missing.
  */
-export declare function fetchProteinDomains(accessions: string[], signal?: AbortSignal): Promise<Map<string, DomainMatch[]>>;
+export declare function fetchProteinDomains(accessions: string[], signal?: AbortSignal): Promise<{
+    byAccession: Map<string, DomainMatch[]>;
+    failure: unknown;
+}>;

@@ -100,7 +100,7 @@ const TestParent = types
     },
   }))
   .actions(() => ({
-    setError(_: unknown) {},
+    addNotice(_: unknown) {},
   }))
 
 function makeModel() {

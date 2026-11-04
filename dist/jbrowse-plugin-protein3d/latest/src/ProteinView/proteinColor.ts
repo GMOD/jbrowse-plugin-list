@@ -5,8 +5,9 @@ import type { LinearColor, ThresholdColor } from './colorScale'
 /**
  * The fields the view colors its structures by, each with its menu label and
  * the Mol* theme that paints it. The themes `mapped-chain`, `kyte-doolittle`,
- * `alphamissense`, `clinvar` and `alignment-domains` are registerColorThemes',
- * `plddt-confidence` the MAQualityAssessment behavior's, the rest Mol*'s.
+ * `alphamissense`, `clinvar`, `alignment-domains` and `exon` are
+ * registerColorThemes', `plddt-confidence` the MAQualityAssessment
+ * behavior's, the rest Mol*'s.
  */
 export const COLOR_FIELDS = {
   plddt: { label: 'pLDDT confidence (AlphaFold)', theme: 'plddt-confidence' },
@@ -32,6 +33,7 @@ export const COLOR_FIELDS = {
     theme: 'clinvar',
   },
   domain: { label: 'Domains from the alignment', theme: 'alignment-domains' },
+  exon: { label: 'Exon', theme: 'exon' },
   track: { label: 'Genome track', theme: 'genome-track' },
   values: { label: 'Your own values', theme: 'residue-values' },
 } as const
@@ -67,6 +69,7 @@ const PAINTED_BY: Record<Exclude<ColorField, ScaledField>, string> = {
   moleculeType: "Mol*'s palette",
   mappedChain: 'two fixed colors',
   domain: "the connected alignment's colors",
+  exon: 'a fixed palette repeated over the exons',
 }
 
 /**
@@ -74,7 +77,7 @@ const PAINTED_BY: Record<Exclude<ColorField, ScaledField>, string> = {
  * for Mol*'s default, and for a field whose scale is the plugin's the members
  * of that scale overriding its preset in `RESIDUE_COLORS`.
  */
-export const TRACK_STATS = ['mean', 'max', 'min'] as const
+export const TRACK_STATS = ['mean', 'max', 'min', 'count'] as const
 
 export type TrackStat = (typeof TRACK_STATS)[number]
 
@@ -88,8 +91,16 @@ export interface ProteinColor {
   field?: ColorField
   /** `track`: the genome track whose scores color the residues */
   trackId?: string
-  /** `track`: how the scores under a codon's three bases reduce to one */
+  /**
+   * `track`: how the scores under a codon's three bases reduce to one, or
+   * `count`, how many of the track's features fall on the codon
+   */
   stat?: TrackStat
+  /**
+   * `track`: the feature field read as the score in place of `score`, named
+   * as jbrowse-components' displays name one, such as `INFO.AF`
+   */
+  scoreField?: string
   /** `values`: one number per residue of the transcript's protein */
   values?: ResidueValues
   scale?: 'linear' | 'threshold'
@@ -120,7 +131,7 @@ const SCALE_MEMBERS = {
  * member must be.
  */
 const FIELD_MEMBERS: Partial<Record<ColorField, readonly string[]>> = {
-  track: ['trackId', 'stat'],
+  track: ['trackId', 'stat', 'scoreField'],
   values: ['values'],
 }
 
@@ -192,6 +203,10 @@ const MEMBER_TYPES: Record<string, [(value: unknown) => boolean, string]> = {
     v => TRACK_STATS.some(s => s === v),
     `one of ${TRACK_STATS.join(', ')}`,
   ],
+  scoreField: [
+    v => typeof v === 'string' && v !== '' && !v.startsWith('jexl:'),
+    'a field name such as INFO.AF, not a jexl: expression',
+  ],
   values: [
     isResidueValues,
     'a list of numbers, or an object of numbers keyed by residue number',
@@ -230,16 +245,26 @@ export function colorProblems(color: unknown): string[] {
     ...SCALE_MEMBERS[preset.scale],
     ...(FIELD_MEMBERS[field] ?? []),
   ]
-  const missing =
-    field === 'track' && members.trackId === undefined
+  const missing = [
+    ...(field === 'track' && members.trackId === undefined
       ? ["color.trackId is required: a track's scores color a track field"]
-      : field === 'values' && members.values === undefined
-        ? ['color.values is required: the numbers to color the residues by']
-        : preset.scale === 'threshold' &&
-            isDataScaledField(field) &&
-            !(Array.isArray(members.domain) && members.domain.length > 0)
-          ? [`color.domain is required: the cuts of ${field}'s threshold scale`]
-          : []
+      : []),
+    ...(field === 'values' && members.values === undefined
+      ? ['color.values is required: the numbers to color the residues by']
+      : []),
+    ...(preset.scale === 'threshold' &&
+    isDataScaledField(field) &&
+    !(Array.isArray(members.domain) && members.domain.length > 0)
+      ? [`color.domain is required: the cuts of ${field}'s threshold scale`]
+      : []),
+    ...(field === 'track' &&
+    members.stat === 'count' &&
+    members.scoreField !== undefined
+      ? [
+          "color.scoreField is refused: stat count counts the track's features and reads no value",
+        ]
+      : []),
+  ]
   const problems = named.flatMap(key => {
     const value = members[key]
     if (!allowed.includes(key)) {
@@ -330,11 +355,20 @@ export function checkedColor(color: unknown): ProteinColor {
 export function resolvedColor(
   color: ProteinColor,
 ): LinearColor | ThresholdColor | undefined {
-  const { field, trackId, stat, values, ...members } = color
+  const { field, trackId, stat, scoreField, values, ...members } = color
   return field && isScaledField(field)
     ? ({ ...presetOf(field, members.scale), ...members } as
         LinearColor | ThresholdColor)
     : undefined
+}
+
+/** What a track color's legend says a residue's value is. */
+export function trackStatLabel({ stat = 'mean', scoreField }: ProteinColor) {
+  return stat === 'count'
+    ? 'features per codon'
+    : scoreField === undefined
+      ? `${stat} per codon`
+      : `${stat} ${scoreField} per codon`
 }
 
 /** The Mol* theme a color object paints with; undefined is Mol*'s default. */

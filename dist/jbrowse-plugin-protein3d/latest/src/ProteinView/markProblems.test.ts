@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 
-import { checkedLayers, distanceProblems, markProblems } from './markProblems'
+import { checkedFigure, distanceProblems, markProblems } from './markProblems'
 
 test('a partner chain drawn as its own cartoon passes', () => {
   expect(
@@ -20,7 +20,7 @@ test('a partner chain drawn as its own cartoon passes', () => {
 
 test('the spelling 1.24 read is migrated to the encoding spelling', () => {
   expect(
-    checkedLayers(
+    checkedFigure(
       {
         marks: [{ site: 'A:220', style: 'sticks', color: '#d1007a' }],
         distances: [{ a: 'A:46', b: 'A:80', color: '#111111' }],
@@ -77,9 +77,9 @@ test('a cartoon over a chain the structure already draws is refused', () => {
   ).toEqual([])
 })
 
-test('checkedLayers throws every problem at once', () => {
+test('checkedFigure throws every problem at once', () => {
   expect(() =>
-    checkedLayers({
+    checkedFigure({
       marks: [{ site: 'A:1', style: 'balls' }],
       distances: [{ a: 'A:1', b: '??' }],
     }),

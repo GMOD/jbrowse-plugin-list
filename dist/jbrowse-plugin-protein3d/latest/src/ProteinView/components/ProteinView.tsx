@@ -35,29 +35,31 @@ const ProteinView = observer(function ProteinView({
 })
 
 // A failed superposition or recolor is worth reporting, not worth wearing for
-// the rest of the session, so the message can be dismissed.
-const DismissableError = observer(function DismissableError({
+// the rest of the session, so each message can be dismissed.
+const DismissableNotices = observer(function DismissableNotices({
   model,
 }: {
   model: JBrowsePluginProteinViewModel
 }) {
-  const { error } = model
-  return error ? (
-    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+  return model.notices.map(notice => (
+    <div
+      key={`${notice}`}
+      style={{ display: 'flex', alignItems: 'flex-start' }}
+    >
       <div style={{ flex: 1 }}>
-        <ErrorMessage error={error} />
+        <ErrorMessage error={notice} />
       </div>
       <IconButton
         size="small"
         aria-label="Dismiss error"
         onClick={() => {
-          model.setError(undefined)
+          model.dismissNotice(notice)
         }}
       >
         <CloseIcon fontSize="small" />
       </IconButton>
     </div>
-  ) : null
+  ))
 })
 
 // Mol* being up says nothing about the structure: the fetch, the parse, the
@@ -111,7 +113,7 @@ const ProteinViewContainer = observer(function ProteinViewContainer({
       style={{ background: '#ccc' }}
       data-testid={ready ? 'protein-view-ready' : 'protein-view-loading'}
     >
-      <DismissableError model={model} />
+      <DismissableNotices model={model} />
       {loading ? (
         <LoadingEllipses message="Loading protein viewer" />
       ) : (

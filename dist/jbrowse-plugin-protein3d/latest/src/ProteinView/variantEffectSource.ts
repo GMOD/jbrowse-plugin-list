@@ -39,6 +39,7 @@ export type VariantEffectRequest = {
       scheme: 'genome-track'
       trackId: string
       stat: TrackStat
+      scoreField?: string
       assemblyName: string
       feature: SimpleFeatureSerialized
     }
@@ -146,12 +147,14 @@ export function genomeTrackAsk({
   trackId,
   trackName,
   stat,
+  scoreField,
   feature,
   assemblyName,
 }: {
   trackId: string | undefined
   trackName: string | undefined
   stat: TrackStat
+  scoreField?: string
   feature: SimpleFeatureSerialized | undefined
   assemblyName: string | undefined
 }): VariantEffectAsk {
@@ -176,10 +179,11 @@ export function genomeTrackAsk({
     status: 'ready',
     request: {
       scheme: 'genome-track',
-      key: `genome-track:${assemblyName}:${trackId}:${stat}:${refName}:${start}-${end}:${uniqueId}`,
+      key: `genome-track:${assemblyName}:${trackId}:${stat}:${scoreField}:${refName}:${start}-${end}:${uniqueId}`,
       label: trackName ?? trackId,
       trackId,
       stat,
+      scoreField,
       assemblyName,
       feature,
     },
@@ -221,6 +225,7 @@ async function load(
         session,
         trackId: request.trackId,
         stat: request.stat,
+        scoreField: request.scoreField,
         feature: new SimpleFeature(request.feature),
         assemblyName: request.assemblyName,
         signal,

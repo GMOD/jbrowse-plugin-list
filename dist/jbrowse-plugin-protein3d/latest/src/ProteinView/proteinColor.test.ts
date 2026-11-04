@@ -5,6 +5,7 @@ import {
   colorOfScheme,
   colorProblems,
   resolvedColor,
+  trackStatLabel,
 } from './proteinColor'
 import { RESIDUE_COLORS } from './residueColors'
 
@@ -24,8 +25,10 @@ test('every old colorScheme name lifts to a field the menu offers', () => {
     'clinvar',
     'alignment-domains',
   ].map(name => colorOfScheme(name).field)
-  const sessionOnly = ['track', 'values']
-  const fields = Object.keys(COLOR_FIELDS).filter(f => !sessionOnly.includes(f))
+  const newerThanColorScheme = ['track', 'values', 'exon']
+  const fields = Object.keys(COLOR_FIELDS).filter(
+    f => !newerThanColorScheme.includes(f),
+  )
   expect(lifted).toHaveLength(fields.length)
   expect(new Set(lifted)).toEqual(new Set(fields))
   expect(colorOfScheme('default')).toEqual({})
@@ -36,6 +39,9 @@ test('a field Mol* or the alignment paints names the field alone', () => {
   expect(colorProblems({ field: 'chain' })).toEqual([])
   expect(colorProblems({ field: 'plddt', domain: [50] })).toEqual([
     "color.domain is refused: plddt paints in Mol*'s pLDDT bands, so its color names the field alone",
+  ])
+  expect(colorProblems({ field: 'exon', range: ['red'] })).toEqual([
+    'color.range is refused: exon paints in a fixed palette repeated over the exons, so its color names the field alone',
   ])
   expect(colorProblems({ field: 'domain', range: ['red'] })).toEqual([
     "color.range is refused: domain paints in the connected alignment's colors, so its color names the field alone",
@@ -137,7 +143,7 @@ test('a track field names its track and takes a stat', () => {
   ).toEqual([])
   expect(
     colorProblems({ field: 'track', trackId: 'phyloP', stat: 'sum' }),
-  ).toEqual(['color.stat is one of mean, max, min'])
+  ).toEqual(['color.stat is one of mean, max, min, count'])
   expect(colorProblems({ field: 'track', trackId: '' })).toEqual([
     'color.trackId is a track id',
   ])
@@ -210,4 +216,75 @@ test('a member left undefined is absent, not refused', () => {
       labels: undefined,
     }),
   ).toEqual([])
+})
+
+test('a track field counts features, or reads a named field in place of score', () => {
+  expect(
+    colorProblems({ field: 'track', trackId: 'dog10k', stat: 'count' }),
+  ).toEqual([])
+  expect(
+    colorProblems({
+      field: 'track',
+      trackId: 'gnomad',
+      stat: 'max',
+      scoreField: 'INFO.AF',
+    }),
+  ).toEqual([])
+  expect(
+    resolvedColor({ field: 'track', trackId: 'gnomad', scoreField: 'INFO.AF' }),
+  ).toEqual(RESIDUE_COLORS.track)
+})
+
+test('a scoreField is a field name, and a count reads none', () => {
+  expect(
+    colorProblems({ field: 'track', trackId: 't', scoreField: 3 }),
+  ).toEqual([
+    'color.scoreField is a field name such as INFO.AF, not a jexl: expression',
+  ])
+  expect(
+    colorProblems({
+      field: 'track',
+      trackId: 't',
+      scoreField: 'jexl:get(feature,"INFO").AF',
+    }),
+  ).toEqual([
+    'color.scoreField is a field name such as INFO.AF, not a jexl: expression',
+  ])
+  expect(
+    colorProblems({
+      field: 'track',
+      trackId: 't',
+      stat: 'count',
+      scoreField: 'INFO.AF',
+    }),
+  ).toEqual([
+    "color.scoreField is refused: stat count counts the track's features and reads no value",
+  ])
+  expect(
+    colorProblems({
+      field: 'track',
+      stat: 'count',
+      scoreField: 'INFO.AF',
+      scale: 'threshold',
+    }),
+  ).toEqual([
+    "color.trackId is required: a track's scores color a track field",
+    "color.domain is required: the cuts of track's threshold scale",
+    "color.scoreField is refused: stat count counts the track's features and reads no value",
+  ])
+  expect(
+    colorProblems({ field: 'values', values: [1], scoreField: 'INFO.AF' }),
+  ).toEqual([
+    "color.scoreField is not a member of values's linear scale, which takes scale, domainMin, domainMax, domainMid, range, labels, title, values",
+  ])
+})
+
+test("a track's legend says what each residue's value is", () => {
+  expect(trackStatLabel({ field: 'track' })).toBe('mean per codon')
+  expect(trackStatLabel({ field: 'track', stat: 'count' })).toBe(
+    'features per codon',
+  )
+  expect(
+    trackStatLabel({ field: 'track', stat: 'max', scoreField: 'INFO.AF' }),
+  ).toBe('max INFO.AF per codon')
 })

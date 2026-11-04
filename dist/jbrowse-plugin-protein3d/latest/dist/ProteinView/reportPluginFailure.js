@@ -7,7 +7,7 @@ export function reportPluginFailure(host, plugin) {
     return (error) => {
         console.error(error);
         if (isAlive(host) && host.molstarPluginContext === plugin) {
-            host.setError(error);
+            host.addNotice(error);
         }
     };
 }

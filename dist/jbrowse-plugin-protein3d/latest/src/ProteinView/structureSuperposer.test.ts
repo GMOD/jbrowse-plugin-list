@@ -40,7 +40,7 @@ const TestHost = types
     setSuperposedCount(n: number) {
       self.superposedCount = n
     },
-    setError(e: unknown) {
+    addNotice(e: unknown) {
       self.errors.push(e)
     },
   }))

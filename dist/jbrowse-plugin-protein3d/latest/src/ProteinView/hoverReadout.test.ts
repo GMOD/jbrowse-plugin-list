@@ -102,3 +102,16 @@ test('a hover naming only a chain reads out the chain', () => {
     }),
   ).toBe('Chain: B')
 })
+
+test('ends with the exon when one is given', () => {
+  expect(
+    hoverReadout({
+      hover: { structureSeqPos: 1 },
+      entity: CONSTRUCT,
+      structureToTranscript: toTranscript({ 1: 3 }),
+      transcript: 'PPMKAA',
+      locus: 'chr1:10-12',
+      exon: 'Exon 4',
+    }),
+  ).toBe('4, Structure: K, chr1:10-12, Exon 4')
+})

@@ -1,4 +1,8 @@
-import type { LinearColor, ThresholdColor } from './colorScale'
+import type {
+  CategoricalColor,
+  LinearColor,
+  ThresholdColor,
+} from './colorScale'
 
 /**
  * The color object of each per-residue field, keyed by the field. The 3D
@@ -79,4 +83,29 @@ export const RESIDUE_COLORS = {
     range: ['#ffffd9', '#41b6c4', '#0c2c84'],
     title: 'Residue values',
   },
-} as const satisfies Record<string, LinearColor | ThresholdColor>
+  /**
+   * The exon a residue's codon sits in. The domain is the transcript's exon
+   * numbers, which exonColor fills; the range is Tableau 10 without its grey,
+   * cycled over them, so neighboring exons always differ (see exons.ts).
+   */
+  exon: {
+    field: 'exon',
+    scale: 'categorical',
+    domain: [],
+    range: [
+      '#4e79a7',
+      '#f28e2b',
+      '#e15759',
+      '#76b7b2',
+      '#59a14f',
+      '#edc948',
+      '#b07aa1',
+      '#ff9da7',
+      '#9c755f',
+    ],
+    title: 'Exon',
+  },
+} as const satisfies Record<
+  string,
+  LinearColor | ThresholdColor | CategoricalColor
+>

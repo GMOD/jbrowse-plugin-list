@@ -15,6 +15,7 @@ export type { MSAFormat } from 'msa-parsers'
 
 import {
   autoLoadProteinDomains,
+  launchAwaitsTranscript,
   launchBlastIfNeeded,
   launchOrthologsIfNeeded,
   loadStoredData,
@@ -34,7 +35,9 @@ import {
 } from './msaCoordToGenomeCoord'
 import { resolveConnectedTranscriptIfNeeded } from './resolveConnectedTranscript'
 import { syncSessionHighlights } from './sessionHighlights'
-import { transcriptMap } from './transcriptMap'
+import { transcriptMapping } from './transcriptMap'
+import { errorMessage, hasQueryRow } from './util'
+import { viewReport } from './viewReport'
 
 import type {
   BlastDatabase,
@@ -47,12 +50,15 @@ import type { MsaDataPayload } from './msaDataStore'
 import type { MafRegion, MsaViewInitState } from './types'
 import type { TranscriptRef } from './util'
 import type { MenuItem } from '@jbrowse/core/ui'
+import type { AbstractViewModel } from '@jbrowse/core/util'
 import type { Instance } from '@jbrowse/mobx-state-tree'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
 type LGV = LinearGenomeViewModel
 
-type MaybeLGV = LGV | undefined
+function isLinearGenomeView(view: AbstractViewModel): view is LGV {
+  return view.type === 'LinearGenomeView'
+}
 
 export interface IRegion {
   refName: string
@@ -276,6 +282,8 @@ export default function stateModelFactory() {
         ownsDataStoreRow: boolean
         launchController: AbortController | undefined
         domainsRequested: boolean
+        loadingDomains: boolean
+        connectionError: unknown
       } => ({
         /**
          * #volatile
@@ -321,25 +329,61 @@ export default function stateModelFactory() {
          * when NCBI returns no domains (leaving the annotation list empty)
          */
         domainsRequested: false,
+        /**
+         * #volatile
+         * the protein domain auto-load is in flight
+         */
+        loadingDomains: false,
+        /**
+         * #volatile
+         * why `connectedTranscript` could not be resolved: the lookup missed,
+         * or the genome view it needs is absent or has no feature tracks. It
+         * is also the view's `error` when a launch was waiting on the
+         * transcript, and a notice otherwise
+         */
+        connectionError: undefined,
       }),
     )
 
     .views(self => ({
       /**
        * #getter
+       * the linked transcript's genome mapping, or why it has none
        */
-      get transcriptToMsaMap() {
+      get transcriptMapping() {
         return self.connectedFeature
-          ? transcriptMap(self.connectedFeature)
+          ? transcriptMapping(self.connectedFeature)
           : undefined
       },
 
       /**
        * #getter
+       * whatever view `connectedViewId` names, genome view or not
        */
-      get connectedView() {
+      get viewNamedByConnectedViewId() {
         const { views } = getSession(self)
-        return views.find(f => f.id === self.connectedViewId) as MaybeLGV
+        return views.find(f => f.id === self.connectedViewId)
+      },
+    }))
+
+    .views(self => ({
+      /**
+       * #getter
+       * the view `connectedViewId` names, when it is a genome view
+       */
+      get connectedView(): LGV | undefined {
+        const view = self.viewNamedByConnectedViewId
+        return view && isLinearGenomeView(view) ? view : undefined
+      },
+    }))
+
+    .views(self => ({
+      /**
+       * #getter
+       */
+      get transcriptToMsaMap() {
+        const mapping = self.transcriptMapping
+        return mapping && 'map' in mapping ? mapping.map : undefined
       },
     }))
 
@@ -430,17 +474,104 @@ export default function stateModelFactory() {
       },
       /**
        * #getter
-       * true while a launch, stored data or a file is still loading and no
-       * error has ended it. jb.waitReady, the app's ready marker and
+       * what is wrong with the link to the genome, derived from the view's
+       * state so each clears when its cause does. A connection failure that
+       * is already the view's `error` is not repeated here.
+       */
+      get linkNotices() {
+        const {
+          connectionError,
+          error,
+          transcriptMapping,
+          connectedFeature,
+          mafRegion,
+          querySeqName,
+          dataInitialized,
+        } = self
+        return [
+          ...(connectionError !== undefined && connectionError !== error
+            ? [errorMessage(connectionError)]
+            : []),
+          ...(transcriptMapping && 'reason' in transcriptMapping
+            ? [
+                `The linked transcript is not mapped to the genome: ${transcriptMapping.reason}`,
+              ]
+            : []),
+          ...((connectedFeature || mafRegion) &&
+          dataInitialized &&
+          !hasQueryRow(self)
+            ? [
+                `No row is named "${querySeqName}", the query row, so the alignment is not linked to the genome`,
+              ]
+            : []),
+        ]
+      },
+      /**
+       * #getter
+       * true while a launch, stored data, a file, the transcript lookup or the
+       * protein domains are still loading and no error has ended it. Every
+       * term settles on failure. jb.waitReady, the app's ready marker and
        * screenshot tools read it for a view.
        */
       get showLoading() {
+        const {
+          connectedView,
+          connectedTranscript,
+          connectedFeature,
+          connectionError,
+        } = self
         return (
           !self.error &&
           (isLaunching(self) ||
             (self.loadingStoredData && !self.dataInitialized) ||
-            self.isLoading)
+            self.isLoading ||
+            self.loadingDomains ||
+            (!!connectedTranscript &&
+              !connectedFeature &&
+              connectionError === undefined) ||
+            (self.domainsOnGenome &&
+              self.connectedDomains.features.length > 0 &&
+              !!connectedView?.showLoading))
         )
+      },
+    }))
+
+    .views(self => ({
+      /**
+       * #getter
+       * overrides base
+       *
+       * react-msaview's load and data warnings, plus the plugin's link
+       * notices, which the header's warning chip lists and dismisses alike
+       */
+      get warnings() {
+        return [
+          ...self.loadWarnings,
+          ...[...self.dataWarnings, ...self.linkNotices].filter(
+            w => !self.dismissedWarnings.includes(w),
+          ),
+        ]
+      },
+    }))
+
+    .views(self => ({
+      /**
+       * #getter
+       * what failed and left the view working: the messages the header's
+       * warning chip lists. A notice does not end `showLoading`.
+       */
+      get notices() {
+        return self.warnings
+      },
+    }))
+
+    .views(self => ({
+      /**
+       * #getter
+       * what the view resolved to, as plain JSON. See docs/reading-the-view.md
+       */
+      get report() {
+        return viewReport(self)
       },
     }))
 
@@ -597,6 +728,36 @@ export default function stateModelFactory() {
       /**
        * #action
        */
+      setLoadingDomains(arg: boolean) {
+        self.loadingDomains = arg
+      },
+      /**
+       * #action
+       * `connectedTranscript` could not be resolved. A launch waiting on it
+       * cannot run, so for one that is the view's error; an alignment from
+       * anywhere else is still worth showing, so then it is a notice.
+       */
+      failConnection(e: unknown) {
+        self.connectionError = e
+        if (launchAwaitsTranscript(self)) {
+          self.setError(e)
+        }
+      },
+      /**
+       * #action
+       */
+      clearConnectionFailure() {
+        if (
+          self.connectionError !== undefined &&
+          self.error === self.connectionError
+        ) {
+          self.setError(undefined)
+        }
+        self.connectionError = undefined
+      },
+      /**
+       * #action
+       */
       setDomainsOnGenome(arg: boolean) {
         self.domainsOnGenome = arg
       },
@@ -701,6 +862,25 @@ export default function stateModelFactory() {
           self.setDomainsRequested(false)
           self.setLastStoredData(undefined)
           self.setOwnsDataStoreRow(false)
+          self.clearConnectionFailure()
+        },
+      }
+    })
+
+    .actions(self => {
+      const superClearWarnings = self.clearWarnings.bind(self)
+      return {
+        /**
+         * #action
+         * overrides base, so dismissing the warning chip hides the link
+         * notices too until their cause changes
+         */
+        clearWarnings() {
+          superClearWarnings()
+          self.dismissedWarnings = [
+            ...self.dismissedWarnings,
+            ...self.linkNotices,
+          ]
         },
       }
     })

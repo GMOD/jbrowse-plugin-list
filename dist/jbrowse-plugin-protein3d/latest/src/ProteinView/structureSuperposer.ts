@@ -17,7 +17,7 @@ export type StructureSuperposerHost = IAnyStateTreeNode & {
    * so the camera framing can wait for the reset that ends a superposition. */
   readonly superposedCount: number
   setSuperposedCount: (count: number) => void
-  setError: (error: unknown) => void
+  addNotice: (notice: unknown) => void
 }
 
 /**

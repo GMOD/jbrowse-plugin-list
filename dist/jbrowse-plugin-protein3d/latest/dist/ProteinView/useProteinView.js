@@ -23,6 +23,8 @@ export default function useProteinView({ showControls, model, }) {
         const state = { cancelled: false };
         // read through a call, which the compiler does not narrow across an await
         const isCancelled = () => state.cancelled;
+        // a remount retries, so a failure the last mount left is not this one's
+        model.setError(undefined);
         void (async () => {
             let created;
             try {
@@ -82,7 +84,10 @@ export default function useProteinView({ showControls, model, }) {
                     state.host?.remove();
                 }
                 console.error(e);
-                setError(e);
+                if (!isCancelled()) {
+                    setError(e);
+                    model.setError(e);
+                }
             }
             finally {
                 setLoading(false);
@@ -121,7 +126,7 @@ export default function useProteinView({ showControls, model, }) {
             catch (e) {
                 console.error(e);
                 if (isAlive(model)) {
-                    model.setError(e);
+                    model.addNotice(e);
                 }
             }
         })();

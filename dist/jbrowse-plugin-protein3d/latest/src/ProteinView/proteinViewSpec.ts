@@ -1,7 +1,12 @@
 import { resolveStructureUrl, structureDisplayLabel } from 'p2s_mapper'
 
+import type { FIGURE_KEYS } from './markProblems'
+import type { DistanceMeasurement } from './measurements'
 import type { ProteinColor } from './proteinColor'
 import type { StructureFilter } from './residueFilter'
+import type { ResidueMark } from './residueMarks'
+import type { SavedCamera } from './savedCamera'
+import type { ProteinSurface } from './surface'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type {
   AlignmentAlgorithm,
@@ -78,7 +83,16 @@ export interface ProteinViewSpec {
   autoScrollAlignment?: boolean
   color?: ProteinColor
   alignmentAlgorithm?: AlignmentAlgorithm
+  camera?: SavedCamera
+  surface?: ProteinSurface
+  distances?: DistanceMeasurement[]
+  marks?: ResidueMark[]
+  silhouettes?: boolean
+  occlusion?: boolean
 }
+
+/** The figure properties of a view, which applyFigure sets at runtime. */
+export type ProteinFigure = Pick<ProteinViewSpec, (typeof FIGURE_KEYS)[number]>
 
 /**
  * The name a view gets when its snapshot carries none: the transcript it maps

@@ -1,8 +1,11 @@
 import type { TrackStat } from './proteinColor'
 
-export interface ScoredInterval {
+export interface Interval {
   start: number
   end: number
+}
+
+export interface ScoredInterval extends Interval {
   score: number
 }
 
@@ -50,7 +53,7 @@ export function scoreByBase(
   return scores
 }
 
-function reduce(scores: readonly number[], stat: TrackStat) {
+function reduce(scores: readonly number[], stat: Exclude<TrackStat, 'count'>) {
   return stat === 'max'
     ? Math.max(...scores)
     : stat === 'min'
@@ -65,7 +68,7 @@ function reduce(scores: readonly number[], stat: TrackStat) {
 export function scoreByResidue(
   p2gCodon: Record<number, number[]>,
   baseScores: ReadonlyMap<number, number>,
-  stat: TrackStat,
+  stat: Exclude<TrackStat, 'count'>,
 ) {
   const byPosition = new Map<number, number>()
   for (const [pos, bases] of Object.entries(p2gCodon)) {
@@ -75,4 +78,39 @@ export function scoreByResidue(
     }
   }
   return byPosition
+}
+
+/**
+ * How many intervals fall on each transcript residue's codon, 0 where none
+ * does. An interval counts once on every residue whose codon it touches: a
+ * deletion across a codon boundary changes both residues, and one touching
+ * two bases of a codon is still one feature.
+ */
+export function countByResidue(
+  intervals: readonly Interval[],
+  p2gCodon: Record<number, number[]>,
+) {
+  const residueOfBase = new Map<number, number>()
+  const counts = new Map<number, number>()
+  for (const [pos, bases] of Object.entries(p2gCodon)) {
+    counts.set(Number(pos), 0)
+    for (const base of bases) {
+      residueOfBase.set(base, Number(pos))
+    }
+  }
+  const sorted = [...residueOfBase.keys()].toSorted((a, b) => a - b)
+  for (const { start, end } of intervals) {
+    const touched = new Set<number>()
+    for (
+      let i = lowerBound(sorted, start);
+      i < sorted.length && sorted[i]! < end;
+      i++
+    ) {
+      touched.add(residueOfBase.get(sorted[i]!)!)
+    }
+    for (const pos of touched) {
+      counts.set(pos, counts.get(pos)! + 1)
+    }
+  }
+  return counts
 }

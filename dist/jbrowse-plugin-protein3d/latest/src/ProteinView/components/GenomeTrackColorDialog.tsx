@@ -25,7 +25,14 @@ const STAT_LABELS: Record<TrackStat, string> = {
   mean: 'Mean of the three bases',
   max: 'Highest of the three bases',
   min: 'Lowest of the three bases',
+  count: 'How many features fall on the codon',
 }
+
+const TRACK_TYPES = new Set([
+  'QuantitativeTrack',
+  'VariantTrack',
+  'FeatureTrack',
+])
 
 const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
   model,
@@ -45,7 +52,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
     ...(assembly ? [assembly.name, ...assembly.aliases] : []),
   ])
   const tracks = session.tracks
-    .filter(entry => entry.type === 'QuantitativeTrack')
+    .filter(entry => TRACK_TYPES.has(entry.type))
     .filter(entry => {
       const conf = trackConfigNode(session, entry)
       return (
@@ -85,8 +92,10 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Each residue takes the track&apos;s scores under its codon on the
           genome view&apos;s assembly
-          {assemblyName ? ` (${assemblyName})` : ''}. Residues with no score are
-          grey.
+          {assemblyName ? ` (${assemblyName})` : ''}.{' '}
+          {stat === 'count'
+            ? 'A residue no feature falls on reads 0.'
+            : 'Residues with no score are grey.'}
         </Typography>
         <TextField
           select
@@ -98,7 +107,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
           }}
           helperText={
             tracks.length === 0
-              ? 'This session has no bigWig or bedGraph track on the genome view’s assembly'
+              ? 'This session has no quantitative, variant or feature track on the genome view’s assembly'
               : undefined
           }
           sx={{ mb: 2 }}
@@ -115,7 +124,10 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
           label="Score per residue"
           value={stat}
           onChange={e => {
-            setStat(e.target.value as TrackStat)
+            const chosen = TRACK_STATS.find(s => s === e.target.value)
+            if (chosen) {
+              setStat(chosen)
+            }
           }}
         >
           {TRACK_STATS.map(s => (
@@ -163,13 +175,17 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
           disabled={!trackId || cutsInvalid}
           onClick={() => {
             // the same track on the same scale keeps what a session wrote
-            // beside it: its palette, labels, title and domain
+            // beside it: its palette, labels, title and domain, and the same
+            // track its scoreField, which a count does not read
+            const sameTrack =
+              color.field === 'track' && color.trackId === trackId
             const kept =
-              color.field === 'track' &&
-              color.trackId === trackId &&
+              sameTrack &&
               (color.scale === 'threshold') === (scale === 'threshold')
                 ? color
                 : undefined
+            const scoreField =
+              sameTrack && stat !== 'count' ? color.scoreField : undefined
             const sameBands = kept?.range?.length === (cuts?.length ?? 0) + 1
             model.setColor(
               scale === 'threshold' && cuts
@@ -178,6 +194,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
                     field: 'track',
                     trackId,
                     stat,
+                    scoreField,
                     scale,
                     domain: cuts,
                     range: sameBands
@@ -185,7 +202,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({
                       : thresholdRange(cuts.length + 1),
                     labels: sameBands ? kept.labels : undefined,
                   }
-                : { ...kept, field: 'track', trackId, stat },
+                : { ...kept, field: 'track', trackId, stat, scoreField },
             )
             handleClose()
           }}

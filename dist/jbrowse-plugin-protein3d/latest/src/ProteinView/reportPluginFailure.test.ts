@@ -17,7 +17,7 @@ const Host = types
     setPlugin(plugin?: object) {
       self.molstarPluginContext = plugin
     },
-    setError(error: unknown) {
+    addNotice(error: unknown) {
       self.errors.push(error)
     },
   }))

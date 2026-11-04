@@ -6,10 +6,10 @@ import type { MsaDataPayload } from './msaDataStore';
 import type { MafRegion, MsaViewInitState } from './types';
 import type { TranscriptRef } from './util';
 import type { MenuItem } from '@jbrowse/core/ui';
+import type { AbstractViewModel } from '@jbrowse/core/util';
 import type { Instance } from '@jbrowse/mobx-state-tree';
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view';
 type LGV = LinearGenomeViewModel;
-type MaybeLGV = LGV | undefined;
 export interface IRegion {
     refName: string;
     start: number;
@@ -524,7 +524,7 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly effectiveBodyMounted: boolean;
     menuItems(): MenuItem[];
     readonly ownTracks: import("@jbrowse/core/util").AbstractTrackModel[];
-    readonly ownViews: import("@jbrowse/core/util").AbstractViewModel[];
+    readonly ownViews: AbstractViewModel[];
 } & {
     setDisplayName(name: string): void;
     setWidth(newWidth: number): void;
@@ -977,15 +977,48 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     ownsDataStoreRow: boolean;
     launchController: AbortController | undefined;
     domainsRequested: boolean;
+    loadingDomains: boolean;
+    connectionError: unknown;
+} & {
+    /**
+     * #getter
+     * the linked transcript's genome mapping, or why it has none
+     */
+    readonly transcriptMapping: {
+        reason: string;
+    } | {
+        map: {
+            codingPositions: number[];
+            g2p: Record<number, number>;
+            p2g: Record<number, number>;
+            p2gCodon: Record<number, number[]>;
+            refName: string;
+            strand: number;
+        };
+    } | undefined;
+    /**
+     * #getter
+     * whatever view `connectedViewId` names, genome view or not
+     */
+    readonly viewNamedByConnectedViewId: AbstractViewModel | undefined;
+} & {
+    /**
+     * #getter
+     * the view `connectedViewId` names, when it is a genome view
+     */
+    readonly connectedView: LGV | undefined;
 } & {
     /**
      * #getter
      */
-    readonly transcriptToMsaMap: import("./transcriptMap").TranscriptMap | undefined;
-    /**
-     * #getter
-     */
-    readonly connectedView: MaybeLGV;
+    readonly transcriptToMsaMap: {
+        codingPositions: number[];
+        g2p: Record<number, number>;
+        p2g: Record<number, number>;
+        p2gCodon: Record<number, number[]>;
+        refName: string;
+        strand: number;
+    } | undefined;
 } & {
     /**
      * #getter
@@ -1035,11 +1068,108 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     readonly unsavedDocuments: MsaDataPayload;
     /**
      * #getter
-     * true while a launch, stored data or a file is still loading and no
-     * error has ended it. jb.waitReady, the app's ready marker and
+     * what is wrong with the link to the genome, derived from the view's
+     * state so each clears when its cause does. A connection failure that
+     * is already the view's `error` is not repeated here.
+     */
+    readonly linkNotices: string[];
+    /**
+     * #getter
+     * true while a launch, stored data, a file, the transcript lookup or the
+     * protein domains are still loading and no error has ended it. Every
+     * term settles on failure. jb.waitReady, the app's ready marker and
      * screenshot tools read it for a view.
      */
     readonly showLoading: boolean;
+} & {
+    /**
+     * #getter
+     * overrides base
+     *
+     * react-msaview's load and data warnings, plus the plugin's link
+     * notices, which the header's warning chip lists and dismisses alike
+     */
+    readonly warnings: string[];
+} & {
+    /**
+     * #getter
+     * what failed and left the view working: the messages the header's
+     * warning chip lists. A notice does not end `showLoading`.
+     */
+    readonly notices: string[];
+} & {
+    /**
+     * #getter
+     * what the view resolved to, as plain JSON. See docs/reading-the-view.md
+     */
+    readonly report: {
+        loading: boolean;
+        error: string | undefined;
+        notices: string[];
+        source: {
+            kind: string;
+            database: "uniprotkb_swissprot" | "uniprotkb" | "pan_proteomes" | "uniprotkb_trembl" | "swissprot" | "uniprotrefprot" | "rp75" | "rp55" | "rp35" | "rp15";
+            msaAlgorithm: "clustalo" | "muscle" | "kalign" | "mafft" | "browser" | undefined;
+            maxHits: number | undefined;
+            accession: string | undefined;
+            queryLength: number | undefined;
+            jobId: string | undefined;
+            completed: boolean;
+        } | {
+            kind: string;
+            orthologSource: "ncbi" | "panther" | "uniref";
+            taxId: number;
+            identity: UnirefIdentity | undefined;
+            maxSpecies: number | undefined;
+            taxa: number[] | undefined;
+            geneCandidates: string[];
+            msaAlgorithm: "clustalo" | "muscle" | "kalign" | "mafft" | "browser";
+            queryLength: number | undefined;
+            jobId: string | undefined;
+            completed: boolean;
+        } | {
+            kind: string;
+            url: string;
+            uri?: undefined;
+            name?: undefined;
+            location?: undefined;
+        } | {
+            kind: string;
+            uri: string;
+            name: string | undefined;
+            url?: undefined;
+            location?: undefined;
+        } | {
+            kind: string;
+            location: string | undefined;
+            url?: undefined;
+            uri?: undefined;
+            name?: undefined;
+        } | {
+            kind: string;
+            url?: undefined;
+            uri?: undefined;
+            name?: undefined;
+            location?: undefined;
+        };
+        rows: number;
+        columns: number;
+        domainAnnotations: number;
+        uniprotId: string | undefined;
+        queryRow: {
+            name: string;
+            found: boolean;
+            offset: number;
+        };
+        connection: {
+            viewId: string | undefined;
+            viewOpen: boolean;
+            transcript: string | undefined;
+            refName: string | undefined;
+            mapped: boolean;
+            unmappedBecause: string | undefined;
+        } | undefined;
+    };
 } & {
     /**
      * #action
@@ -1133,6 +1263,21 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
     /**
      * #action
      */
+    setLoadingDomains(arg: boolean): void;
+    /**
+     * #action
+     * `connectedTranscript` could not be resolved. A launch waiting on it
+     * cannot run, so for one that is the view's error; an alignment from
+     * anywhere else is still worth showing, so then it is a notice.
+     */
+    failConnection(e: unknown): void;
+    /**
+     * #action
+     */
+    clearConnectionFailure(): void;
+    /**
+     * #action
+     */
     setDomainsOnGenome(arg: boolean): void;
     /**
      * #action
@@ -1163,6 +1308,13 @@ export default function stateModelFactory(): import("@jbrowse/mobx-state-tree").
      * once per view, never fired again.
      */
     reset(): void;
+} & {
+    /**
+     * #action
+     * overrides base, so dismissing the warning chip hides the link
+     * notices too until their cause changes
+     */
+    clearWarnings(): void;
 } & {
     /**
      * #method

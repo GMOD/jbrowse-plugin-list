@@ -19,13 +19,13 @@ export type StructureInteractionHost = ClickProteinToGenomeModel & {
     chain?: string
   }) => void
   setSelectedFeatureId: (uniqueId?: string) => void
-  setViewError: (e: unknown) => void
+  addViewNotice: (e: unknown) => void
 }
 
 export type ViewInteractionHost = IAnyStateTreeNode & {
   readonly molstarPluginContext: PluginContext | undefined
   readonly structures: readonly StructureInteractionHost[]
-  setError: (e: unknown) => void
+  addNotice: (notice: unknown) => void
 }
 
 function forStructure(
@@ -51,7 +51,7 @@ function onClick(
       structureSeqPos: hit.structureSeqPos,
     }).catch((e: unknown) => {
       console.error(e)
-      structure.setViewError(e)
+      structure.addViewNotice(e)
     })
   } else {
     structure.setClickedStructureRanges([])

@@ -4,7 +4,7 @@ import type { IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
 
 export type FailureHost = IAnyStateTreeNode & {
   readonly molstarPluginContext: unknown
-  setError: (error: unknown) => void
+  addNotice: (notice: unknown) => void
 }
 
 /**
@@ -15,7 +15,7 @@ export function reportPluginFailure(host: FailureHost, plugin: unknown) {
   return (error: unknown) => {
     console.error(error)
     if (isAlive(host) && host.molstarPluginContext === plugin) {
-      host.setError(error)
+      host.addNotice(error)
     }
   }
 }

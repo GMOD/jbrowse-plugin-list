@@ -13,15 +13,15 @@ import { applyFigureStyle } from './figureStyle';
 import { makeSelectionFramer, structuresSettled } from './frameSelection';
 import loadMolstar from './loadMolstar';
 import { makeLociChannel } from './lociChannel';
-import { checkedLayers } from './markProblems';
+import { checkedFigure, checkedFigureChange } from './markProblems';
 import { syncMeasurements } from './measurements';
-import { checkedColor, colorOfScheme, resolvedColor } from './proteinColor';
+import { checkedColor, colorOfScheme, resolvedColor, trackStatLabel, } from './proteinColor';
 import { defaultDisplayName } from './proteinViewSpec';
 import { removeMolstarStructure } from './removeStructure';
 import { reportPluginFailure } from './reportPluginFailure';
 import { checkedStructureFilters } from './residueFilter';
 import { syncResidueMarks } from './residueMarks';
-import { applySavedCamera } from './savedCamera';
+import { applySavedCamera, keepSavedCamera, liveCamera } from './savedCamera';
 import { highlightCameraSnapshot, syncSessionHighlightMarks, } from './sessionHighlights';
 import { showLoading } from './showLoading';
 import { readStoredSettings, storeSetting, withStoredSettings, } from './storedSettings';
@@ -30,6 +30,7 @@ import Structure from './structureModel';
 import { makeStructureSuperposer } from './structureSuperposer';
 import { setStructuresHidden } from './structureVisibility';
 import { syncSurfaces } from './surface';
+import { errorMessage } from './util';
 import { isValueField, paintedColor, valueDomain } from './valueScale';
 import { attachViewInteractions } from './viewInteractions';
 const MIN_HEIGHT = 100;
@@ -234,7 +235,7 @@ function stateModelFactory() {
         alignmentAlgorithm: types.optional(types.enumeration('AlignmentAlgorithm', ALIGNMENT_ALGORITHM_VALUES), DEFAULT_ALIGNMENT_ALGORITHM),
     }))
         .preProcessSnapshot(({ colorScheme, ...snapshot }) => withStoredSettings({
-        ...checkedLayers(snapshot, checkedStructureFilters(snapshot.structures)),
+        ...checkedFigure(snapshot, checkedStructureFilters(snapshot.structures)),
         displayName: snapshot.displayName ??
             defaultDisplayName(snapshot.structures ?? []),
         color: checkedColor(snapshot.color ??
@@ -243,9 +244,17 @@ function stateModelFactory() {
         .volatile(() => ({
         /**
          * #volatile
+         * the view cannot draw at all: Mol* failed to start
          */
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         error: undefined,
+        /**
+         * #volatile
+         * failures worth reporting that leave the view working, such as a
+         * superposition, a recolor or a navigation; the banner lists them and
+         * the ready marker does not wait on them
+         */
+        notices: [],
         /**
          * #volatile
          */
@@ -290,6 +299,20 @@ function stateModelFactory() {
          */
         setError(e) {
             self.error = e;
+        },
+        /**
+         * #action
+         */
+        addNotice(notice) {
+            if (!self.notices.some(n => `${n}` === `${notice}`)) {
+                self.notices = [...self.notices, notice];
+            }
+        },
+        /**
+         * #action
+         */
+        dismissNotice(notice) {
+            self.notices = self.notices.filter(n => n !== notice);
         },
         /**
          * #action
@@ -366,6 +389,33 @@ function stateModelFactory() {
                 removeMolstarStructure({ plugin, molstarStructure }).catch(reportPluginFailure(self, plugin));
             }
         },
+        /**
+         * #action
+         * Sets the figure properties `change` names, checked as a snapshot's
+         * are, and leaves the rest; a key given as undefined clears it. Refuses
+         * the whole change, with every reason, if any of it does not read.
+         */
+        applyFigure(change) {
+            const figure = checkedFigureChange(change, self.structures);
+            if (Object.hasOwn(figure, 'camera')) {
+                self.camera = figure.camera;
+            }
+            if (Object.hasOwn(figure, 'surface')) {
+                self.surface = figure.surface;
+            }
+            if (Object.hasOwn(figure, 'marks')) {
+                self.marks = figure.marks;
+            }
+            if (Object.hasOwn(figure, 'distances')) {
+                self.distances = figure.distances;
+            }
+            if (Object.hasOwn(figure, 'silhouettes')) {
+                self.silhouettes = figure.silhouettes === true;
+            }
+            if (Object.hasOwn(figure, 'occlusion')) {
+                self.occlusion = figure.occlusion === true;
+            }
+        },
     }))
         .views(self => ({
         /**
@@ -401,7 +451,7 @@ function stateModelFactory() {
                     ]))
                     : undefined,
                 label: color.field === 'track'
-                    ? `${trackName} (${color.stat ?? 'mean'} per codon)`
+                    ? `${trackName} (${trackStatLabel(color)})`
                     : undefined,
             });
         },
@@ -449,6 +499,7 @@ function stateModelFactory() {
                         placedValues: s.placedValues,
                         placedSites: s.alignmentDomainStatus?.placedSites,
                         domainColor: s.alignmentDomainStatus?.domains?.color,
+                        exonColor: s.exonStatus?.color,
                     }))
                     : []);
                 if (molstarPluginContext && structures.length > 0) {
@@ -548,7 +599,7 @@ function stateModelFactory() {
                     }
                     const subscription = molstar.PluginCommands.Camera.Reset.subscribe(plugin, ({ snapshot: requested }) => {
                         if (!requested && self.camera) {
-                            applySavedCamera(plugin, molstar, self.camera);
+                            applySavedCamera(plugin.canvas3d, molstar, self.camera);
                             return;
                         }
                         const snapshot = requested
@@ -618,17 +669,17 @@ function stateModelFactory() {
                         .catch(reportPluginFailure(self, plugin));
                 }
             }));
-            // A saved camera, once every structure has loaded
-            addDisposer(self, autorun(() => {
-                const { molstarPluginContext: plugin, camera } = self;
-                if (plugin && camera && structuresSettled(self)) {
-                    loadMolstar()
-                        .then(molstar => {
-                        applySavedCamera(plugin, molstar, camera);
-                    })
-                        .catch(reportPluginFailure(self, plugin));
-                }
-            }));
+            addDisposer(self, autorun(keepSavedCamera({
+                get plugin() {
+                    return self.molstarPluginContext;
+                },
+                get camera() {
+                    return self.camera;
+                },
+                get settled() {
+                    return structuresSettled(self);
+                },
+            }, plugin => reportPluginFailure(self, plugin))));
             addDisposer(self, autorun(makeLociChannel(self, 'select')));
             addDisposer(self, autorun(makeLociChannel(self, 'highlight')));
             // Mol*'s click and hover, heard once for the whole view
@@ -652,6 +703,44 @@ function stateModelFactory() {
          */
         get settled() {
             return structuresSettled(self);
+        },
+        /**
+         * #getter
+         * What the view resolved, as plain data: whether it is still loading,
+         * what failed, the notices its banner lists, and each structure's
+         * report. The header shows the same things to a reader.
+         */
+        get report() {
+            return {
+                loading: showLoading(self),
+                error: self.error === undefined ? undefined : errorMessage(self.error),
+                notices: self.notices.map(n => errorMessage(n)),
+                structures: self.structures.map(s => s.report),
+            };
+        },
+        /**
+         * #method
+         * The camera on screen as a SavedCamera, for
+         * `applyFigure({ camera: view.currentCamera() })` to keep a view a
+         * person arranged. Read once a move has landed: Mol* animates one.
+         */
+        currentCamera() {
+            const canvas = self.molstarPluginContext?.canvas3d;
+            if (!canvas) {
+                throw new Error('the view has no Mol* canvas yet');
+            }
+            return liveCamera(canvas);
+        },
+        /**
+         * #method
+         * Each structure's residues under a 0-based half-open genome region; see
+         * the structure's locateGenomeRegion
+         */
+        locateGenomeRegion(region) {
+            return self.structures.map(s => ({
+                label: s.label,
+                residues: s.locateGenomeRegion(region),
+            }));
         },
         /**
          * #getter
@@ -683,7 +772,11 @@ function stateModelFactory() {
          * What the legend of the structure colors is titled
          */
         get colorLegendTitle() {
-            return resolvedColor(self.paintColor)?.title ?? 'Structure colors';
+            const exonTitle = self.structures.find(s => s.exonStatus?.color)
+                ?.exonStatus?.color?.title;
+            return (resolvedColor(self.paintColor)?.title ??
+                exonTitle ??
+                'Structure colors');
         },
         /**
          * #getter
@@ -700,6 +793,7 @@ function stateModelFactory() {
                     structure,
                     entityId: loaded.mappedEntity?.entityId,
                     domainColor: loaded.alignmentDomainStatus?.domains?.color,
+                    exonColor: loaded.exonStatus?.color,
                 })
                 : undefined;
         },

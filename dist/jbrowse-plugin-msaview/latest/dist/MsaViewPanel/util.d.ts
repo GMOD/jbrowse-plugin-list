@@ -28,6 +28,9 @@ interface LiveFeature {
  * the session may still hand over a live Feature.
  */
 export declare function transcriptFields(transcript?: TranscriptRef): Record<string, unknown>;
+export declare function isRecord(val: unknown): val is Record<string, unknown>;
+/** an error's message, for a notice or a report; anything else as a string */
+export declare function errorMessage(e: unknown): string;
 export declare function str(val: unknown): string | undefined;
 /** what a transcript is called, preferring its name over its id */
 export declare function transcriptName(transcript?: TranscriptRef): string | undefined;

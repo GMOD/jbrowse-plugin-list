@@ -19,7 +19,7 @@ function onClick(structure, info) {
             structureSeqPos: hit.structureSeqPos,
         }).catch((e) => {
             console.error(e);
-            structure.setViewError(e);
+            structure.addViewNotice(e);
         });
     }
     else {

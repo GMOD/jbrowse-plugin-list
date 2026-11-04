@@ -55,3 +55,30 @@ export function scoreByResidue(p2gCodon, baseScores, stat) {
     }
     return byPosition;
 }
+/**
+ * How many intervals fall on each transcript residue's codon, 0 where none
+ * does. An interval counts once on every residue whose codon it touches: a
+ * deletion across a codon boundary changes both residues, and one touching
+ * two bases of a codon is still one feature.
+ */
+export function countByResidue(intervals, p2gCodon) {
+    const residueOfBase = new Map();
+    const counts = new Map();
+    for (const [pos, bases] of Object.entries(p2gCodon)) {
+        counts.set(Number(pos), 0);
+        for (const base of bases) {
+            residueOfBase.set(base, Number(pos));
+        }
+    }
+    const sorted = [...residueOfBase.keys()].toSorted((a, b) => a - b);
+    for (const { start, end } of intervals) {
+        const touched = new Set();
+        for (let i = lowerBound(sorted, start); i < sorted.length && sorted[i] < end; i++) {
+            touched.add(residueOfBase.get(sorted[i]));
+        }
+        for (const pos of touched) {
+            counts.set(pos, counts.get(pos) + 1);
+        }
+    }
+    return counts;
+}

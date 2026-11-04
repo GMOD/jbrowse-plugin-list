@@ -1,9 +1,13 @@
+import { observable } from 'mobx';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import stateModelFactory from './model';
 const rpcCall = vi.fn();
 const lgv = {
     id: 'lgv1',
+    type: 'LinearGenomeView',
     initialized: true,
+    pendingLaunch: undefined,
+    error: undefined,
     assemblyNames: ['hg38'],
     tracks: [],
     displayedRegions: [
@@ -13,10 +17,11 @@ const lgv = {
         contentBlocks: [],
     },
 };
+const sessionViews = observable.array([lgv], { deep: false });
 vi.mock('@jbrowse/core/util', async (importOriginal) => ({
     ...(await importOriginal()),
     getSession: () => ({
-        views: [lgv],
+        views: sessionViews,
         hovered: undefined,
         rpcManager: { call: rpcCall },
     }),
@@ -40,8 +45,15 @@ vi.mock('./msaDataStore', () => ({
     retrieveMsaData: vi.fn(),
     storeMsaData: vi.fn(),
 }));
-function transcript(id) {
-    const json = { uniqueId: id, id, refName: 'chr17', start: 0, end: 9 };
+function transcript(id, extra = {}) {
+    const json = {
+        uniqueId: id,
+        id,
+        refName: 'chr17',
+        start: 0,
+        end: 9,
+        ...extra,
+    };
     return {
         id: () => id,
         get: (key) => (key === 'id' || key === 'name' ? id : undefined),
@@ -49,11 +61,13 @@ function transcript(id) {
     };
 }
 const settle = () => new Promise(res => setTimeout(res, 0));
-function connectedView() {
+function connectedView({ connectedViewId } = {
+    connectedViewId: 'lgv1',
+}) {
     return stateModelFactory().create({
         type: 'MsaView',
         id: 'msa1',
-        connectedViewId: 'lgv1',
+        connectedViewId,
         connectedTranscript: 'NM_000546.6',
         blastParams: {
             searchProgram: 'blastp',
@@ -62,10 +76,24 @@ function connectedView() {
         },
     });
 }
+function linkedAlignment() {
+    return stateModelFactory().create({
+        type: 'MsaView',
+        id: 'msa1',
+        connectedViewId: 'lgv1',
+        connectedTranscript: 'NM_000546.6',
+        querySeqName: 'QUERY',
+        data: { msa: '>QUERY\nMKV\n>mouse\nMKI\n' },
+    });
+}
 beforeEach(() => {
     rpcCall.mockReset();
+    lgv.initialized = true;
+    lgv.pendingLaunch = undefined;
+    lgv.error = undefined;
     lgv.tracks = [{ type: 'FeatureTrack', adapter: 'genes' }];
     lgv.dynamicBlocks.contentBlocks = [];
+    sessionViews.replace([lgv]);
     vi.spyOn(console, 'error').mockImplementation(() => { });
 });
 describe('a lookup that misses', () => {
@@ -87,6 +115,135 @@ describe('a lookup that misses', () => {
         expect(rpcCall.mock.calls.length).toBeGreaterThan(calls);
         expect(model.connectedFeature).toMatchObject({ id: 'NM_000546.6' });
         expect(model.blastParams?.proteinSequence).toBe('MKV');
+    });
+});
+describe('a lookup that misses beside an alignment in hand', () => {
+    test('is a notice, and the alignment stays', async () => {
+        rpcCall.mockResolvedValue([]);
+        const model = linkedAlignment();
+        await settle();
+        expect(model.error).toBeUndefined();
+        expect(model.dataInitialized).toBe(true);
+        expect(model.showLoading).toBe(false);
+        expect(model.notices).toEqual([
+            expect.stringMatching(/Transcript "NM_000546.6" was not found/),
+        ]);
+        expect(model.report.connection).toMatchObject({
+            transcript: 'NM_000546.6',
+            mapped: false,
+            unmappedBecause: expect.stringMatching(/was not found/),
+        });
+    });
+    test('is still loading while the lookup runs', async () => {
+        rpcCall.mockReturnValue(new Promise(() => { }));
+        const model = linkedAlignment();
+        await settle();
+        expect(model.showLoading).toBe(true);
+        expect(model.notices).toEqual([]);
+    });
+    test('a lookup that lands links the alignment', async () => {
+        rpcCall.mockResolvedValue([
+            transcript('NM_000546.6', {
+                strand: 1,
+                subfeatures: [{ type: 'CDS', start: 0, end: 9, phase: 0 }],
+            }),
+        ]);
+        const model = linkedAlignment();
+        await settle();
+        expect(model.notices).toEqual([]);
+        expect(model.showLoading).toBe(false);
+        expect(model.report.connection).toEqual({
+            viewId: 'lgv1',
+            viewOpen: true,
+            transcript: 'NM_000546.6',
+            refName: 'chr17',
+            mapped: true,
+            unmappedBecause: undefined,
+        });
+    });
+    test('a transcript that lands but does not map says why', async () => {
+        rpcCall.mockResolvedValue([transcript('NM_000546.6')]);
+        const model = linkedAlignment();
+        await settle();
+        expect(model.notices).toEqual([
+            expect.stringMatching(/linked transcript is not mapped to the genome: its strand is undefined/),
+        ]);
+        expect(model.report.connection?.mapped).toBe(false);
+    });
+});
+describe('a lookup that cannot start', () => {
+    test.each([
+        ['no connectedViewId', undefined, /needs a connectedViewId/],
+        ['a view id naming no view', 'lgv9', /No view with id "lgv9" is open/],
+    ])('ends a waiting launch with an error naming %s', async (_, viewId, message) => {
+        const model = connectedView({ connectedViewId: viewId });
+        await settle();
+        expect(String(model.error)).toMatch(message);
+        expect(model.showLoading).toBe(false);
+        expect(model.notices).toEqual([]);
+        expect(rpcCall).not.toHaveBeenCalled();
+    });
+    test('ends a waiting launch when the id names a view that is not a genome view', async () => {
+        sessionViews.replace([{ ...lgv, type: 'ProteinView' }]);
+        const model = connectedView();
+        await settle();
+        expect(String(model.error)).toMatch(/"lgv1" is a ProteinView, not a LinearGenomeView/);
+        expect(model.connectedView).toBeUndefined();
+        expect(model.report.connection?.viewOpen).toBe(false);
+        expect(model.showLoading).toBe(false);
+        expect(rpcCall).not.toHaveBeenCalled();
+    });
+    test('a genome view that arrives after the launch clears the error and looks', async () => {
+        sessionViews.replace([]);
+        rpcCall.mockReturnValue(new Promise(() => { }));
+        const model = connectedView();
+        await settle();
+        expect(String(model.error)).toMatch(/No view with id "lgv1"/);
+        sessionViews.replace([lgv]);
+        await settle();
+        expect(model.error).toBeUndefined();
+        expect(model.connectionError).toBeUndefined();
+        expect(model.showLoading).toBe(true);
+        expect(rpcCall).toHaveBeenCalled();
+    });
+    test('ends a waiting launch when the genome view has no feature tracks', async () => {
+        lgv.tracks = [{ type: 'AlignmentsTrack', adapter: 'bam' }];
+        const model = connectedView();
+        await settle();
+        expect(String(model.error)).toMatch(/no feature tracks open/);
+        expect(model.showLoading).toBe(false);
+        expect(rpcCall).not.toHaveBeenCalled();
+    });
+    test('ends a waiting launch when the genome view failed', async () => {
+        lgv.error = new Error('assembly hg38 not found');
+        const model = connectedView();
+        await settle();
+        expect(String(model.error)).toMatch(/failed to load.*assembly hg38 not found/);
+        expect(model.showLoading).toBe(false);
+    });
+    test('is a notice beside an alignment in hand', async () => {
+        lgv.tracks = [];
+        const model = linkedAlignment();
+        await settle();
+        expect(model.error).toBeUndefined();
+        expect(model.showLoading).toBe(false);
+        expect(model.notices).toEqual([
+            expect.stringMatching(/no feature tracks open/),
+        ]);
+    });
+});
+describe('a genome view still initializing', () => {
+    test.each([
+        ['before its assembly loads', { initialized: false }],
+        ['while its launch opens tracks', { pendingLaunch: { tracks: ['genes'] } }],
+    ])('is waited for %s', async (_, state) => {
+        Object.assign(lgv, state, { tracks: [] });
+        const model = connectedView();
+        await settle();
+        expect(model.error).toBeUndefined();
+        expect(model.connectionError).toBeUndefined();
+        expect(model.showLoading).toBe(true);
+        expect(rpcCall).not.toHaveBeenCalled();
     });
 });
 describe('where a lookup searches', () => {

@@ -38,7 +38,7 @@ const TestStructure = types
     setHoveredPosition(arg?: { structureSeqPos?: number }) {
       self.hovered = arg
     },
-    setViewError(_e: unknown) {},
+    addViewNotice(_e: unknown) {},
     // every structure of a view hears every interaction, so this is what says
     // whether one landed on this one
     interactionPosition(info: MolstarLocationInfo) {
@@ -53,7 +53,7 @@ const TestView = types
     addStructure(modelId: string) {
       self.structures.push({ modelId })
     },
-    setError(e: unknown) {
+    addNotice(e: unknown) {
       self.errors.push(e)
     },
   }))
@@ -182,7 +182,7 @@ test('a structure added later hears the next hover', async () => {
 
 // A Mol* chunk that fails to fetch used to reject inside the autorun, where
 // nothing caught it, and the view went on with hover and click dead.
-test('a subscription that fails reaches the view as its error', async () => {
+test('a subscription that fails reaches the view as a notice', async () => {
   const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
   const failure = new Error('chunk fetch failed')
   mockSubscribe.mockRejectedValue(failure)

@@ -58,6 +58,9 @@ Linking and embedding:
   `connectedView` settings, and the transcript `feature` shape.
 - [Session snapshots](docs/session-snapshots.md): the saved view's shape, the
   structure shorthands, and which chain maps.
+- [Reading what a view resolved](docs/reading-the-view.md): the view's `report`
+  (chain, identity, coverage, notices) and locating a residue or a codon in
+  every numbering, for scripts and agents.
 
 How it works, for someone extending the plugin or checking what a number on
 screen means:

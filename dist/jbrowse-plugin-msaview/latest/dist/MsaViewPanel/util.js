@@ -22,6 +22,13 @@ export function transcriptFields(transcript) {
         ? transcript.toJSON()
         : transcript;
 }
+export function isRecord(val) {
+    return typeof val === 'object' && val !== null;
+}
+/** an error's message, for a notice or a report; anything else as a string */
+export function errorMessage(e) {
+    return e instanceof Error ? e.message : String(e);
+}
 export function str(val) {
     return typeof val === 'string' ? val : undefined;
 }

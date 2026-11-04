@@ -1,4 +1,5 @@
 import { EMPTY_DOMAIN_COLOR, domainMarkOf } from './alignmentDomains'
+import { EMPTY_EXON_COLOR } from './exons'
 import loadMolstar from './loadMolstar'
 import { molstarThemeOf, resolvedColor } from './proteinColor'
 import { serialPerPlugin } from './serialPerPlugin'
@@ -6,6 +7,7 @@ import { structureRepresentations, structureRootCell } from './structureCells'
 import { VARIANT_EFFECT_SCHEMES } from './variantEffects'
 
 import type { DomainColor } from './alignmentDomains'
+import type { ExonColor } from './exons'
 import type { ProteinColor } from './proteinColor'
 import type { PlacedValues } from './variantEffects'
 import type { Structure } from 'molstar/lib/mol-model/structure'
@@ -20,6 +22,7 @@ export const PLACED_VALUE_SCHEMES = [
   ...VARIANT_EFFECT_SCHEMES,
   'alignment-domains',
   'residue-values',
+  'exon',
 ] as const
 
 export type PlacedValueScheme = (typeof PLACED_VALUE_SCHEMES)[number]
@@ -35,11 +38,13 @@ function themeParams(
   {
     entityId,
     domainColor,
+    exonColor,
     revision,
     representationType = '',
   }: {
     entityId?: string
     domainColor?: DomainColor
+    exonColor?: ExonColor
     revision?: number
     representationType?: string
   },
@@ -53,9 +58,11 @@ function themeParams(
           color: domainColor ?? EMPTY_DOMAIN_COLOR,
           mark: domainMarkOf(representationType),
         }
-      : scale && isPlacedValueScheme(molstarThemeOf(color))
-        ? { revision, color: scale }
-        : scale && { color: scale }
+      : color.field === 'exon'
+        ? { revision, color: exonColor ?? EMPTY_EXON_COLOR }
+        : scale && isPlacedValueScheme(molstarThemeOf(color))
+          ? { revision, color: scale }
+          : scale && { color: scale }
 }
 
 let revision = 0
@@ -86,6 +93,8 @@ async function recolor({
     /** the alignment sites, which an atom mark draws over the domains */
     placedSites?: PlacedValues
     domainColor?: DomainColor
+    /** the transcript's exons, while the view colors by them */
+    exonColor?: ExonColor
   }[]
 }) {
   const molstar = await loadMolstar()
@@ -103,6 +112,7 @@ async function recolor({
     placedValues,
     placedSites,
     domainColor,
+    exonColor,
   } of structures) {
     if (placed) {
       registerPlacedValues(theme, molstarStructure, placedValues)
@@ -124,6 +134,7 @@ async function recolor({
           themeParams(color, {
             entityId,
             domainColor,
+            exonColor,
             revision,
             representationType: prev.type.name,
           }),
@@ -152,12 +163,14 @@ export function colorLegendOf({
   structure,
   entityId,
   domainColor,
+  exonColor,
 }: {
   plugin: PluginContext
   color: ProteinColor
   structure: Structure
   entityId?: string
   domainColor?: DomainColor
+  exonColor?: ExonColor
 }): Legend | undefined {
   const theme = molstarThemeOf(color)
   return theme === undefined
@@ -165,6 +178,6 @@ export function colorLegendOf({
     : plugin.representation.structure.themes.colorThemeRegistry.create(
         theme,
         { structure },
-        themeParams(color, { entityId, domainColor }) ?? {},
+        themeParams(color, { entityId, domainColor, exonColor }) ?? {},
       ).legend
 }

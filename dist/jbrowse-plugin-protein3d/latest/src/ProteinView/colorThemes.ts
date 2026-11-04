@@ -1,4 +1,5 @@
 import { AlignmentDomainColorThemeProvider } from './alignmentDomainColorTheme'
+import { ExonColorThemeProvider } from './exonColorTheme'
 import { KyteDoolittleColorThemeProvider } from './kyteDoolittleColorTheme'
 import { MappedChainColorThemeProvider } from './mappedChainColorTheme'
 import {
@@ -19,4 +20,5 @@ export function registerColorThemes(plugin: PluginContext) {
   registry.add(GenomeTrackColorThemeProvider)
   registry.add(ResidueValuesColorThemeProvider)
   registry.add(AlignmentDomainColorThemeProvider)
+  registry.add(ExonColorThemeProvider)
 }

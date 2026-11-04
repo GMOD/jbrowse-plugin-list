@@ -281,6 +281,57 @@ test('a view setting of the wrong type is dropped by name', () => {
   ])
 })
 
+// A figure from a gene name and its marks used to need a full snapshot with a
+// serialized feature, because the launch dropped these as unknown keys.
+test("a figure's layers and camera reach the view from the launch", () => {
+  const figure = {
+    camera: { position: [0, 0, 50], target: [0, 0, 0], up: [0, 1, 0] },
+    surface: { opacity: 0.3 },
+    marks: [{ site: 'A:248', mark: 'spheres' }],
+    distances: [{ a: 'A:248@NH2', b: 'B:12' }],
+    silhouettes: true,
+    occlusion: true,
+  }
+  const { settings, warnings } = accepted({ gene: 'TP53', ...figure })
+  expect(warnings).toEqual([])
+  expect(settings).toMatchObject(figure)
+})
+
+test('a figure layer of the wrong shape is dropped by name', () => {
+  const { settings, warnings } = accepted({
+    gene: 'TP53',
+    camera: { position: [0, 0] },
+    marks: 'A:248',
+  })
+  expect(settings.camera).toBeUndefined()
+  expect(settings.marks).toBeUndefined()
+  expect(warnings).toEqual([
+    '`camera` was ignored: camera.position is three numbers such as [0, 1, 0], not [0,0]; camera.target is three numbers such as [0, 1, 0], not undefined; camera.up is three numbers such as [0, 1, 0], not undefined',
+    "`marks` is not a list such as [{ site: 'A:248', mark: 'spheres' }] and was ignored",
+  ])
+})
+
+// the view refuses these at snapshot time, so a launch that let them through
+// failed to open where it could have dropped the layer and opened
+test('a camera or surface the view would refuse is dropped with its reason', () => {
+  const { settings, warnings } = accepted({
+    gene: 'TP53',
+    camera: {
+      position: [0, 0, 50],
+      target: [0, 0, 0],
+      up: [0, 1, 0],
+      radius: 0,
+    },
+    surface: { opacity: 1.5 },
+  })
+  expect(settings.camera).toBeUndefined()
+  expect(settings.surface).toBeUndefined()
+  expect(warnings).toEqual([
+    '`camera` was ignored: camera.radius is a positive number, not 0',
+    '`surface` was ignored: surface.opacity is a number from 0 to 1, not 1.5',
+  ])
+})
+
 test('an unknown key of the launch is reported', () => {
   expect(
     accepted({
@@ -333,5 +384,33 @@ test('a linkage key of the wrong type is dropped by name', () => {
     '`connectedView` is not { assembly, loc, tracks } and was ignored',
     '`connectedViewId` is not a string and was ignored',
     '`sideBySide` is not true or false and was ignored',
+  ])
+})
+
+test('a variant parses onto the linkage', () => {
+  const { linkage, warnings } = accepted({
+    gene: 'TP53',
+    variant: 'chr17:7674220 C>T',
+  })
+  expect(warnings).toEqual([])
+  expect(linkage.variant).toEqual({
+    text: 'chr17:7674220 C>T',
+    refName: 'chr17',
+    start: 7674219,
+    change: { ref: 'C', alt: 'T' },
+  })
+})
+
+test('a variant that does not parse refuses the launch', () => {
+  expect(rejected({ gene: 'TP53', variant: 'R248Q' }).error).toBe(
+    "`variant` \"R248Q\" is not a genome position or substitution such as 'chr17:7674220 C>T' or 'chr17:7674220'",
+  )
+})
+
+test('a variant of the wrong type is reported and left out', () => {
+  const { linkage, warnings } = accepted({ gene: 'TP53', variant: 7674220 })
+  expect(linkage.variant).toBeUndefined()
+  expect(warnings).toEqual([
+    "`variant` is not a string such as 'chr17:7674220 C>T' or 'chr17:7674220' and was ignored",
   ])
 })

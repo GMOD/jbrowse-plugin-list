@@ -8,6 +8,18 @@ export declare function loadStoredData(self: JBrowsePluginMsaViewModel): void;
  * refusing IndexedDB fails once rather than in a loop.
  */
 export declare function storeDataToIndexedDB(self: JBrowsePluginMsaViewModel): void;
+interface TranscriptWait {
+    connectedTranscript?: string;
+    connectedFeature?: unknown;
+    blastParams?: unknown;
+    orthologParams?: unknown;
+    launchCompleted: boolean;
+}
+/**
+ * A launch that has not run yet and is held back by the transcript lookup, so
+ * a lookup that fails is a launch that cannot proceed.
+ */
+export declare function launchAwaitsTranscript(self: TranscriptWait): boolean;
 export declare function launchOrthologsIfNeeded(self: JBrowsePluginMsaViewModel): void;
 export declare function launchBlastIfNeeded(self: JBrowsePluginMsaViewModel): void;
 /**
@@ -57,4 +69,10 @@ export declare function syncGenomeHoverToMsaColumn(self: JBrowsePluginMsaViewMod
  */
 export declare function observeProteinHighlights(self: JBrowsePluginMsaViewModel): () => void;
 export declare function runCleanup(): void;
+/**
+ * Waits for the genome view to show an assembly, since the track is added to
+ * that assembly: before navigation `showDomainsOnGenome` has none to name, and
+ * clearing the request then dropped it unfulfilled.
+ */
 export declare function showDomainsOnGenomeIfAsked(self: JBrowsePluginMsaViewModel): void;
+export {};

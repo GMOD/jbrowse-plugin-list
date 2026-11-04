@@ -10,7 +10,13 @@ const STAT_LABELS = {
     mean: 'Mean of the three bases',
     max: 'Highest of the three bases',
     min: 'Lowest of the three bases',
+    count: 'How many features fall on the codon',
 };
+const TRACK_TYPES = new Set([
+    'QuantitativeTrack',
+    'VariantTrack',
+    'FeatureTrack',
+]);
 const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model, handleClose, }) {
     const session = getSession(model);
     const assemblyName = model.structures.find(s => s.connectedView)
@@ -23,7 +29,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model,
         ...(assembly ? [assembly.name, ...assembly.aliases] : []),
     ]);
     const tracks = session.tracks
-        .filter(entry => entry.type === 'QuantitativeTrack')
+        .filter(entry => TRACK_TYPES.has(entry.type))
         .filter(entry => {
         const conf = trackConfigNode(session, entry);
         return (conf !== undefined &&
@@ -50,14 +56,21 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model,
             React.createElement(Typography, { variant: "body2", color: "text.secondary", sx: { mb: 2 } },
                 "Each residue takes the track's scores under its codon on the genome view's assembly",
                 assemblyName ? ` (${assemblyName})` : '',
-                ". Residues with no score are grey."),
+                ".",
+                ' ',
+                stat === 'count'
+                    ? 'A residue no feature falls on reads 0.'
+                    : 'Residues with no score are grey.'),
             React.createElement(TextField, { select: true, fullWidth: true, label: "Track", value: trackId, onChange: e => {
                     setTrackId(e.target.value);
                 }, helperText: tracks.length === 0
-                    ? 'This session has no bigWig or bedGraph track on the genome view’s assembly'
+                    ? 'This session has no quantitative, variant or feature track on the genome view’s assembly'
                     : undefined, sx: { mb: 2 } }, tracks.map(t => (React.createElement(MenuItem, { key: t.trackId, value: t.trackId }, t.name)))),
             React.createElement(TextField, { select: true, fullWidth: true, label: "Score per residue", value: stat, onChange: e => {
-                    setStat(e.target.value);
+                    const chosen = TRACK_STATS.find(s => s === e.target.value);
+                    if (chosen) {
+                        setStat(chosen);
+                    }
                 } }, TRACK_STATS.map(s => (React.createElement(MenuItem, { key: s, value: s }, STAT_LABELS[s])))),
             React.createElement(TextField, { select: true, fullWidth: true, label: "Scale", value: scale, onChange: e => {
                     setScale(e.target.value);
@@ -73,12 +86,14 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model,
             React.createElement(Button, { onClick: handleClose }, "Cancel"),
             React.createElement(Button, { variant: "contained", disabled: !trackId || cutsInvalid, onClick: () => {
                     // the same track on the same scale keeps what a session wrote
-                    // beside it: its palette, labels, title and domain
-                    const kept = color.field === 'track' &&
-                        color.trackId === trackId &&
+                    // beside it: its palette, labels, title and domain, and the same
+                    // track its scoreField, which a count does not read
+                    const sameTrack = color.field === 'track' && color.trackId === trackId;
+                    const kept = sameTrack &&
                         (color.scale === 'threshold') === (scale === 'threshold')
                         ? color
                         : undefined;
+                    const scoreField = sameTrack && stat !== 'count' ? color.scoreField : undefined;
                     const sameBands = kept?.range?.length === (cuts?.length ?? 0) + 1;
                     model.setColor(scale === 'threshold' && cuts
                         ? {
@@ -86,6 +101,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model,
                             field: 'track',
                             trackId,
                             stat,
+                            scoreField,
                             scale,
                             domain: cuts,
                             range: sameBands
@@ -93,7 +109,7 @@ const GenomeTrackColorDialog = observer(function GenomeTrackColorDialog({ model,
                                 : thresholdRange(cuts.length + 1),
                             labels: sameBands ? kept.labels : undefined,
                         }
-                        : { ...kept, field: 'track', trackId, stat });
+                        : { ...kept, field: 'track', trackId, stat, scoreField });
                     handleClose();
                 } }, "Color"))));
 });

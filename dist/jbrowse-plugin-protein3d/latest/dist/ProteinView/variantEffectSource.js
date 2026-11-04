@@ -84,7 +84,7 @@ export function clinVarAsk({ feature, assemblyName, assemblyNames, }) {
  * view's assembly, so it needs the transcript and that view. `trackName`
  * labels the request in a message.
  */
-export function genomeTrackAsk({ trackId, trackName, stat, feature, assemblyName, }) {
+export function genomeTrackAsk({ trackId, trackName, stat, scoreField, feature, assemblyName, }) {
     const source = VARIANT_EFFECT_SOURCE_NAMES['genome-track'];
     if (!trackId) {
         return { status: 'unavailable', reason: 'No genome track is chosen' };
@@ -106,10 +106,11 @@ export function genomeTrackAsk({ trackId, trackName, stat, feature, assemblyName
         status: 'ready',
         request: {
             scheme: 'genome-track',
-            key: `genome-track:${assemblyName}:${trackId}:${stat}:${refName}:${start}-${end}:${uniqueId}`,
+            key: `genome-track:${assemblyName}:${trackId}:${stat}:${scoreField}:${refName}:${start}-${end}:${uniqueId}`,
             label: trackName ?? trackId,
             trackId,
             stat,
+            scoreField,
             assemblyName,
             feature,
         },
@@ -141,6 +142,7 @@ async function load(request, session, signal) {
                 session,
                 trackId: request.trackId,
                 stat: request.stat,
+                scoreField: request.scoreField,
                 feature: new SimpleFeature(request.feature),
                 assemblyName: request.assemblyName,
                 signal,

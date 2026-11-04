@@ -1,8 +1,6 @@
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper';
+import { isRecord } from './util';
 export const MAX_CODING_BASES = 1_000_000;
-function isRecord(val) {
-    return typeof val === 'object' && val !== null;
-}
 function isCoordinate(val) {
     return Number.isSafeInteger(val);
 }
@@ -66,17 +64,19 @@ function mappableTranscript(feature) {
         },
     };
 }
-const warned = new WeakSet();
-export function transcriptMap(feature) {
+/**
+ * The genome mapping of the linked transcript, or why there is none. The
+ * reason reaches the view's notices: a transcript that does not map leaves
+ * every genome link dead with nothing else to say so.
+ */
+export function transcriptMapping(feature) {
     const checked = mappableTranscript(feature);
-    if ('reason' in checked) {
-        if (isRecord(feature) && !warned.has(feature)) {
-            warned.add(feature);
-            console.warn(`[msaview] the linked transcript is not mapped to the genome: ${checked.reason}`);
-        }
-        return undefined;
-    }
-    const mapping = genomeToTranscriptSeqMapping(checked.transcript);
+    return 'reason' in checked
+        ? checked
+        : { map: withCodingPositions(checked.transcript) };
+}
+function withCodingPositions(transcript) {
+    const mapping = genomeToTranscriptSeqMapping(transcript);
     return {
         ...mapping,
         codingPositions: Object.keys(mapping.g2p)

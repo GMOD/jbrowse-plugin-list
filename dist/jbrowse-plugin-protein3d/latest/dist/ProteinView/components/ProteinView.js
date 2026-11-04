@@ -18,16 +18,15 @@ const ProteinView = observer(function ProteinView({ model, }) {
     return (React.createElement(ProteinViewContainer, { model: model, parentRef: parentRef, loading: loading }));
 });
 // A failed superposition or recolor is worth reporting, not worth wearing for
-// the rest of the session, so the message can be dismissed.
-const DismissableError = observer(function DismissableError({ model, }) {
-    const { error } = model;
-    return error ? (React.createElement("div", { style: { display: 'flex', alignItems: 'flex-start' } },
+// the rest of the session, so each message can be dismissed.
+const DismissableNotices = observer(function DismissableNotices({ model, }) {
+    return model.notices.map(notice => (React.createElement("div", { key: `${notice}`, style: { display: 'flex', alignItems: 'flex-start' } },
         React.createElement("div", { style: { flex: 1 } },
-            React.createElement(ErrorMessage, { error: error })),
+            React.createElement(ErrorMessage, { error: notice })),
         React.createElement(IconButton, { size: "small", "aria-label": "Dismiss error", onClick: () => {
-                model.setError(undefined);
+                model.dismissNotice(notice);
             } },
-            React.createElement(CloseIcon, { fontSize: "small" })))) : null;
+            React.createElement(CloseIcon, { fontSize: "small" })))));
 });
 // Mol* being up says nothing about the structure: the fetch, the parse, the
 // alignment and the SIFTS lookup all run afterwards, and used to run behind an
@@ -52,7 +51,7 @@ const ProteinViewContainer = observer(function ProteinViewContainer({ model, par
     // for screenshot and e2e tooling: Mol* is up and every structure has settled
     const ready = !loading && !model.showLoading;
     return (React.createElement("div", { style: { background: '#ccc' }, "data-testid": ready ? 'protein-view-ready' : 'protein-view-loading' },
-        React.createElement(DismissableError, { model: model }),
+        React.createElement(DismissableNotices, { model: model }),
         loading ? (React.createElement(LoadingEllipses, { message: "Loading protein viewer" })) : (React.createElement(ProteinViewHeader, { model: model })),
         React.createElement("div", { style: { position: 'relative', width, height } },
             React.createElement("div", { ref: parentRef, "data-testid": "protein-view-molstar", style: {

@@ -1,4 +1,6 @@
 import { isPairwiseAlignment, resolveStructureUrl } from 'p2s_mapper';
+import { VARIANT_SPELLING, parseLaunchVariant } from './launchVariant';
+import { cameraProblems, surfaceProblems } from '../ProteinView/markProblems';
 const STRUCTURE_KEY_ROLES = {
     url: 'source',
     data: 'source',
@@ -50,6 +52,20 @@ function isFeature(value) {
 function isPredicateList(value) {
     return Array.isArray(value) && value.every(isRecord);
 }
+// the shape only, as for a filter: the view model refuses a site that does
+// not parse, with the reason
+function isMarkList(value) {
+    return Array.isArray(value) && value.every(isRecord);
+}
+function isDistanceList(value) {
+    return Array.isArray(value) && value.every(isRecord);
+}
+function isSavedCamera(value) {
+    return value !== undefined && cameraProblems(value).length === 0;
+}
+function isSurface(value) {
+    return value !== undefined && surfaceProblems(value).length === 0;
+}
 function isResidueRange(value) {
     return (isRecord(value) &&
         typeof value.start === 'number' &&
@@ -86,18 +102,34 @@ function fieldReader(fields, at, warnings) {
         return undefined;
     };
 }
+/**
+ * A figure layer read by the view's own check, so a launch drops, with the
+ * view's reasons, what the view would refuse.
+ */
+function figureLayerReader(fields, warnings) {
+    return function read(key, accepts, problemsOf) {
+        const value = fields.get(key);
+        const accepted = value !== undefined && accepts(value) ? value : undefined;
+        if (value !== undefined && accepted === undefined) {
+            warnings.push(`\`${key}\` was ignored: ${problemsOf(value).join('; ')}`);
+        }
+        return accepted;
+    };
+}
 const LAUNCH_KEYS = [
     'structures',
     'gene',
     'transcriptId',
     'connectedView',
     'sideBySide',
+    'variant',
 ];
 // `uniprotId` is a structure's source too, which readStructure reports, so
 // a wrongly typed one is left out here without a second warning
 function readLinkage(fields, warnings) {
     const read = fieldReader(fields, key => `\`${key}\``, warnings);
     const uniprotId = fields.get('uniprotId');
+    const variant = read('variant', isString, `a string such as ${VARIANT_SPELLING}`);
     return {
         gene: read('gene', isString, 'a string'),
         transcriptId: read('transcriptId', isString, 'a string'),
@@ -107,10 +139,12 @@ function readLinkage(fields, warnings) {
         sideBySide: read('sideBySide', isBoolean, 'true or false'),
         feature: read('feature', isFeature, 'a feature object'),
         userProvidedTranscriptSequence: read('userProvidedTranscriptSequence', isString, 'a string'),
+        variant: variant === undefined ? undefined : parseLaunchVariant(variant),
     };
 }
 function readViewSettings(fields, warnings) {
     const read = fieldReader(fields, key => `\`${key}\``, warnings);
+    const readLayer = figureLayerReader(fields, warnings);
     const flag = (key) => read(key, isBoolean, 'true or false');
     return {
         id: read('id', isString, 'a string'),
@@ -128,6 +162,12 @@ function readViewSettings(fields, warnings) {
         alignmentAlgorithm: read('alignmentAlgorithm', isString, 'a string'),
         color: fields.get('color'),
         colorScheme: read('colorScheme', isString, 'a string'),
+        camera: readLayer('camera', isSavedCamera, cameraProblems),
+        surface: readLayer('surface', isSurface, surfaceProblems),
+        distances: read('distances', isDistanceList, "a list such as [{ a: 'A:46@NZ', b: 'A:80@NZ' }]"),
+        marks: read('marks', isMarkList, "a list such as [{ site: 'A:248', mark: 'spheres' }]"),
+        silhouettes: flag('silhouettes'),
+        occlusion: flag('occlusion'),
     };
 }
 function readStructure(fields, at, warnings) {
@@ -178,6 +218,13 @@ export function normalizeLaunch(launch) {
     const unknownKeys = [...top.keys()].filter(key => !known.has(key));
     if (unknownKeys.length > 0) {
         warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`);
+    }
+    const variant = top.get('variant');
+    if (isString(variant) && !linkage.variant) {
+        return {
+            error: `\`variant\` "${variant}" is not a genome position or substitution such as ${VARIANT_SPELLING}`,
+            warnings,
+        };
     }
     const looksUpGene = !!linkage.gene && !linkage.userProvidedTranscriptSequence;
     const noStructure = linkage.gene

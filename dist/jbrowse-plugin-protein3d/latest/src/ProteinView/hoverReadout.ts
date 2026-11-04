@@ -19,8 +19,8 @@ export function codonLocus(
 
 /**
  * The header's readout of the hovered residue: author number, the transcript
- * residue when it differs, letters, chain and codon locus. A modified residue
- * (MSE, TPO) shows its parent's letter.
+ * residue when it differs, letters, chain, codon locus and, when given, its
+ * exon. A modified residue (MSE, TPO) shows its parent's letter.
  */
 export function hoverReadout({
   hover,
@@ -28,12 +28,14 @@ export function hoverReadout({
   structureToTranscript,
   transcript,
   locus,
+  exon,
 }: {
   hover: { structureSeqPos?: number; chain?: string }
   entity: Entity | undefined
   structureToTranscript: CoordinateMapper['structureToTranscript'] | undefined
   transcript: string
   locus: string | undefined
+  exon?: string
 }) {
   const pos = hover.structureSeqPos
   const transcriptPos =
@@ -60,6 +62,9 @@ export function hoverReadout({
   }
   if (locus) {
     parts.push(locus)
+  }
+  if (exon) {
+    parts.push(exon)
   }
   return parts.join(', ')
 }

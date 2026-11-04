@@ -117,18 +117,13 @@ export function clinVarCategory(significance) {
 }
 const COMPLEMENT = { A: 'T', C: 'G', G: 'C', T: 'A' };
 /**
- * Each variant translated on this transcript's own codon: `p2gCodon`
- * (g2p_mapper's, 0-based) lists a codon's genome positions in reading order,
- * so a codon split by an intron and a minus-strand codon both read right. A
- * variant the VCF calls missense on another transcript but that is
- * synonymous, nonsense or outside the coding sequence of this one is left
- * out, as is one whose `REF` disagrees with the genome. `residues` lists
- * every residue with a whole codon, so a residue ClinVar has no call for is
- * told apart from one the structure cannot place. `checked` counts the
- * variants that landed on a codon, and `disagreeing` those whose `REF` the
- * genome does not spell.
+ * A transcript's whole codons read off the genome: `p2gCodon` (g2p_mapper's,
+ * 0-based) lists a codon's genome positions in reading order, so a codon split
+ * by an intron and a minus-strand codon both read right. `at` finds the codon
+ * a genome position sits in, and `oriented` turns a forward-strand base into
+ * the transcript's.
  */
-export function placeMissenseOnTranscript({ variants, p2gCodon, strand, genomeBase, codonTable, }) {
+export function transcriptCodons({ p2gCodon, strand, genomeBase, }) {
     const oriented = (base) => base && strand === -1 ? COMPLEMENT[base] : base;
     const codons = new Map();
     const residueAt = new Map();
@@ -141,34 +136,60 @@ export function placeMissenseOnTranscript({ variants, p2gCodon, strand, genomeBa
             });
         }
     }
+    return {
+        oriented,
+        residues: () => [...codons.keys()].toSorted((a, b) => a - b),
+        at: (position) => {
+            const site = residueAt.get(position);
+            const codon = site ? codons.get(site.residue) : undefined;
+            return site && codon ? { ...site, codon } : undefined;
+        },
+    };
+}
+export function translateSnv(codons, { start, ref, alt }, codonTable) {
+    const site = codons.at(start);
+    return !site
+        ? { kind: 'noncoding' }
+        : site.codon[site.index] !== codons.oriented(ref)
+            ? { kind: 'refMismatch' }
+            : {
+                kind: 'translated',
+                residue: site.residue,
+                from: codonTable[site.codon.join('')],
+                to: codonTable[site.codon.with(site.index, codons.oriented(alt) ?? '').join('')],
+            };
+}
+/**
+ * Each variant translated on this transcript's own codon (see
+ * transcriptCodons). A variant the VCF calls missense on another transcript
+ * but that is synonymous, nonsense or outside the coding sequence of this one
+ * is left out, as is one whose `REF` disagrees with the genome. `residues`
+ * lists every residue with a whole codon, so a residue ClinVar has no call for
+ * is told apart from one the structure cannot place. `checked` counts the
+ * variants that landed on a codon, and `disagreeing` those whose `REF` the
+ * genome does not spell.
+ */
+export function placeMissenseOnTranscript({ variants, p2gCodon, strand, genomeBase, codonTable, }) {
+    const codons = transcriptCodons({ p2gCodon, strand, genomeBase });
     const placed = [];
     let checked = 0;
     let disagreeing = 0;
     for (const variant of variants) {
-        const { start, ref, alt } = variant;
-        const at = residueAt.get(start);
-        const codon = at ? codons.get(at.residue) : undefined;
-        if (!at || !codon) {
-            continue;
+        const result = translateSnv(codons, variant, codonTable);
+        if (result.kind !== 'noncoding') {
+            checked++;
         }
-        checked++;
-        if (codon[at.index] !== oriented(ref)) {
+        if (result.kind === 'refMismatch') {
             disagreeing++;
-            continue;
         }
-        const mutated = codon.with(at.index, oriented(alt) ?? '');
-        const from = codonTable[codon.join('')];
-        const to = codonTable[mutated.join('')];
-        if (from && to && from !== to && from !== '*' && to !== '*') {
-            placed.push({ variant, residue: at.residue, from, to });
+        if (result.kind === 'translated') {
+            const { residue, from, to } = result;
+            if (from && to && from !== to && from !== '*' && to !== '*') {
+                placed.push({ variant, residue, from, to });
+            }
         }
     }
-    return {
-        placed,
-        residues: [...codons.keys()].toSorted((a, b) => a - b),
-        checked,
-        disagreeing,
-    };
+    return { placed, residues: codons.residues(), checked, disagreeing };
 }
 /**
  * How many distinct substitutions land on each residue: two codon changes to

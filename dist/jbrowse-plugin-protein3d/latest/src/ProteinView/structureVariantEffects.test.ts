@@ -102,7 +102,7 @@ const TestParent = types
     setColor(color: ProteinColor) {
       self.color = color
     },
-    setError(e: unknown) {
+    addNotice(e: unknown) {
       throw e
     },
   }))

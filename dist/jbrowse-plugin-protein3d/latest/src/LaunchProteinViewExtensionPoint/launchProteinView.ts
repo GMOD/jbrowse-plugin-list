@@ -1,5 +1,6 @@
 import { coerceAlignmentAlgorithm } from 'p2s_mapper'
 
+import { resolveLaunchVariant } from './launchVariant'
 import { normalizeLaunch } from './normalizeLaunch'
 import {
   resolveTranscriptLinkage,
@@ -10,6 +11,7 @@ import { maybeLaunchSideBySide } from '../LaunchProteinView/utils/sideBySide'
 import { addProteinView } from '../ProteinView/addProteinView'
 import { checkedColor, colorOfScheme } from '../ProteinView/proteinColor'
 import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec'
+import { viewAssemblyName } from '../ProteinView/util'
 
 import type { LaunchStructure, LaunchViewSettings } from './normalizeLaunch'
 import type { ConnectedViewSpec } from './resolveShortLaunch'
@@ -52,6 +54,8 @@ export interface LaunchArgs extends LaunchViewSettings, ProteinStructureSpec {
   // launches the gene's AlphaFold model beside a genome view on the gene
   gene?: string
   transcriptId?: string
+  // 'chr17:7674220 C>T' or 'chr17:7674220', placed on the transcript
+  variant?: string
   connectedView?: ConnectedViewSpec
   // place a connectedView this launch creates beside the protein view;
   // unset, the launch dialog's stored preference decides
@@ -84,6 +88,7 @@ export async function launchProteinView(args: LaunchArgs) {
     connectedView: givenConnectedView,
     gene,
     sideBySide,
+    variant,
   } = linkage
   const settings = launchViewSettings(normalized.settings)
 
@@ -109,10 +114,31 @@ export async function launchProteinView(args: LaunchArgs) {
       `${describeMissingStructure(gene, named)}; name a ${named.uniprotId ? 'pdbId or url' : 'uniprotId or pdbId'}`,
     )
   }
-  const requested =
+  const launchFeature = resolved?.feature ?? feature
+  const withTranscripts = (
     named && geneModel
       ? normalized.requested.map(s => ({ ...s, url: named.url }))
       : normalized.requested
+  ).map(s => ({
+    ...s,
+    userProvidedTranscriptSequence:
+      s.userProvidedTranscriptSequence ??
+      resolved?.userProvidedTranscriptSequence ??
+      userProvidedTranscriptSequence,
+    feature: s.feature ?? launchFeature,
+  }))
+  const placedVariant = variant
+    ? await resolveLaunchVariant({
+        session,
+        variant,
+        structures: withTranscripts,
+        launchFeature,
+        assemblyName: connectedViewId
+          ? viewAssemblyName(session, connectedViewId)
+          : connectedView?.assembly,
+      })
+    : undefined
+  const requested = placedVariant?.structures ?? withTranscripts
 
   const { proteinView, ownsConnectedView } = await withConnectedGenomeView(
     session,
@@ -126,17 +152,15 @@ export async function launchProteinView(args: LaunchArgs) {
           displayName: settings.displayName ?? named?.displayName,
           structures: requested.map(s => ({
             ...s,
-            userProvidedTranscriptSequence:
-              s.userProvidedTranscriptSequence ??
-              resolved?.userProvidedTranscriptSequence ??
-              userProvidedTranscriptSequence,
-            feature: s.feature ?? resolved?.feature ?? feature,
             connectedViewId: s.connectedViewId ?? resolvedConnectedViewId,
           })),
         }),
       ),
     }),
   )
+  if (placedVariant) {
+    session.addHighlight(placedVariant.highlight)
+  }
   if (ownsConnectedView) {
     maybeLaunchSideBySide(session, proteinView.id, sideBySide)
   }

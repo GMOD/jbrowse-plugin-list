@@ -11,7 +11,7 @@ import { cleanupOldData, generateDataStoreId, retrieveMsaData, storeMsaData, } f
 import { runLaunch } from './runLaunch';
 import { getProteinViews } from './structureConnection';
 import { proteinPositionsInRange } from './transcriptMap';
-import { getUniprotIdFromAlphaFoldUrl, hasQueryRow, transcriptPosToVisibleCol, } from './util';
+import { errorMessage, getUniprotIdFromAlphaFoldUrl, hasQueryRow, transcriptPosToVisibleCol, } from './util';
 const EXPIRED_MESSAGE = "This view's alignment is no longer in browser storage. Stored alignments are kept for 7 days after they were last used, and are lost when site data is cleared.";
 const RELAUNCHABLE = ' Retry runs the original search again and rebuilds it.';
 const START_OVER = ' Relaunch it from the gene to rebuild it.';
@@ -141,6 +141,15 @@ function awaitingTranscript(self) {
     return !!self.connectedTranscript && !self.connectedFeature;
 }
 /**
+ * A launch that has not run yet and is held back by the transcript lookup, so
+ * a lookup that fails is a launch that cannot proceed.
+ */
+export function launchAwaitsTranscript(self) {
+    return (!!(self.blastParams ?? self.orthologParams) &&
+        !self.launchCompleted &&
+        awaitingTranscript(self));
+}
+/**
  * The params are the request and `launchCompleted` marks it done. They stay in
  * place on failure, so the error is attributable, and on success, because a
  * stored alignment that expired is rebuilt from them.
@@ -180,22 +189,30 @@ export function autoLoadProteinDomains(self) {
         };
         addDisposer(self, abort);
         self.setDomainsRequested(true);
+        self.setLoadingDomains(true);
         self.setStatus({
             msg: 'Fetching protein domains from NCBI',
             onCancel: abort,
         });
         void (async () => {
             try {
-                await loadProteinDomains(self, controller.signal);
+                const notice = await loadProteinDomains(self, controller.signal);
+                if (notice && isAlive(self)) {
+                    self.addWarning(notice);
+                }
             }
             catch (e) {
                 if (!isAbortError(e)) {
                     console.error('[msaview-domains] auto-load failed:', e);
+                    if (isAlive(self)) {
+                        self.addWarning(`Protein domains did not load from NCBI: ${errorMessage(e)}`);
+                    }
                 }
             }
             finally {
                 if (isAlive(self)) {
                     self.setStatus(undefined);
+                    self.setLoadingDomains(false);
                 }
             }
         })();
@@ -390,9 +407,14 @@ export function runCleanup() {
         console.error('Failed to cleanup old MSA data:', e);
     });
 }
+/**
+ * Waits for the genome view to show an assembly, since the track is added to
+ * that assembly: before navigation `showDomainsOnGenome` has none to name, and
+ * clearing the request then dropped it unfulfilled.
+ */
 export function showDomainsOnGenomeIfAsked(self) {
     if (self.domainsOnGenome &&
-        self.connectedView &&
+        self.connectedView?.assemblyNames[0] &&
         self.connectedDomains.features.length > 0) {
         self.showDomainsOnGenome();
         self.setDomainsOnGenome(false);

@@ -1,11 +1,19 @@
 import { isPairwiseAlignment, resolveStructureUrl } from 'p2s_mapper'
 
+import { VARIANT_SPELLING, parseLaunchVariant } from './launchVariant'
+import { cameraProblems, surfaceProblems } from '../ProteinView/markProblems'
+
+import type { LaunchVariant } from './launchVariant'
 import type { ConnectedViewSpec } from './resolveShortLaunch'
+import type { DistanceMeasurement } from '../ProteinView/measurements'
 import type {
   ProteinStructureSpec,
   ProteinViewSpec,
 } from '../ProteinView/proteinViewSpec'
 import type { StructureFilter } from '../ProteinView/residueFilter'
+import type { ResidueMark } from '../ProteinView/residueMarks'
+import type { SavedCamera } from '../ProteinView/savedCamera'
+import type { ProteinSurface } from '../ProteinView/surface'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { ResidueRange, ResidueRanges } from 'p2s_mapper'
 
@@ -84,6 +92,24 @@ function isPredicateList(value: unknown): value is StructureFilter {
   return Array.isArray(value) && value.every(isRecord)
 }
 
+// the shape only, as for a filter: the view model refuses a site that does
+// not parse, with the reason
+function isMarkList(value: unknown): value is ResidueMark[] {
+  return Array.isArray(value) && value.every(isRecord)
+}
+
+function isDistanceList(value: unknown): value is DistanceMeasurement[] {
+  return Array.isArray(value) && value.every(isRecord)
+}
+
+function isSavedCamera(value: unknown): value is SavedCamera {
+  return value !== undefined && cameraProblems(value).length === 0
+}
+
+function isSurface(value: unknown): value is ProteinSurface {
+  return value !== undefined && surfaceProblems(value).length === 0
+}
+
 function isResidueRange(value: unknown): value is ResidueRange {
   return (
     isRecord(value) &&
@@ -140,6 +166,28 @@ function fieldReader<K extends string>(
   }
 }
 
+/**
+ * A figure layer read by the view's own check, so a launch drops, with the
+ * view's reasons, what the view would refuse.
+ */
+function figureLayerReader(
+  fields: ReadonlyMap<string, unknown>,
+  warnings: string[],
+) {
+  return function read<T>(
+    key: string,
+    accepts: (value: unknown) => value is T,
+    problemsOf: (value: unknown) => string[],
+  ) {
+    const value = fields.get(key)
+    const accepted = value !== undefined && accepts(value) ? value : undefined
+    if (value !== undefined && accepted === undefined) {
+      warnings.push(`\`${key}\` was ignored: ${problemsOf(value).join('; ')}`)
+    }
+    return accepted
+  }
+}
+
 /** The view's own settings, untrusted where a url wrote them. */
 export interface LaunchViewSettings extends Omit<
   ProteinViewSpec,
@@ -161,6 +209,7 @@ export interface LaunchLinkage {
   sideBySide?: boolean
   feature?: SimpleFeatureSerialized
   userProvidedTranscriptSequence?: string
+  variant?: LaunchVariant
 }
 
 const LAUNCH_KEYS = [
@@ -169,6 +218,7 @@ const LAUNCH_KEYS = [
   'transcriptId',
   'connectedView',
   'sideBySide',
+  'variant',
 ]
 
 // `uniprotId` is a structure's source too, which readStructure reports, so
@@ -183,6 +233,11 @@ function readLinkage(
     warnings,
   )
   const uniprotId = fields.get('uniprotId')
+  const variant = read(
+    'variant',
+    isString,
+    `a string such as ${VARIANT_SPELLING}`,
+  )
   return {
     gene: read('gene', isString, 'a string'),
     transcriptId: read('transcriptId', isString, 'a string'),
@@ -200,6 +255,7 @@ function readLinkage(
       isString,
       'a string',
     ),
+    variant: variant === undefined ? undefined : parseLaunchVariant(variant),
   }
 }
 
@@ -212,6 +268,7 @@ function readViewSettings(
     key => `\`${key}\``,
     warnings,
   )
+  const readLayer = figureLayerReader(fields, warnings)
   const flag = (key: keyof LaunchViewSettings) =>
     read(key, isBoolean, 'true or false')
   return {
@@ -230,6 +287,20 @@ function readViewSettings(
     alignmentAlgorithm: read('alignmentAlgorithm', isString, 'a string'),
     color: fields.get('color'),
     colorScheme: read('colorScheme', isString, 'a string'),
+    camera: readLayer('camera', isSavedCamera, cameraProblems),
+    surface: readLayer('surface', isSurface, surfaceProblems),
+    distances: read(
+      'distances',
+      isDistanceList,
+      "a list such as [{ a: 'A:46@NZ', b: 'A:80@NZ' }]",
+    ),
+    marks: read(
+      'marks',
+      isMarkList,
+      "a list such as [{ site: 'A:248', mark: 'spheres' }]",
+    ),
+    silhouettes: flag('silhouettes'),
+    occlusion: flag('occlusion'),
   } satisfies Record<keyof LaunchViewSettings, unknown>
 }
 
@@ -327,6 +398,13 @@ export function normalizeLaunch(
   const unknownKeys = [...top.keys()].filter(key => !known.has(key))
   if (unknownKeys.length > 0) {
     warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`)
+  }
+  const variant = top.get('variant')
+  if (isString(variant) && !linkage.variant) {
+    return {
+      error: `\`variant\` "${variant}" is not a genome position or substitution such as ${VARIANT_SPELLING}`,
+      warnings,
+    }
   }
   const looksUpGene = !!linkage.gene && !linkage.userProvidedTranscriptSequence
   const noStructure = linkage.gene

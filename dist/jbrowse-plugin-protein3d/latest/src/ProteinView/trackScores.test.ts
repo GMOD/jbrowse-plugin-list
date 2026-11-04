@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 
-import { scoreByBase, scoreByResidue } from './trackScores'
+import { countByResidue, scoreByBase, scoreByResidue } from './trackScores'
 
 const p2gCodon = { 0: [100, 101, 102], 1: [103, 104, 105], 2: [106, 107, 108] }
 const bases = Object.values(p2gCodon).flat()
@@ -53,4 +53,31 @@ test('a codon split by an intron reads both pieces', () => {
     [10, 11, 500],
   )
   expect(scoreByResidue(split, scores, 'mean').get(0)).toBe(4)
+})
+
+test('counts the features on each codon, 0 on a codon none falls on', () => {
+  const counts = countByResidue(
+    [
+      { start: 100, end: 101 },
+      { start: 101, end: 102 },
+      { start: 104, end: 105 },
+    ],
+    p2gCodon,
+  )
+  expect([...counts]).toEqual([
+    [0, 2],
+    [1, 1],
+    [2, 0],
+  ])
+})
+
+test('a feature spanning two codons counts once on each, and once within one', () => {
+  const counts = countByResidue([{ start: 101, end: 104 }], p2gCodon)
+  expect(counts.get(0)).toBe(1)
+  expect(counts.get(1)).toBe(1)
+  expect(counts.get(2)).toBe(0)
+})
+
+test('a feature in an intron counts nowhere', () => {
+  expect(countByResidue([{ start: 200, end: 300 }], p2gCodon).get(0)).toBe(0)
 })
