@@ -10,7 +10,7 @@ import TextField2 from '../../../components/TextField2'
 import { useFetch } from '../../../utils/useFetch'
 import { resolveQueryRowName, useQueryRowName } from '../../useQueryRowName'
 import {
-  featureMatchesId,
+  findDatasetId,
   getGeneDisplayName,
   getLinearGenomeView,
   getTranscriptDisplayName,
@@ -66,10 +66,13 @@ const PreLoadedMSA = observer(function ({
     () => fetchMSAList({ config: selectedDataset!.adapter, pluginManager }),
   )
 
+  const msaIds = useMemo(() => msaList && new Set(msaList), [msaList])
   const transcriptSelection = useTranscriptSelection({
     feature,
     view,
-    validIds: msaList,
+    hasData: msaIds
+      ? transcript => !!findDatasetId(transcript, feature, msaIds)
+      : undefined,
     preferredTranscriptId,
   })
   const { selectedTranscript, proteinSequence, sequenceStatus } =
@@ -77,9 +80,10 @@ const PreLoadedMSA = observer(function ({
 
   // the dataset's name for this transcript, which a track is free not to use
   // as the feature's own id
-  const msaId = selectedTranscript
-    ? msaList?.find(id => featureMatchesId(selectedTranscript, id))
-    : undefined
+  const msaId =
+    selectedTranscript && msaIds
+      ? findDatasetId(selectedTranscript, feature, msaIds)
+      : undefined
   const {
     data: msaData,
     isLoading: msaDataLoading,
@@ -96,12 +100,7 @@ const PreLoadedMSA = observer(function ({
       }),
   )
 
-  const msaText = useMemo(
-    () =>
-      msaData?.map(r => `>${r.get('refName')}\n${r.get('seq')}`).join('\n') ??
-      '',
-    [msaData],
-  )
+  const msaText = msaData?.msa ?? ''
 
   // The dataset's row for this transcript used to be assumed -- the launch
   // named `<transcriptId>_<assembly>` and hoped the file agreed. Nothing
@@ -178,7 +177,7 @@ const PreLoadedMSA = observer(function ({
         hint={
           msaDataLoading ? (
             <LoadingEllipses message="Loading alignment" />
-          ) : !!msaData?.length && !querySeqName ? (
+          ) : !!msaText && !querySeqName ? (
             <Typography color="textSecondary" variant="body2">
               no row matches this transcript
             </Typography>
@@ -189,9 +188,7 @@ const PreLoadedMSA = observer(function ({
         // launching without a query row opens a view that renders and then
         // never navigates, which reads as a broken feature rather than a
         // dataset that does not cover this gene
-        submitDisabled={
-          !selectedTranscript || !msaData?.length || !querySeqName
-        }
+        submitDisabled={!selectedTranscript || !msaText || !querySeqName}
         onSubmit={placement => {
           if (selectedTranscript && msaText) {
             submit(() =>
@@ -208,7 +205,7 @@ const PreLoadedMSA = observer(function ({
                 colorSchemeName: 'percent_identity_dynamic',
                 querySeqName,
                 querySeqOffset: queryRow.querySeqOffset,
-                data: { msa: msaText },
+                data: { msa: msaText, tree: msaData?.tree },
               }),
             )
           }

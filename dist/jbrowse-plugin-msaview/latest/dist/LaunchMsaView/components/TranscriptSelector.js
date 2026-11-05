@@ -3,7 +3,7 @@ import { Button, MenuItem, TextField } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import ReadOnlyTextField2 from '../../components/ReadOnlyTextField2';
-import { featureMatchesId, getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptLength, } from '../util';
+import { getGeneDisplayName, getId, getTranscriptDisplayName, getTranscriptLength, } from '../util';
 const useStyles = makeStyles()({
     flex: {
         display: 'flex',
@@ -16,7 +16,7 @@ const useStyles = makeStyles()({
         marginLeft: 20,
     },
 });
-const TranscriptSelector = observer(function TranscriptSelector({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, sequenceStatus = 'ready', validIds, }) {
+const TranscriptSelector = observer(function TranscriptSelector({ feature, options, selectedId, selectedTranscript, setSelectedId, proteinSequence, sequenceStatus = 'ready', hasData, }) {
     const { classes } = useStyles();
     const [showSequence, setShowSequence] = useState(false);
     return (React.createElement(React.Fragment, null,
@@ -30,9 +30,7 @@ const TranscriptSelector = observer(function TranscriptSelector({ feature, optio
                 helperText: "the query row, so the alignment stays linked to the genome view", select: true, className: classes.minWidth, value: selectedId, onChange: event => {
                     setSelectedId(event.target.value);
                 } }, options.map(val => {
-                const inSet = validIds
-                    ? validIds.some(id => featureMatchesId(val, id))
-                    : true;
+                const inSet = hasData ? hasData(val) : true;
                 const { len, mod } = getTranscriptLength(val);
                 return (React.createElement(MenuItem, { value: getId(val), key: val.id(), disabled: !inSet },
                     getTranscriptDisplayName(val),
@@ -41,7 +39,7 @@ const TranscriptSelector = observer(function TranscriptSelector({ feature, optio
                     " aa)",
                     ' ',
                     mod ? ` (possible fragment)` : '',
-                    validIds ? (inSet ? ' (has data)' : ' (no data)') : ''));
+                    hasData ? (inSet ? ' (has data)' : ' (no data)') : ''));
             })),
             React.createElement("div", { className: classes.centered },
                 React.createElement(Button, { variant: "contained", color: "primary", onClick: () => {

@@ -1,19 +1,18 @@
 import { useMemo, useState } from 'react';
 import { featureMatchesId, getId, getSortedTranscriptFeatures } from '../util';
 import { useFeatureSequence } from './useFeatureSequence';
-// Keep the current selection if it's valid for the given validIds, otherwise
-// fall back to the first valid option (or the current id if none qualify). With
-// no validIds constraint the current selection always stands.
-function pickSelectedId(currentId, options, validIds) {
-    if (!validIds?.length) {
+// Keep the current selection if it has data, otherwise fall back to the first
+// option that does (or the current id if none do). With no hasData constraint
+// the current selection always stands.
+function pickSelectedId(currentId, options, hasData) {
+    if (!hasData) {
         return currentId;
     }
-    const isValid = (opt) => validIds.some(id => featureMatchesId(opt, id));
     const current = options.find(opt => getId(opt) === currentId);
-    if (current && isValid(current)) {
+    if (current && hasData(current)) {
         return currentId;
     }
-    const firstValid = options.find(isValid);
+    const firstValid = options.find(hasData);
     return firstValid ? getId(firstValid) : currentId;
 }
 /**
@@ -31,11 +30,11 @@ function sequenceStatus({ error, isLoading, proteinSequence, }) {
     }
     return proteinSequence ? 'ready' : 'missing';
 }
-export function useTranscriptSelection({ feature, view, validIds, preferredTranscriptId, }) {
+export function useTranscriptSelection({ feature, view, hasData, preferredTranscriptId, }) {
     const options = useMemo(() => getSortedTranscriptFeatures(feature), [feature]);
     const [selectedId, setSelectedId] = useState(() => getId(options.find(opt => featureMatchesId(opt, preferredTranscriptId ?? '')) ??
         options[0]));
-    const validatedSelectedId = pickSelectedId(selectedId, options, validIds);
+    const validatedSelectedId = pickSelectedId(selectedId, options, hasData);
     const selectedTranscript = options.find(val => getId(val) === validatedSelectedId);
     const { proteinSequence, error, isLoading } = useFeatureSequence({
         view,
@@ -50,6 +49,6 @@ export function useTranscriptSelection({ feature, view, validIds, preferredTrans
         error,
         isLoading,
         sequenceStatus: sequenceStatus({ error, isLoading, proteinSequence }),
-        validIds,
+        hasData,
     };
 }

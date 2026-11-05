@@ -1,11 +1,12 @@
 import type { SequenceStatus } from './SequenceStatus';
 import type { Feature } from '@jbrowse/core/util';
-export declare function useTranscriptSelection({ feature, view, validIds, preferredTranscriptId, }: {
+export declare function useTranscriptSelection({ feature, view, hasData, preferredTranscriptId, }: {
     feature: Feature;
     view: {
         assemblyNames?: string[];
     } | undefined;
-    validIds?: string[];
+    /** which transcripts the panel can offer, when it can only offer some */
+    hasData?: (transcript: Feature) => boolean;
     /**
      * the isoform the user right-clicked, when the dialog opened on its gene.
      * Ignored when this gene does not carry it, so a stale id falls back to the
@@ -21,5 +22,5 @@ export declare function useTranscriptSelection({ feature, view, validIds, prefer
     error: unknown;
     isLoading: boolean;
     sequenceStatus: SequenceStatus;
-    validIds: string[] | undefined;
+    hasData: ((transcript: Feature) => boolean) | undefined;
 };

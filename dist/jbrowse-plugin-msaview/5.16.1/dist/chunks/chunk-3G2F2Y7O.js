@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/data_adapters/BaseAdapter"],r=t=>e!=null&&t in Object(e)?e[t]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+t+"' from '@jbrowse/core/data_adapters/BaseAdapter' to plugins: MsaView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:t}),s=r("BaseAdapter");var a=e&&e.__esModule?e.default:e;export{s as a};
+//# sourceMappingURL=chunk-3G2F2Y7O.js.map

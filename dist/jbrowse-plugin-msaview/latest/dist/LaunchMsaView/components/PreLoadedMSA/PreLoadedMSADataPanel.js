@@ -7,7 +7,7 @@ import { makeStyles } from 'tss-react/mui';
 import TextField2 from '../../../components/TextField2';
 import { useFetch } from '../../../utils/useFetch';
 import { resolveQueryRowName, useQueryRowName } from '../../useQueryRowName';
-import { featureMatchesId, getGeneDisplayName, getLinearGenomeView, getTranscriptDisplayName, } from '../../util';
+import { findDatasetId, getGeneDisplayName, getLinearGenomeView, getTranscriptDisplayName, } from '../../util';
 import LaunchPanelContent from '../LaunchPanelContent';
 import QueryRowSelector from '../QueryRowSelector';
 import SequenceStatusMessage from '../SequenceStatus';
@@ -33,17 +33,20 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
     const [selectedDatasetId, setSelectedDatasetId] = useState(datasets?.[0]?.datasetId);
     const selectedDataset = datasets?.find(d => d.datasetId === selectedDatasetId);
     const { data: msaList, isLoading: msaListLoading, error: msaListFetchError, } = useFetch(selectedDataset ? `${selectedDataset.datasetId}-msa-list` : null, () => fetchMSAList({ config: selectedDataset.adapter, pluginManager }));
+    const msaIds = useMemo(() => msaList && new Set(msaList), [msaList]);
     const transcriptSelection = useTranscriptSelection({
         feature,
         view,
-        validIds: msaList,
+        hasData: msaIds
+            ? transcript => !!findDatasetId(transcript, feature, msaIds)
+            : undefined,
         preferredTranscriptId,
     });
     const { selectedTranscript, proteinSequence, sequenceStatus } = transcriptSelection;
     // the dataset's name for this transcript, which a track is free not to use
     // as the feature's own id
-    const msaId = selectedTranscript
-        ? msaList?.find(id => featureMatchesId(selectedTranscript, id))
+    const msaId = selectedTranscript && msaIds
+        ? findDatasetId(selectedTranscript, feature, msaIds)
         : undefined;
     const { data: msaData, isLoading: msaDataLoading, error: msaDataFetchError, } = useFetch(msaId && selectedDataset
         ? `${selectedDataset.datasetId}-${msaId}-msa`
@@ -52,8 +55,7 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
         config: selectedDataset.adapter,
         pluginManager,
     }));
-    const msaText = useMemo(() => msaData?.map(r => `>${r.get('refName')}\n${r.get('seq')}`).join('\n') ??
-        '', [msaData]);
+    const msaText = msaData?.msa ?? '';
     // The dataset's row for this transcript used to be assumed -- the launch
     // named `<transcriptId>_<assembly>` and hoped the file agreed. Nothing
     // checked, and a name the alignment does not carry fails silently: the view
@@ -81,11 +83,11 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
                     React.createElement(SanitizedHTML, { html: selectedDataset.description }),
                     React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }),
                     msaText ? (React.createElement(QueryRowSelector, { ...queryRow, querySeqName: querySeqName })) : null)) : null)) : null),
-        React.createElement(SubmitCancelActions, { model: model, hint: msaDataLoading ? (React.createElement(LoadingEllipses, { message: "Loading alignment" })) : !!msaData?.length && !querySeqName ? (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "no row matches this transcript")) : (React.createElement(SequenceStatusMessage, { status: sequenceStatus })), 
+        React.createElement(SubmitCancelActions, { model: model, hint: msaDataLoading ? (React.createElement(LoadingEllipses, { message: "Loading alignment" })) : !!msaText && !querySeqName ? (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "no row matches this transcript")) : (React.createElement(SequenceStatusMessage, { status: sequenceStatus })), 
             // launching without a query row opens a view that renders and then
             // never navigates, which reads as a broken feature rather than a
             // dataset that does not cover this gene
-            submitDisabled: !selectedTranscript || !msaData?.length || !querySeqName, onSubmit: placement => {
+            submitDisabled: !selectedTranscript || !msaText || !querySeqName, onSubmit: placement => {
                 if (selectedTranscript && msaText) {
                     submit(() => launchConnectedView({
                         view,
@@ -100,7 +102,7 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
                         colorSchemeName: 'percent_identity_dynamic',
                         querySeqName,
                         querySeqOffset: queryRow.querySeqOffset,
-                        data: { msa: msaText },
+                        data: { msa: msaText, tree: msaData?.tree },
                     }));
                 }
             }, onCancel: handleClose })));

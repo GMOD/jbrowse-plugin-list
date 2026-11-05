@@ -8,6 +8,8 @@ export declare function getTranscriptLength(feature: Feature): {
 };
 export declare function getId(val?: Feature): string;
 export declare function featureMatchesId(feature: Feature, id: string): boolean;
+/** the dataset entry for this transcript, else for the gene it belongs to */
+export declare function findDatasetId(transcript: Feature, gene: Feature, ids: ReadonlySet<string>): string | undefined;
 export declare function getTranscriptDisplayName(val?: Feature): string;
 export declare function getGeneDisplayName(val?: Feature): string;
 export declare function getBlastViewTitle(feature: Feature, transcript: Feature): string;
