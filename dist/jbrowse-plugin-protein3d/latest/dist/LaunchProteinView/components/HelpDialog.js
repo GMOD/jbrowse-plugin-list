@@ -16,7 +16,7 @@ const HelpDialog = observer(function HelpDialog({ handleClose, }) {
                         React.createElement("i", null, "Change"),
                         " picks another), and lists every structure found for it: AlphaFold's model, the experimental PDB entries RCSB aligns to the entry, and the complexes AlphaFold DB predicted with other proteins. The list is grouped by what each structure shows: the protein on its own, the protein with another protein, and short fragments. Check several rows to open them in one view, superposed onto the first; a short fragment opens on its own. ",
                         React.createElement("i", null, "Open by PDB ID"),
-                        " opens any entry instead."),
+                        " opens any entry instead. When this site lists its own structures for the gene, in a dataset its configuration names, they lead the list under the dataset's name and the first is checked, mapped through the transcript it was folded from."),
                     React.createElement("li", null,
                         React.createElement("b", null, "Similar structures (Foldseek)"),
                         " sends the protein sequence to the foldseek.com servers and lists structures similar in shape, including ones with little sequence similarity."),

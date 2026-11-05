@@ -73,7 +73,14 @@ function launchStructure(row) {
         ? { key: row.key, kind: 'alphafold', model: row.model }
         : row.kind === 'pdb'
             ? { key: row.key, kind: 'pdb', pdbId: row.entry.pdbId }
-            : { key: row.key, kind: 'complex', entity: row.complex.entity };
+            : row.kind === 'dataset'
+                ? {
+                    key: row.key,
+                    kind: 'url',
+                    url: row.match.structure.url,
+                    uniprotId: row.match.structure.uniprotId,
+                }
+                : { key: row.key, kind: 'complex', entity: row.complex.entity };
 }
 function describeLaunch(rows, typedPdbId, finding) {
     const [first, ...rest] = rows;
@@ -98,7 +105,9 @@ const GeneStructures = observer(function GeneStructures({ feature, geneName, pre
     const lookup = useUniProtIdLookup({ feature, view, preferredTranscriptId });
     const { uniprotId } = lookup;
     const structures = useGeneStructures({
+        jbrowse: session.jbrowse,
         uniprotId,
+        uniprotPending: lookup.isLookupLoading,
         geneName,
         feature,
         view,
@@ -111,7 +120,7 @@ const GeneStructures = observer(function GeneStructures({ feature, geneName, pre
     const userPick = picked && picked.uniprotId === uniprotId ? picked.keys : undefined;
     // nothing is checked until the default is known, or the first structure to
     // arrive would be ranked against and fetched for nothing
-    const defaultPending = lookup.isLookupLoading || !structures.defaultSettled;
+    const defaultPending = !structures.defaultSettled;
     const checked = userPick ?? (defaultPending ? [] : defaultChecked(rows));
     const checkedRows = rows.filter(r => checked.includes(r.key));
     const [sideBySide, setSideBySide] = useState(() => getLaunchSideBySide());
@@ -129,12 +138,16 @@ const GeneStructures = observer(function GeneStructures({ feature, geneName, pre
     const launchStructures = typedId
         ? [{ key: `typed:${typedId}`, kind: 'pdb', pdbId: typedId }]
         : checkedRows.map(launchStructure);
+    // a site's structure is mapped through the transcript it is listed under
+    const pivotRow = typedId ? undefined : checkedRows[0];
     const launch = useStructureLaunch({
         structures: launchStructures,
         uniprotId,
         feature,
         view,
-        preferredTranscriptId,
+        preferredTranscriptId: (pivotRow?.kind === 'dataset'
+            ? pivotRow.match.transcript?.id()
+            : undefined) ?? preferredTranscriptId,
     });
     // RCSB answering that it has no such entry, as opposed to failing to
     // answer, means the launch would open a view on a 404
@@ -160,7 +173,9 @@ const GeneStructures = observer(function GeneStructures({ feature, geneName, pre
         ? undefined
         : launchStructures[0]?.kind === 'alphafold'
             ? launchStructures[0].model.accession
-            : uniprotId;
+            : launchStructures[0]?.kind === 'url'
+                ? (launchStructures[0].uniprotId ?? uniprotId)
+                : uniprotId;
     const toggle = (row) => {
         setPicked({ uniprotId, keys: toggleStructure(checked, row, rows) });
     };

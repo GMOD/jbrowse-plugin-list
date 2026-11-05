@@ -1,7 +1,9 @@
 import { pdbEntryPartners, rcsbEntryUrl } from 'p2s_mapper'
 
+import { getTranscriptDisplayName } from './util'
 import { CRYSTALLIZATION_ADDITIVES } from '../../ProteinView/crystallizationAdditives'
 
+import type { DatasetMatch } from './structureDatasets'
 import type { LaunchAlphaFoldModel } from '../resolveGeneLaunch'
 import type {
   AlphaFoldComplex,
@@ -40,6 +42,7 @@ export type StructureRow =
   | (RowBase & { kind: 'alphafold'; model: LaunchAlphaFoldModel })
   | (RowBase & { kind: 'pdb'; entry: ExperimentalStructure })
   | (RowBase & { kind: 'complex'; complex: AlphaFoldComplex })
+  | (RowBase & { kind: 'dataset'; match: DatasetMatch })
 
 /** Below this share of the protein a structure is a peptide or one small
  * domain, too short for TM-align to place beside the whole protein */
@@ -267,6 +270,44 @@ function alphaFoldRow({
   }
 }
 
+function fileName(url: string) {
+  return decodeURIComponent(new URL(url).pathname.split('/').pop() ?? url)
+}
+
+/**
+ * A structure a site's dataset lists for the gene, as one of the protein on
+ * its own: what a site folds is the transcript's whole translation. Its
+ * residues are not known until it loads, so it claims the whole protein.
+ */
+export function datasetRow({
+  match,
+  geneName,
+  uniprotLength,
+}: {
+  match: DatasetMatch
+  geneName: string
+  uniprotLength: number
+}): StructureRow {
+  const { dataset, structure, transcript } = match
+  return {
+    kind: 'dataset',
+    key: `dataset:${dataset.datasetId}:${structure.id}:${fileName(structure.url)}`,
+    match,
+    section: 'alone',
+    predicted: true,
+    label: structure.label ?? fileName(structure.url),
+    href: structure.url,
+    title: transcript
+      ? `${dataset.name} model of transcript ${getTranscriptDisplayName(transcript) || structure.id}`
+      : `${dataset.name} model of ${geneName}`,
+    partners: [],
+    ligands: [],
+    notes: [],
+    start: 1,
+    end: uniprotLength,
+  }
+}
+
 /**
  * Every structure for a gene's protein in the order the dialog lists them:
  * the AlphaFold model, the PDB entries as RCSB ranks them, then the complexes
@@ -343,8 +384,16 @@ export function listOrder(rows: readonly StructureRow[]) {
   return SECTIONS.flatMap(section => rows.filter(r => r.section === section))
 }
 
-/** The AlphaFold model when there is one, else the list's first structure */
+/**
+ * A site's own structure when its datasets list one, else the AlphaFold model,
+ * else the list's first structure. The site's leads because it was folded from
+ * the transcript its mapping names, so the launch maps through that transcript
+ * with no ranking, and because a site's genome often has no AlphaFold model.
+ */
 export function defaultChecked(rows: readonly StructureRow[]) {
-  const first = rows.find(r => r.kind === 'alphafold') ?? listOrder(rows)[0]
+  const first =
+    rows.find(r => r.kind === 'dataset') ??
+    rows.find(r => r.kind === 'alphafold') ??
+    listOrder(rows)[0]
   return first ? [first.key] : []
 }

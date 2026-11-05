@@ -19,10 +19,11 @@ interface LaunchViewParams {
   uniprotId?: string
 }
 
-/** Where one structure of a launch comes from */
+/** Where one structure of a launch comes from, and the UniProt entry a
+ * structure from a url is a model of, when its source says */
 export type StructureSource = Pick<
   ProteinStructureSpec,
-  'url' | 'data' | 'alphaFoldComplexId'
+  'url' | 'data' | 'alphaFoldComplexId' | 'uniprotId'
 >
 
 interface Launch3DExtraParams {

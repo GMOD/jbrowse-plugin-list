@@ -40,7 +40,10 @@ const HelpDialog = observer(function HelpDialog({
               protein with another protein, and short fragments. Check several
               rows to open them in one view, superposed onto the first; a short
               fragment opens on its own. <i>Open by PDB ID</i> opens any entry
-              instead.
+              instead. When this site lists its own structures for the gene, in
+              a dataset its configuration names, they lead the list under the
+              dataset&apos;s name and the first is checked, mapped through the
+              transcript it was folded from.
             </li>
             <li>
               <b>Similar structures (Foldseek)</b> sends the protein sequence to

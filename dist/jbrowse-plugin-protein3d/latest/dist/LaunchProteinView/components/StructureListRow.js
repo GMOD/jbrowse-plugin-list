@@ -128,7 +128,9 @@ const Quality = observer(function Quality({ row }) {
         React.createElement(Plddt, { value: row.model.meanPlddt }),
         React.createElement(Typography, { variant: "caption", color: "textSecondary" },
             "AlphaFold DB",
-            version ? ` v${version}` : ''))) : row.kind === 'complex' ? (React.createElement(React.Fragment, null,
+            version ? ` v${version}` : ''))) : row.kind === 'dataset' ? (React.createElement(React.Fragment, null,
+        React.createElement(Typography, { variant: "body2" }, row.match.dataset.name),
+        row.match.dataset.description ? (React.createElement(Typography, { variant: "caption", color: "textSecondary" }, row.match.dataset.description)) : null)) : row.kind === 'complex' ? (React.createElement(React.Fragment, null,
         row.complex.iptm === undefined ? null : (React.createElement(Typography, { variant: "body2" },
             "ipTM ",
             row.complex.iptm.toFixed(2))),
@@ -187,6 +189,8 @@ const StructureListRow = observer(function StructureListRow({ row, checked, unip
                 React.createElement(Tags, { tags: row.ligands, className: classes.ligand }),
                 React.createElement(Tags, { tags: row.notes }))) : null),
         React.createElement(Quality, { row: row }),
-        React.createElement(Coverage, { start: row.start, end: row.end, length: uniprotLength })));
+        row.kind === 'dataset' ? (React.createElement(Typography, { variant: "caption", color: "textSecondary" },
+            "listed as ",
+            row.match.structure.id)) : (React.createElement(Coverage, { start: row.start, end: row.end, length: uniprotLength }))));
 });
 export default StructureListRow;

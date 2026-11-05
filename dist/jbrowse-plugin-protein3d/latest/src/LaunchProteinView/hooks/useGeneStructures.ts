@@ -2,10 +2,11 @@ import { useMemo } from 'react'
 
 import { useAlphaFoldComplexes } from './useAlphaFoldComplexes'
 import useAlphaFoldData from './useAlphaFoldData'
+import useDatasetStructures from './useDatasetStructures'
 import useExperimentalStructures from './useExperimentalStructures'
 import usePdbEntrySummaries from './usePdbEntrySummaries'
 import { errorMessage } from '../../ProteinView/util'
-import { listOrder, structureRows } from '../utils/structureList'
+import { datasetRow, listOrder, structureRows } from '../utils/structureList'
 
 import type { StructureSection } from '../utils/structureList'
 import type { Feature } from '@jbrowse/core/util'
@@ -43,24 +44,37 @@ function sectionStatus(
 }
 
 /**
- * Every structure of the gene's protein, from AlphaFold DB's models and
- * complexes and RCSB's entries, each source loading and failing on its own:
- * what one source has found is listed while another is still asking, and a
- * source that fails leaves a line in the sections it would have filled.
+ * Every structure of the gene's protein, from the site's own datasets,
+ * AlphaFold DB's models and complexes and RCSB's entries, each source loading
+ * and failing on its own: what one source has found is listed while another
+ * is still asking, and a source that fails leaves a line in the sections it
+ * would have filled. A dataset lists its structures by the gene's own ids, so
+ * they need no UniProt accession.
  */
 export default function useGeneStructures({
+  jbrowse,
   uniprotId,
+  uniprotPending,
   geneName,
   feature,
   view,
   preferredTranscriptId,
 }: {
+  /** the session's config, `session.jbrowse`, which names the datasets */
+  jbrowse: object
   uniprotId?: string
+  /** the accession is still being looked up */
+  uniprotPending: boolean
   geneName: string
   feature: Feature
   view?: { assemblyNames?: string[] }
   preferredTranscriptId?: string
 }) {
+  const datasets = useDatasetStructures({
+    jbrowse,
+    feature,
+    preferredTranscriptId,
+  })
   const alphaFold = useAlphaFoldData({
     uniprotId,
     feature,
@@ -83,9 +97,12 @@ export default function useGeneStructures({
 
   const rows = useMemo(
     () =>
-      uniprotId
-        ? listOrder(
-            structureRows({
+      listOrder([
+        ...datasets.matches.map(match =>
+          datasetRow({ match, geneName, uniprotLength }),
+        ),
+        ...(uniprotId
+          ? structureRows({
               geneName,
               uniprotId,
               uniprotLength,
@@ -93,10 +110,11 @@ export default function useGeneStructures({
               entries: entriesReady ? entries : undefined,
               summaries: summaries.summaries,
               complexes: complexes.complexes,
-            }),
-          )
-        : [],
+            })
+          : []),
+      ]),
     [
+      datasets.matches,
       uniprotId,
       geneName,
       uniprotLength,
@@ -110,8 +128,18 @@ export default function useGeneStructures({
   )
 
   const pdb = ['alone', 'partner', 'fragment'] as const
-  const sections = uniprotId
-    ? sectionStatus([
+  const datasetLines: StatusLine[] = [
+    {
+      sections: ['alone'],
+      loading: datasets.isLoading && datasets.loadingMessage,
+    },
+    ...datasets.notices.map(notice => ({
+      sections: ['alone'] as const,
+      notice,
+    })),
+  ]
+  const uniprotLines: StatusLine[] = uniprotId
+    ? [
         {
           sections: ['alone'],
           loading: alphaFold.isLoading && 'Asking AlphaFold DB for models',
@@ -150,23 +178,29 @@ export default function useGeneStructures({
             complexes.error !== undefined &&
             `AlphaFold DB's complex list did not answer: ${errorMessage(complexes.error)}`,
         },
-      ])
-    : undefined
+      ]
+    : []
+  const sections = sectionStatus([...datasetLines, ...uniprotLines])
 
+  const hasDatasetRow = datasets.matches.length > 0
   return {
     rows,
     uniprotLength,
     sections,
     alphaFold,
-    // the default pick is the AlphaFold model, else the first row listed, so
-    // it is known once AlphaFold DB has answered, or everything has
+    // the default pick is a dataset's structure, else the AlphaFold model,
+    // else the first row listed, so it is known once the datasets have loaded
+    // and listed one, or AlphaFold DB has answered, or everything has
     defaultSettled:
-      !alphaFold.isLoading &&
-      (!!alphaFold.model ||
-        !(
-          experimental.isLoading ||
-          summaries.isLoading ||
-          complexes.isLoading
-        )),
+      !datasets.isLoading &&
+      (hasDatasetRow ||
+        (!uniprotPending &&
+          !alphaFold.isLoading &&
+          (!!alphaFold.model ||
+            !(
+              experimental.isLoading ||
+              summaries.isLoading ||
+              complexes.isLoading
+            )))),
   }
 }

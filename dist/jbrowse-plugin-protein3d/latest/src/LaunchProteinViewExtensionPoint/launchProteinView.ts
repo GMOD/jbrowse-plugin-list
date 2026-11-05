@@ -1,5 +1,6 @@
 import { coerceAlignmentAlgorithm } from 'p2s_mapper'
 
+import { resolveDatasetStructures } from './datasetLaunch'
 import { resolveLaunchVariant } from './launchVariant'
 import { normalizeLaunch } from './normalizeLaunch'
 import {
@@ -53,6 +54,9 @@ export interface LaunchArgs extends LaunchViewSettings, ProteinStructureSpec {
   // a gene name, looked up in the assembly's text search index; alone it
   // launches the gene's AlphaFold model beside a genome view on the gene
   gene?: string
+  // a dataset of the config's protein3d.datasets, whose structure listed
+  // under `transcriptId`, else `gene`, the launch opens
+  datasetId?: string
   transcriptId?: string
   // 'chr17:7674220 C>T' or 'chr17:7674220', placed on the transcript
   variant?: string
@@ -70,7 +74,9 @@ export interface LaunchArgs extends LaunchViewSettings, ProteinStructureSpec {
  */
 export async function launchProteinView(args: LaunchArgs) {
   const { session, ...launch } = args
-  const normalized = normalizeLaunch(launch)
+  const normalized = normalizeLaunch(
+    await resolveDatasetStructures(session, launch),
+  )
   for (const warning of normalized.warnings) {
     console.warn(warning)
     session.notify(`Protein view launch: ${warning}`, 'warning')

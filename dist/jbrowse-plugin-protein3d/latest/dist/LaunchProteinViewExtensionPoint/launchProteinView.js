@@ -1,4 +1,5 @@
 import { coerceAlignmentAlgorithm } from 'p2s_mapper';
+import { resolveDatasetStructures } from './datasetLaunch';
 import { resolveLaunchVariant } from './launchVariant';
 import { normalizeLaunch } from './normalizeLaunch';
 import { resolveTranscriptLinkage, withConnectedGenomeView, } from './transcriptLinkage';
@@ -34,7 +35,7 @@ export function launchViewSettings({ alignmentAlgorithm, color, colorScheme, ...
  */
 export async function launchProteinView(args) {
     const { session, ...launch } = args;
-    const normalized = normalizeLaunch(launch);
+    const normalized = normalizeLaunch(await resolveDatasetStructures(session, launch));
     for (const warning of normalized.warnings) {
         console.warn(warning);
         session.notify(`Protein view launch: ${warning}`, 'warning');

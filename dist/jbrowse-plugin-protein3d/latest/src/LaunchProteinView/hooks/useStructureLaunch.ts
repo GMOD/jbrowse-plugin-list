@@ -4,6 +4,7 @@ import { getPdbStructureUrl, sameProtein } from 'p2s_mapper'
 
 import { useAlphaFoldComplexModel } from './useAlphaFoldComplexes'
 import usePdbEntry from './usePdbEntry'
+import useStructureFileSequence from './useStructureFileSequence'
 import useTranscriptIsoformSelection from './useTranscriptIsoformSelection'
 
 import type { LaunchAlphaFoldModel } from '../resolveGeneLaunch'
@@ -15,13 +16,16 @@ export type LaunchStructure =
   | { key: string; kind: 'alphafold'; model: LaunchAlphaFoldModel }
   | { key: string; kind: 'pdb'; pdbId: string }
   | { key: string; kind: 'complex'; entity: string }
+  | { key: string; kind: 'url'; url: string; uniprotId?: string }
 
 export function structureSource(structure: LaunchStructure): StructureSource {
   return structure.kind === 'alphafold'
     ? { url: structure.model.url }
     : structure.kind === 'pdb'
       ? { url: getPdbStructureUrl(structure.pdbId) }
-      : { alphaFoldComplexId: structure.entity }
+      : structure.kind === 'url'
+        ? { url: structure.url, uniprotId: structure.uniprotId }
+        : { alphaFoldComplexId: structure.entity }
 }
 
 /**
@@ -49,12 +53,16 @@ export default function useStructureLaunch({
   const complex = useAlphaFoldComplexModel(
     pivot?.kind === 'complex' ? pivot.entity : undefined,
   )
+  const file = useStructureFileSequence({
+    url: pivot?.kind === 'url' ? pivot.url : undefined,
+  })
   const entry = uniprotId?.replace(/-\d+$/, '')
   const complexChains = complex.model?.chains
   const ownChain = complexChains?.find(c => c.accession === entry)
   const alphaFoldSequence =
     pivot?.kind === 'alphafold' ? pivot.model.sequence : undefined
   const pdbSequences = pdb.entry?.proteinSequences
+  const fileSequences = file.sequences
 
   // a stable array, or the isoform picker realigns on every render
   const structureSequences = useMemo(
@@ -65,10 +73,19 @@ export default function useStructureLaunch({
           : undefined
         : pivot?.kind === 'pdb'
           ? pdbSequences
-          : ownChain
-            ? [ownChain.sequence]
-            : complexChains?.map(c => c.sequence),
-    [pivot?.kind, alphaFoldSequence, pdbSequences, ownChain, complexChains],
+          : pivot?.kind === 'url'
+            ? fileSequences
+            : ownChain
+              ? [ownChain.sequence]
+              : complexChains?.map(c => c.sequence),
+    [
+      pivot?.kind,
+      alphaFoldSequence,
+      pdbSequences,
+      fileSequences,
+      ownChain,
+      complexChains,
+    ],
   )
 
   const selection = useTranscriptIsoformSelection({
@@ -85,25 +102,33 @@ export default function useStructureLaunch({
   // RCSB cannot describe stops holding the launch.
   const awaitsChains =
     selection.selectedTranscriptId !== preferredTranscriptId &&
-    ((pdb.isValidating && !pdb.error) || complex.isLoading)
+    ((pdb.isValidating && !pdb.error) || complex.isLoading || file.isLoading)
   const loadingStatuses = [
     selection.isLoading && 'Loading protein sequences from transcript isoforms',
     selection.isRanking && 'Aligning isoforms to the structure',
     awaitsChains &&
       (pivot?.kind === 'pdb'
         ? 'Reading the chains of the entry from RCSB'
-        : 'Asking AlphaFold DB for the complex'),
+        : pivot?.kind === 'url'
+          ? 'Reading residues from the structure'
+          : 'Asking AlphaFold DB for the complex'),
   ].filter(s => typeof s === 'string')
   const isLoading = loadingStatuses.length > 0
 
-  const predicted = pivot?.kind === 'alphafold' || pivot?.kind === 'complex'
+  // a site's own structure is folded from the transcript it is listed under
+  const predicted =
+    pivot?.kind === 'alphafold' ||
+    pivot?.kind === 'complex' ||
+    pivot?.kind === 'url'
   const isoformSequence = selection.selectedIsoform?.seq
   return {
     ...selection,
     loadingStatuses,
     isLoading,
     // errors wait for loading to finish, so a lookup in flight doesn't flash one
-    error: isLoading ? undefined : (selection.error ?? complex.error),
+    error: isLoading
+      ? undefined
+      : (selection.error ?? complex.error ?? file.error),
     pdbEntryError: pdb.error,
     // only a prediction is meant to be the transcript's own protein; a crystal
     // is a construct, usually of one domain

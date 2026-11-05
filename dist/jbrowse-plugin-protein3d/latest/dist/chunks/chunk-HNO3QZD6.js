@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/util/io"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/core/util/io' to plugins: Protein3d was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o});var r=t("openLocation");var n=e&&e.__esModule?e.default:e;export{r as a};
+//# sourceMappingURL=chunk-HNO3QZD6.js.map

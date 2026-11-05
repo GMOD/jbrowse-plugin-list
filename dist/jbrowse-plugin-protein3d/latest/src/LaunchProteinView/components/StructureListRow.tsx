@@ -145,6 +145,15 @@ const Quality = observer(function Quality({ row }: { row: StructureRow }) {
             AlphaFold DB{version ? ` v${version}` : ''}
           </Typography>
         </>
+      ) : row.kind === 'dataset' ? (
+        <>
+          <Typography variant="body2">{row.match.dataset.name}</Typography>
+          {row.match.dataset.description ? (
+            <Typography variant="caption" color="textSecondary">
+              {row.match.dataset.description}
+            </Typography>
+          ) : null}
+        </>
       ) : row.kind === 'complex' ? (
         <>
           {row.complex.iptm === undefined ? null : (
@@ -288,7 +297,13 @@ const StructureListRow = observer(function StructureListRow({
         ) : null}
       </div>
       <Quality row={row} />
-      <Coverage start={row.start} end={row.end} length={uniprotLength} />
+      {row.kind === 'dataset' ? (
+        <Typography variant="caption" color="textSecondary">
+          listed as {row.match.structure.id}
+        </Typography>
+      ) : (
+        <Coverage start={row.start} end={row.end} length={uniprotLength} />
+      )}
     </div>
   )
 })

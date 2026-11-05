@@ -16,7 +16,8 @@ model in one click, or **Launch protein view** for the dialog that offers every
 choice. The dialog looks the gene up in UniProt and lists every structure found
 for it in one list: the AlphaFold model, the experimental PDB entries RCSB maps
 to that UniProt entry with their partner proteins and ligands, and the complexes
-AlphaFold DB predicted, grouped by what each shows. Check several to open them
+AlphaFold DB predicted, grouped by what each shows, led by any structures the
+site lists for the gene in a dataset of its own. Check several to open them
 superposed in one view. It can also search Foldseek for related structures, or
 open your own file. The plugin aligns each structure to the transcript's
 translation, so hovering a residue highlights its codon and hovering a codon
@@ -46,10 +47,11 @@ Using the plugin:
   map wrong — a peptide bound to a larger partner, a protein bound to DNA, a
   receptor with another protein fused into it, a phosphorylated residue, and a
   mitochondrial protein.
-- [Your own structures](docs/your-own-structures.md): opening a model you folded
-  yourself (ColabFold, AlphaFold 3, Boltz…) instead of the AlphaFold DB one,
-  from a file, a URL or a generated link per gene, and which features carry
-  over.
+- [Your own structures](docs/your-own-structures.md): opening models you folded
+  yourself (ColabFold, AlphaFold 3, Boltz…) beside or instead of AlphaFold DB's:
+  a whole genome's worth from one mapping file named in the config, offered in
+  the right-click dialog, or one from a file, a URL or a generated link per
+  gene, and which features carry over.
 
 Linking and embedding:
 
