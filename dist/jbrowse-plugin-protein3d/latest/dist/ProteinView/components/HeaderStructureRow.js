@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 import { observer } from 'mobx-react';
 import { LOW_IDENTITY_OVER_SHORTER, SHORT_ALIGNMENT_IDENTITY, SHORT_ALIGNMENT_RESIDUES, describeAlignmentQuality, describeCoverage, describeCoveredRange, describeTranscriptCoverage, isLowSimilarity, uniprotEntryUrl, } from 'p2s_mapper';
 import ChainSelect from './ChainSelect';
+import { describeSuperposition, superpositionChip, } from '../superpositionOutcome';
 const LOW_SIMILARITY_EXPLANATION = `Under ${Math.round(LOW_IDENTITY_OVER_SHORTER * 100)}% of the shorter sequence is identical (${Math.round(SHORT_ALIGNMENT_IDENTITY * 100)}% for an alignment of fewer than ${SHORT_ALIGNMENT_RESIDUES} residues): an alignment this weak is what two unrelated proteins produce, so the positions it maps may be unrelated. Check the mapped chain, the transcript isoform, or import a curated alignment.`;
 // Which UniProt entry the structure's mapped chain is, and so which one its
 // feature tracks annotate. For an AlphaFold model that is in the filename, but
@@ -24,7 +25,8 @@ const UniProtLink = observer(function UniProtLink({ structure, }) {
             uniprotId))) : null;
 });
 const StructureRow = observer(function StructureRow({ model, structure, readout, }) {
-    const { label, alignmentQuality: quality, statusMessage, hidden } = structure;
+    const { label, alignmentQuality: quality, statusMessage, hidden, superposition, } = structure;
+    const superposedBy = superpositionChip(superposition);
     const several = model.structures.length > 1;
     const switchable = model.showAlignment && several;
     const open = model.alignmentStructure === structure;
@@ -53,6 +55,8 @@ const StructureRow = observer(function StructureRow({ model, structure, readout,
         model.offersChainPicker(structure) ? (React.createElement(ChainSelect, { model: structure })) : null,
         quality && isLowSimilarity(quality) ? (React.createElement(Tooltip, { title: LOW_SIMILARITY_EXPLANATION },
             React.createElement(Chip, { size: "small", color: "warning", variant: "outlined", label: "low similarity", "data-testid": "header-low-similarity" }))) : null,
+        superposition && superposedBy ? (React.createElement(Tooltip, { title: describeSuperposition(superposition) },
+            React.createElement(Chip, { size: "small", color: "warning", variant: "outlined", label: superposedBy, "data-testid": "header-superposition" }))) : null,
         several || hidden ? (React.createElement(Tooltip, { title: hidden ? `Show ${label}` : `Hide ${label}` },
             React.createElement(IconButton, { size: "small", "aria-label": hidden ? `Show ${label}` : `Hide ${label}`, "aria-pressed": hidden, onClick: () => {
                     structure.setHidden(!hidden);

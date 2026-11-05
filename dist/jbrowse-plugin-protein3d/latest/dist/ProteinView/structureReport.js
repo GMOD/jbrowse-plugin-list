@@ -1,4 +1,5 @@
 import { alignmentQuality, getAlphaFoldComplexId, getUniprotIdFromAlphaFoldTarget, isLowSimilarity, } from 'p2s_mapper';
+import { describeSuperposition } from './superpositionOutcome';
 import { errorMessage } from './util';
 function text(value) {
     return typeof value === 'string' ? value : undefined;
@@ -56,5 +57,9 @@ export function structureReport(s) {
             end,
         })),
         mapping: mappingReport(s),
+        superposition: s.superposition && {
+            ...s.superposition,
+            description: describeSuperposition(s.superposition),
+        },
     };
 }

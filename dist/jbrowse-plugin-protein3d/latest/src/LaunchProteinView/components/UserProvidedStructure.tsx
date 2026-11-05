@@ -130,8 +130,9 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
         view,
         feature,
         selectedTranscript,
-        url: activeURL ? activeURL : undefined,
-        data: structureData,
+        sources: [
+          { url: activeURL ? activeURL : undefined, data: structureData },
+        ],
         userProvidedTranscriptSequence: protein.seq,
       })
     }

@@ -24,6 +24,10 @@ import {
 } from 'p2s_mapper'
 
 import ChainSelect from './ChainSelect'
+import {
+  describeSuperposition,
+  superpositionChip,
+} from '../superpositionOutcome'
 
 import type {
   JBrowsePluginProteinStructureModel,
@@ -72,7 +76,14 @@ const StructureRow = observer(function StructureRow({
   structure: JBrowsePluginProteinStructureModel
   readout: string
 }) {
-  const { label, alignmentQuality: quality, statusMessage, hidden } = structure
+  const {
+    label,
+    alignmentQuality: quality,
+    statusMessage,
+    hidden,
+    superposition,
+  } = structure
+  const superposedBy = superpositionChip(superposition)
   const several = model.structures.length > 1
   const switchable = model.showAlignment && several
   const open = model.alignmentStructure === structure
@@ -168,6 +179,17 @@ const StructureRow = observer(function StructureRow({
             variant="outlined"
             label="low similarity"
             data-testid="header-low-similarity"
+          />
+        </Tooltip>
+      ) : null}
+      {superposition && superposedBy ? (
+        <Tooltip title={describeSuperposition(superposition)}>
+          <Chip
+            size="small"
+            color="warning"
+            variant="outlined"
+            label={superposedBy}
+            data-testid="header-superposition"
           />
         </Tooltip>
       ) : null}

@@ -17,6 +17,7 @@ const TranscriptSelector = observer(function TranscriptSelector({
   structureSequence,
   feature,
   disabled,
+  size,
 }: {
   isoforms: Feature[]
   feature: Feature
@@ -25,6 +26,7 @@ const TranscriptSelector = observer(function TranscriptSelector({
   structureSequence?: string
   ranking: ClassifiedIsoforms
   disabled?: boolean
+  size?: 'small' | 'medium'
 }) {
   const geneName = getGeneDisplayName(feature)
   const byId = new Map(isoforms.map(f => [f.id(), f]))
@@ -56,6 +58,7 @@ const TranscriptSelector = observer(function TranscriptSelector({
       label="Choose transcript isoform"
       select
       disabled={disabled}
+      size={size}
     >
       {matches.map(m => renderOption(m, ' (matches structure residues)'))}
       {nonMatches.map(m => renderOption(m))}

@@ -13,9 +13,12 @@ CI re-renders the figure from `main` every hour
 
 Right-click a gene and choose **Open AlphaFold structure** for its predicted
 model in one click, or **Launch protein view** for the dialog that offers every
-choice. The plugin looks up the AlphaFold model through UniProt, lists the
-experimental PDB entries SIFTS maps to that UniProt entry, and can search
-Foldseek for related structures. It aligns each structure to the transcript's
+choice. The dialog looks the gene up in UniProt and lists every structure found
+for it in one list: the AlphaFold model, the experimental PDB entries RCSB maps
+to that UniProt entry with their partner proteins and ligands, and the complexes
+AlphaFold DB predicted, grouped by what each shows. Check several to open them
+superposed in one view. It can also search Foldseek for related structures, or
+open your own file. The plugin aligns each structure to the transcript's
 translation, so hovering a residue highlights its codon and hovering a codon
 highlights its residue.
 

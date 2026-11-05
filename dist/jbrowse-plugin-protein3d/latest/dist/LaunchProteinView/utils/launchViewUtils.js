@@ -17,18 +17,15 @@ export function formatViewName(prefix, feature, selectedTranscript, uniprotId) {
         .filter(s => !!s)
         .join(' - ');
 }
-export async function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, url, data, userProvidedTranscriptSequence, sideBySide, }) {
+export async function launch3DProteinView({ session, view, feature, selectedTranscript, uniprotId, sources, userProvidedTranscriptSequence, sideBySide, }) {
     const snap = proteinViewSnapshot({
         displayName: formatViewName('Protein view', feature, selectedTranscript, uniprotId),
-        structures: [
-            {
-                url,
-                data,
-                userProvidedTranscriptSequence,
-                feature: selectedTranscript?.toJSON(),
-                connectedViewId: view.id,
-            },
-        ],
+        structures: sources.map(source => ({
+            ...source,
+            userProvidedTranscriptSequence,
+            feature: selectedTranscript?.toJSON(),
+            connectedViewId: view.id,
+        })),
     });
     const proteinView = await addProteinView(session, snap);
     maybeLaunchSideBySide(session, proteinView.id, sideBySide);

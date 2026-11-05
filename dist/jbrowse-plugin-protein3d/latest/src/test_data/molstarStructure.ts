@@ -16,6 +16,8 @@ export interface TestChain {
    * residue's parent (MSE is M) */
   canonical?: string
   polyType?: string
+  /** laid out as a straight strand rather than the default α-helix */
+  extended?: boolean
 }
 
 function entityPolyLoop(chains: TestChain[]) {
@@ -92,12 +94,15 @@ export function caOnlyMmcif(
 ) {
   const rows: string[] = []
   for (let model = 1; model <= models; model++) {
-    chains.forEach(({ asym, entity, residues }, chainIndex) => {
+    chains.forEach(({ asym, entity, residues, extended }, chainIndex) => {
       residues.forEach((comp, i) => {
         const turn = (i * 100 * Math.PI) / 180
-        const x = 2.3 * Math.cos(turn) + 20 * chainIndex + 0.2 * (model - 1)
-        const y = 2.3 * Math.sin(turn)
-        const z = 1.5 * i
+        const x =
+          (extended ? 0 : 2.3 * Math.cos(turn)) +
+          20 * chainIndex +
+          0.2 * (model - 1)
+        const y = extended ? (i % 2) * 1.0 : 2.3 * Math.sin(turn)
+        const z = (extended ? 3.3 : 1.5) * i
         rows.push(
           `ATOM ${rows.length + 1} C CA ${comp} ${asym} ${entity} ${i + 1} ${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)} ${i + 1} ${asym} ${model}`,
         )

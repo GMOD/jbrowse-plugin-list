@@ -112,6 +112,7 @@ import type { ProteinStructureSpec } from './proteinViewSpec'
 import type { StructureFilter } from './residueFilter'
 import type { SelectionTarget } from './residueRanges'
 import type { ResidueMark } from './sessionHighlights'
+import type { SuperpositionOutcome } from './superpositionOutcome'
 import type {
   VariantEffectAsk,
   VariantEffectState,
@@ -399,6 +400,12 @@ const Structure = types
     loadedAssembly: undefined as string | undefined,
     /**
      * #volatile
+     * How the last superposition placed this structure on the view's first,
+     * undefined for that one and while it is the only one loaded
+     */
+    superposition: undefined as SuperpositionOutcome | undefined,
+    /**
+     * #volatile
      * Range of alignment positions to highlight (e.g., when hovering a protein feature)
      */
     alignmentHoverRange: undefined as
@@ -653,6 +660,12 @@ const Structure = types
      */
     setMappedEntityId(id?: string) {
       self.mappedEntityId = id
+    },
+    /**
+     * #action
+     */
+    setSuperposition(outcome: SuperpositionOutcome | undefined) {
+      self.superposition = outcome
     },
     /**
      * #action

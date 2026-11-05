@@ -94,7 +94,7 @@ async function findTranscript({
 }
 
 /**
- * Headless counterpart of the interactive AlphaFoldDBSearch → TranscriptSelector
+ * Headless counterpart of the interactive structure list → TranscriptSelector
  * flow. Given a `transcriptId` and a connected genome view spec, it derives the
  * two things a ProteinView structure needs beyond its file: the transcript
  * `feature` (for the genome↔protein mapping) and the translated protein

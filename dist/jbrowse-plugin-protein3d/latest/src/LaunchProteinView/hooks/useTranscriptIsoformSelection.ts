@@ -6,7 +6,7 @@ import { rankableIsoforms } from '../utils/util'
 
 import type { Feature } from '@jbrowse/core/util'
 
-// Bundles the transcript-isoform wiring shared by all three launch tabs:
+// Bundles the transcript-isoform wiring shared by the launch tabs:
 // list transcripts, fetch their protein sequences, pick which chain of the
 // structure to compare against, auto/manually select a transcript, and resolve
 // the selection back to its feature + sequence.

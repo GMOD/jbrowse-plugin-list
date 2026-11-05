@@ -4,6 +4,7 @@ export { Canvas3DParams } from 'molstar/lib/mol-canvas3d/canvas3d'
 export { OrderedSet } from 'molstar/lib/mol-data/int'
 export { Loci } from 'molstar/lib/mol-model/loci'
 export { Mat4, Vec3 } from 'molstar/lib/mol-math/linear-algebra'
+export { MinimizeRmsd } from 'molstar/lib/mol-math/linear-algebra/3d/minimize-rmsd'
 export {
   QueryContext,
   StructureElement,

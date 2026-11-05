@@ -176,7 +176,7 @@ function openAlphaFoldStructure(self: DisplayModel, target: MenuTarget) {
           feature,
           selectedTranscript: transcript,
           uniprotId,
-          url,
+          sources: [{ url }],
           userProvidedTranscriptSequence,
         })
       } else {

@@ -45,11 +45,17 @@ export default function useAlphaFoldData({
     [uniprotId, data, error, isoformSequences, preferredTranscriptId],
   )
   const modelsUnreachable: unknown = uniprotId ? error : undefined
+  const entry = uniprotId?.replace(/-\d+$/, '')
   return {
     isLoading,
     isValidating,
     modelsUnreachable,
     model,
+    /** the length of the entry's own sequence, which PDB entries number on */
+    entryLength:
+      uniprotId && !error
+        ? data?.find(m => m.accession === entry)?.sequence.length
+        : undefined,
     noModel: !!uniprotId && !isLoading && !error && data?.length === 0,
   }
 }

@@ -5,14 +5,12 @@ import { getSession } from '@jbrowse/core/util'
 import { Tab, Tabs } from '@mui/material'
 import { observer } from 'mobx-react'
 
-import AlphaFoldDBSearch from './AlphaFoldDBSearch'
 import FoldseekSearch from './FoldseekSearch'
+import GeneStructures from './GeneStructures'
 import HelpButton from './HelpButton'
-import PdbSearch from './PdbSearch'
 import TabPanel from './TabPanel'
 import UserProvidedStructure from './UserProvidedStructure'
-import useUniProtIdLookup from '../hooks/useUniProtIdLookup'
-import { getLaunchSideBySide, setLaunchSideBySide } from '../utils/sideBySide'
+import { getGeneDisplayName } from '../utils/util'
 
 import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util'
@@ -33,21 +31,7 @@ const LaunchProteinViewDialog = observer(function LaunchProteinViewDialog({
 }) {
   const [choice, setChoice] = useState(0)
   const session = getSession(model)
-  // One lookup for the whole dialog: the tabs stay mounted once visited, so a
-  // lookup per tab meant the same UniProt search ran twice and a row picked on
-  // one tab left the other pointing at a different gene.
-  const lookup = useUniProtIdLookup({
-    feature,
-    view,
-    preferredTranscriptId,
-  })
-  // Also the dialog's, for the same reason: a tab that has been mounted since
-  // before the user changed this would otherwise launch with its own stale copy.
-  const [sideBySide, setSideBySide] = useState(() => getLaunchSideBySide())
-  const changeSideBySide = (value: boolean) => {
-    setSideBySide(value)
-    setLaunchSideBySide(value)
-  }
+  const geneName = getGeneDisplayName(feature) || 'this gene'
 
   return (
     <Dialog
@@ -68,36 +52,21 @@ const LaunchProteinViewDialog = observer(function LaunchProteinViewDialog({
           setChoice(val)
         }}
       >
-        <Tab value={0} label="AlphaFoldDB search" />
-        <Tab value={1} label="PDB search" />
-        <Tab value={2} label="Foldseek search" />
-        <Tab value={3} label="File or URL" />
+        <Tab value={0} label={`Structures for ${geneName}`} />
+        <Tab value={1} label="Similar structures (Foldseek)" />
+        <Tab value={2} label="Your file or URL" />
       </Tabs>
       <TabPanel value={choice} index={0}>
-        <AlphaFoldDBSearch
+        <GeneStructures
           session={session}
           view={view}
           feature={feature}
+          geneName={geneName}
           preferredTranscriptId={preferredTranscriptId}
           handleClose={handleClose}
-          lookup={lookup}
-          sideBySide={sideBySide}
-          onSideBySideChange={changeSideBySide}
         />
       </TabPanel>
       <TabPanel value={choice} index={1}>
-        <PdbSearch
-          session={session}
-          view={view}
-          feature={feature}
-          preferredTranscriptId={preferredTranscriptId}
-          handleClose={handleClose}
-          lookup={lookup}
-          sideBySide={sideBySide}
-          onSideBySideChange={changeSideBySide}
-        />
-      </TabPanel>
-      <TabPanel value={choice} index={2}>
         <FoldseekSearch
           session={session}
           view={view}
@@ -106,7 +75,7 @@ const LaunchProteinViewDialog = observer(function LaunchProteinViewDialog({
           handleClose={handleClose}
         />
       </TabPanel>
-      <TabPanel value={choice} index={3}>
+      <TabPanel value={choice} index={2}>
         <UserProvidedStructure
           session={session}
           view={view}

@@ -3,7 +3,7 @@ import { MenuItem, TextField } from '@mui/material';
 import { observer } from 'mobx-react';
 import { stripStopCodon } from 'p2s_mapper';
 import { getGeneDisplayName, getTranscriptDisplayName } from '../utils/util';
-const TranscriptSelector = observer(function TranscriptSelector({ val, setVal, isoforms, ranking, structureSequence, feature, disabled, }) {
+const TranscriptSelector = observer(function TranscriptSelector({ val, setVal, isoforms, ranking, structureSequence, feature, disabled, size, }) {
     const geneName = getGeneDisplayName(feature);
     const byId = new Map(isoforms.map(f => [f.id(), f]));
     // A ranked isoform carries an id rather than the feature, so the name is a
@@ -25,7 +25,7 @@ const TranscriptSelector = observer(function TranscriptSelector({ val, setVal, i
         note));
     return (React.createElement(TextField, { value: val ?? '', onChange: event => {
             setVal(event.target.value);
-        }, label: "Choose transcript isoform", select: true, disabled: disabled },
+        }, label: "Choose transcript isoform", select: true, disabled: disabled, size: size },
         matches.map(m => renderOption(m, ' (matches structure residues)')),
         nonMatches.map(m => renderOption(m)),
         noData.map(id => (React.createElement(MenuItem, { value: id, key: id, disabled: true },

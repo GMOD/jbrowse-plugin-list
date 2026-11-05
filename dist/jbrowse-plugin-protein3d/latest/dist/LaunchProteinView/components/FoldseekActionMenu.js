@@ -24,8 +24,7 @@ const FoldseekActionMenu = observer(function FoldseekActionMenu({ hit, session, 
             : undefined;
         return launch3DProteinView({
             ...baseParams,
-            url: hit.structureUrl,
-            data: pdbData,
+            sources: [{ url: hit.structureUrl, data: pdbData }],
             userProvidedTranscriptSequence,
         });
     });

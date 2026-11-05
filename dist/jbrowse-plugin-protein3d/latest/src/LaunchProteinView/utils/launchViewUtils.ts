@@ -7,6 +7,7 @@ import { launchProteinAnnotationView } from '../components/launchProteinAnnotati
 import { canAddTemporaryAssembly } from '../components/proteinAssemblySetup'
 
 import type { LaunchingGenomeView } from './genomeView'
+import type { ProteinStructureSpec } from '../../ProteinView/proteinViewSpec'
 import type { TemporaryAssemblySession } from '../components/proteinAssemblySetup'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 
@@ -18,9 +19,15 @@ interface LaunchViewParams {
   uniprotId?: string
 }
 
+/** Where one structure of a launch comes from */
+export type StructureSource = Pick<
+  ProteinStructureSpec,
+  'url' | 'data' | 'alphaFoldComplexId'
+>
+
 interface Launch3DExtraParams {
-  url?: string
-  data?: string
+  /** one view of them all, the rest superposed onto the first */
+  sources: StructureSource[]
   userProvidedTranscriptSequence?: string
 }
 
@@ -48,8 +55,7 @@ export async function launch3DProteinView({
   feature,
   selectedTranscript,
   uniprotId,
-  url,
-  data,
+  sources,
   userProvidedTranscriptSequence,
   sideBySide,
 }: Omit<LaunchViewParams, 'view'> &
@@ -66,15 +72,12 @@ export async function launch3DProteinView({
       selectedTranscript,
       uniprotId,
     ),
-    structures: [
-      {
-        url,
-        data,
-        userProvidedTranscriptSequence,
-        feature: selectedTranscript?.toJSON(),
-        connectedViewId: view.id,
-      },
-    ],
+    structures: sources.map(source => ({
+      ...source,
+      userProvidedTranscriptSequence,
+      feature: selectedTranscript?.toJSON(),
+      connectedViewId: view.id,
+    })),
   })
   const proteinView = await addProteinView(session, snap)
   maybeLaunchSideBySide(session, proteinView.id, sideBySide)

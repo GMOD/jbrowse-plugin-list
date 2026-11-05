@@ -112,7 +112,7 @@ function openAlphaFoldStructure(self, target) {
                     feature,
                     selectedTranscript: transcript,
                     uniprotId,
-                    url,
+                    sources: [{ url }],
                     userProvidedTranscriptSequence,
                 });
             }

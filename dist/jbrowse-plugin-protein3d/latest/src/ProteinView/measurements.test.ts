@@ -179,7 +179,10 @@ test('on a superposed structure the dashes follow the moved atoms', async () => 
   await withTemporaryMolstarPlugin(async plugin => {
     const pivot = await loadPocket(plugin)
     const other = await loadPocket(plugin, 12)
-    await superposeStructures(plugin, [pivot.structures, other.structures])
+    await superposeStructures(plugin, [
+      { label: 'pivot', structures: pivot.structures },
+      { label: 'other', structures: other.structures },
+    ])
     await syncMeasurements({
       labels: false,
       plugin,

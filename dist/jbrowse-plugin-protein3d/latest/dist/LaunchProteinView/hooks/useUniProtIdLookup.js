@@ -14,8 +14,8 @@ export function describeOrganism(taxonId, source) {
 /**
  * Which UniProt entry a feature is, by the dialog's lookup modes: the
  * feature's own attribute, the ID-mapping search over its recognised ids and
- * gene name, or a typed accession. The dialog holds one of these and hands it
- * to every tab, so all of them run one search and agree on what the gene is.
+ * gene name, or a typed accession. Every structure the dialog lists belongs to
+ * the entry it settles on.
  */
 export default function useUniProtIdLookup({ feature, view, preferredTranscriptId, }) {
     const geneIds = extractFeatureIdentifiers(feature, preferredTranscriptId);

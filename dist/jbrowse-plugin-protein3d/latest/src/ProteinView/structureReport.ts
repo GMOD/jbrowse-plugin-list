@@ -5,8 +5,10 @@ import {
   isLowSimilarity,
 } from 'p2s_mapper'
 
+import { describeSuperposition } from './superpositionOutcome'
 import { errorMessage } from './util'
 
+import type { SuperpositionOutcome } from './superpositionOutcome'
 import type { Entity, PairwiseAlignment } from 'p2s_mapper'
 
 export interface ReportedStructure {
@@ -26,6 +28,7 @@ export interface ReportedStructure {
   readonly alignmentImported: boolean
   readonly exactMatch: boolean
   readonly clickedStructureRanges: readonly { start: number; end: number }[]
+  readonly superposition: SuperpositionOutcome | undefined
 }
 
 function text(value: unknown) {
@@ -87,5 +90,9 @@ export function structureReport(s: ReportedStructure) {
       end,
     })),
     mapping: mappingReport(s),
+    superposition: s.superposition && {
+      ...s.superposition,
+      description: describeSuperposition(s.superposition),
+    },
   }
 }

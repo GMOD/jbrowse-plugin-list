@@ -7,6 +7,7 @@ import { superposeStructures } from './superposeStructures'
 import { parseStructure } from '../test_data/molstarStructure'
 
 import type { StructureSuperposerHost } from './structureSuperposer'
+import type { SuperpositionOutcome } from './superpositionOutcome'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 
 vi.mock('./superposeStructures', () => ({ superposeStructures: vi.fn() }))
@@ -16,13 +17,41 @@ const mockSuperpose = vi.mocked(superposeStructures)
 const TestStructure = types
   .model('TestStructure', {})
   .volatile(() => ({
+    label: 'test',
     loadedToMolstar: false,
     molstarStructures: new Array<Structure>(),
+    error: undefined,
+    alignmentPending: false,
+    pairwiseAlignment: undefined as object | undefined,
+    mappedEntity: undefined as
+      { entityId: string; seq: string; seqIds: number[] } | undefined,
+    coordinateMapper: undefined as
+      | {
+          maps: { structureSeqToTranscriptSeqPosition: Record<number, number> }
+        }
+      | undefined,
+    chains: undefined as string[] | undefined,
+    superposition: undefined as SuperpositionOutcome | undefined,
   }))
   .actions(self => ({
     setLoadedToMolstar(v: boolean, molstarStructures: Structure[] = []) {
       self.loadedToMolstar = v
       self.molstarStructures = molstarStructures
+    },
+    setAlignmentPending(pending: boolean) {
+      self.alignmentPending = pending
+    },
+    setMapping(
+      entityId: string,
+      seqIds: number[],
+      structureSeqToTranscriptSeqPosition: Record<number, number>,
+    ) {
+      self.mappedEntity = { entityId, seq: 'MKV', seqIds }
+      self.coordinateMapper = { maps: { structureSeqToTranscriptSeqPosition } }
+      self.pairwiseAlignment = {}
+    },
+    setSuperposition(outcome: SuperpositionOutcome | undefined) {
+      self.superposition = outcome
     },
   }))
 
@@ -63,7 +92,7 @@ const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
 beforeEach(() => {
   mockSuperpose.mockReset()
-  mockSuperpose.mockResolvedValue(undefined)
+  mockSuperpose.mockResolvedValue([])
 })
 
 test('superposes once two structures are loaded', () => {
@@ -150,7 +179,10 @@ test('superposes the loaded structures of the view, each with all its models', a
   host.structures[0]!.setLoadedToMolstar(true, [model1, model2])
   host.structures[2]!.setLoadedToMolstar(true, [single])
   makeStructureSuperposer(host as unknown as StructureSuperposerHost)()
-  expect(mockSuperpose).toHaveBeenCalledWith({}, [[model1, model2], [single]])
+  expect(mockSuperpose).toHaveBeenCalledWith({}, [
+    { label: 'test', structures: [model1, model2], mapping: undefined },
+    { label: 'test', structures: [single], mapping: undefined },
+  ])
 })
 
 // Re-align resets the count while a run that started earlier is in flight: the
@@ -158,9 +190,9 @@ test('superposes the loaded structures of the view, each with all its models', a
 function blockNextSuperpose() {
   let finish = () => {}
   mockSuperpose.mockReturnValueOnce(
-    new Promise<undefined>(resolve => {
+    new Promise(resolve => {
       finish = () => {
-        resolve(undefined)
+        resolve([])
       }
     }),
   )
@@ -195,5 +227,59 @@ test('a structure swapped for another during a run is superposed too', async () 
   await tick()
   await tick()
   expect(mockSuperpose).toHaveBeenCalledTimes(2)
+  dispose()
+})
+
+// the chain a structure aligns by and the residues that pair come from its
+// alignment, so moving it before that would move it twice
+test('waits for every loaded structure to be aligned', () => {
+  const { host, run } = setup({}, 2)
+  host.structures[1]!.setAlignmentPending(true)
+  run()
+  expect(mockSuperpose).not.toHaveBeenCalled()
+  host.structures[1]!.setAlignmentPending(false)
+  run()
+  expect(mockSuperpose).toHaveBeenCalledTimes(1)
+})
+
+test('hands over the mapped chain, its residues by label_seq_id', () => {
+  const { host, run } = setup({}, 2)
+  host.structures[1]!.setMapping('2', [5, 6, 7], { 0: 10, 2: 12 })
+  run()
+  expect(mockSuperpose.mock.calls[0]?.[1][1]?.mapping).toEqual({
+    entityId: '2',
+    residues: new Map([
+      [5, { transcript: 10, code: 'M' }],
+      [7, { transcript: 12, code: 'V' }],
+    ]),
+    drawnChains: undefined,
+  })
+})
+
+test('re-superposes when the chain picker maps another chain', async () => {
+  const { host, run } = setup({}, 2)
+  const dispose = autorun(run)
+  await tick()
+  host.structures[1]!.setMapping('2', [1], { 0: 0 })
+  await tick()
+  expect(mockSuperpose).toHaveBeenCalledTimes(2)
+  dispose()
+})
+
+test('each structure keeps its outcome until it is the only one', async () => {
+  const outcome = {
+    method: 'unmoved',
+    structure: { label: 'b' },
+    pivot: { label: 'a' },
+    reason: { kind: 'dissimilar', tmScore: 0.2 },
+    pairs: { count: 0, identity: 0 },
+  } satisfies SuperpositionOutcome
+  mockSuperpose.mockResolvedValue([undefined, outcome])
+  const { host, run } = setup({}, 2)
+  const dispose = autorun(run)
+  await tick()
+  expect(host.structures[1]!.superposition).toEqual(outcome)
+  host.structures[0]!.setLoadedToMolstar(false)
+  expect(host.structures[1]!.superposition).toBeUndefined()
   dispose()
 })

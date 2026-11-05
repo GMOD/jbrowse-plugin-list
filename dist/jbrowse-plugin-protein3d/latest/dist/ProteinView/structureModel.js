@@ -260,6 +260,12 @@ const Structure = types
     loadedAssembly: undefined,
     /**
      * #volatile
+     * How the last superposition placed this structure on the view's first,
+     * undefined for that one and while it is the only one loaded
+     */
+    superposition: undefined,
+    /**
+     * #volatile
      * Range of alignment positions to highlight (e.g., when hovering a protein feature)
      */
     alignmentHoverRange: undefined,
@@ -506,6 +512,12 @@ const Structure = types
      */
     setMappedEntityId(id) {
         self.mappedEntityId = id;
+    },
+    /**
+     * #action
+     */
+    setSuperposition(outcome) {
+        self.superposition = outcome;
     },
     /**
      * #action

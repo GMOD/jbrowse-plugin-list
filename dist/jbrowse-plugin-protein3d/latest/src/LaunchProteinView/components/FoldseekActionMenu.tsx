@@ -70,8 +70,7 @@ const FoldseekActionMenu = observer(function FoldseekActionMenu({
         : undefined
     return launch3DProteinView({
       ...baseParams,
-      url: hit.structureUrl,
-      data: pdbData,
+      sources: [{ url: hit.structureUrl, data: pdbData }],
       userProvidedTranscriptSequence,
     })
   })
