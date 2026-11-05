@@ -4,7 +4,7 @@ import { useFeatureSequence } from './useFeatureSequence';
 // Keep the current selection if it has data, otherwise fall back to the first
 // option that does (or the current id if none do). With no hasData constraint
 // the current selection always stands.
-function pickSelectedId(currentId, options, hasData) {
+export function pickSelectedId(currentId, options, hasData) {
     if (!hasData) {
         return currentId;
     }

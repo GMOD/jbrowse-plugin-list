@@ -1,5 +1,6 @@
 import type { SequenceStatus } from './SequenceStatus';
 import type { Feature } from '@jbrowse/core/util';
+export declare function pickSelectedId(currentId: string, options: Feature[], hasData: ((transcript: Feature) => boolean) | undefined): string;
 export declare function useTranscriptSelection({ feature, view, hasData, preferredTranscriptId, }: {
     feature: Feature;
     view: {

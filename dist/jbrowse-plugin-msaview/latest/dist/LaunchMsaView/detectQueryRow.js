@@ -41,7 +41,7 @@ const PARTIAL_COVERAGE_FLOOR = 0.5;
  * wanted on every keystroke in the paste box, and asking separately parsed a
  * few-hundred-row alignment twice per character.
  */
-export function findQueryRow(msaText, proteinSequence) {
+export function findQueryRow(msaText, proteinSequence, preferredName) {
     if (!msaText.trim()) {
         return { names: [] };
     }
@@ -56,42 +56,54 @@ export function findQueryRow(msaText, proteinSequence) {
     }
     const names = parsed.getNames();
     const query = normalize(proteinSequence);
-    return { names, match: query ? bestMatch(parsed, names, query) : undefined };
+    return {
+        names,
+        match: query ? bestMatch(parsed, names, query, preferredName) : undefined,
+    };
 }
-function bestMatch(parsed, names, query) {
-    const candidates = [];
-    for (const name of names) {
-        const row = normalize(getUngappedSequence(parsed.getRow(name)));
-        if (!row) {
-            continue;
-        }
-        if (row === query) {
-            // nothing beats an exact match, and a second one would be a duplicate row
-            return { name, quality: 'exact', identity: 1, offset: 0 };
-        }
+function scoreRow(parsed, name, query) {
+    const row = normalize(getUngappedSequence(parsed.getRow(name)));
+    if (!row) {
+        return undefined;
+    }
+    else if (row === query) {
+        return { name, quality: 'exact', identity: 1, offset: 0 };
+    }
+    else {
         // BLAST reports the aligned region, so the row is often the query trimmed
         // at one or both ends rather than the whole protein
         const contained = query.indexOf(row);
         const containing = row.indexOf(query);
         if (contained !== -1 || containing !== -1) {
             const coverage = Math.min(row.length, query.length) / Math.max(row.length, query.length);
-            if (coverage >= PARTIAL_COVERAGE_FLOOR) {
-                candidates.push({
+            return coverage >= PARTIAL_COVERAGE_FLOOR
+                ? {
                     name,
                     quality: 'partial',
                     identity: coverage,
                     offset: contained === -1 ? -containing : contained,
-                });
-            }
-            continue;
+                }
+                : undefined;
         }
-        const identity = identityOverOverlap(row, query);
-        if (identity >= SIMILARITY_FLOOR) {
-            candidates.push({ name, quality: 'similar', identity, offset: 0 });
+        else {
+            const identity = identityOverOverlap(row, query);
+            return identity >= SIMILARITY_FLOOR
+                ? { name, quality: 'similar', identity, offset: 0 }
+                : undefined;
         }
     }
-    // an exact match returns above, so only these two can be here
-    const order = ['partial', 'similar'];
-    return candidates.sort((a, b) => order.indexOf(a.quality) - order.indexOf(b.quality) ||
-        b.identity - a.identity)[0];
+}
+const qualityOrder = ['exact', 'partial', 'similar'];
+/**
+ * The row matching the protein best. A paralog with an identical protein
+ * matches exactly as well as the query does, so a row the dataset itself names
+ * as the protein's own wins any tie.
+ */
+function bestMatch(parsed, names, query, preferredName) {
+    return names
+        .map(name => scoreRow(parsed, name, query))
+        .filter(match => match !== undefined)
+        .sort((a, b) => qualityOrder.indexOf(a.quality) - qualityOrder.indexOf(b.quality) ||
+        b.identity - a.identity ||
+        Number(b.name === preferredName) - Number(a.name === preferredName))[0];
 }

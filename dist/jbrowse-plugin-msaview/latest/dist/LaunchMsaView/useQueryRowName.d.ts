@@ -18,7 +18,7 @@ export declare function resolveQueryRowName(queryRow: {
     querySeqName: string;
     names: string[];
 }, fallback: string): string;
-export declare function useQueryRowName(msaText: string, proteinSequence: string): {
+export declare function useQueryRowName(msaText: string, proteinSequence: string, preferredName?: string): {
     detected: import("./detectQueryRow").QueryRowMatch | undefined;
     names: string[];
     querySeqName: string;

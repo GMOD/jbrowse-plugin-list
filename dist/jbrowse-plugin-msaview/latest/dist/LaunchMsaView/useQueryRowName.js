@@ -19,11 +19,11 @@ import { findQueryRow } from './detectQueryRow';
 export function resolveQueryRowName(queryRow, fallback) {
     return (queryRow.querySeqName || (queryRow.names.includes(fallback) ? fallback : ''));
 }
-export function useQueryRowName(msaText, proteinSequence) {
+export function useQueryRowName(msaText, proteinSequence, preferredName) {
     const [override, setOverride] = useState();
     // parsing runs on every keystroke in the paste box otherwise, and an
     // alignment of a few hundred rows is not free
-    const { names, match } = useMemo(() => findQueryRow(msaText, proteinSequence), [msaText, proteinSequence]);
+    const { names, match } = useMemo(() => findQueryRow(msaText, proteinSequence, preferredName), [msaText, proteinSequence, preferredName]);
     // a row picked from one alignment says nothing about the next one pasted
     const picked = override !== undefined && (names.length === 0 || names.includes(override))
         ? override

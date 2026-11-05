@@ -1,6 +1,6 @@
 import { BaseAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
 import { openLocation } from '@jbrowse/core/util/io';
-import { parseOrthogroups, parseResolvedGeneTrees, resultsFile, } from './parseResults';
+import { alignmentRowName, isMissingFile, parseOrthogroups, parseResolvedGeneTrees, resultsFile, } from './parseResults';
 /**
  * Reads the `Results_*` folder of an OrthoFinder run as a dataset: each protein
  * id it saw names its orthogroup's alignment and gene tree.
@@ -18,12 +18,15 @@ export default class OrthoFinderMsaAdapter extends BaseAdapter {
         });
         return this.orthogroupsP;
     }
-    // OrthoFinder 2 writes Resolved_Gene_Trees/<orthogroup>_tree.txt instead, so
-    // a missing combined file means a version 2 run rather than an error
     getResolvedTrees() {
-        this.resolvedTreesP ??= this.readResultsFile('Resolved_Gene_Trees/Resolved_Gene_Trees.txt').then(parseResolvedGeneTrees, () => {
-            this.resolvedTreesP = undefined;
-            return undefined;
+        this.resolvedTreesP ??= this.readResultsFile('Resolved_Gene_Trees/Resolved_Gene_Trees.txt').then(parseResolvedGeneTrees, (e) => {
+            if (isMissingFile(e)) {
+                return 'per-orthogroup';
+            }
+            else {
+                this.resolvedTreesP = undefined;
+                throw e;
+            }
         });
         return this.resolvedTreesP;
     }
@@ -32,27 +35,55 @@ export default class OrthoFinderMsaAdapter extends BaseAdapter {
             return await this.readResultsFile(`MultipleSequenceAlignments/${orthogroup}.fa`);
         }
         catch (e) {
-            throw new Error(`OrthoFinder has no alignment for ${orthogroup}; it does not align every orthogroup`, { cause: e });
+            throw isMissingFile(e)
+                ? new Error(`OrthoFinder wrote no alignment for ${orthogroup}. It skips a few small orthogroups, and writes none at all when run with -og, or as OrthoFinder 2 without -M msa`, { cause: e })
+                : e;
         }
     }
-    // only orthogroups of four or more genes get a tree
+    // only orthogroups of four or more genes have a tree
     async readTree(orthogroup) {
         const resolvedTrees = await this.getResolvedTrees();
-        return resolvedTrees
-            ? resolvedTrees.get(orthogroup)
-            : this.readResultsFile(`Resolved_Gene_Trees/${orthogroup}_tree.txt`).catch(() => undefined);
+        return resolvedTrees === 'per-orthogroup'
+            ? this.readResultsFile(`Resolved_Gene_Trees/${orthogroup}_tree.txt`).catch((e) => {
+                if (isMissingFile(e)) {
+                    return undefined;
+                }
+                else {
+                    throw e;
+                }
+            })
+            : resolvedTrees.get(orthogroup);
     }
-    async getMSAList() {
-        return [...(await this.getOrthogroups()).keys()];
+    // the column named after the assembly when there is one, else every column,
+    // for a run whose proteome files are named some other way
+    async speciesFor(assemblyName) {
+        const bySpecies = await this.getOrthogroups();
+        return assemblyName && bySpecies.has(assemblyName)
+            ? [assemblyName]
+            : [...bySpecies.keys()];
     }
-    async getMSA(proteinId) {
-        const orthogroup = (await this.getOrthogroups()).get(proteinId);
-        if (orthogroup) {
+    async getMSAList(assemblyName) {
+        const bySpecies = await this.getOrthogroups();
+        const species = await this.speciesFor(assemblyName);
+        return [
+            ...new Set(species.flatMap(s => [...(bySpecies.get(s)?.keys() ?? [])])),
+        ];
+    }
+    async getMSA(proteinId, assemblyName) {
+        const bySpecies = await this.getOrthogroups();
+        const found = (await this.speciesFor(assemblyName))
+            .map(species => ({
+            species,
+            entry: bySpecies.get(species)?.get(proteinId),
+        }))
+            .find(({ entry }) => entry);
+        if (found?.entry) {
+            const { species, entry } = found;
             const [msa, tree] = await Promise.all([
-                this.readAlignment(orthogroup),
-                this.readTree(orthogroup),
+                this.readAlignment(entry.orthogroup),
+                this.readTree(entry.orthogroup),
             ]);
-            return { msa, tree };
+            return { msa, tree, queryRowName: alignmentRowName(species, entry.id) };
         }
         else {
             throw new Error(`${proteinId} is in no OrthoFinder orthogroup`);

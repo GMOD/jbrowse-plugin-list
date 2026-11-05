@@ -44,4 +44,4 @@ export interface MsaQueryRow {
  * wanted on every keystroke in the paste box, and asking separately parsed a
  * few-hundred-row alignment twice per character.
  */
-export declare function findQueryRow(msaText: string, proteinSequence: string): MsaQueryRow;
+export declare function findQueryRow(msaText: string, proteinSequence: string, preferredName?: string): MsaQueryRow;

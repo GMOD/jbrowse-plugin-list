@@ -28,11 +28,18 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
     const { classes } = useStyles();
     const { pluginManager } = getEnv(model);
     const { assemblyNames } = view;
+    const assemblyName = assemblyNames[0];
     const { launchError, submit } = useLaunchSubmit(handleClose);
     const datasets = readMsaDatasets(session.jbrowse);
     const [selectedDatasetId, setSelectedDatasetId] = useState(datasets?.[0]?.datasetId);
     const selectedDataset = datasets?.find(d => d.datasetId === selectedDatasetId);
-    const { data: msaList, isLoading: msaListLoading, error: msaListFetchError, } = useFetch(selectedDataset ? `${selectedDataset.datasetId}-msa-list` : null, () => fetchMSAList({ config: selectedDataset.adapter, pluginManager }));
+    const { data: msaList, isLoading: msaListLoading, error: msaListFetchError, } = useFetch(selectedDataset
+        ? `${selectedDataset.datasetId}-${assemblyName}-msa-list`
+        : null, () => fetchMSAList({
+        config: selectedDataset.adapter,
+        pluginManager,
+        assemblyName,
+    }));
     const msaIds = useMemo(() => msaList && new Set(msaList), [msaList]);
     const transcriptSelection = useTranscriptSelection({
         feature,
@@ -49,9 +56,10 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
         ? findDatasetId(selectedTranscript, feature, msaIds)
         : undefined;
     const { data: msaData, isLoading: msaDataLoading, error: msaDataFetchError, } = useFetch(msaId && selectedDataset
-        ? `${selectedDataset.datasetId}-${msaId}-msa`
+        ? `${selectedDataset.datasetId}-${assemblyName}-${msaId}-msa`
         : null, () => fetchMSA({
         msaId: msaId,
+        assemblyName,
         config: selectedDataset.adapter,
         pluginManager,
     }));
@@ -61,12 +69,12 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
     // checked, and a name the alignment does not carry fails silently: the view
     // opens, renders, and never navigates. The row is found by sequence instead,
     // the same way the Manual tab finds it.
-    const queryRow = useQueryRowName(msaText, proteinSequence);
+    const queryRow = useQueryRowName(msaText, proteinSequence, msaData?.queryRowName);
     // The name this panel used to launch with unconditionally. A dataset built to
     // that convention does carry the row, so it is worth falling back to when the
     // residues do not match closely enough to find it -- but only when the
     // alignment really has it, which is the check the old code never made.
-    const querySeqName = resolveQueryRowName(queryRow, `${msaId ?? ''}_${assemblyNames[0] ?? ''}`);
+    const querySeqName = resolveQueryRowName(queryRow, `${msaId ?? ''}_${assemblyName ?? ''}`);
     const e = msaListFetchError ??
         msaDataFetchError ??
         transcriptSelection.error ??
