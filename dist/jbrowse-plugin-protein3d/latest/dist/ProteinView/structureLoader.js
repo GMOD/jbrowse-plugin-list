@@ -1,5 +1,5 @@
 import { isAlive } from '@jbrowse/mobx-state-tree';
-import { fetchAlphaFoldModels, getAlphaFoldStructureUrl, pickAlphaFoldModel, } from 'p2s_mapper';
+import { fetchAlphaFoldComplexModel, fetchAlphaFoldModels, getAlphaFoldStructureUrl, pickAlphaFoldModel, } from 'p2s_mapper';
 import { loadStructureData } from './loadStructureData';
 import { removeMolstarStructure } from './removeStructure';
 /**
@@ -24,13 +24,30 @@ import { removeMolstarStructure } from './removeStructure';
  *     built with leaves Mol* and loads again, so every reaction keyed on its
  *     Mol* structures reaches the new chains.
  */
-export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
+export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels, fetchComplex = fetchAlphaFoldComplexModel) {
     const loadingIn = new Map();
     const failedIn = new WeakMap();
-    /** The accession a structure still has to turn into a file, if any. */
-    function unresolvedAccession(structure) {
-        const { url, data, uniprotId } = structure;
-        return url === undefined && data === undefined ? uniprotId : undefined;
+    /** The AlphaFold id a structure still has to turn into a file, if any. */
+    function unresolvedId(structure) {
+        const { url, data, uniprotId, alphaFoldComplexId } = structure;
+        return url !== undefined || data !== undefined
+            ? undefined
+            : alphaFoldComplexId
+                ? { kind: 'complex', id: alphaFoldComplexId }
+                : uniprotId
+                    ? { kind: 'accession', id: uniprotId }
+                    : undefined;
+    }
+    /** A complex's file carries a model version that moves, so it is asked
+     * for, like an accession's */
+    async function resolveComplexUrl(structure, entity) {
+        const model = await fetchComplex(entity);
+        if (!model) {
+            throw new Error(`AlphaFold DB has no complex ${entity}`);
+        }
+        if (isAlive(structure)) {
+            structure.setUrl(model.url);
+        }
     }
     /**
      * Which AlphaFold file an accession opens. Asked rather than spelled: a
@@ -81,10 +98,12 @@ export function makeStructureLoader(host, fetchModels = fetchAlphaFoldModels) {
         structure.setError(undefined);
         // a structure that already knows its file dispatches synchronously, so the
         // in-flight guard covers it before the autorun body returns
-        const accession = unresolvedAccession(structure);
-        const loaded = accession === undefined
+        const unresolved = unresolvedId(structure);
+        const loaded = unresolved === undefined
             ? loadStructureData({ structure, plugin })
-            : resolveAlphaFoldUrl(structure, accession).then(() => isAlive(structure)
+            : (unresolved.kind === 'complex'
+                ? resolveComplexUrl(structure, unresolved.id)
+                : resolveAlphaFoldUrl(structure, unresolved.id)).then(() => isAlive(structure)
                 ? loadStructureData({ structure, plugin })
                 : undefined);
         loaded

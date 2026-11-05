@@ -54,6 +54,19 @@ test('a structure keeps every field it carries, with its url resolved', () => {
   ])
 })
 
+test('an AlphaFold complex id names a structure the loader resolves', () => {
+  const { requested, warnings, geneModel } = accepted({
+    alphaFoldComplexId: 'AF-0000000066211449',
+    uniprotId: 'P00441',
+    gene: 'SOD1',
+  })
+  expect(warnings).toEqual([])
+  expect(requested).toEqual([
+    { alphaFoldComplexId: 'AF-0000000066211449', uniprotId: 'P00441' },
+  ])
+  expect(geneModel).toBeUndefined()
+})
+
 test('a structure carries the chains and filter it draws', () => {
   const filter = [{ field: 'residue', lte: 184 }]
   const { requested, warnings } = accepted({
@@ -189,13 +202,15 @@ test('a structure naming no source is omitted and the rest still launch', () => 
   expect(requested).toHaveLength(1)
   expect(warnings).toEqual([
     'structures[1] ignored unknown key(s): ulr',
-    'structures[1] names no url, data, uniprotId or pdbId and was omitted',
+    'structures[1] names no url, data, uniprotId, alphaFoldComplexId or pdbId and was omitted',
     'structures[2] is not an object and was omitted',
   ])
 })
 
 test('a launch left with no structure is rejected, with what it dropped', () => {
-  expect(rejected({}).error).toMatch(/No url, data, uniprotId, pdbId or gene/)
+  expect(rejected({}).error).toMatch(
+    /No url, data, uniprotId, alphaFoldComplexId, pdbId or gene/,
+  )
   const none = rejected({ structures: [{ ulr: 'https://example.org/a.cif' }] })
   expect(none.error).toMatch(/no entry of `structures` names/)
   expect(none.warnings).toHaveLength(2)

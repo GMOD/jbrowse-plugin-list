@@ -1,5 +1,6 @@
 import {
   alignmentQuality,
+  getAlphaFoldComplexId,
   getUniprotIdFromAlphaFoldTarget,
   isLowSimilarity,
 } from 'p2s_mapper'
@@ -56,7 +57,9 @@ function sourceOf({ pdbId, url, data }: ReportedStructure) {
     ? 'pdb'
     : data !== undefined
       ? 'data'
-      : url === undefined || getUniprotIdFromAlphaFoldTarget(url)
+      : url === undefined ||
+          getUniprotIdFromAlphaFoldTarget(url) ||
+          getAlphaFoldComplexId(url)
         ? 'alphafold'
         : 'url'
 }

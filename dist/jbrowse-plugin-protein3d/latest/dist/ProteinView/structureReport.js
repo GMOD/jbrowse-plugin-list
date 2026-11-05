@@ -1,4 +1,4 @@
-import { alignmentQuality, getUniprotIdFromAlphaFoldTarget, isLowSimilarity, } from 'p2s_mapper';
+import { alignmentQuality, getAlphaFoldComplexId, getUniprotIdFromAlphaFoldTarget, isLowSimilarity, } from 'p2s_mapper';
 import { errorMessage } from './util';
 function text(value) {
     return typeof value === 'string' ? value : undefined;
@@ -27,7 +27,9 @@ function sourceOf({ pdbId, url, data }) {
         ? 'pdb'
         : data !== undefined
             ? 'data'
-            : url === undefined || getUniprotIdFromAlphaFoldTarget(url)
+            : url === undefined ||
+                getUniprotIdFromAlphaFoldTarget(url) ||
+                getAlphaFoldComplexId(url)
                 ? 'alphafold'
                 : 'url';
 }

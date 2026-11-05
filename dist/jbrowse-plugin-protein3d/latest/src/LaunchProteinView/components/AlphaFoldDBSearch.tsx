@@ -1,16 +1,19 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui'
 import { DialogActions, DialogContent, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
+import AlphaFoldComplexesTable from './AlphaFoldComplexesTable'
 import AlphaFoldDBSearchStatus from './AlphaFoldDBSearchStatus'
 import PartialFailureNotice from './PartialFailureNotice'
 import ProteinViewActions from './ProteinViewActions'
 import TranscriptSelector from './TranscriptSelector'
 import UniProtLookupControls from './UniProtLookupControls'
 import UniProtLookupResults from './UniProtLookupResults'
+import { errorMessage } from '../../ProteinView/util'
+import { useAlphaFoldComplexes } from '../hooks/useAlphaFoldComplexes'
 import useAlphaFoldDBSearch from '../hooks/useAlphaFoldDBSearch'
 
 import type { UniProtIdLookup } from '../hooks/useUniProtIdLookup'
@@ -55,12 +58,19 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
   onSideBySideChange: (value: boolean) => void
 }) {
   const { classes } = useStyles()
+  const [complexEntity, setComplexEntity] = useState<string>()
+  const { complexes, error: complexesError } = useAlphaFoldComplexes(
+    lookup.uniprotId,
+  )
+  // a choice from another accession's list is no choice
+  const chosenComplex = complexes?.find(c => c.entity === complexEntity)
 
   const state = useAlphaFoldDBSearch({
     feature,
     view,
     lookup,
     preferredTranscriptId,
+    complexEntity: chosenComplex?.entity,
   })
 
   return (
@@ -111,6 +121,22 @@ const AlphaFoldDBSearch = observer(function AlphaFoldDBSearch({
               url={state.url}
             />
           </>
+        ) : null}
+
+        {state.uniprotId && complexes ? (
+          <AlphaFoldComplexesTable
+            complexes={complexes}
+            accession={state.uniprotId}
+            monomer={state.noModel ? undefined : { meanPlddt: state.meanPlddt }}
+            selected={chosenComplex?.entity}
+            onSelect={setComplexEntity}
+          />
+        ) : null}
+        {complexesError ? (
+          <Typography variant="body2" color="textSecondary">
+            AlphaFold DB&apos;s complex list did not answer:{' '}
+            {errorMessage(complexesError)}
+          </Typography>
         ) : null}
       </DialogContent>
       <DialogActions>

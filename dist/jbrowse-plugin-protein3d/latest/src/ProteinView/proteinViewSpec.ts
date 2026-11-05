@@ -23,8 +23,10 @@ export interface ProteinStructureSpec {
   url?: string
   data?: string
   // shorthands resolved to `url` at hydration when neither url nor data is set:
-  // uniprotId -> AlphaFold model, pdbId -> RCSB mmCIF
+  // uniprotId -> AlphaFold model, alphaFoldComplexId -> AlphaFold DB's
+  // predicted complex, pdbId -> RCSB mmCIF
   uniprotId?: string
+  alphaFoldComplexId?: string
   pdbId?: string
   // id of the LinearGenomeView this structure maps residues<->codons against
   connectedViewId?: string
@@ -109,6 +111,7 @@ export function defaultDisplayName(structures: ProteinStructureSpec[]) {
         url: resolveStructureUrl(s),
         data: s.data,
         uniprotId: s.uniprotId,
+        alphaFoldComplexId: s.alphaFoldComplexId,
       }),
     ),
   ]

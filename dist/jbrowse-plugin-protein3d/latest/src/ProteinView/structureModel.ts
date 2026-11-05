@@ -16,6 +16,7 @@ import {
   entityLabel,
   fetchUniProtStructureMappings,
   fusionPartnerPositions,
+  getAlphaFoldComplexId,
   getPdbIdFromUrl,
   getUniprotIdFromAlphaFoldTarget,
   locateStructureResidue,
@@ -62,6 +63,7 @@ import {
   transcriptExons,
   withExon,
 } from './exons'
+import { complexMembersLabel, fileUniProtMappings } from './fileUniProt'
 import { frameResidues } from './frameSelection'
 import { codonLocus, hoverReadout } from './hoverReadout'
 import { resolvedColor } from './proteinColor'
@@ -182,6 +184,14 @@ const Structure = types
      * filename this plugin can spell.
      */
     uniprotId: types.maybe(types.string),
+    /**
+     * #property
+     * AlphaFold DB's id for a predicted complex, `AF-0000000066211449`: the
+     * one an `{ alphaFoldComplexId }` shorthand asked for. With no url the
+     * structure loader asks AlphaFold DB for the model's file and fills in
+     * `url`, as it does for a `uniprotId`.
+     */
+    alphaFoldComplexId: types.maybe(types.string),
     /**
      * #property
      */
@@ -710,7 +720,23 @@ const Structure = types
      * readout and marks whose alignment panel is open.
      */
     get label() {
-      return structureDisplayLabel(self)
+      const members = this.complexId
+        ? complexMembersLabel(self.entities)
+        : undefined
+      return members
+        ? `AlphaFold complex ${members}`
+        : structureDisplayLabel(self)
+    },
+    /**
+     * #getter
+     * AlphaFold DB's id for a predicted complex, from the shorthand or the
+     * file url
+     */
+    get complexId() {
+      return (
+        self.alphaFoldComplexId ??
+        (self.url ? getAlphaFoldComplexId(self.url) : undefined)
+      )
     },
     /**
      * #getter
@@ -728,13 +754,19 @@ const Structure = types
      * land on this structure's residues; see structureUniProt.
      */
     get uniProtEntry() {
+      const { pdbId, complexId } = this
+      // A complex's chains are different proteins, so its file names each
+      // one and outranks any single accession beside it
+      const fromFile = !pdbId && (!!complexId || !self.uniprotId)
       return structureUniProt({
-        uniprotId: self.uniprotId,
-        pdbId: this.pdbId,
+        uniprotId: complexId ? undefined : self.uniprotId,
+        pdbId,
         modelAccession: self.url
           ? getUniprotIdFromAlphaFoldTarget(self.url)
           : undefined,
-        uniProtMappings: self.uniProtMappings,
+        uniProtMappings: fromFile
+          ? fileUniProtMappings(self.entities)
+          : self.uniProtMappings,
         uniProtMappingsError: self.uniProtMappingsError,
         mappedEntity: this.mappedEntity,
       })
@@ -1010,11 +1042,12 @@ const Structure = types
         return undefined
       }
       if (!self.loadedToMolstar) {
-        return self.url === undefined &&
-          self.data === undefined &&
-          self.uniprotId
-          ? `Resolving AlphaFold model for ${self.uniprotId}`
-          : `Loading ${this.label}`
+        const unresolved = self.url === undefined && self.data === undefined
+        return unresolved && self.alphaFoldComplexId
+          ? `Resolving AlphaFold complex ${self.alphaFoldComplexId}`
+          : unresolved && self.uniprotId
+            ? `Resolving AlphaFold model for ${self.uniprotId}`
+            : `Loading ${this.label}`
       }
       if (this.alignmentPending) {
         const name = self.feature?.name

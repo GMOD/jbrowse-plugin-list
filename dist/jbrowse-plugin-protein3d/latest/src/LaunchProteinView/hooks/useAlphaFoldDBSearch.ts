@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { sameProtein } from 'p2s_mapper'
 
+import { useAlphaFoldComplexModel } from './useAlphaFoldComplexes'
 import useAlphaFoldData from './useAlphaFoldData'
 import useTranscriptIsoformSelection from './useTranscriptIsoformSelection'
 
@@ -14,11 +15,14 @@ export default function useAlphaFoldDBSearch({
   view,
   lookup,
   preferredTranscriptId,
+  complexEntity,
 }: {
   feature: Feature
   view: LaunchingGenomeView
   lookup: UniProtIdLookup
   preferredTranscriptId?: string
+  /** an AlphaFold DB complex to open in place of the monomer */
+  complexEntity?: string
 }) {
   const { uniprotId, isLookupLoading } = lookup
 
@@ -29,8 +33,17 @@ export default function useAlphaFoldDBSearch({
     model,
     noModel,
   } = useAlphaFoldData({ uniprotId, feature, view, preferredTranscriptId })
+  const complex = useAlphaFoldComplexModel(complexEntity)
+  // the transcripts rank against the gene's own chain of a complex
+  const entry = uniprotId?.replace(/-\d+$/, '')
+  const complexSequence = complex.model?.chains.find(
+    c => c.accession === entry,
+  )?.sequence
+  const url = complexEntity ? complex.model?.url : model?.url
   // a stable array, or the isoform picker realigns on every render
-  const modelSequence = model?.sequence
+  const modelSequence = complexEntity
+    ? complex.model && (complexSequence ?? model?.sequence)
+    : model?.sequence
   const structureSequences = useMemo(
     () => (modelSequence ? [modelSequence] : undefined),
     [modelSequence],
@@ -54,7 +67,7 @@ export default function useAlphaFoldDBSearch({
     view,
     structureSequences,
     preferredTranscriptId,
-    resetKey: model?.url,
+    resetKey: url,
   })
 
   const loadingStatuses = [
@@ -62,11 +75,12 @@ export default function useAlphaFoldDBSearch({
     isIsoformLoading && 'Loading protein sequences from transcript isoforms',
     isRanking && 'Aligning isoforms to the structure',
     isAlphaFoldLoading && 'Asking AlphaFold DB for models',
+    complex.isLoading && 'Asking AlphaFold DB for the complex',
   ].filter(s => typeof s === 'string')
   const isLoading = loadingStatuses.length > 0
 
   // errors wait for loading to finish, so a lookup in flight doesn't flash one
-  const rawError = isoformError ?? lookup.lookupError
+  const rawError = isoformError ?? lookup.lookupError ?? complex.error
   const error = isLoading ? undefined : rawError
 
   return {
@@ -81,7 +95,8 @@ export default function useAlphaFoldDBSearch({
     isoformPartialFailure,
     userSelectedProteinSequence,
 
-    url: model?.url,
+    url,
+    meanPlddt: model?.meanPlddt,
     confidenceUrl: model?.confidenceUrl,
     modelAccession: model?.accession,
     structureSequence,
@@ -95,6 +110,7 @@ export default function useAlphaFoldDBSearch({
     // selection's (keepPreviousData), so a match is unknown until it settles.
     sequencesMatch:
       !isAlphaFoldValidating &&
+      !complex.isLoading &&
       userSelectedProteinSequence?.seq &&
       structureSequence
         ? sameProtein(userSelectedProteinSequence.seq, structureSequence)

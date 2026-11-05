@@ -39,6 +39,7 @@ const TestStructure = types
     url: types.maybe(types.string),
     data: types.maybe(types.string),
     uniprotId: types.maybe(types.string),
+    alphaFoldComplexId: types.maybe(types.string),
     userProvidedTranscriptSequence: types.optional(types.string, ''),
     assembly: types.maybe(types.string),
   })
@@ -363,6 +364,48 @@ test('an accession AlphaFold has no model for is reported, not guessed at', asyn
   expect(structure.loadedToMolstar).toBe(false)
   expect(structure.error).toEqual(
     new Error('AlphaFold DB has no model for P99999'),
+  )
+  expect(mockLoad).not.toHaveBeenCalled()
+  logged.mockRestore()
+})
+
+test('a complex id opens the file AlphaFold DB names for it, ahead of an accession', async () => {
+  mockLoad.mockResolvedValue({})
+  const fetchModels = vi.fn(() => Promise.resolve([]))
+  const url =
+    'https://alphafold.ebi.ac.uk/files/AF-0000000066211449-model_v1.cif'
+  const fetchComplex = vi.fn(() =>
+    Promise.resolve({ entity: 'AF-0000000066211449', url, chains: [] }),
+  )
+  const host = TestHost.create({
+    structures: [
+      { alphaFoldComplexId: 'AF-0000000066211449', uniprotId: 'P00441' },
+    ],
+  })
+  host.setPlugin({})
+  makeStructureLoader(asLoaderHost(host), fetchModels, fetchComplex)()
+  await tick()
+  expect(fetchComplex).toHaveBeenCalledWith('AF-0000000066211449')
+  expect(fetchModels).not.toHaveBeenCalled()
+  expect(host.structures[0]!.url).toBe(url)
+  expect(host.structures[0]!.loadedToMolstar).toBe(true)
+})
+
+test('a complex AlphaFold DB does not have is reported', async () => {
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  mockLoad.mockResolvedValue({})
+  const host = TestHost.create({
+    structures: [{ alphaFoldComplexId: 'AF-1' }],
+  })
+  host.setPlugin({})
+  makeStructureLoader(
+    asLoaderHost(host),
+    () => Promise.resolve([]),
+    () => Promise.resolve(undefined),
+  )()
+  await tick()
+  expect(host.structures[0]!.error).toEqual(
+    new Error('AlphaFold DB has no complex AF-1'),
   )
   expect(mockLoad).not.toHaveBeenCalled()
   logged.mockRestore()

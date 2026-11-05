@@ -5,6 +5,7 @@ const STRUCTURE_KEY_ROLES = {
     url: 'source',
     data: 'source',
     uniprotId: 'source',
+    alphaFoldComplexId: 'source',
     pdbId: 'source',
     initialSelection: 'selection',
     initialResidues: 'selection',
@@ -176,6 +177,7 @@ function readStructure(fields, at, warnings) {
         url: read('url', isString, 'a string'),
         data: read('data', isString, 'a string'),
         uniprotId: read('uniprotId', isString, 'a string'),
+        alphaFoldComplexId: read('alphaFoldComplexId', isString, 'a string'),
         pdbId: read('pdbId', isString, 'a string'),
         initialSelection: read('initialSelection', isResidueRanges, RANGES),
         initialResidues: read('initialResidues', isResidueRanges, RANGES),
@@ -195,7 +197,8 @@ function readStructure(fields, at, warnings) {
 function namesSource(structure) {
     return (!!resolveStructureUrl(structure) ||
         structure.data !== undefined ||
-        !!structure.uniprotId);
+        !!structure.uniprotId ||
+        !!structure.alphaFoldComplexId);
 }
 function withUrl(structure) {
     return { ...structure, url: resolveStructureUrl(structure) };
@@ -229,7 +232,7 @@ export function normalizeLaunch(launch) {
     const looksUpGene = !!linkage.gene && !linkage.userProvidedTranscriptSequence;
     const noStructure = linkage.gene
         ? 'the launch names no structure, and `gene` is not looked up beside `userProvidedTranscriptSequence`'
-        : 'No url, data, uniprotId, pdbId or gene provided when launching protein view';
+        : 'No url, data, uniprotId, alphaFoldComplexId, pdbId or gene provided when launching protein view';
     const given = top.get('structures');
     if (given !== undefined && !Array.isArray(given)) {
         warnings.push('`structures` is not an array and was ignored');
@@ -245,6 +248,7 @@ export function normalizeLaunch(launch) {
                 warnings,
                 geneModel: looksUpGene &&
                     !!structure.uniprotId &&
+                    structure.alphaFoldComplexId === undefined &&
                     structure.url === undefined &&
                     structure.data === undefined
                     ? 'preferred'
@@ -282,7 +286,7 @@ export function normalizeLaunch(launch) {
         }
         const structure = readStructure(fields, key => `\`structures[${i}].${key}\``, warnings);
         if (!namesSource(structure)) {
-            warnings.push(`structures[${i}] names no url, data, uniprotId or pdbId and was omitted`);
+            warnings.push(`structures[${i}] names no url, data, uniprotId, alphaFoldComplexId or pdbId and was omitted`);
             return [];
         }
         return [withUrl(structure)];
@@ -301,7 +305,7 @@ export function normalizeLaunch(launch) {
         : {
             error: linkage.gene
                 ? noStructure
-                : 'no entry of `structures` names a url, data, uniprotId or pdbId',
+                : 'no entry of `structures` names a url, data, uniprotId, alphaFoldComplexId or pdbId',
             warnings,
         };
 }

@@ -194,6 +194,73 @@ test('names the step it is on while it settles', () => {
   expect(pdb!.loadingMessage).toBeUndefined()
 })
 
+const COMPLEX_URL =
+  'https://alphafold.ebi.ac.uk/files/AF-0000000210612662-model_v1.cif'
+
+// AF-0000000210612662 numbers GSTP1 as entity 1 on chain B and GSTM1 as
+// entity 2 on chain A, each with the UniProt entry its ModelCIF names
+const GSTP1_GSTM1 = [
+  {
+    entityId: '2',
+    seq: 'MPMIL',
+    seqIds: [1, 2, 3, 4, 5],
+    chains: ['A'],
+    uniProt: { accession: 'P09488', gene: 'GSTM1', start: 1 },
+  },
+  {
+    entityId: '1',
+    seq: 'MPPY',
+    seqIds: [1, 2, 3, 4],
+    chains: ['B'],
+    uniProt: { accession: 'P09211', gene: 'GSTP1', start: 1 },
+  },
+]
+
+// A complex's file name carries no accession, and its chains are different
+// proteins: one accession for the structure would draw GSTP1's features on
+// GSTM1 the moment the chain picker moved
+test("an AlphaFold complex takes each chain's UniProt entry from its file", () => {
+  const parent = TestParent.create({
+    structures: [{ url: COMPLEX_URL, uniprotId: 'P09211' }],
+  })
+  const s = parent.structures[0]!
+  expect(s.complexId).toBe('AF-0000000210612662')
+  expect(s.label).toBe('AlphaFold complex AF-0000000210612662')
+  expect(s.report.source).toBe('alphafold')
+
+  s.setStructureData({ entities: GSTP1_GSTM1 })
+  s.setMappedEntityId('1')
+  expect(s.label).toBe('AlphaFold complex GSTM1 + GSTP1')
+  expect(s.uniProtEntry.uniprotId).toBe('P09211')
+  expect(s.uniProtEntry.mapUniProtPosition(4)).toBe(3)
+  expect(s.uniProtEntry.mapUniProtPosition(5)).toBeUndefined()
+
+  s.setMappedEntityId('2')
+  expect(s.uniProtEntry.uniprotId).toBe('P09488')
+})
+
+test('a homodimer is named by its protein and its copies', () => {
+  const parent = TestParent.create({ structures: [{ url: COMPLEX_URL }] })
+  const s = parent.structures[0]!
+  s.setStructureData({
+    entities: [{ ...GSTP1_GSTM1[1]!, chains: ['A', 'B'] }],
+  })
+  expect(s.label).toBe('AlphaFold complex GSTP1 ×2')
+  expect(s.uniProtEntry.uniprotId).toBe('P09211')
+})
+
+test('keeps an alphaFoldComplexId shorthand for the loader', () => {
+  const parent = TestParent.create({
+    structures: [{ alphaFoldComplexId: 'AF-0000000066211449' }],
+  })
+  const s = parent.structures[0]!
+  expect(s.url).toBeUndefined()
+  expect(s.complexId).toBe('AF-0000000066211449')
+  expect(s.loadingMessage).toBe(
+    'Resolving AlphaFold complex AF-0000000066211449',
+  )
+})
+
 test('resolves a pdbId shorthand to an RCSB url at hydration', () => {
   const parent = TestParent.create({ structures: [{ pdbId: '1CRN' }] })
   expect(parent.structures[0]!.url).toBe(

@@ -44,7 +44,7 @@ const UniProtResultsTable = observer(function UniProtResultsTable({ entries, sel
             entries.length,
             " UniProt entries. Select one:"),
         React.createElement(TableContainer, { component: Paper, className: classes.tableContainer },
-            React.createElement(Table, { size: "small", stickyHeader: true },
+            React.createElement(Table, { size: "small", stickyHeader: true, "data-testid": "uniprot-results-table" },
                 React.createElement(TableHead, null,
                     React.createElement(TableRow, null,
                         React.createElement(TableCell, { className: classes.headerCell, padding: "checkbox" }),

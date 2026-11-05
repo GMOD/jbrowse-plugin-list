@@ -73,7 +73,7 @@ const UniProtResultsTable = observer(function UniProtResultsTable({
         Found {entries.length} UniProt entries. Select one:
       </Typography>
       <TableContainer component={Paper} className={classes.tableContainer}>
-        <Table size="small" stickyHeader>
+        <Table size="small" stickyHeader data-testid="uniprot-results-table">
           <TableHead>
             <TableRow>
               <TableCell className={classes.headerCell} padding="checkbox" />

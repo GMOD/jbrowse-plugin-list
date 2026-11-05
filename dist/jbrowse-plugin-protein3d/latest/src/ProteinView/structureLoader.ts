@@ -1,5 +1,6 @@
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import {
+  fetchAlphaFoldComplexModel,
   fetchAlphaFoldModels,
   getAlphaFoldStructureUrl,
   pickAlphaFoldModel,
@@ -11,13 +12,17 @@ import { removeMolstarStructure } from './removeStructure'
 import type StructureModel from './structureModel'
 import type { IAnyStateTreeNode, Instance } from '@jbrowse/mobx-state-tree'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
-import type { AlphaFoldModel } from 'p2s_mapper'
+import type { AlphaFoldComplexModel, AlphaFoldModel } from 'p2s_mapper'
 
 type StructureInstance = Instance<typeof StructureModel>
 
 export type AlphaFoldModelFetcher = (
   uniprotId: string,
 ) => Promise<AlphaFoldModel[]>
+
+export type AlphaFoldComplexFetcher = (
+  entity: string,
+) => Promise<AlphaFoldComplexModel | undefined>
 
 export type StructureLoaderHost = IAnyStateTreeNode & {
   readonly molstarPluginContext: PluginContext | undefined
@@ -49,14 +54,36 @@ export type StructureLoaderHost = IAnyStateTreeNode & {
 export function makeStructureLoader(
   host: StructureLoaderHost,
   fetchModels: AlphaFoldModelFetcher = fetchAlphaFoldModels,
+  fetchComplex: AlphaFoldComplexFetcher = fetchAlphaFoldComplexModel,
 ) {
   const loadingIn = new Map<StructureInstance, PluginContext>()
   const failedIn = new WeakMap<StructureInstance, PluginContext>()
 
-  /** The accession a structure still has to turn into a file, if any. */
-  function unresolvedAccession(structure: StructureInstance) {
-    const { url, data, uniprotId } = structure
-    return url === undefined && data === undefined ? uniprotId : undefined
+  /** The AlphaFold id a structure still has to turn into a file, if any. */
+  function unresolvedId(structure: StructureInstance) {
+    const { url, data, uniprotId, alphaFoldComplexId } = structure
+    return url !== undefined || data !== undefined
+      ? undefined
+      : alphaFoldComplexId
+        ? { kind: 'complex' as const, id: alphaFoldComplexId }
+        : uniprotId
+          ? { kind: 'accession' as const, id: uniprotId }
+          : undefined
+  }
+
+  /** A complex's file carries a model version that moves, so it is asked
+   * for, like an accession's */
+  async function resolveComplexUrl(
+    structure: StructureInstance,
+    entity: string,
+  ) {
+    const model = await fetchComplex(entity)
+    if (!model) {
+      throw new Error(`AlphaFold DB has no complex ${entity}`)
+    }
+    if (isAlive(structure)) {
+      structure.setUrl(model.url)
+    }
   }
 
   /**
@@ -114,11 +141,14 @@ export function makeStructureLoader(
     structure.setError(undefined)
     // a structure that already knows its file dispatches synchronously, so the
     // in-flight guard covers it before the autorun body returns
-    const accession = unresolvedAccession(structure)
+    const unresolved = unresolvedId(structure)
     const loaded =
-      accession === undefined
+      unresolved === undefined
         ? loadStructureData({ structure, plugin })
-        : resolveAlphaFoldUrl(structure, accession).then(() =>
+        : (unresolved.kind === 'complex'
+            ? resolveComplexUrl(structure, unresolved.id)
+            : resolveAlphaFoldUrl(structure, unresolved.id)
+          ).then(() =>
             isAlive(structure)
               ? loadStructureData({ structure, plugin })
               : undefined,

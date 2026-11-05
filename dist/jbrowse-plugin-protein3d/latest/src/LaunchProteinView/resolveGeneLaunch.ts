@@ -39,7 +39,7 @@ interface EntryLookup {
 }
 
 export type LaunchAlphaFoldModel = Pick<AlphaFoldModel, 'accession' | 'url'> &
-  Partial<Pick<AlphaFoldModel, 'sequence' | 'confidenceUrl'>>
+  Partial<Pick<AlphaFoldModel, 'sequence' | 'confidenceUrl' | 'meanPlddt'>>
 
 /**
  * The AlphaFold file a launch opens, `models` undefined when the API did not

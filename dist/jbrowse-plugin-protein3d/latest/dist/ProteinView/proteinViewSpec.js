@@ -13,6 +13,7 @@ export function defaultDisplayName(structures) {
             url: resolveStructureUrl(s),
             data: s.data,
             uniprotId: s.uniprotId,
+            alphaFoldComplexId: s.alphaFoldComplexId,
         })),
     ]
         .filter(s => !!s)
