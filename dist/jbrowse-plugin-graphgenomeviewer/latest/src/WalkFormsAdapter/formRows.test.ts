@@ -6,7 +6,6 @@ import {
   formSources,
   formVariants,
   formWarnings,
-  referenceGenotypes,
 } from './formRows.ts'
 
 import type { Departure, HaplotypeDepartures } from '@jbrowse/graph-walks'
@@ -187,11 +186,6 @@ test('past maxForms the smaller forms share one empty row', () => {
   expect(variantAt(1000).description).toBe(
     capped.find(v => v.start === 1000)?.description,
   )
-})
-
-test('reference genotypes cover the forms with a row of their own', () => {
-  expect(referenceGenotypes(result, 2)).toEqual({ F1: '0', F2: '0' })
-  expect(Object.keys(referenceGenotypes(result, Infinity))).toHaveLength(12)
 })
 
 test('one form past maxForms keeps its own row', () => {

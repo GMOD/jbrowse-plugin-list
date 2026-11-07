@@ -13,7 +13,7 @@ const adapters = {
   }),
 }
 
-// a session's tracks are frozen entries, as on a 5.0.0-beta.18 host
+// a session's tracks are frozen entries
 const track = (trackId: string, type: string, adapterType: string) => ({
   trackId,
   type,

@@ -30,28 +30,6 @@ export interface WalkRowSection {
 
 export const SECTION_HEADER_PX = 16
 
-// A samples TSV as core's samplesTsv reads one: a header row, the sample's
-// name in the first column, the first row of a repeated name kept. Hosts
-// re-export that module only from v5.0.0-beta.11, so it is read here.
-export function parseSamplesTsv(text: string): SampleRow[] {
-  const [head = '', ...lines] = text.split(/\r\n|\r|\n/)
-  const columns = head.split('\t').slice(1)
-  const rows = new Map<string, SampleRow>()
-  for (const line of lines) {
-    if (!line) {
-      continue
-    }
-    const [name = '', ...values] = line.split('\t')
-    if (name && !rows.has(name)) {
-      rows.set(name, {
-        ...Object.fromEntries(columns.map((c, i) => [c, values[i] ?? ''])),
-        name,
-      })
-    }
-  }
-  return [...rows.values()]
-}
-
 export function metadataColumns(rows: SampleRow[] | undefined) {
   const columns = new Set<string>()
   for (const row of rows ?? []) {

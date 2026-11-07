@@ -12,12 +12,7 @@ import {
   structuralForms,
 } from '@jbrowse/graph-walks'
 
-import {
-  formSources,
-  formVariants,
-  formWarnings,
-  referenceGenotypes,
-} from './formRows.ts'
+import { formSources, formVariants, formWarnings } from './formRows.ts'
 import { floorOf, pinnedLocus, pinnedOf, warningPrefix } from './pinned.ts'
 import { openTabixSlot } from '../panSNTabix.ts'
 
@@ -206,23 +201,6 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
             INFO: { SVTYPE: [v.svType], SVLEN: [v.mark.delta] },
             mark: v.mark,
             genotypes: v.genotypes,
-          }),
-        )
-      }
-      // Core before 5.0.0-beta.14 (1845c280a9) sends no payload for a block
-      // with no records, which leaves the display on "Loading". The reference
-      // placeholder draws nothing; drop it once the host floor reaches beta.14
-      if (variants.length === 0) {
-        const start = Math.floor(query.start)
-        observer.next(
-          new SimpleFeature({
-            uniqueId: `forms-reference-${query.refName}-${start}`,
-            refName: query.refName,
-            start,
-            end: start + 1,
-            REF: 'N',
-            ALT: ['.'],
-            genotypes: referenceGenotypes(result, this.maxForms()),
           }),
         )
       }
