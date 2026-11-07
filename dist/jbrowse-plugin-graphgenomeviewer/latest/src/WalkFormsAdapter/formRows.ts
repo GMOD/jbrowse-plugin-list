@@ -147,18 +147,6 @@ export function formWarnings(
   ]
 }
 
-// Genotype `0` in every form with a row of its own
-export function referenceGenotypes(
-  result: StructuralForms,
-  maxForms = DEFAULT_MAX_FORMS,
-): Record<string, string> {
-  return Object.fromEntries(
-    result.forms
-      .slice(0, shownCount(result, maxForms))
-      .map((_, j) => [formName(j), '0']),
-  )
-}
-
 export interface FormVariant {
   id: string
   start: number

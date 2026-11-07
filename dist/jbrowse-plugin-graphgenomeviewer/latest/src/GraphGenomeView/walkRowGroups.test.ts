@@ -1,9 +1,10 @@
+import { parseSamplesTsv } from '@jbrowse/core/util/samplesTsv'
+
 import {
   SECTION_HEADER_PX,
   groupByOf,
   groupWalkRows,
   metadataColumns,
-  parseSamplesTsv,
   sectionIndexOf,
   sectionPlacement,
 } from './walkRowGroups'
@@ -19,7 +20,12 @@ const TSV = [
 ].join('\r\n')
 
 test('a samples TSV keys rows by its first column, the first of a repeat kept', () => {
-  const rows = parseSamplesTsv(TSV)
+  const rows = parseSamplesTsv(
+    TSV,
+    undefined,
+    'samples.tsv',
+    'the walks',
+  ).sources
   expect(rows.map(r => r.name)).toEqual(['GRCh38', 'A', 'B', 'C#1'])
   expect(rows[1]).toEqual({
     name: 'A',
@@ -48,7 +54,12 @@ test('the persisted setting reads a bare field or the object, anything else as u
 })
 
 describe('grouping', () => {
-  const table = parseSamplesTsv(TSV)
+  const table = parseSamplesTsv(
+    TSV,
+    undefined,
+    'samples.tsv',
+    'the walks',
+  ).sources
   const rows = [
     { sample: 'B', label: 'B#1' },
     { sample: 'D', label: 'D#1' },

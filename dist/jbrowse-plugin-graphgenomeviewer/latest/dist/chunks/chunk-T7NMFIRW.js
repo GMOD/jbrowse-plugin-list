@@ -1,0 +1,2 @@
+var e=JBrowseExports["@jbrowse/core/configuration"],t=o=>e!=null&&o in Object(e)?e[o]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+o+"' from '@jbrowse/core/configuration' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:o}),n=t("ConfigurationReference"),r=t("ConfigurationSchema");var s=t("getConf");var i=t("readConfObject");var a=t("setConf");var c=e&&e.__esModule?e.default:e;export{n as a,r as b,s as c,i as d,a as e};
+//# sourceMappingURL=chunk-T7NMFIRW.js.map
