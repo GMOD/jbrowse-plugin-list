@@ -1,13 +1,12 @@
 import { existsSync } from 'node:fs'
 
-import { TabixIndexedFile } from '@gmod/tabix'
 import {
   graphFromTables,
   graphTablesGFA,
 } from '@jbrowse/bandage-core/gfa/graphTables'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { readConfObject } from '@jbrowse/core/configuration'
-import { WalkReader } from '@jbrowse/graph-walks'
+import { WalkFile, WalkReader } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -19,54 +18,57 @@ import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 
 // chr22 of HPRC v2.1 at base level, one walk file per reference in walk
-// format 5, built under ~/work/scratch/walks-20261008/f5. Skipped where the
-// files are absent.
-const chr22 = '/home/cdiesh/work/scratch/walks-20261008/f5/chr22'
+// format 7, built under ~/work/scratch/walks7. Skipped where the files are
+// absent.
+const chr22 = '/home/cdiesh/work/scratch/walks7/chr22'
 const present = ['GRCh38', 'CHM13'].every(sample =>
-  existsSync(`${chr22}.${sample}.walks.bed.gz`),
+  existsSync(`${chr22}.${sample}.walks.gz`),
 )
 
+// The walk files under test_data/walks7, which its build.sh writes from the
+// GFAs beside them
 const fixture = (name: string) =>
   require
-    .resolve(`./test_data/${name}.GRCh38.walks.bed.gz`)
-    .replace(/\.walks\.bed\.gz$/, '')
+    .resolve(`./test_data/walks7/${name}.GRCh38.walks.gz`)
+    .replace(/\.walks\.gz$/, '')
 
-// Four walks over a 3.6 kb reference in 1 kb chunks:
+// Four walks over a 3.6 kb reference in 1 kb tiles:
 //   W GRCh38  0 chr1 >1>2>3>4>5>6
 //   W HG002   1 chr1 >1>2>7>4>5>6   7 replaces 3
 //   W HG002   2 chr1 >1>2>3>4>8>6   8 replaces 5
 //   W HG00097 1 chr1 >1>2>3>4>5>6
-const headerPrefix = fixture('walks5_header')
+const headerPrefix = fixture('header')
 
-// walks5_header's walks with the reference named as pggb names a P-line,
+// header's walks with the reference named as pggb names a P-line,
 // GRCh38#chr1
-const twoPartPrefix = fixture('walks5_twopart')
+const twoPartPrefix = fixture('twopart')
 
-// An unchopped graph, node 1 spanning 0-2600 and filed under chunk 0 alone:
+// An unchopped graph, node 1 spanning 0-2600, longer than its 1 kb tile:
 //   W GRCh38 0 chr1 >1>2>4
 //   W HG002  1 chr1 >1>3>4   3 replaces 2
-const maxNodePrefix = fixture('walks5_maxnode')
+const maxNodePrefix = fixture('maxnode')
 
-// Twelve 500 bp reference nodes over chr1:0-6000 in one 10 kb chunk:
+// Twelve 500 bp reference nodes over chr1:0-6000 in one 10 kb tile:
 //   W GRCh38  0 chr1 >1>2>3>4>5>6>7>8>9>10>11>12
 //   W HG002   1 chr1 >1>2>3>20>21>9>10>11>12   20 and 21, 2 kb each, replace 4-8
 //   W HG002   2 chr1 >1>2>3>4>5>6>7>8>9>10>11>12
 //   W HG003   1 chr1 >1>2>3>22                 the contig ends on 22, 300 bp
-const rejoinPrefix = fixture('walks5_rejoin')
+const rejoinPrefix = fixture('rejoin')
 
-// The same graph in 1 kb chunks, whose rows name the chunks their path goes on
-// in: HG002#1 leaves chunk 1000 for 20 and 21 and rejoins at 9, in chunk 4000
-const followPrefix = fixture('walks5_follow')
+// The same graph in 1 kb tiles: HG002#1 leaves tile 1000 at 1500 for 20 and
+// 21 and rejoins at 4000, in tile 4000
+const followPrefix = fixture('follow')
+
+const local = (path: string) => ({
+  localPath: path,
+  locationType: 'LocalPathLocation',
+})
 
 function makeAdapter(prefix: string, slots = {}) {
-  const local = (path: string) => ({
-    localPath: path,
-    locationType: 'LocalPathLocation',
-  })
   return new Adapter(
     configSchema.create({
-      walksLocation: local(`${prefix}.walks.bed.gz`),
-      walksIndex: { location: local(`${prefix}.walks.bed.gz.tbi`) },
+      walksLocation: local(`${prefix}.walks.gz`),
+      walksIndex: local(`${prefix}.walks.gz.idx`),
       assemblyNameToPanSN: { hg38: 'GRCh38', hs1: 'CHM13' },
       ...slots,
     }),
@@ -156,7 +158,7 @@ test.skipIf(!present)(
 )
 
 test.skipIf(!present)(
-  'the densest chunk is past the step budget for every haplotype',
+  'the densest tile is past the step budget for every haplotype',
   async () => {
     const cut = makeAdapter(`${chr22}.GRCh38`, {
       walkByteBudget: 100_000_000,
@@ -174,17 +176,18 @@ test.skipIf(!present)(
   60_000,
 )
 
-test('walksUri names the walk file and its index', () => {
+test('walksUri names the walk file and its directory', () => {
   const config = configSchema.create({
     walksUri: 'hprc.GRCh38',
     baseUri: 'https://example.com/',
   })
   expect(readConfObject(config, 'walksLocation')).toMatchObject({
-    uri: 'hprc.GRCh38.walks.bed.gz',
+    uri: 'hprc.GRCh38.walks.gz',
     baseUri: 'https://example.com/',
   })
-  expect(readConfObject(config, ['walksIndex', 'location'])).toMatchObject({
-    uri: 'hprc.GRCh38.walks.bed.gz.tbi',
+  expect(readConfObject(config, 'walksIndex')).toMatchObject({
+    uri: 'hprc.GRCh38.walks.gz.idx',
+    baseUri: 'https://example.com/',
   })
 })
 
@@ -201,6 +204,20 @@ test("the haplotypes a walk file's header names", async () => {
   expect(walkNames(gfa)).toEqual(['GRCh38#0#chr1', 'HG002#1#chr1'])
   expect(gfa).toMatch(/^S\t7\t/m)
   expect(gfa).not.toMatch(/^S\t8\t/m)
+})
+
+test('an unset walksIndex reads the directory beside the walk file', async () => {
+  const adapter = new Adapter(
+    configSchema.create({
+      walksLocation: local(`${headerPrefix}.walks.gz`),
+      assemblyNameToPanSN: { hg38: 'GRCh38' },
+    }),
+  )
+  expect(await adapter.getHaplotypeNames()).toEqual([
+    'HG00097#1',
+    'HG002#1',
+    'HG002#2',
+  ])
 })
 
 test('a cut asked to expand walks hands the reader their names', async () => {
@@ -275,13 +292,8 @@ test('a cut for some haplotypes keeps a reference walk named without a haplotype
   ])
 })
 
-test('a format 1 walk file is refused, with what to rebuild it with', async () => {
-  const cut = makeAdapter(fixture('walks1_header')).getSubgraph(chr1(0, 600))
-  await expect(cut).rejects.toThrow(/rebuild it with gfa-to-tabix 1.4/)
-})
-
-test('a cut over walkByteBudget reads no row', async () => {
-  const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
+test('a cut over walkByteBudget reads no unit', async () => {
+  const read = vi.spyOn(WalkFile.prototype, 'read')
   const cut = makeAdapter(headerPrefix, { walkByteBudget: 100 }).getSubgraph(
     chr1(1000, 2600),
   )
@@ -289,19 +301,13 @@ test('a cut over walkByteBudget reads no row', async () => {
     name: 'NodeLimitError',
     message: expect.stringMatching(/walkByteBudget/),
   })
-  expect(getLines).not.toHaveBeenCalled()
-  getLines.mockRestore()
+  expect(read).not.toHaveBeenCalled()
+  read.mockRestore()
 })
 
-// tabix-js's getLines spins forever on a NaN end, so these mock it: a
-// regression fails here instead of hanging the suite
-test('a cut or a feature read over a range that is not finite queries nothing', async () => {
-  const getLines = vi
-    .spyOn(TabixIndexedFile.prototype, 'getLines')
-    .mockResolvedValue()
-  const bytes = vi
-    .spyOn(TabixIndexedFile.prototype, 'bytesForRegions')
-    .mockResolvedValue(0)
+test('a cut or a feature read over a range that is not finite reads nothing', async () => {
+  const read = vi.spyOn(WalkFile.prototype, 'read')
+  const bytesFor = vi.spyOn(WalkReader.prototype, 'bytesFor')
   const adapter = makeAdapter(headerPrefix)
   const region = chr1(Number.NaN, 2600)
   await expect(adapter.getSubgraph(region)).rejects.toThrow(
@@ -313,19 +319,19 @@ test('a cut or a feature read over a range that is not finite queries nothing', 
   await expect(adapter.getRegionByteSize([region])).rejects.toThrow(
     /not a finite range/,
   )
-  expect(getLines).not.toHaveBeenCalled()
-  expect(bytes).not.toHaveBeenCalled()
-  getLines.mockRestore()
-  bytes.mockRestore()
+  expect(read).not.toHaveBeenCalled()
+  expect(bytesFor).not.toHaveBeenCalled()
+  read.mockRestore()
+  bytesFor.mockRestore()
 })
 
-test("a node longer than a chunk is read back as far as the header's maxnode reaches", async () => {
+test('a node longer than a tile is read from the tile its extent names', async () => {
   const adapter = makeAdapter(maxNodePrefix)
   const region = chr1(2100, 2500)
   const features = await firstValueFrom(
     adapter.getFeatures(region).pipe(toArray()),
   )
-  expect(features.map(f => f.get('name'))).toContain('1')
+  expect(features.map(f => f.get('name'))).toEqual(['1'])
   const gfa = await gfaOf(adapter.getSubgraph(region))
   expect(gfa).toMatch(/^S\t1\t/m)
   expect(gfa).toMatch(/^W\tGRCh38\t0\tchr1\t0\t3800\t>1>2>4(\t|$)/m)
@@ -339,99 +345,105 @@ test("a walk-indexed graph's features are the reference nodes overlapping the wi
   expect(features.map(f => f.get('name'))).toEqual(['2', '3', '4'])
 })
 
-test('the byte gate measures a walk file from the chunk before the window', async () => {
-  const bytes = vi.spyOn(TabixIndexedFile.prototype, 'bytesForRegions')
+test('the byte gate measures the bytes a cut of the window reads', async () => {
+  const bytesFor = vi.spyOn(WalkReader.prototype, 'bytesFor')
   const size = await makeAdapter(headerPrefix).getRegionByteSize([
     chr1(2100, 2600),
   ])
   expect(size).toBeGreaterThan(0)
-  expect(bytes.mock.calls.map(call => call[0])).toEqual([
-    [{ refName: 'GRCh38#0#chr1', start: 1000, end: 2600 }],
+  expect(bytesFor.mock.calls.map(call => call.slice(0, 2))).toEqual([
+    ['GRCh38#0#chr1', { start: 2100, end: 2600 }],
   ])
-  bytes.mockRestore()
+  bytesFor.mockRestore()
 })
 
-test('getFeatures reads from the chunk before the window', async () => {
-  const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
-  await firstValueFrom(
-    makeAdapter(headerPrefix).getFeatures(chr1(2100, 2600)).pipe(toArray()),
-  )
-  expect(getLines.mock.calls.map(call => call[1])).toEqual([1000])
-  getLines.mockRestore()
-})
+// A fragment runs from its walk's first step on the drawn stretch to its
+// last, so HG002#1's ends at 3 and its departure says where it goes on, and
+// HG003#1's ends at 3 with 22 trimmed, which no departure follows
+test.each([
+  ['one 10 kb tile', rejoinPrefix],
+  ['1 kb tiles', followPrefix],
+])(
+  'a walk leaving the window says where it rejoins the reference, in %s',
+  async (_, prefix) => {
+    const cut = (await makeAdapter(prefix).getSubgraph(chr1(1000, 1500), {
+      walkRows: true,
+    })) as WalkCut
+    const rows = walkRowsOf(cut.walkRowRuns!).rows.map(
+      ({ label, bp, complete, stop }) => ({ label, bp, complete, stop }),
+    )
+    expect(rows).toEqual([
+      { label: 'HG002#2', bp: 500, complete: true, stop: undefined },
+      {
+        label: 'HG002#1',
+        bp: 500,
+        complete: false,
+        stop: {
+          contigEnds: false,
+          shortBp: 0,
+          goesOn: {
+            near: 4000,
+            departure: expect.objectContaining({
+              leavePos: 1500,
+              rejoinPos: 4000,
+              ownBp: 4000,
+            }),
+          },
+        },
+      },
+      {
+        label: 'HG003#1',
+        bp: 500,
+        complete: false,
+        stop: { contigEnds: false, shortBp: 0 },
+      },
+    ])
+  },
+)
 
-test('a walk leaving the window is measured to where it rejoins the reference', async () => {
-  const cut = (await makeAdapter(rejoinPrefix).getSubgraph(chr1(1000, 1500), {
-    walkRows: true,
-  })) as WalkCut
-  const rows = walkRowsOf(cut.walkRowRuns!).rows.map(
-    ({ label, bp, complete, stop }) => ({ label, bp, complete, stop }),
-  )
-  expect(rows).toEqual([
-    { label: 'HG002#1', bp: 4500, complete: true, stop: undefined },
-    { label: 'HG002#2', bp: 500, complete: true, stop: undefined },
-    {
-      label: 'HG003#1',
-      bp: 800,
-      complete: false,
-      stop: { contigEnds: false, shortBp: 0 },
-    },
-  ])
-})
-
-// gfa-to-tabix 1.5 --walks --chunk 10 of ten 10 bp reference nodes:
+// gfa-to-tabix --walks --tile 10 of ten 10 bp reference nodes:
 //   W GRCh38 0 chr1 >1>2>3>4>5>6>7>8>9>10
-//   W HG002  1 ctg  >1>2>9>10   a deletion of 20-80, whose chunks hold skip rows
-const skipPrefix = fixture('walks5_skip')
+//   W HG002  1 ctg  >1>2>9>10   a departure from 20 to 80 with nothing between
+const skipPrefix = fixture('skip')
 
-// HG002's deletion runs under the whole of GRCh38's bar, flanks included
-test('a haplotype that jumps over the window draws as a deletion row', async () => {
+// HG002 steps on 2 and 9, the reference nodes either side of the window, so
+// its row across the reference's 30 bp is its departure from 20 to 80
+test('a haplotype that jumps over the window draws as a row of its departure', async () => {
   const cut = (await makeAdapter(skipPrefix).getSubgraph(chr1(31, 60), {
     walkRows: true,
   })) as WalkCut
   const { reference, rows } = walkRowsOf(cut.walkRowRuns!)
-  expect(reference.bp).toBe(40)
+  expect(reference.bp).toBe(30)
   expect(
-    rows.map(({ label, bp, gapBp, complete }) => ({
+    rows.map(({ label, bp, gapBp, complete, stepless, runs }) => ({
       label,
       bp,
       gapBp,
       complete,
+      stepless,
+      runs: runs.map(({ start, bp, cause }) => ({ start, bp, cause })),
     })),
-  ).toEqual([{ label: 'HG002#1', bp: 0, gapBp: 40, complete: true }])
-  expect(rows[0]!.runs).toEqual([
-    expect.objectContaining({ start: 0, bp: 40, cause: 'deleted' }),
+  ).toEqual([
+    {
+      label: 'HG002#1',
+      bp: 0,
+      gapBp: 30,
+      complete: true,
+      stepless: true,
+      runs: [{ start: 0, bp: 30, cause: 'departure' }],
+    },
   ])
 })
 
-test('a walk the read cuts off is read on to the chunk its row names', async () => {
-  const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
-  const cut = (await makeAdapter(followPrefix).getSubgraph(chr1(1000, 1500), {
-    walkRows: true,
-  })) as WalkCut
-  const reads = getLines.mock.calls.map(call => [call[1], call[2]])
-  getLines.mockRestore()
-  const rows = walkRowsOf(cut.walkRowRuns!).rows.map(
-    ({ label, bp, complete }) => ({ label, bp, complete }),
-  )
-  expect(rows).toEqual([
-    { label: 'HG002#1', bp: 4500, complete: true },
-    { label: 'HG002#2', bp: 500, complete: true },
-    { label: 'HG003#1', bp: 800, complete: false },
-  ])
-  // the window's chunks, then on to chunk 4000; HG003#1's contig ends
-  expect(new Set(reads.map(String))).toEqual(new Set(['0,1500', '2000,4001']))
-})
-
-test('a cut on a signal already aborted reads no row', async () => {
+test('a cut on a signal already aborted reads no unit', async () => {
   const adapter = makeAdapter(headerPrefix)
   await adapter.getHaplotypeNames()
-  const getLines = vi.spyOn(TabixIndexedFile.prototype, 'getLines')
+  const read = vi.spyOn(WalkFile.prototype, 'read')
   const aborted = new AbortController()
   aborted.abort(new Error('panned away'))
   await expect(
     adapter.getSubgraph(chr1(1000, 2600), { signal: aborted.signal }),
   ).rejects.toThrow()
-  expect(getLines).not.toHaveBeenCalled()
-  getLines.mockRestore()
+  expect(read).not.toHaveBeenCalled()
+  read.mockRestore()
 })

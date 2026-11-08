@@ -29,7 +29,7 @@ test('a GBZ cut and a walk-indexed rGFA cut read the haplotype set', () => {
   expect(
     cutsByHaplotype({
       type: 'RgfaTabixAdapter',
-      walksLocation: { uri: 'chr22.walks.bed.gz' },
+      walksLocation: { uri: 'chr22.walks.gz' },
     }),
   ).toBe(true)
   expect(

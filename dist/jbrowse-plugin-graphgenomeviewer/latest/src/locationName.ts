@@ -3,10 +3,10 @@ import type { FileLocation } from '@jbrowse/core/util'
 export const SEGMENTS_SUFFIX = '.segs.bed.gz'
 // gfa-to-tabix's format 2: segments and links in one file
 export const GRAPH_SUFFIX = '.graph.bed.gz'
-export const WALKS_SUFFIX = '.walks.bed.gz'
+export const WALKS_SUFFIX = '.walks.gz'
 
 // The reference sample `gfa-to-tabix --walks` names a walk file after:
-// GRCh38 in `chr22.GRCh38.walks.bed.gz`
+// GRCh38 in `chr22.GRCh38.walks.gz`
 export function walkFileSample(loc: FileLocation) {
   const name = locationName(loc).replace(/^.*[/\\]/, '')
   if (!name.endsWith(WALKS_SUFFIX)) {

@@ -120,13 +120,10 @@ test("a walk lanes adapter naming no assemblies takes the track's", () => {
 })
 
 test('a walk file guesses the lanes adapter, so the track has graph and lanes', () => {
-  const walks = uri('https://example.com/chr22.GRCh38.walks.bed.gz?sig=1')
+  const walks = uri('https://example.com/chr22.GRCh38.walks.gz?sig=1')
   const expected = {
     walksLocation: walks,
-    walksIndex: {
-      indexType: 'TBI',
-      location: uri('https://example.com/chr22.GRCh38.walks.bed.gz.tbi?sig=1'),
-    },
+    walksIndex: uri('https://example.com/chr22.GRCh38.walks.gz.idx?sig=1'),
   }
   const { adapter, trackType } = guessers()
   expect(adapter(walks)).toEqual({
@@ -144,21 +141,21 @@ test('a walk file guesses the lanes adapter, so the track has graph and lanes', 
   expect(trackType('WalkTabixSyntenyAdapter')).toBe('GraphTrack')
 })
 
-test('a walk file picked in the browser needs its index picked too', () => {
+test('a walk file picked in the browser needs its directory picked too', () => {
   const picked = (name: string) => ({
     name,
     blobId: name,
     locationType: 'BlobLocation' as const,
   })
   const { adapter } = guessers()
-  expect(adapter(picked('g.GRCh38.walks.bed.gz'))).toEqual({
+  expect(adapter(picked('g.GRCh38.walks.gz'))).toEqual({
     type: 'Fallback',
   })
   expect(
-    adapter(picked('g.GRCh38.walks.bed.gz'), picked('g.walks.bed.gz.csi')),
+    adapter(picked('g.GRCh38.walks.gz'), picked('g.GRCh38.walks.gz.idx')),
   ).toMatchObject({
     type: 'WalkTabixSyntenyAdapter',
-    walksIndex: { indexType: 'CSI' },
+    walksIndex: picked('g.GRCh38.walks.gz.idx'),
   })
 })
 
@@ -207,7 +204,7 @@ test("a walk file with no PanSN map reads as its name's sample on the track's as
     assemblyNames: ['hg38'],
     adapter: {
       type: 'RgfaTabixAdapter',
-      walksLocation: uri('https://example.com/chr22.GRCh38.walks.bed.gz'),
+      walksLocation: uri('https://example.com/chr22.GRCh38.walks.gz'),
     },
   }
   expect(withWalkReference(track).adapter).toMatchObject({

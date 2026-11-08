@@ -81,7 +81,7 @@ test('a walk file adds a track with lanes, cut for the haplotypes typed', async 
   added.length = 0
   picks.set(
     GRAPH_FILE_FIELDS.WalkTabixSyntenyAdapter,
-    'https://example.com/chr22.GRCh38.walks.bed.gz',
+    'https://example.com/chr22.GRCh38.walks.gz',
   )
   render(
     <GraphAddTrackWidget
@@ -107,15 +107,12 @@ test('a walk file adds a track with lanes, cut for the haplotypes typed', async 
   expect(added[0]!.adapter).toEqual({
     type: 'WalkTabixSyntenyAdapter',
     walksLocation: {
-      uri: 'https://example.com/chr22.GRCh38.walks.bed.gz',
+      uri: 'https://example.com/chr22.GRCh38.walks.gz',
       locationType: 'UriLocation',
     },
     walksIndex: {
-      indexType: 'TBI',
-      location: {
-        uri: 'https://example.com/chr22.GRCh38.walks.bed.gz.tbi',
-        locationType: 'UriLocation',
-      },
+      uri: 'https://example.com/chr22.GRCh38.walks.gz.idx',
+      locationType: 'UriLocation',
     },
     assemblyNameToPanSN: { hg38: 'GRCh38' },
     defaultHaplotypes: ['HG002', 'HG00733#1'],

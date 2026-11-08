@@ -12,17 +12,16 @@ import type { Feature } from '@jbrowse/core/util'
 import type { SyntenyMate } from '@jbrowse/synteny-core'
 
 // chr22 of HPRC v2.1 as a gbz-base database and as gfa-to-tabix's GRCh38
-// walk file in walk format 5. Skipped where the files are absent.
+// walk file in walk format 7. Skipped where the files are absent.
 const dir = '/home/cdiesh/work/scratch/walks-20261008'
-const walkPrefix = `${dir}/f5/chr22.GRCh38`
+const walkPrefix = `${dir}/walks7/chr22.GRCh38`
 const present =
-  existsSync(`${walkPrefix}.walks.bed.gz`) && existsSync(`${dir}/chr22.gbz.db`)
+  existsSync(`${walkPrefix}.walks.gz`) && existsSync(`${dir}/chr22.gbz.db`)
 
 const local = (path: string) => ({
   localPath: path,
   locationType: 'LocalPathLocation',
 })
-const file = (kind: string) => `${walkPrefix}.${kind}.bed.gz`
 
 const lanes = ['HG00097#1', 'HG00099#1', 'HG00128#1', 'HG00133#1']
 const window = {
@@ -67,8 +66,8 @@ test.skipIf(!present)(
   async () => {
     const walk = new Walk(
       walkSchema.create({
-        walksLocation: local(file('walks')),
-        walksIndex: { location: local(`${file('walks')}.tbi`) },
+        walksLocation: local(`${walkPrefix}.walks.gz`),
+        walksIndex: local(`${walkPrefix}.walks.gz.idx`),
         assemblyNames: ['hg38'],
         assemblyNameToPanSN: { hg38: 'GRCh38' },
       }),

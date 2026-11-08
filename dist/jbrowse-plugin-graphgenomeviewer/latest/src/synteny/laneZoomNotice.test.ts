@@ -11,6 +11,7 @@ function refusal(fetchBp: number, fitsBp: number) {
   const fragment = { ids: new Int32Array(kept) }
   return keptStepsError(
     [fragment] as never,
+    [],
     BUDGET,
     { start: 0, end: fetchBp },
     false,

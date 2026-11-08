@@ -7,7 +7,7 @@ import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
-import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
+import { PanSNRefNames, openTabixSlot, tabixRefNames } from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
 
 import type { MinigraphBubbleAdapterConfig } from './configSchema.ts'
@@ -23,7 +23,10 @@ export default class MinigraphBubbleAdapter extends BaseFeatureDataAdapter<Minig
   // Minigraph-Cactus graph produces PanSN rows (`GRCh38#0#chr6`) where a plain
   // minigraph graph produces bare ones (`chr6`). Same resolution the segment
   // adapter does, through the same `assemblyNameToPanSN` slot.
-  private readonly refNames = new PanSNRefNames(this.bubbles, this)
+  private readonly refNames = new PanSNRefNames(
+    tabixRefNames(this.bubbles),
+    this,
+  )
 
   async getRefNames(opts: BaseOptions = {}) {
     return this.refNames.assemblyRefNames(opts)

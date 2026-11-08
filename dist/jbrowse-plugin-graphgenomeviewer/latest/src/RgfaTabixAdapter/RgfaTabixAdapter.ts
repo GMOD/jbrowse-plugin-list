@@ -10,7 +10,12 @@ import {
 } from '@jbrowse/graph-walks'
 
 import { locationIsSet } from '../locationName.ts'
-import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
+import {
+  PanSNRefNames,
+  openTabixSlot,
+  openWalkReader,
+  tabixRefNames,
+} from '../panSNTabix.ts'
 import { getLines } from '../tabixRange.ts'
 import { WalkIndex } from './walkReader.ts'
 
@@ -46,10 +51,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     const walksLocation: FileLocation = this.getConf('walksLocation')
     const walks =
       under.length === 0 && locationIsSet(walksLocation)
-        ? new WalkIndex(
-            openTabixSlot(this, ['walksLocation'], ['walksIndex']),
-            this,
-          )
+        ? new WalkIndex(openWalkReader(this), this)
         : undefined
     const graphLocation: FileLocation =
       under.length === 0
@@ -64,7 +66,10 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       return {
         graph,
         walks,
-        refNames: new PanSNRefNames(walks?.file ?? graph, this),
+        refNames: new PanSNRefNames(
+          walks?.source ?? tabixRefNames(graph),
+          this,
+        ),
       }
     }
     const segments = openTabixSlot(
@@ -81,7 +86,10 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
       segments,
       links,
       walks,
-      refNames: new PanSNRefNames(walks?.file ?? segments, this),
+      refNames: new PanSNRefNames(
+        walks?.source ?? tabixRefNames(segments),
+        this,
+      ),
     }
   }
 
@@ -105,16 +113,8 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     return this.fine.refNames.assemblyRefNames(opts)
   }
 
-  // getFeatures reads a walk file from the chunk before the window
   async getRegionByteSize(regions: Region[], opts: BaseOptions = {}) {
-    const { walks, refNames } = this.fine
-    return refNames.regionBytes(
-      regions,
-      opts,
-      walks &&
-        ((refName, { start, end }) =>
-          walks.reader.queryStart(start, { ...opts, refName, end })),
-    )
+    return this.fine.refNames.regionBytes(regions, opts)
   }
 
   public async hasDataForRefName() {

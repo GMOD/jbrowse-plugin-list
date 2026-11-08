@@ -69,7 +69,7 @@ describe('what a reload would lose', () => {
     });
     test('a url-loaded alignment is not, but a large local GFF on it is', () => {
         const model = view({ msaFilehandle: URL_MSA });
-        model.setMSA(BIG_MSA);
+        model.data.setMSA(BIG_MSA);
         model.setGFF(BIG_GFF);
         expect(model.unsavedDocuments).toEqual({
             msa: undefined,
@@ -87,7 +87,7 @@ describe('what a reload would lose', () => {
     });
     test('a GFF read from a url is not', () => {
         const model = view({ gffFilehandle: URL_GFF });
-        model.setGFF(BIG_GFF);
+        model.data.setGFF(BIG_GFF);
         expect(model.unsavedDocuments.gff).toBeUndefined();
     });
 });
@@ -187,7 +187,7 @@ describe('a row two views name', () => {
         await settle();
         expect(copy.data.gff).toBe(BIG_GFF);
         copy.setGFFFilehandle(URL_GFF);
-        copy.setGFF('a\t.\tdomain\t1\t2');
+        copy.data.setGFF('a\t.\tdomain\t1\t2');
         await settle();
         await settle();
         expect(rows.get('shared')).toEqual({ gff: BIG_GFF });
@@ -246,7 +246,7 @@ describe('keeping IndexedDB up to date', () => {
     });
     test('a large local GFF on a url-loaded view is written, and only it', async () => {
         const model = view({ msaFilehandle: URL_MSA });
-        model.setMSA(BIG_MSA);
+        model.data.setMSA(BIG_MSA);
         model.setGFF(BIG_GFF);
         await settle();
         expect(mockStore).toHaveBeenCalledTimes(1);

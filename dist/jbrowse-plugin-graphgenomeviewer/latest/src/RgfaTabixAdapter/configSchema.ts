@@ -32,10 +32,11 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * (`foldBelowBp`), from which the plugin derives that zoom.
  *
  * `walksUri` takes the prefix of a walk file in place of `uri`, and resolves
- * `<walksUri>.walks.bed.gz` and its `.tbi`. `gfa-to-tabix --walks -o <prefix>`
- * writes one per reference sample, so a track names one as
- * `<prefix>.<sample>`. The adapter reads walk format 5, which gfa-to-tabix
- * writes from 1.4, through @jbrowse/graph-walks. Such a graph's cut carries
+ * `<walksUri>.walks.gz` and its directory `<walksUri>.walks.gz.idx`.
+ * `gfa-to-tabix --walks -o <prefix>` writes one per reference sample, so a
+ * track names one as `<prefix>.<sample>`. The adapter reads walk format 7,
+ * which gfa-to-tabix writes from 4.0, through @jbrowse/graph-walks. Such a
+ * graph's cut carries
  * the haplotypes' walks, and `defaultHaplotypes` names the ones it is cut for
  * until the user picks others.
  *
@@ -52,7 +53,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```js
  * {
  *   type: 'RgfaTabixAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f5s.GRCh38',
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38.GRCh38',
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  *   defaultHaplotypes: ['HG002', 'HG00733', 'HG02257', 'NA19240'],
  * }
@@ -195,15 +196,18 @@ const RgfaTabixAdapter = ConfigurationSchema(
     graphIndex: tabixIndexSchema('RgfaGraphIndex'),
     /**
      * #slot
-     * a `gfa-to-tabix --walks` file in walk format 5: per reference chunk,
-     * the reference's path, the ways haplotypes leave it and each haplotype's
-     * piece. Unset means the graph has no walks.
+     * a `gfa-to-tabix --walks` file in walk format 7: per tile of a
+     * reference, the reference's path, the ways haplotypes leave it and each
+     * haplotype's piece, and every departure from the reference. Unset means
+     * the graph has no walks.
      */
     walksLocation: fileLocationSlot(''),
     /**
      * #slot
+     * the walk file's directory, `<prefix>.<sample>.walks.gz.idx`. Unset
+     * reads it beside the walk file.
      */
-    walksIndex: tabixIndexSchema('RgfaWalksIndex'),
+    walksIndex: fileLocationSlot(''),
     /**
      * #slot
      * the most haplotype steps a cut keeps; a window whose walks hold more
@@ -219,9 +223,9 @@ const RgfaTabixAdapter = ConfigurationSchema(
     /**
      * #slot
      * the most compressed bytes a cut of a walk-indexed graph fetches from its
-     * walk file, as its Tabix index estimates it before any row is read; a
-     * window over it shows a zoom-in notice instead. The budget covers every
-     * haplotype, since a chunk's rows are filed for all of them.
+     * walk file, which its directory gives before any row is read; a window
+     * over it shows a zoom-in notice instead. The budget covers every
+     * haplotype, since a tile's rows are filed for all of them.
      */
     walkByteBudget: {
       type: 'integer',

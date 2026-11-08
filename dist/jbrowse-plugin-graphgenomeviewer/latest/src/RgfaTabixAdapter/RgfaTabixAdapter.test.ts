@@ -478,7 +478,7 @@ test("the adapter type expands the uri shorthand with the schema's preprocessor"
   const { normalizeSnapshot } = pluginManager.getAdapterType('RgfaTabixAdapter')
   expect(normalizeSnapshot?.({ uri: 'hprc', walksUri: 'w' })).toMatchObject({
     segmentsLocation: { uri: 'hprc.segs.bed.gz' },
-    walksLocation: { uri: 'w.walks.bed.gz' },
+    walksLocation: { uri: 'w.walks.gz' },
   })
 })
 

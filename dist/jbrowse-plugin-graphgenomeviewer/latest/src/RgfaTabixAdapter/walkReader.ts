@@ -1,15 +1,15 @@
 import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
-import { WalkReader, referenceNodes, walksKept } from '@jbrowse/graph-walks'
+import { checkRange, walksKept } from '@jbrowse/graph-walks'
 
-import { getLines } from '../tabixRange.ts'
 import { walkCutFor } from './walkCut.ts'
 
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
-import type { TabixIndexedFile } from '@gmod/tabix'
+import type { RefNameSource } from '../panSNTabix.ts'
 import type {
   BaseFeatureDataAdapter,
   BaseOptions,
 } from '@jbrowse/core/data_adapters/BaseAdapter'
+import type { WalkReader } from '@jbrowse/graph-walks'
 
 // The zoom-in notices name the config slots that set the budgets
 export const BUDGET_SLOTS = {
@@ -18,7 +18,7 @@ export const BUDGET_SLOTS = {
 }
 
 // Walk rows read a list of haplotypes, or of the samples they show, this long or
-// shorter in full where format 5 abridged it; a longer list, or every
+// shorter in full where the walk file abridged it; a longer list, or every
 // haplotype, keeps the abridged rows
 export const EXPAND_NAMED_MAX = 64
 
@@ -28,14 +28,25 @@ export const EXPAND_NAMED_MAX = 64
  * budget slots. @jbrowse/graph-walks reads and cuts the file.
  */
 export class WalkIndex {
-  readonly reader: WalkReader
+  // What PanSNRefNames reads of the file: its reference sequences, and the
+  // bytes a cut of each region fetches, which the directory gives before any
+  // row is read
+  readonly source: RefNameSource = {
+    names: opts => this.reader.referenceSequences(opts),
+    bytes: async (regions, opts) => {
+      let total = 0
+      for (const { refName, start, end } of regions) {
+        checkRange(refName, start, end)
+        total += await this.reader.bytesFor(refName, { start, end }, opts)
+      }
+      return total
+    },
+  }
 
   constructor(
-    readonly file: TabixIndexedFile,
+    readonly reader: WalkReader,
     private adapter: BaseFeatureDataAdapter,
-  ) {
-    this.reader = new WalkReader(file)
-  }
+  ) {}
 
   /**
    * The haplotypes the header names, `sample#haplotype` in byte order, or
@@ -56,10 +67,10 @@ export class WalkIndex {
 
   /**
    * The graph display's cut of a window: the reference walk, the walks of
-   * `haplotypes` (every walk when unset), and the nodes and links they visit,
-   * with the haplotypes whose deletion spans the window as `skips`, which walk
-   * rows draw. Walk rows draw runs, so the step budget spares them, and read a
-   * short list of named walks in full where format 5 abridged them.
+   * `haplotypes` (every walk when unset), the nodes and links they visit, and
+   * every departure from the reference over the window, which walk rows draw.
+   * Walk rows draw runs, so the step budget spares them, and read a short
+   * list of named walks in full where the file abridged them.
    */
   async subgraph(
     refName: string,
@@ -93,7 +104,7 @@ export class WalkIndex {
     const asked = expand?.length
       ? (name: string) => expand.includes(name)
       : undefined
-    const { graph, kept, fragments, skips } = await this.reader.cut(
+    const { graph, kept, fragments, departures } = await this.reader.cut(
       refName,
       region,
       {
@@ -109,52 +120,28 @@ export class WalkIndex {
           : {}),
       },
     )
-    return walkCutFor(graph.tables(kept, fragments, skips), region, walkRows)
+    return walkCutFor(
+      graph.tables(kept, fragments, departures),
+      region,
+      walkRows,
+    )
   }
 
   /**
-   * The reference nodes overlapping a window, from the ref rows of its
-   * chunks. A row's tabix interval is its chunk's first base, and gfa-to-tabix
-   * files a node crossing in from a chunk before under that chunk, so the read
-   * starts at queryStart.
+   * The reference nodes overlapping a window, each once, from the ref rows of
+   * the tiles over it
    */
   async referenceNodes(
     refName: string,
     region: { start: number; end: number },
     opts: BaseOptions,
   ) {
-    const refRows: string[][] = []
-    await getLines(
-      this.file,
-      refName,
-      await this.reader.queryStart(region.start, {
-        ...opts,
-        refName,
-        end: region.end,
-      }),
-      region.end,
-      {
-        signal: opts.signal,
-        lineCallback: line => {
-          const cols = line.split('\t')
-          if (cols[3] === 'ref') {
-            refRows.push(cols)
-          }
-        },
-      },
-    )
+    const nodes = await this.reader.referenceNodes(refName, region, opts)
     const seen = new Set<number>()
-    return referenceNodes(refRows).filter(node => {
-      if (
-        node.refName !== refName ||
-        node.end <= region.start ||
-        node.start >= region.end ||
-        seen.has(node.id)
-      ) {
-        return false
-      }
+    return nodes.filter(node => {
+      const first = !seen.has(node.id)
       seen.add(node.id)
-      return true
+      return first
     })
   }
 }

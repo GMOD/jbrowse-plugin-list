@@ -24,6 +24,7 @@ import {
   statusMessageText,
 } from '@jbrowse/core/util'
 import { openLocation } from '@jbrowse/core/util/io'
+import { parseSamplesTsv } from '@jbrowse/core/util/samplesTsv'
 import { flow, getEnv, isAlive } from '@jbrowse/mobx-state-tree'
 
 import {
@@ -44,7 +45,6 @@ import {
   tubeMapPanelGroups,
   withTubeMapPanels,
 } from '../tubeMapPanels'
-import { parseSamplesTsv } from '../walkRowGroups'
 import { walkRowsGraph } from '../walkRowsCut.ts'
 
 import type { SubgraphCutOptions, SubgraphRegion } from '../../GetSubgraph'
@@ -898,7 +898,12 @@ export const withLoadActions = withEngineSettings.actions(self => {
           getEnv(self).pluginManager,
         ).readFile('utf8')) as string
         if (isAlive(self) && key === sampleTableKey) {
-          self.walkRowSampleTable = parseSamplesTsv(text)
+          self.walkRowSampleTable = parseSamplesTsv(
+            text,
+            undefined,
+            'the samples table',
+            'the walks',
+          ).sources
         }
       } catch (e) {
         if (isAlive(self) && key === sampleTableKey) {

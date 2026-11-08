@@ -2,8 +2,8 @@
 
 - **In:** one of
   - a [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) walk file
-    (`<prefix>.<sample>.walks.bed.gz` beside its `.tbi`), opened with File →
-    **Open track**
+    (`<prefix>.<sample>.walks.gz` beside its directory `.walks.gz.idx`), opened
+    with File → **Open track**
   - a gfa-to-tabix graph index (`<prefix>.graph.bed.gz` beside its `.tbi`, or
     format 1's `.segs.bed.gz` and `.links.bed.gz` pair), opened the same way
   - a [gbz-base](https://github.com/jltsiren/gbz-base) database (`.gbz.db`),
@@ -23,7 +23,7 @@ short.
 
 ## Quick start
 
-1. Add the plugin to your JBrowse 5.0.0-beta.18 or later config:
+1. Add the plugin to your JBrowse 5.0.0-beta.20 or later config:
 
    ```json
    {
@@ -44,9 +44,9 @@ short.
    ```
 
 3. In an hg38 session, File → **Open track** on the url of
-   `chr22.GRCh38.walks.bed.gz`. The track redraws the graph for the view's
-   window as you pan. [docs/data.md](docs/data.md) covers the other formats and
-   the track config
+   `chr22.GRCh38.walks.gz`. The track redraws the graph for the view's window as
+   you pan. [docs/data.md](docs/data.md) covers the other formats and the track
+   config
 
 4. Explore:
    - Pick a layout from the track menu: force-directed, ordered, anchored,

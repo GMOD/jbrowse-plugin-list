@@ -4,7 +4,6 @@ import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import {
   ExpansionTooLargeError,
   RegionTooLargeError,
-  WalkReader,
   bpString,
   formsCut,
   panSNContig,
@@ -12,14 +11,9 @@ import {
   structuralForms,
 } from '@jbrowse/graph-walks'
 
-import {
-  formSources,
-  formVariants,
-  formWarnings,
-  referenceGenotypes,
-} from './formRows.ts'
+import { formSources, formVariants, formWarnings } from './formRows.ts'
 import { floorOf, pinnedLocus, pinnedOf, warningPrefix } from './pinned.ts'
-import { openTabixSlot } from '../panSNTabix.ts'
+import { openWalkReader } from '../panSNTabix.ts'
 
 import type { WalkFormsAdapterConfig } from './configSchema.ts'
 import type { Pinned } from './pinned.ts'
@@ -85,9 +79,7 @@ function cachedCut(key: string, cut: () => Promise<HaplotypeDepartures[]>) {
 export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAdapterConfig> {
   public static capabilities = ['getFeatures', 'getRefNames']
 
-  private readonly reader = new WalkReader(
-    openTabixSlot(this, ['walksLocation'], ['walksIndex']),
-  )
+  private readonly reader = openWalkReader(this)
 
   private formsRead: Promise<StructuralForms> | undefined
 
@@ -118,7 +110,7 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
 
   // Read once per adapter, and so once per floor and exclude list. The cut
   // takes no caller's signal, since every later caller shares it. A partial
-  // expansion would leave some walks as net changes over a whole chunk, so a
+  // expansion would leave some walks as net changes over a whole tile, so a
   // window too large to read them all errors instead.
   private forms(opts: BaseOptions) {
     if (!this.formsRead) {
@@ -206,23 +198,6 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
             INFO: { SVTYPE: [v.svType], SVLEN: [v.mark.delta] },
             mark: v.mark,
             genotypes: v.genotypes,
-          }),
-        )
-      }
-      // Core before 5.0.0-beta.14 (1845c280a9) sends no payload for a block
-      // with no records, which leaves the display on "Loading". The reference
-      // placeholder draws nothing; drop it once the host floor reaches beta.14
-      if (variants.length === 0) {
-        const start = Math.floor(query.start)
-        observer.next(
-          new SimpleFeature({
-            uniqueId: `forms-reference-${query.refName}-${start}`,
-            refName: query.refName,
-            start,
-            end: start + 1,
-            REF: 'N',
-            ALT: ['.'],
-            genotypes: referenceGenotypes(result, this.maxForms()),
           }),
         )
       }

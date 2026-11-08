@@ -13,13 +13,13 @@ import { walksKept } from '@jbrowse/graph-walks'
 import {
   anchorAligner,
   chainFeature,
-  crossingFeature,
+  departureFeature,
+  departureSpans,
   lanePairAligner,
-  skipCrossing,
-  skipFeature,
+  stepsInWindow,
 } from './walkLanes.ts'
 import { WalkIndex } from '../RgfaTabixAdapter/walkReader.ts'
-import { PanSNRefNames, openTabixSlot } from '../panSNTabix.ts'
+import { PanSNRefNames, openWalkReader } from '../panSNTabix.ts'
 import { ComparativeAdapterBase } from '../synteny/ComparativeAdapterBase.ts'
 import {
   laneAssemblyName,
@@ -29,23 +29,18 @@ import {
 import { laneZoomNotice } from '../synteny/laneZoomNotice.ts'
 
 import type { WalkTabixSyntenyAdapterConfig } from './configSchema.ts'
-import type { SkipCrossing, SkipSide } from './walkLanes.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
 import type { LaneFeatureOptions, LanePair } from '../synteny/lanePairs.ts'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
-import type { WalkSkip } from '@jbrowse/graph-walks'
 
 const haplotypeOf = ({ name }: { name: string }) => panSNHaplotype(name) ?? name
 
 export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<WalkTabixSyntenyAdapterConfig> {
-  private readonly walks: WalkIndex = new WalkIndex(
-    openTabixSlot(this, ['walksLocation'], ['walksIndex']),
-    this,
-  )
+  private readonly walks: WalkIndex = new WalkIndex(openWalkReader(this), this)
   private readonly refNames: PanSNRefNames = new PanSNRefNames(
-    this.walks.file,
+    this.walks.source,
     this,
   )
 
@@ -114,11 +109,11 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     return this.walks.subgraph(refName, region, opts)
   }
 
-  // The window's walks for the haplotypes named and the reference, with no
-  // link read; a window past a budget fails as a zoom-in notice for lanes.
-  // Named lanes come back in full where format 5 abridged them: an abridged
-  // walk is two reference steps, which drew 15 of the HPRC MHC launch's 32
-  // lanes empty.
+  // The window's walks for the haplotypes named and the reference, with
+  // every departure from the reference over it and no link read; a window
+  // past a budget fails as a zoom-in notice for lanes. Named lanes come back
+  // in full where the walk file abridged them: an abridged walk is two
+  // reference steps, which drew 15 of the HPRC MHC launch's 32 lanes empty.
   private async laneWalks(
     refName: string,
     region: Region,
@@ -143,93 +138,11 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
   }
 
   /**
-   * Where each skipping haplotype crosses its deletion, read from contained
-   * cuts over the reference node it leaves, one cut per chunk those nodes
-   * fall in, and for any that cut misses, over the node it rejoins. A cut
-   * that fails drops only its own haplotypes' crossings.
-   */
-  private async skipCrossings(
-    refName: string,
-    skips: WalkSkip[],
-    opts: LaneFeatureOptions,
-  ) {
-    const found: SkipCrossing[] = []
-    let missed = skips
-    for (const side of ['leave', 'rejoin'] as const) {
-      const crossings = await this.sideCrossings(refName, missed, side, opts)
-      for (const crossing of crossings) {
-        found.push(crossing)
-      }
-      const placed = new Set(crossings.map(crossing => crossing.skip))
-      missed = missed.filter(skip => !placed.has(skip))
-    }
-    return found
-  }
-
-  private async sideCrossings(
-    refName: string,
-    skips: WalkSkip[],
-    side: SkipSide,
-    opts: LaneFeatureOptions,
-  ) {
-    const { signal } = opts
-    const { chunk } = await this.walks.reader.header({ signal })
-    const boundary = (skip: WalkSkip) =>
-      side === 'leave' ? skip.refStart - 1 : skip.refEnd
-    const byChunk = new Map<
-      number,
-      { group: WalkSkip[]; start: number; end: number }
-    >()
-    for (const skip of skips) {
-      const at = boundary(skip)
-      const cs = Math.floor(at / chunk)
-      const held = byChunk.get(cs)
-      if (held) {
-        held.group.push(skip)
-        held.start = Math.min(held.start, at)
-        held.end = Math.max(held.end, at + 1)
-      } else {
-        byChunk.set(cs, { group: [skip], start: at, end: at + 1 })
-      }
-    }
-    const found = await Promise.all(
-      [...byChunk.values()].map(async ({ group, start, end }) => {
-        const names = new Set(group.map(skip => skip.name))
-        const keep = (name: string) => names.has(name)
-        try {
-          const { graph, fragments } = await this.walks.reader.cut(
-            refName,
-            { start, end },
-            {
-              ...this.walks.budgets(),
-              signal,
-              keep,
-              expand: keep,
-              context: 0,
-              contained: true,
-              links: false,
-            },
-          )
-          return group.map(skip =>
-            skipCrossing(skip, refName, fragments, graph.nodes, side),
-          )
-        } catch (error) {
-          if (signal?.aborted) {
-            throw error
-          }
-          return []
-        }
-      }),
-    )
-    return found.flat().filter(crossing => crossing !== undefined)
-  }
-
-  /**
    * One record per stretch a haplotype's walk shares with the reference's,
-   * on the reference with the haplotype as its mate. A haplotype whose
-   * deletion spans the window, with no walk there on any contig, is one
-   * `spansWindow` record of the skipped stretch, as is one that crosses the
-   * window through steps of its own, its mate those steps' bp.
+   * on the reference with the haplotype as its mate. A haplotype with no step
+   * on the reference inside the window whose departure spans it is one
+   * `spansWindow` record of the departure's stretch, its mate the haplotype's
+   * own sequence between the departure's ends, a point where it has none.
    */
   private async anchorFeatures(
     refName: string,
@@ -256,7 +169,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     }
     const { start, end } = region
     const status = `Reading walks ${region.refName}:${start.toLocaleString()}-${end.toLocaleString()}`
-    const { graph, fragments, skips } = await this.laneWalks(
+    const { graph, fragments, departures } = await this.laneWalks(
       refName,
       region,
       prefixes,
@@ -269,21 +182,6 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       prefixes === undefined
         ? 0
         : prefixes.findIndex(prefix => panSNMatchesPrefix(name, prefix))
-    // NA19036#1 skips the IGL locus on one contig and walks it on another
-    const walking = new Set(fragments.map(haplotypeOf))
-    const crossings = await updateStatus(status, opts.statusCallback, () =>
-      this.skipCrossings(
-        refName,
-        skips.filter(
-          skip =>
-            rank(skip) >= 0 &&
-            !walking.has(haplotypeOf(skip)) &&
-            skip.refStart <= start &&
-            skip.refEnd >= end,
-        ),
-        opts,
-      ),
-    )
     const align = anchorAligner(graph.nodes)
     const asmByPrefix = assemblyByPanSNPrefix(this)
     const laneOf = (walk: { name: string }) =>
@@ -293,41 +191,47 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
       .filter(fragment => fragment.name !== refName && rank(fragment) >= 0)
       .map(query => ({
         rank: rank(query),
-        features: query.crossing
-          ? [
-              crossingFeature({
-                fragment: query,
-                crossing: query.crossing,
-                assemblyName: region.assemblyName,
-                refName: region.refName,
-                mateAssemblyName: laneOf(query),
-              }),
-            ]
-          : references.flatMap(reference =>
-              align(query, reference).map(chain =>
-                chainFeature({
-                  chain,
-                  target: reference,
-                  query,
-                  assemblyName: region.assemblyName,
-                  refName: region.refName,
-                  mateAssemblyName: laneOf(query),
-                }),
-              ),
-            ),
+        features: references.flatMap(reference =>
+          align(query, reference).map(chain =>
+            chainFeature({
+              chain,
+              target: reference,
+              query,
+              assemblyName: region.assemblyName,
+              refName: region.refName,
+              mateAssemblyName: laneOf(query),
+            }),
+          ),
+        ),
       }))
-    const skipped = crossings.map(crossing => ({
-      rank: rank(crossing.skip),
-      features: [
-        skipFeature({
-          crossing,
-          refName: region.refName,
-          assemblyName: region.assemblyName,
-          mateAssemblyName: laneOf(crossing.skip),
-        }),
-      ],
-    }))
-    return [...walked, ...skipped]
+    // NA19036#1 skips the IGL locus on one contig and walks it on another
+    const walking = new Set(
+      fragments
+        .filter(fragment =>
+          stepsInWindow(fragment, graph.nodes, refName, region),
+        )
+        .map(haplotypeOf),
+    )
+    const spanning = departures
+      .filter(
+        departure =>
+          rank(departure) >= 0 &&
+          !walking.has(haplotypeOf(departure)) &&
+          departureSpans(departure, region),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(departure => ({
+        rank: rank(departure),
+        features: [
+          departureFeature({
+            departure,
+            refName: region.refName,
+            assemblyName: region.assemblyName,
+            mateAssemblyName: laneOf(departure),
+          }),
+        ],
+      }))
+    return [...walked, ...spanning]
       .sort((a, b) => a.rank - b.rank)
       .flatMap(lane => lane.features)
   }

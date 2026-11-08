@@ -171,7 +171,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           gbz
             ? "Optional. The graph's sample for this assembly, e.g. GRCh38 where the assembly is hg38; leave blank when they share a name or the graph has one reference sample"
             : walks
-              ? 'Optional. The PanSN sample this assembly is in the graph; blank takes it from the file name, GRCh38 in chr22.GRCh38.walks.bed.gz'
+              ? 'Optional. The PanSN sample this assembly is in the graph; blank takes it from the file name, GRCh38 in chr22.GRCh38.walks.gz'
               : "Optional. The PanSN prefix the graph gives this assembly, e.g. GRCh38 for HPRC's GRCh38#0#chr1; leave blank when the graph's stable names are bare"
         }
         placeholder="GRCh38"

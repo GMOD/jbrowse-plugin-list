@@ -109,7 +109,7 @@ export const withWalkRowViews = withLaunchViews
       if (!bars || !self.showGenes) {
         return undefined
       }
-      const notDeleted = bars.rows.filter(row => row.deletionBp === undefined)
+      const notDeleted = bars.rows.filter(row => !row.stepless)
       const reads = notDeleted.flatMap(row => {
         const location = row.axis ? self.rowLocation(row, row.axis) : undefined
         const assembly = location?.assembly

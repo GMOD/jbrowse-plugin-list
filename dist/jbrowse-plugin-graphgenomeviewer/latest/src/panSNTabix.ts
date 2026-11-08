@@ -7,21 +7,23 @@ import {
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { cachedSetup } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { openLocation, openTabixIndexFilehandle } from '@jbrowse/core/util/io'
-import { refNameLookup, resolveRefName } from '@jbrowse/graph-walks'
+import { WalkReader, refNameLookup, resolveRefName } from '@jbrowse/graph-walks'
 import { types } from '@jbrowse/mobx-state-tree'
 
+import { WALKS_SUFFIX, locationIsSet, renamed } from './locationName.ts'
 import { bytesForRegions } from './tabixRange.ts'
 
 import type {
   BaseFeatureDataAdapter,
   BaseOptions,
 } from '@jbrowse/core/data_adapters/BaseAdapter'
-import type { Region } from '@jbrowse/core/util/types'
+import type { FileLocation, Region } from '@jbrowse/core/util/types'
 
 // What a tabix-indexed graph track answers about its own reference names, for
-// the two adapters that read one: `RgfaTabixAdapter` over segments and links,
-// and `MinigraphBubbleAdapter` over bubbles. @jbrowse/graph-walks builds the
-// name lookup.
+// the adapters that read one: `RgfaTabixAdapter` over segments and links or a
+// walk file, `WalkTabixSyntenyAdapter` over a walk file, and
+// `MinigraphBubbleAdapter` over bubbles. @jbrowse/graph-walks builds the name
+// lookup.
 //
 // A class rather than a base class, for the reason ComparativeAdapterBase.ts
 // records: a base generic over the config cannot prove a slot name to
@@ -63,17 +65,17 @@ export function tbiBeside(uri: string, baseUri: unknown, csi: unknown) {
   }
 }
 
-// The `walksUri` shorthand: `<walksUri>.walks.bed.gz` and its index
+// The `walksUri` shorthand: `<walksUri>.walks.gz` and its directory beside it
 export function walksLocations(snap: Record<string, unknown>) {
-  const { walksUri, baseUri, csi } = snap
+  const { walksUri, baseUri } = snap
   if (typeof walksUri !== 'string') {
     return snap
   }
-  const walks = `${walksUri}.walks.bed.gz`
+  const walks = `${walksUri}${WALKS_SUFFIX}`
   return {
     ...snap,
     walksLocation: { uri: walks, baseUri },
-    walksIndex: tbiBeside(walks, baseUri, csi),
+    walksIndex: { uri: `${walks}.idx`, baseUri },
   }
 }
 
@@ -96,6 +98,44 @@ export function openTabixSlot(
   })
 }
 
+/**
+ * The walk file the `walksLocation` slot names, read with its directory from
+ * `walksIndex`, or from `<walksLocation>.idx` beside it where that slot is
+ * unset
+ */
+export function openWalkReader(adapter: BaseFeatureDataAdapter) {
+  const pm = adapter.pluginManager
+  const data: FileLocation = adapter.getConf('walksLocation')
+  const index: FileLocation = adapter.getConf('walksIndex')
+  return WalkReader.fromFilehandles({
+    data: openLocation(data, pm),
+    directory: openLocation(
+      locationIsSet(index) ? index : renamed(data, name => `${name}.idx`),
+      pm,
+    ),
+  })
+}
+
+/**
+ * What `PanSNRefNames` reads of an indexed file: the sequences it files rows
+ * under, and the compressed bytes a read of some regions fetches, for the
+ * display's byte gate
+ */
+export interface RefNameSource {
+  names(opts?: BaseOptions): Promise<string[]>
+  bytes(
+    regions: { refName: string; start: number; end: number }[],
+    opts: BaseOptions,
+  ): Promise<number>
+}
+
+export function tabixRefNames(file: TabixIndexedFile): RefNameSource {
+  return {
+    names: opts => file.getReferenceSequenceNames(opts),
+    bytes: (regions, opts) => bytesForRegions(file, regions, opts),
+  }
+}
+
 export function unmappedRegionMessage(region: Region) {
   return `${region.assemblyName} ${region.refName} is not in this graph's index; a graph with PanSN names (GRCh38#0#chr1) needs ${region.assemblyName} mapped to its prefix in assemblyNameToPanSN`
 }
@@ -112,20 +152,13 @@ export class PanSNRefNames {
   // was waiting on. cachedSetup rejects only the caller that aborts, keeps the
   // read going for the rest, and retries a failed read.
   private lookup = cachedSetup({
-    setup: async opts => refNameLookup(await this.names(opts)),
+    setup: async opts => refNameLookup(await this.source.names(opts)),
   })
 
   constructor(
-    private file: TabixIndexedFile,
+    private source: RefNameSource,
     private adapter: BaseFeatureDataAdapter,
   ) {}
-
-  // A walk file also indexes `<seq>~<chunkStart>` detail sequences, which name
-  // no contig
-  private async names(opts?: BaseOptions) {
-    const names = await this.file.getReferenceSequenceNames(opts)
-    return names.filter(n => !n.includes('~'))
-  }
 
   /**
    * The names the ASSEMBLY uses, not the graph's own.
@@ -138,7 +171,7 @@ export class PanSNRefNames {
    * were spotted.
    */
   async assemblyRefNames(opts: BaseOptions = {}) {
-    const names = await this.names(opts)
+    const names = await this.source.names(opts)
     const prefix = resolvePanSNPrefix(this.adapter, opts.assemblyName)
     const contigs = names
       .filter(n => panSNMatchesPrefix(n, prefix))
@@ -173,7 +206,7 @@ export class PanSNRefNames {
   async resolveMapped(region: Region, opts?: BaseOptions) {
     const refName = await this.resolve(region, opts)
     if (refName === undefined && region.assemblyName) {
-      const names = await this.names(opts)
+      const names = await this.source.names(opts)
       const prefix = resolvePanSNPrefix(this.adapter, region.assemblyName)
       if (
         names.every(n => n.includes('#')) &&
@@ -198,26 +231,17 @@ export class PanSNRefNames {
   }
 
   /**
-   * The compressed bytes a read of `regions` fetches from the file, as its
-   * index estimates them, for the display's byte gate. `queryStart` moves a
-   * window's start to where the read begins.
+   * The compressed bytes a read of `regions` fetches from the file, for the
+   * display's byte gate
    */
-  async regionBytes(
-    regions: Region[],
-    opts: BaseOptions = {},
-    queryStart = async (_refName: string, region: Region) => region.start,
-  ) {
+  async regionBytes(regions: Region[], opts: BaseOptions = {}) {
     const spans = []
     for (const region of regions) {
       const refName = await this.resolve(region, opts)
       if (refName !== undefined) {
-        spans.push({
-          refName,
-          start: await queryStart(refName, region),
-          end: region.end,
-        })
+        spans.push({ refName, start: region.start, end: region.end })
       }
     }
-    return bytesForRegions(this.file, spans, opts)
+    return this.source.bytes(spans, opts)
   }
 }

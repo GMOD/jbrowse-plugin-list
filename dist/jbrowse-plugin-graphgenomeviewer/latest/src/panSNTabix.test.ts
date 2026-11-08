@@ -12,7 +12,7 @@ describe('the shared read of the index names', () => {
     let release = (_names: string[]) => {}
     let reads = 0
     const file = {
-      getReferenceSequenceNames: (opts?: { signal?: AbortSignal }) =>
+      names: (opts?: { signal?: AbortSignal }) =>
         new Promise<string[]>((resolve, reject) => {
           reads++
           release = resolve
@@ -35,7 +35,7 @@ describe('the shared read of the index names', () => {
   test('a read that fails is tried again by the next query', async () => {
     let attempt = 0
     const file = {
-      getReferenceSequenceNames: () =>
+      names: () =>
         ++attempt === 1
           ? Promise.reject(new Error('network'))
           : Promise.resolve(['chr6']),
@@ -50,7 +50,7 @@ describe('a region the file holds no name for', () => {
   const adapter = { getConf: () => undefined }
   const refNamesOf = (names: string[]) =>
     new PanSNRefNames(
-      { getReferenceSequenceNames: () => Promise.resolve(names) } as never,
+      { names: () => Promise.resolve(names) } as never,
       adapter as never,
     )
   const chrM = { assemblyName: 'hg38', refName: 'chrM', start: 0, end: 10 }
@@ -74,24 +74,4 @@ describe('a region the file holds no name for', () => {
       refNamesOf(['chr1', 'HG002#1#chr1']).resolveForCut(chrM),
     ).rejects.toThrow('This graph has nothing on hg38 chrM')
   })
-})
-
-// A walk file indexes `chr1~851968`-style detail sequences beside its contigs
-test("a walk file's detail sequences are not contigs", async () => {
-  const refNames = new PanSNRefNames(
-    {
-      getReferenceSequenceNames: () =>
-        Promise.resolve(['chr1', 'chr1~851968', 'chr2', 'chr2~65536']),
-    } as never,
-    { getConf: () => undefined } as never,
-  )
-  expect(await refNames.assemblyRefNames()).toEqual(['chr1', 'chr2'])
-  expect(
-    await refNames.resolve({
-      assemblyName: 'hg38',
-      refName: 'chr1~851968',
-      start: 0,
-      end: 1,
-    }),
-  ).toBeUndefined()
 })

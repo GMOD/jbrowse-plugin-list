@@ -93,7 +93,7 @@ const makeView = (adapter: Record<string, unknown>) => makeSession(adapter).view
 
 const formsAdapter = {
   type: 'WalkFormsAdapter',
-  walksLocation: { uri: 'x.walks.bed.gz', locationType: 'UriLocation' },
+  walksLocation: { uri: 'x.walks.gz', locationType: 'UriLocation' },
   pinned: LPA,
 }
 

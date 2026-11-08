@@ -7,11 +7,9 @@ import { matchFeature } from '../synteny/matchFeature.ts'
 
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
 import type {
-  WalkCrossing,
+  WalkDeparture,
   WalkFragment,
   WalkNode,
-  WalkSkip,
-  WalkStop,
 } from '@jbrowse/graph-walks'
 
 // The longest bubble with equal bases on both sides that is written as
@@ -302,168 +300,76 @@ export function chainFeature({
   })
 }
 
-/** The point on a haplotype's contig where it crosses a skipped stretch */
-export interface SkipCrossing {
-  skip: WalkSkip
-  at: number
-  strand: '+' | '-'
-}
-
 /**
- * The reference node either side of a skipped stretch: the one a haplotype
- * leaves, ending at `refStart`, or the one it rejoins, starting at `refEnd`
+ * Whether a walk's fragment steps on the reference inside the window: on a
+ * node of `refName` overlapping it
  */
-export type SkipSide = 'leave' | 'rejoin'
-
-/**
- * Where a haplotype that skips the window crosses its deletion, from a cut
- * over the reference node on one `side` of it. The jump lies on whichever end
- * of the walk's fragment goes on to a chunk across the stretch; with neither
- * or both, on the end the fragment's other steps leave free, and failing that
- * on the end the node's own direction points to. A walk that passes the node
- * inverted between two forward steps still crosses after it.
- */
-export function skipCrossing(
-  skip: WalkSkip,
-  refName: string,
-  fragments: WalkFragment[],
+export function stepsInWindow(
+  fragment: WalkFragment,
   nodes: Map<number, WalkNode>,
-  side: SkipSide,
-): SkipCrossing | undefined {
-  const leaving = side === 'leave'
-  const across = (stop: WalkStop) =>
-    stop.kind === 'elsewhere' &&
-    (leaving
-      ? stop.chunk.start >= skip.refStart
-      : stop.chunk.start < skip.refStart)
-  for (const fragment of fragments) {
-    const { name, fragStart, hapStart, ids, rev, before, after } = fragment
-    if (name === skip.name && fragStart === skip.fragStart) {
-      let at = hapStart
-      for (let i = 0; i < ids.length; i++) {
-        const node = nodes.get(ids[i]!)
-        const length = node === undefined ? 0 : node.end - node.start
-        if (
-          node?.rank === 0 &&
-          node.refName === refName &&
-          (leaving ? node.end === skip.refStart : node.start === skip.refEnd)
-        ) {
-          const jumpsAfter =
-            across(after) !== across(before)
-              ? across(after)
-              : i > 0 !== i < ids.length - 1
-                ? i > 0
-                : leaving !== (rev[i] === 1)
-          return {
-            skip,
-            at: jumpsAfter ? at + length : at,
-            strand: jumpsAfter === leaving ? '+' : '-',
-          }
-        }
-        at += length
-      }
-    }
-  }
-  return undefined
+  refName: string,
+  window: { start: number; end: number },
+) {
+  return Array.from(fragment.ids).some(id => {
+    const node = nodes.get(id)
+    return (
+      node?.rank === 0 &&
+      node.refName === refName &&
+      node.start < window.end &&
+      node.end > window.start
+    )
+  })
+}
+
+/** Whether the reference between a departure's ends covers the whole window */
+export function departureSpans(
+  { leavePos, rejoinPos }: WalkDeparture,
+  window: { start: number; end: number },
+) {
+  return (
+    Math.min(leavePos, rejoinPos) <= window.start &&
+    Math.max(leavePos, rejoinPos) >= window.end
+  )
 }
 
 /**
- * A haplotype whose deletion spans the whole window, as the record a
- * multi-way display lifts out as a deletion: `spansWindow`, the skipped
- * stretch whole so its length heads the lane, and the crossing as its mate.
- * The record carries no CIGAR and no identity, so no ramp or identity filter
- * reads it as an alignment.
+ * A haplotype whose departure from the reference spans the whole window, as
+ * the record a multi-way display lifts out as a deletion: `spansWindow`, the
+ * reference between the departure's ends whole so its length heads the lane,
+ * and the haplotype's own sequence between them as its mate, a point where
+ * it has none. The record runs the way the walk rejoins the reference, and
+ * carries no CIGAR and no identity, so no ramp or identity filter reads it
+ * as an alignment.
  */
-export function skipFeature({
-  crossing,
+export function departureFeature({
+  departure,
   refName,
   assemblyName,
   mateAssemblyName,
 }: {
-  crossing: SkipCrossing
+  departure: WalkDeparture
   refName: string
   assemblyName: string
   mateAssemblyName: string
 }) {
-  const { skip, at, strand } = crossing
-  return windowDeletion({
-    id: `${skip.name}:${skip.fragStart}:${skip.piece}:skip`,
-    assemblyName,
-    refName,
-    start: skip.refStart,
-    end: skip.refEnd,
-    reverse: strand === '-',
-    mate: {
-      refName: panSNContig(skip.name),
-      start: at,
-      end: at,
-      assemblyName: mateAssemblyName,
-    },
-  })
-}
-
-/**
- * A haplotype that leaves the reference before the window and rejoins after
- * it, through steps of its own, as the same record as a skip's, its mate the
- * haplotype's bp between the two reference steps
- */
-export function crossingFeature({
-  fragment,
-  crossing,
-  refName,
-  assemblyName,
-  mateAssemblyName,
-}: {
-  fragment: WalkFragment
-  crossing: WalkCrossing
-  refName: string
-  assemblyName: string
-  mateAssemblyName: string
-}) {
-  const { name, fragStart, hapStart, hapEnd } = fragment
-  return windowDeletion({
-    id: `${name}:${fragStart}:${hapStart}:crossing`,
-    assemblyName,
-    refName,
-    start: crossing.refStart,
-    end: crossing.refEnd,
-    reverse: crossing.reverse,
-    mate: {
-      refName: panSNContig(name),
-      start: hapStart,
-      end: hapEnd,
-      assemblyName: mateAssemblyName,
-    },
-  })
-}
-
-function windowDeletion({
-  id,
-  assemblyName,
-  refName,
-  start,
-  end,
-  reverse,
-  mate,
-}: {
-  id: string
-  assemblyName: string
-  refName: string
-  start: number
-  end: number
-  reverse: boolean
-  mate: { refName: string; start: number; end: number; assemblyName: string }
-}) {
+  const { name, hapStart, ownBp, leavePos, rejoinPos, rejoinReversed } =
+    departure
+  const id = `${name}:${hapStart}:${leavePos}:departure`
   return new SyntenyFeature({
     uniqueId: id,
     assemblyName,
     refName,
-    start,
-    end,
-    type: 'skip',
-    strand: reverse ? -1 : 1,
+    start: Math.min(leavePos, rejoinPos),
+    end: Math.max(leavePos, rejoinPos),
+    type: 'departure',
+    strand: rejoinReversed ? -1 : 1,
     syntenyId: id,
     spansWindow: true,
-    mate,
+    mate: {
+      refName: panSNContig(name),
+      start: hapStart,
+      end: hapStart + ownBp,
+      assemblyName: mateAssemblyName,
+    },
   })
 }

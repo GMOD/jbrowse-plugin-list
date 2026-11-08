@@ -4,6 +4,7 @@
 // "the submenu is called something else".
 
 import { spreadFor } from '@jbrowse/bandage-core/bubbleSpreads'
+import { departureTable } from '@jbrowse/bandage-core/gfa/departures'
 import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
 import {
@@ -5166,6 +5167,7 @@ const WALK_TABLES: GraphTables = {
     steps: Int32Array.of(0, 1, 3, 0, 2, 3, 0, 1, 3),
     reversed: new Uint8Array(9),
   },
+  departures: departureTable(),
 }
 
 describe('a walk-file cut', () => {
@@ -5229,8 +5231,9 @@ describe('a walk-file cut', () => {
     )
   })
 
-  // HG004#1 jumps over chr1:1500-4500, so its row is a hairline of no bp
-  test("a deletion row's hairline takes the pointer along its length", async () => {
+  // HG004#1 leaves the reference at 1500 and rejoins it at 4500 with no step
+  // between, so its row is a hairline of no bp
+  test("a stepless row's hairline takes the pointer along its length", async () => {
     mockRpcCall.mockImplementation(
       (_sid: unknown, method: string, args: { opts: SubgraphCutOptions }) =>
         method === 'GetSubgraph'
@@ -5238,11 +5241,21 @@ describe('a walk-file cut', () => {
               walkCutFor(
                 {
                   ...WALK_TABLES,
-                  skips: {
-                    names: ['HG004#1#chr1'],
-                    starts: Float64Array.of(1500),
-                    ends: Float64Array.of(4500),
-                  },
+                  departures: departureTable([
+                    {
+                      name: 'HG004#1#chr1',
+                      hapStart: 500,
+                      ownBp: 0,
+                      missingBp: 0,
+                      leavePos: 1500,
+                      leaveReversed: false,
+                      leavePasses: 1,
+                      rejoinPos: 4500,
+                      rejoinReversed: false,
+                      rejoinPasses: 1,
+                      fromSteps: false,
+                    },
+                  ]),
                 },
                 TEST_REGION,
                 args.opts.walkRows,
@@ -5253,7 +5266,7 @@ describe('a walk-file cut', () => {
     const model = restoredView({ layoutMode: 'walkrows' })
     await model.load()
     const rows = model.walkRowList
-    const i = rows.findIndex(r => r.deletionBp !== undefined)
+    const i = rows.findIndex(r => r.stepless)
     const row = rows[i]!
     const run = row.runs[0]!
     expect(row.bp).toBe(0)

@@ -1,21 +1,17 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { WALK_BUDGETS } from '@jbrowse/graph-walks'
 
-import {
-  fileLocationSlot,
-  tabixIndexSchema,
-  walksLocations,
-} from '../panSNTabix.ts'
+import { fileLocationSlot, walksLocations } from '../panSNTabix.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
 /**
  * #config WalkTabixSyntenyAdapter
  * #trackType GraphTrack
- * #fileFormat synteny | Walk-indexed graph | Built by `gfa-to-tabix --walks`; haplotype lanes and local subgraphs from three tabix files
+ * #fileFormat synteny | Walk-indexed graph | Built by `gfa-to-tabix --walks`; haplotype lanes and local subgraphs from a walk file
  * Serves a pangenome graph whose haplotype walks
  * [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) `--walks` filed under
- * chunks of a reference, as haplotype-versus-reference alignments, the shape
+ * tiles of a reference, as haplotype-versus-reference alignments, the shape
  * `MultiWaySyntenyDisplay` draws as one lane per haplotype, and as the graph
  * display's cut. A window on the reference reads the walk rows filed under
  * it, and each haplotype is aligned to the reference, or to another
@@ -24,15 +20,16 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * as an insertion and a deletion.
  *
  * `walksUri` takes the prefix of one reference's walk file, `<prefix>.<sample>`,
- * and resolves `<walksUri>.walks.bed.gz` and its `.tbi`. The adapter reads walk
- * format 5, which gfa-to-tabix writes from 1.4, through @jbrowse/graph-walks.
+ * and resolves `<walksUri>.walks.gz` and its directory `<walksUri>.walks.gz.idx`.
+ * The adapter reads walk format 7, which gfa-to-tabix writes from 4.0, through
+ * @jbrowse/graph-walks.
  * Only a window on the anchor is answered.
  *
  * #example
  * ```js
  * {
  *   type: 'WalkTabixSyntenyAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f5s.GRCh38',
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38.GRCh38',
  *   assemblyNames: ['hg38'],
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  * }
@@ -56,13 +53,15 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * a `gfa-to-tabix --walks` file in walk format 5
+     * a `gfa-to-tabix --walks` file in walk format 7
      */
-    walksLocation: fileLocationSlot('/path/to/graph.walks.bed.gz'),
+    walksLocation: fileLocationSlot('/path/to/graph.walks.gz'),
     /**
      * #slot
+     * the walk file's directory, `<prefix>.<sample>.walks.gz.idx`. Unset
+     * reads it beside the walk file.
      */
-    walksIndex: tabixIndexSchema('WalkTabixWalksIndex'),
+    walksIndex: fileLocationSlot(''),
     /**
      * #slot
      * the most haplotype steps one window keeps; a window whose walks hold
@@ -76,9 +75,9 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * the most compressed bytes one window fetches from the walk file, as its
-     * Tabix index estimates it before any row is read; a window over it shows
-     * a zoom-in notice instead.
+     * the most compressed bytes one window fetches from the walk file, which
+     * its directory gives before any row is read; a window over it shows a
+     * zoom-in notice instead.
      */
     walkByteBudget: {
       type: 'integer',

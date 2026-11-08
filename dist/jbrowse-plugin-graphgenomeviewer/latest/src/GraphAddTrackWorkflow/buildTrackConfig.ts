@@ -25,14 +25,14 @@ export type GraphFileChoice =
 
 export const GRAPH_FILE_LABELS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter: 'Indexed GFA (gfa-to-tabix .segs.bed.gz or .graph.bed.gz)',
-  RgfaTabixWalks: 'Haplotype walks without lanes (.walks.bed.gz)',
-  WalkTabixSyntenyAdapter: 'Haplotype walks (.walks.bed.gz)',
+  RgfaTabixWalks: 'Haplotype walks without lanes (.walks.gz)',
+  WalkTabixSyntenyAdapter: 'Haplotype walks (.walks.gz)',
   GbzBaseSyntenyAdapter: 'GBZ database (.gbz.db)',
   MinigraphBubbleAdapter: 'Minigraph bubbles (tabix BED)',
 }
 
 const WALKS_FIELD =
-  'Path to a walk file (<prefix>.<sample>.walks.bed.gz from gfa-to-tabix --walks, for the sample this assembly is)'
+  'Path to a walk file (<prefix>.<sample>.walks.gz from gfa-to-tabix --walks, for the sample this assembly is)'
 
 export const GRAPH_FILE_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter:
@@ -46,10 +46,13 @@ export const GRAPH_FILE_FIELDS: Record<GraphFileChoice, string> = {
 const TABIX_INDEX_FIELD =
   'Path to tabix index (optional; the sibling .tbi is assumed, a .csi is recognised by name)'
 
+const WALKS_INDEX_FIELD =
+  "Path to the walk file's directory (optional; the sibling .idx is assumed)"
+
 export const GRAPH_INDEX_FIELDS: Record<GraphFileChoice, string> = {
   RgfaTabixAdapter: TABIX_INDEX_FIELD,
-  RgfaTabixWalks: TABIX_INDEX_FIELD,
-  WalkTabixSyntenyAdapter: TABIX_INDEX_FIELD,
+  RgfaTabixWalks: WALKS_INDEX_FIELD,
+  WalkTabixSyntenyAdapter: WALKS_INDEX_FIELD,
   GbzBaseSyntenyAdapter:
     'Path to the haplotype index (optional; graph.haplotype-index.db beside the database is assumed)',
   MinigraphBubbleAdapter: TABIX_INDEX_FIELD,
@@ -183,7 +186,7 @@ export function buildAdapterConfig({
     return {
       type: choice === 'RgfaTabixWalks' ? 'RgfaTabixAdapter' : choice,
       walksLocation: loc,
-      walksIndex: tabixIndex(loc, indexLoc),
+      walksIndex: indexLoc ?? sibling(loc, '.idx'),
       ...referencePanSN(assembly, sample, walkFileSample(loc)),
       ...(haplotypes.length > 0 ? { defaultHaplotypes: haplotypes } : {}),
     }
