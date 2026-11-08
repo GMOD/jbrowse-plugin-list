@@ -28,13 +28,14 @@ node fetch-version.ts jbrowse-plugin-msaview 2.7.0
 
 It refetches from npm and then verifies the result byte-for-byte against what S3
 is actually serving, which is what makes it a safe substitute for the git copy.
-See the `dist/` note in [CLAUDE.md](CLAUDE.md) for why `copy` must never become
-`sync`.
+See
+[ADR 0005](agent-docs/architectural-decision-records/0005-dist-is-a-staging-area-not-an-archive.md)
+for why `copy` must never become `sync`.
 
 ```bash
 pnpm verify      # boot every newly promoted bundle on released hosts and main
 pnpm upload      # copy dist/ artifacts (immutable) + the v2 manifest to S3
-pnpm invalidate  # CloudFront invalidation for /plugin-store/v2/*
+pnpm invalidate  # CloudFront invalidation for the manifest and every latest/
 ```
 
 `upload` uploads artifacts before the manifest, so v2 never points at a 404. The
