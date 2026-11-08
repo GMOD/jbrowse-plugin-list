@@ -11,8 +11,9 @@ Breaking any of these is a production incident:
 - **`pnpm upload` is live for everyone, with no staging step, so run
   `pnpm verify` first.** `pnpm dep` does; any other route to an upload runs it
   by hand. `latest/` is uploaded `no-cache` and named by jb2hubs configs at
-  permanent urls, and in the RPC worker, embedded products and a plugin that
-  throws from `configure()`, one bad bundle error-pages the session (ADR 0002).
+  permanent urls. jbrowse-web opens the session without a bundle that fails to
+  load, but the RPC worker and embedded products do not, and nothing survives a
+  bundle that throws from `configure()` (ADR 0002).
 - **A failed `verify` leaves the bad bundle in `dist/<pkg>/latest/`, and
   re-running `pnpm download` copies it there again.** Revert it with
   `git checkout -- dist/<pkg>/latest` before anything uploads.
