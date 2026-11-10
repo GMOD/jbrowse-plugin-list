@@ -71,8 +71,14 @@ function markAttempted(session, assemblyName) {
 // session itself, may be supplying the assembly.
 async function connectIfConfigExists(session, assemblyName, uris) {
     const connectionId = `jb2hub-${assemblyName}`;
-    if (session.connections.find(f => f.connectionId === connectionId) ||
-        !markAttempted(session, assemblyName)) {
+    if (!markAttempted(session, assemblyName)) {
+        return;
+    }
+    // A reloaded or shared session keeps the connection's config and not its
+    // instance, so the config being there does not mean the assembly is.
+    const stored = session.connections.find(f => f.connectionId === connectionId);
+    if (stored) {
+        session.makeConnection(stored, { silent: true });
         return;
     }
     for (const uri of uris) {
