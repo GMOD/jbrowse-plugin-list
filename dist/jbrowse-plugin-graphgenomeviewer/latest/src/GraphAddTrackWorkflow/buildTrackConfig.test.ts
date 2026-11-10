@@ -237,6 +237,46 @@ describe('buildTrackConfig', () => {
     })
   })
 
+  describe('a walk file with no sample typed', () => {
+    const walks = (name: string) => ({
+      choice: 'WalkTabixSyntenyAdapter' as const,
+      loc: {
+        uri: `https://example.com/${name}.walks.gz`,
+        locationType: 'UriLocation' as const,
+      },
+      indexLoc: undefined,
+      assembly: 'ecoli',
+      sample: '',
+      trackId: 'walks',
+      name: 'Walks',
+    })
+
+    it('maps the assembly onto the sample its name gives', () => {
+      expect(
+        buildTrackConfig(walks('hprc-v2.1-mc-grch38-f5s.GRCh38')).adapter,
+      ).toMatchObject({ assemblyNameToPanSN: { ecoli: 'GRCh38' } })
+    })
+
+    it('makes no guess from a dotted accession, whose start the name does not mark', () => {
+      expect(
+        buildTrackConfig(walks('pg.GCA_000005845.2')).adapter,
+      ).not.toHaveProperty('assemblyNameToPanSN')
+    })
+
+    it("takes its header's reference over its name, and the user's sample over both", () => {
+      const args = {
+        ...walks('pg.GCA_000005845.2'),
+        walkReference: 'GCA_000005845.2',
+      }
+      expect(buildTrackConfig(args).adapter).toMatchObject({
+        assemblyNameToPanSN: { ecoli: 'GCA_000005845.2' },
+      })
+      expect(
+        buildTrackConfig({ ...args, sample: 'K12' }).adapter,
+      ).toMatchObject({ assemblyNameToPanSN: { ecoli: 'K12' } })
+    })
+  })
+
   describe('with a .graph.json beside the segments', () => {
     const tier = { prefix: 'hprc.fold10000', foldBelowBp: 10000 }
     const args = {

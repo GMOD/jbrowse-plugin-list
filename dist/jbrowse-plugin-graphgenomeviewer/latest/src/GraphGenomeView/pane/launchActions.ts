@@ -4,8 +4,7 @@ import {
   LAYOUT_MODES,
   layoutModeByValue,
 } from '@jbrowse/bandage-core/layoutModes'
-import { getSession } from '@jbrowse/core/util'
-import { getEnv } from '@jbrowse/mobx-state-tree'
+import { getEnv, getSession } from '@jbrowse/core/util'
 import HubIcon from '@mui/icons-material/Hub'
 import PaletteIcon from '@mui/icons-material/Palette'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
@@ -40,7 +39,6 @@ import type { GraphLayer } from '../graphLayers'
 import type { TubeMapPanelSplit } from '../tubeMapPanels'
 import type { ColorScheme } from '@jbrowse/bandage-core/colorSchemes'
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
-import type PluginManager from '@jbrowse/core/PluginManager'
 import type { MenuItem } from '@jbrowse/core/ui'
 
 const ENGINE_NAMES: readonly (readonly [LayoutEngineKind, string])[] = [
@@ -145,7 +143,7 @@ export const withLaunchActions = withRenderingActions
         ? launchableSyntenyTracks(
             getSession(self),
             samples,
-            getEnv<{ pluginManager: PluginManager }>(self).pluginManager,
+            getEnv(self).pluginManager,
           )
         : []
     },

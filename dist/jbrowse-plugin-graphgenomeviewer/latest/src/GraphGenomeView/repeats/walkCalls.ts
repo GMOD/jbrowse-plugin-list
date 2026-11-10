@@ -33,7 +33,9 @@ function agrees(walkBp: number, callBp: number) {
 function nearest(walks: number[], calls: number[]) {
   const W = walks.length
   const C = calls.length
-  const cost = Array.from({ length: W + 1 }, () => new Array(C + 1).fill(0))
+  const cost = Array.from({ length: W + 1 }, () =>
+    new Array<number>(C + 1).fill(0),
+  )
   const paired = Array.from({ length: W + 1 }, () =>
     new Array<boolean>(C + 1).fill(false),
   )

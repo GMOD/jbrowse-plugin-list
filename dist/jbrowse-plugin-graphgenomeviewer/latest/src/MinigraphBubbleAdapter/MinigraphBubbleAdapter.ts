@@ -23,7 +23,7 @@ export default class MinigraphBubbleAdapter extends BaseFeatureDataAdapter<Minig
   // Minigraph-Cactus graph produces PanSN rows (`GRCh38#0#chr6`) where a plain
   // minigraph graph produces bare ones (`chr6`). Same resolution the segment
   // adapter does, through the same `assemblyNameToPanSN` slot.
-  private readonly refNames = new PanSNRefNames(
+  private readonly refNames: PanSNRefNames = new PanSNRefNames(
     tabixRefNames(this.bubbles),
     this,
   )

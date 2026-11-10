@@ -12,7 +12,7 @@ import { toArray } from 'rxjs/operators'
 
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
-import { EXPAND_NAMED_MAX } from './walkReader.ts'
+import { EXPAND_NAMED_MAX } from '../GetSubgraph.ts'
 
 import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'

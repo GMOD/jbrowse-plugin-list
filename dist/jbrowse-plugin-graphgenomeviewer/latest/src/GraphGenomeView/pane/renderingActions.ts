@@ -11,6 +11,7 @@ import {
   dependOn,
   paneViewportOf,
 } from './paneBase'
+import { EXPAND_NAMED_MAX } from '../../GetSubgraph'
 import {
   bubbleForLgvHover,
   hoverFromPair,
@@ -112,18 +113,19 @@ export const withRenderingActions = withLoadActions
           ),
         )
         // Walk rows and tube map panels read the source track's samples
-        // TSV, to group by its columns, again for a graph after a dropped one
+        // TSV, to group by its columns, again for a graph after a dropped one,
+        // and each new cut retries a read that failed
         addDisposer(
           self,
           reaction(
             () =>
-              self.hasGraph &&
+              self.graph &&
               (self.chosenLayoutMode === 'walkrows' ||
                 TUBE_MAP_MODES.has(self.chosenLayoutMode))
-                ? JSON.stringify(self.walkRowSamplesTsv ?? null)
+                ? [self.graph, JSON.stringify(self.walkRowSamplesTsv ?? null)]
                 : undefined,
-            key => {
-              if (key !== undefined) {
+            wanted => {
+              if (wanted) {
                 void self.loadWalkRowSampleTable()
               }
             },
@@ -189,7 +191,7 @@ export const withRenderingActions = withLoadActions
               // a bubble track's feature, or a graph-derived VCF record,
               // names a whole bubble, which lights whatever the setting
               const bubble =
-                inRegion && bubbleForLgvHover(inRegion, self.bubbles)
+                inRegion && bubbleForLgvHover(inRegion, () => self.bubbles)
               if (region && graph && !self.pointerInPane) {
                 self.setHoveredBubble(bubble ?? null)
                 self.setHoveredNode(
@@ -215,7 +217,7 @@ export const withRenderingActions = withLoadActions
                 selected &&
                 region &&
                 hoverInRegion(selected, region) &&
-                bubbleForLgvHover(selected, self.bubbles)
+                bubbleForLgvHover(selected, () => self.bubbles)
               if (
                 bubble &&
                 !self.openBubbles.some(open => sameBubble(open, bubble))
@@ -498,18 +500,29 @@ export const withRenderingActions = withLoadActions
     expandWalk(name: string) {
       self.expandWalks([name])
     },
-    // A lifted walk's key states its length, so the cut reads a lifted walk
-    // it abridged in full
+    // A lifted walk's key states its length, and a picked sample's row is
+    // drawn whole, so the cut reads such a walk it abridged in full
     afterAttach() {
       addDisposer(
         self,
         reaction(
           () => {
             const lifted = new Set(self.walkLayers.map(l => l.walk))
+            const picked = new Set(
+              self.chosenLayoutMode === 'walkrows' &&
+                (self.walkRowSamples?.length ?? 0) <= EXPAND_NAMED_MAX
+                ? self.walkRowSamples
+                : [],
+            )
             return [
               ...new Set(
                 (self.graph?.paths ?? [])
-                  .filter(p => p.abridged && lifted.has(p.name))
+                  .filter(
+                    p =>
+                      p.abridged &&
+                      (lifted.has(p.name) ||
+                        (p.sample !== undefined && picked.has(p.sample))),
+                  )
                   .map(p => p.name),
               ),
             ]

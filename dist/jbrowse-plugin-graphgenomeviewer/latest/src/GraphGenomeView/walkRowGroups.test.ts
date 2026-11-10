@@ -1,3 +1,4 @@
+import { serializeEl } from '@jbrowse/bandage-core/el'
 import { parseSamplesTsv } from '@jbrowse/core/util/samplesTsv'
 
 import {
@@ -7,7 +8,13 @@ import {
   metadataColumns,
   sectionIndexOf,
   sectionPlacement,
+  walkRowTrees,
+  walkRowTreesPanKey,
 } from './walkRowGroups'
+
+import type { WalkRowSection } from './walkRowGroups'
+import type { El } from '@jbrowse/bandage-core/el'
+import type { WalkRow } from '@jbrowse/bandage-core/layout/walkRows'
 
 const TSV = [
   'name\tpopulation\tsuperpopulation',
@@ -154,4 +161,100 @@ test('a point past either end names the end row, and a tie the upper row', () =>
   expect(place.rowAt(500, 6)).toBe(5)
   expect(place.rowAt(6, 6)).toBe(1)
   expect(place.rowAt(0, 0)).toBe(0)
+})
+
+describe('panning the trees', () => {
+  function row(name: string, bp: number): WalkRow {
+    return {
+      name,
+      label: name,
+      sample: name,
+      bp,
+      offReferenceBp: 0,
+      gapBp: 0,
+      complete: true,
+      runs: [
+        { start: 0, bp: bp / 2, onReference: true, referenceStart: 1000 },
+        { start: bp / 2, bp: bp / 2, onReference: false },
+      ],
+    }
+  }
+  const bars = {
+    origin: 1000,
+    unit: 100,
+    reference: row('GRCh38', 3000),
+    rows: ['A', 'B', 'C', 'D', 'E'].map((name, i) => row(name, 1000 + 400 * i)),
+  }
+  const sections: WalkRowSection[] = [
+    { key: 'AFR', title: 'AFR', first: 1, count: 3 },
+    { key: 'EUR', title: 'EUR', first: 4, count: 2 },
+  ]
+  const pitch = { rowPx: 14, barPx: 8, readouts: true }
+
+  // each x and y moved back by the pan, to the hundredth of a px
+  function unpanned(node: El | string, dx: number, dy: number): El | string {
+    const back = (name: string, value: string | number | undefined) =>
+      typeof value !== 'number'
+        ? value
+        : /^x[12]?$/.test(name)
+          ? (value - dx).toFixed(2)
+          : /^y[12]?$/.test(name)
+            ? (value - dy).toFixed(2)
+            : value
+    return typeof node === 'string'
+      ? node
+      : {
+          ...node,
+          attrs: Object.fromEntries(
+            Object.entries(node.attrs).map(([name, value]) => [
+              name,
+              back(name, value),
+            ]),
+          ),
+          children: node.children.map(c => unpanned(c, dx, dy)),
+        }
+  }
+
+  // whether each pan kept the key of the last redraw, and whether drawing
+  // afresh matched that redraw moved by the pan
+  function pansThrough(groups: WalkRowSection[]) {
+    const place = sectionPlacement(groups, pitch.rowPx)
+    const frameAt = ([translateX, translateY]: [number, number]) => ({
+      scaleX: 0.1,
+      scaleY: 1,
+      translateX,
+      translateY,
+      width: 400,
+      height: 60,
+      ...pitch,
+    })
+    const keyAt = (at: [number, number]) =>
+      walkRowTreesPanKey(bars, place.rowY, frameAt(at))
+    const drawnAt = (at: [number, number]) =>
+      walkRowTrees(bars, groups, place.rowY, frameAt(at), {
+        idPrefix: 't',
+      }).map(tree => serializeEl(unpanned(tree, at[0], at[1])))
+    let redrawnAt: [number, number] = [-40, 30]
+    return Array.from({ length: 60 }, (_, k) => {
+      const at: [number, number] = [-40 + 9 * k, 30 - 3 * k]
+      const kept = keyAt(at) === keyAt(redrawnAt)
+      const moved =
+        JSON.stringify(drawnAt(at)) === JSON.stringify(drawnAt(redrawnAt))
+      redrawnAt = kept ? redrawnAt : at
+      return { kept, moved }
+    })
+  }
+
+  test.each([
+    ['ungrouped', []],
+    ['grouped', sections],
+  ])(
+    '%s, a pan keeps the key exactly when it only moves the trees',
+    (_, groups) => {
+      const pans = pansThrough(groups)
+      expect(pans.filter(p => p.kept !== p.moved)).toEqual([])
+      expect(pans.filter(p => !p.kept).length).toBeGreaterThan(3)
+      expect(pans.filter(p => p.kept).length).toBeGreaterThan(pans.length / 2)
+    },
+  )
 })

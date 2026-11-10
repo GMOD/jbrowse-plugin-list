@@ -26,7 +26,9 @@ export default class GraphComputeLayout extends RpcMethodType<'GraphComputeLayou
   async execute(args: RpcExecuteArgs<'GraphComputeLayout'>) {
     const { graph, options, signal, statusCallback } = args
     // The engine takes no signal, so a layout superseded while it queued
-    // behind another is dropped here rather than holding up the next cut
+    // behind another is dropped here rather than holding up the next cut. Its
+    // abort is a message queued behind the call, read only after a macrotask.
+    await new Promise(resolve => setTimeout(resolve, 0))
     signal?.throwIfAborted()
     statusCallback?.('Computing layout')
     return layoutEngine({ graph, options })

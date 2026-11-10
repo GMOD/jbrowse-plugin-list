@@ -167,18 +167,21 @@ export const Legends = observer(function Legends({
     }
     // the last callback can land after the track is closed. scrollHeight is
     // the whole key, even where the pane caps it to scroll, so the pane
-    // still grows to show it all when it can.
+    // still grows to show it all when it can. The key mounts once it has
+    // sections, which can be after this, so each measure observes it.
+    const observer = new ResizeObserver(() => {
+      measure()
+    })
     const measure = () => {
+      if (el.firstElementChild) {
+        observer.observe(el.firstElementChild)
+      }
       if (isAlive(model) && model.legendAtRest) {
         model.setLegendSize({ width: el.offsetWidth, height: el.scrollHeight })
       }
     }
-    measure()
-    const observer = new ResizeObserver(measure)
     observer.observe(el)
-    if (el.firstElementChild) {
-      observer.observe(el.firstElementChild)
-    }
+    measure()
     return () => {
       observer.disconnect()
     }

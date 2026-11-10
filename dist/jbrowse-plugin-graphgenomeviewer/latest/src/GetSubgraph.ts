@@ -37,6 +37,11 @@ export interface SubgraphCutOptions {
   expandSamples?: string[]
 }
 
+// Walk rows read a list of haplotypes, or of the samples they show, this long or
+// shorter in full where the walk file abridged it; a longer list, or every
+// haplotype, keeps the abridged rows
+export const EXPAND_NAMED_MAX = 64
+
 // What an adapter's cut is handed: the payload, plus the call's own signal so
 // a cut the view has moved on from stops reading.
 export interface SubgraphAdapterOptions extends SubgraphCutOptions {

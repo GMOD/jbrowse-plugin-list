@@ -29,6 +29,7 @@ import {
   parseHaplotypes,
 } from './buildTrackConfig'
 import { readGraphManifest } from './graphManifest'
+import { readWalkReference } from './walkReference'
 
 import type { GraphFileChoice } from './buildTrackConfig'
 import type {
@@ -85,10 +86,15 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
     }
     setError(undefined)
     setSubmitting(true)
-    const manifest =
+    const { pluginManager } = getEnv(model)
+    const [manifest, walkReference] = await Promise.all([
       choice === 'RgfaTabixAdapter'
-        ? await readGraphManifest(loc, getEnv(model).pluginManager)
-        : undefined
+        ? readGraphManifest(loc, pluginManager)
+        : undefined,
+      walks && !sample.trim()
+        ? readWalkReference(loc, indexLoc, pluginManager)
+        : undefined,
+    ])
     setSubmitting(false)
     if (!isAlive(model) || !model.assembly) {
       return
@@ -107,6 +113,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           assembly: model.assembly,
           sample,
           haplotypes: walks ? parseHaplotypes(haplotypes) : undefined,
+          walkReference,
           trackId: makeTrackId({ name }),
           name,
         }),

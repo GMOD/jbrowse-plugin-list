@@ -16,11 +16,16 @@ import { floorOf, pinnedLocus, pinnedOf, warningPrefix } from './pinned.ts'
 import { openWalkReader } from '../panSNTabix.ts'
 
 import type { WalkFormsAdapterConfig } from './configSchema.ts'
+import type { FormVariant } from './formRows.ts'
 import type { Pinned } from './pinned.ts'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
-import type { HaplotypeDepartures, StructuralForms } from '@jbrowse/graph-walks'
+import type {
+  HaplotypeDepartures,
+  StructuralForms,
+  WalkReader,
+} from '@jbrowse/graph-walks'
 
 const megabytes = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`
 
@@ -79,9 +84,11 @@ function cachedCut(key: string, cut: () => Promise<HaplotypeDepartures[]>) {
 export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAdapterConfig> {
   public static capabilities = ['getFeatures', 'getRefNames']
 
-  private readonly reader = openWalkReader(this)
+  private readonly reader: WalkReader = openWalkReader(this)
 
   private formsRead: Promise<StructuralForms> | undefined
+
+  private readonly variants = new WeakMap<StructuralForms, FormVariant[]>()
 
   private async referenceSample(opts: BaseOptions) {
     const { references } = await this.reader.header(opts)
@@ -108,6 +115,15 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
     return pinned
   }
 
+  private async pinnedSequence(opts: BaseOptions) {
+    const sample = await this.referenceSample(opts)
+    const names = [this.pinned().refName, ...this.getConf('pinnedAliases')]
+    const found = await Promise.all(
+      names.map(name => this.reader.sequenceFor(sample, name, opts)),
+    )
+    return found.find(name => name !== undefined)
+  }
+
   // Read once per adapter, and so once per floor and exclude list. The cut
   // takes no caller's signal, since every later caller shares it. A partial
   // expansion would leave some walks as net changes over a whole tile, so a
@@ -115,23 +131,29 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
   private forms(opts: BaseOptions) {
     if (!this.formsRead) {
       const pinned = this.pinned()
-      const key = `${JSON.stringify(this.getConf('walksLocation'))}\t${pinned.refName}:${pinned.start}-${pinned.end}`
       const byteBudget = this.getConf('walkByteBudget')
-      const read = cachedCut(`${key}\t${byteBudget}`, () =>
-        updateStatus('Cutting walks', opts.statusCallback, () =>
-          formsCut(this.reader, pinned, { byteBudget, partial: false }).catch(
-            (error: unknown) => {
-              throw pinnedTooLarge(error, pinned)
-            },
-          ),
-        ),
-      ).then(departures =>
-        structuralForms(departures, {
-          window: pinned,
-          floorBp: floorOf(this.getConf('floorBp')),
-          exclude: this.getConf('exclude'),
-        }),
-      )
+      const read = this.pinnedSequence({})
+        .then(sequence => {
+          const window = { ...pinned, refName: sequence ?? pinned.refName }
+          const key = `${JSON.stringify(this.getConf('walksLocation'))}\t${window.refName}:${window.start}-${window.end}\t${byteBudget}`
+          return cachedCut(key, () =>
+            updateStatus('Cutting walks', opts.statusCallback, () =>
+              formsCut(this.reader, window, {
+                byteBudget,
+                partial: false,
+              }).catch((error: unknown) => {
+                throw pinnedTooLarge(error, pinned)
+              }),
+            ),
+          )
+        })
+        .then(departures =>
+          structuralForms(departures, {
+            window: pinned,
+            floorBp: floorOf(this.getConf('floorBp')),
+            exclude: this.getConf('exclude'),
+          }),
+        )
       read.catch(() => {
         if (this.formsRead === read) {
           this.formsRead = undefined
@@ -140,6 +162,15 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
       this.formsRead = read
     }
     return this.formsRead
+  }
+
+  private variantsOf(result: StructuralForms) {
+    const kept = this.variants.get(result)
+    const variants = kept ?? formVariants(result, this.maxForms())
+    if (!kept) {
+      this.variants.set(result, variants)
+    }
+    return variants
   }
 
   private maxForms() {
@@ -168,38 +199,37 @@ export default class WalkFormsAdapter extends BaseFeatureDataAdapter<WalkFormsAd
     const sample = await this.referenceSample(opts)
     const [query, pinned] = await Promise.all([
       this.reader.sequenceFor(sample, refName, opts),
-      this.reader.sequenceFor(sample, this.pinned().refName, opts),
+      this.pinnedSequence(opts),
     ])
     return query !== undefined && query === pinned
   }
 
   getFeatures(query: Region, opts: BaseOptions = {}) {
     return ObservableCreate<Feature>(async observer => {
-      const result = await this.forms(opts)
-      const variants = (await this.onPinnedSequence(query.refName, opts))
-        ? formVariants(result, this.maxForms()).filter(
-            v => v.start < query.end && v.end > query.start,
-          )
-        : []
-      for (const v of variants) {
-        observer.next(
-          new SimpleFeature({
-            uniqueId: `forms-${result.floorBp}-${v.id}`,
-            refName: query.refName,
-            start: v.start,
-            end: v.end,
-            name: v.name,
-            description: v.description,
-            type: v.type,
-            svType: v.svType,
-            consequence: v.consequence,
-            REF: 'N',
-            ALT: [v.alt],
-            INFO: { SVTYPE: [v.svType], SVLEN: [v.mark.delta] },
-            mark: v.mark,
-            genotypes: v.genotypes,
-          }),
-        )
+      if (await this.onPinnedSequence(query.refName, opts)) {
+        const result = await this.forms(opts)
+        for (const v of this.variantsOf(result)) {
+          if (v.start < query.end && v.end > query.start) {
+            observer.next(
+              new SimpleFeature({
+                uniqueId: `forms-${result.floorBp}-${v.id}`,
+                refName: query.refName,
+                start: v.start,
+                end: v.end,
+                name: v.name,
+                description: v.description,
+                type: v.type,
+                svType: v.svType,
+                consequence: v.consequence,
+                REF: 'N',
+                ALT: [v.alt],
+                INFO: { SVTYPE: [v.svType], SVLEN: [v.mark.delta] },
+                mark: v.mark,
+                genotypes: v.genotypes,
+              }),
+            )
+          }
+        }
       }
       observer.complete()
     }, opts.signal)

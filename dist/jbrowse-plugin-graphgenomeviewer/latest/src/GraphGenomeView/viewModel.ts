@@ -190,7 +190,7 @@ export default function stateModelFactory() {
                 .waitForAssembly(stated.assemblyName)
                 .catch(() => undefined)
                 .then(() =>
-                  self.loadedRegion === stated
+                  isAlive(self) && self.loadedRegion === stated
                     ? loadRegion(canonicalRegion(session, stated))
                     : undefined,
                 )

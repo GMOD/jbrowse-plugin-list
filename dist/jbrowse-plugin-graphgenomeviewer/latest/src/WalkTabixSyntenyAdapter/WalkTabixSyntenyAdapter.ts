@@ -287,7 +287,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     return ObservableCreate<Feature>(async observer => {
       const refName =
         region.assemblyName === this.anchor
-          ? await this.refNames.resolve(region, opts)
+          ? await this.refNames.resolveMapped(region, opts)
           : undefined
       if (refName !== undefined) {
         const pairs = requestedPairs(opts)

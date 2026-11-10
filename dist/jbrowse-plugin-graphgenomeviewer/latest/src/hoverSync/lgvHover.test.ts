@@ -226,7 +226,7 @@ describe('the bubble a linear-view feature names', () => {
   })
   const indexed = bubble({ segments: 's10,s11,s12' })
   const derived = bubble({ segments: 's21,s20,s22', key: 's20>s22' })
-  const bubbles = [indexed, derived]
+  const bubbles = () => [indexed, derived]
   const at = { refName: 'chr1', coord: 6 }
 
   test("is the indexed bubble with a bubble feature's segments", () => {

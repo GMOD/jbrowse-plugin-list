@@ -52,13 +52,16 @@ export function launchableSyntenyTracks(
   const wanted = new Set(assemblyNames)
   const found: LaunchableSyntenyTrack[] = []
   for (const track of session.tracks) {
-    const { trackId } = track
     if (isSyntenyTrack(track, adapters)) {
       const coverage = trackAssemblies(session, track).filter(name =>
         wanted.has(name),
       ).length
       if (coverage >= 2) {
-        found.push({ trackId, name: getTrackName(track, session), coverage })
+        found.push({
+          trackId: toTrackConfigEntry(track).trackId,
+          name: getTrackName(track, session),
+          coverage,
+        })
       }
     }
   }

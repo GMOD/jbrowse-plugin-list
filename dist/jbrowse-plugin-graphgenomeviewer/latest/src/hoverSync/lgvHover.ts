@@ -194,10 +194,14 @@ function featureEnds(hover: LgvHover) {
 
 // The graph's bubble a linear-view feature names, so a bubble track or a
 // graph-derived VCF lights the whole bubble rather than the backbone node at
-// the pointer's bp
-export function bubbleForLgvHover(hover: LgvHover, bubbles: MinigraphBubble[]) {
+// the pointer's bp. The bubbles are read only for a feature that names one:
+// a graph with no index derives them, over the whole graph.
+export function bubbleForLgvHover(
+  hover: LgvHover,
+  bubbles: () => MinigraphBubble[],
+) {
   const ends = featureEnds(hover)
   return ends === undefined
     ? undefined
-    : bubbles.find(b => bubbleEnds(b) === ends)
+    : bubbles().find(b => bubbleEnds(b) === ends)
 }

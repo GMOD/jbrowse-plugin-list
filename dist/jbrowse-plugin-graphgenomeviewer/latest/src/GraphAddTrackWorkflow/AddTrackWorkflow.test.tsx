@@ -9,10 +9,15 @@ import {
 
 import type { AddTrackWorkflowModel } from '@jbrowse/core/util'
 
-const { added, picks } = vi.hoisted(() => ({
+const { added, picks, headerReference } = vi.hoisted(() => ({
   added: [] as { adapter: Record<string, unknown> }[],
   // the uri a file field picks, by field; else one named after the field
   picks: new Map<string, string>(),
+  headerReference: { value: undefined as string | undefined },
+}))
+
+vi.mock('./walkReference', () => ({
+  readWalkReference: () => Promise.resolve(headerReference.value),
 }))
 
 vi.mock('@jbrowse/core/ui', () => ({
@@ -116,5 +121,35 @@ test('a walk file adds a track with lanes, cut for the haplotypes typed', async 
     },
     assemblyNameToPanSN: { hg38: 'GRCh38' },
     defaultHaplotypes: ['HG002', 'HG00733#1'],
+  })
+})
+
+test("a walk file's header names the reference its file name leaves unclear", async () => {
+  added.length = 0
+  headerReference.value = 'GCA_000005845.2'
+  picks.set(
+    GRAPH_FILE_FIELDS.WalkTabixSyntenyAdapter,
+    'https://example.com/pg.GCA_000005845.2.walks.gz',
+  )
+  render(
+    <GraphAddTrackWidget
+      model={
+        {
+          assembly: 'ecoli',
+          setAssembly: () => {},
+        } as unknown as AddTrackWorkflowModel
+      }
+    />,
+  )
+  fireEvent.click(
+    screen.getByLabelText(GRAPH_FILE_LABELS.WalkTabixSyntenyAdapter),
+  )
+  fireEvent.click(screen.getByText(GRAPH_FILE_FIELDS.WalkTabixSyntenyAdapter))
+  fireEvent.click(screen.getByText('Submit'))
+  await waitFor(() => {
+    expect(added).toHaveLength(1)
+  })
+  expect(added[0]!.adapter).toMatchObject({
+    assemblyNameToPanSN: { ecoli: 'GCA_000005845.2' },
   })
 })

@@ -1,16 +1,21 @@
-import { readConfObject } from '@jbrowse/core/configuration'
 import { DisplayType } from '@jbrowse/core/pluggableElementTypes'
 import { getContainingView, getSession } from '@jbrowse/core/util'
+import { getConfAssemblyNamesOrNone } from '@jbrowse/core/util/tracks'
 import { types } from '@jbrowse/mobx-state-tree'
 
 import { floorOf, pinnedLocus, pinnedOf, warningPrefix } from './pinned.ts'
 import { hostWindow, isLinearHost } from '../GraphGenomeView/host.ts'
+import { trackAdapterSnapshot } from '../graphTrackConfig.ts'
 
 import type { FloorBp, Pinned } from './pinned.ts'
 import type PluginManager from '@jbrowse/core/PluginManager'
-import type { AnyConfigurationModel } from '@jbrowse/core/configuration'
+import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 import type { MenuItem } from '@jbrowse/core/ui'
-import type { IAnyModelType, IAnyStateTreeNode } from '@jbrowse/mobx-state-tree'
+import type {
+  IAnyStateTreeNode,
+  IModelType,
+  ModelProperties,
+} from '@jbrowse/mobx-state-tree'
 
 // By track type, not display name, which has changed across releases; the
 // mixin is inert off a WalkFormsAdapter track
@@ -35,10 +40,10 @@ export function pinnedLabel(pinned: Pinned | undefined, forms?: number) {
 }
 
 interface FormsHost {
-  parentTrack: { configuration: AnyConfigurationModel }
+  parentTrack: { configuration: AnyTrackConfig }
   sourcesBase?: Record<string, unknown>[]
   trackMenuItems: () => MenuItem[]
-  setSources?: (sources: unknown, adapterConfig?: unknown) => void
+  setSources?(sources: unknown, adapterConfig?: unknown): void
 }
 
 interface Snackbar {
@@ -65,30 +70,50 @@ function clearWarnings(
  * with each request. A config edit would change the track's RPC session id
  * and move the requests to a worker without the cut; display state leaves it.
  */
-export function withFormsMenu(model: IAnyModelType) {
+export function withFormsMenu<
+  PROPS extends ModelProperties,
+  HOST extends FormsHost,
+>(model: IModelType<PROPS, HOST>) {
   return model
     .props({
       formsPinned: types.maybe(types.frozen<Pinned>()),
       formsFloorBp: types.maybe(types.frozen<FloorBp>()),
     })
     .views(self => ({
-      get configuredAdapter(): Record<string, unknown> {
-        return readConfObject(
-          (self as unknown as FormsHost).parentTrack.configuration,
-          'adapter',
-        ) as Record<string, unknown>
+      get configuredAdapter() {
+        return trackAdapterSnapshot(self.parentTrack.configuration)
       },
       get walkForms() {
         return this.configuredAdapter.type === 'WalkFormsAdapter'
       },
     }))
     .views(self => ({
-      get adapterConfig(): Record<string, unknown> {
+      get pinnedAliases() {
+        const pinned = pinnedOf(
+          self.formsPinned ?? self.configuredAdapter.pinned,
+        )
+        const [assemblyName] = getConfAssemblyNamesOrNone(
+          self.parentTrack.configuration,
+        )
+        const assembly =
+          pinned && assemblyName
+            ? getSession(self).assemblyManager.get(assemblyName)
+            : undefined
+        return pinned && assembly
+          ? assembly.getAliasesForRefName(pinned.refName)
+          : []
+      },
+    }))
+    .views(self => ({
+      get adapterConfig() {
         const conf = self.configuredAdapter
         return self.walkForms
           ? {
               ...conf,
               ...(self.formsPinned ? { pinned: self.formsPinned } : {}),
+              ...(self.pinnedAliases.length > 0
+                ? { pinnedAliases: self.pinnedAliases }
+                : {}),
               ...(self.formsFloorBp === undefined
                 ? {}
                 : { floorBp: self.formsFloorBp }),
@@ -102,7 +127,7 @@ export function withFormsMenu(model: IAnyModelType) {
         return floorOf(this.adapterConfig.floorBp)
       },
       get formsCount() {
-        return (self as unknown as FormsHost).sourcesBase?.reduce(
+        return self.sourcesBase?.reduce(
           (n, row) => n + (Number(row.forms) || 1),
           0,
         )
@@ -123,7 +148,7 @@ export function withFormsMenu(model: IAnyModelType) {
       warnedWindow: undefined as Pinned | undefined,
     }))
     .actions(self => {
-      const { setSources: superSetSources } = self as unknown as FormsHost
+      const { setSources: superSetSources } = self
       const clearFormsWarnings = () => {
         clearWarnings(self, [self.warnedWindow, self.formsWindow])
       }
@@ -148,8 +173,7 @@ export function withFormsMenu(model: IAnyModelType) {
       }
     })
     .views(self => {
-      const { trackMenuItems: superTrackMenuItems } =
-        self as unknown as FormsHost
+      const { trackMenuItems: superTrackMenuItems } = self
       return {
         formsMenuItems(): MenuItem[] {
           const pinned = self.formsWindow

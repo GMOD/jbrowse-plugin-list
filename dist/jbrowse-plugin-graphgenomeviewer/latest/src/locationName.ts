@@ -6,15 +6,17 @@ export const GRAPH_SUFFIX = '.graph.bed.gz'
 export const WALKS_SUFFIX = '.walks.gz'
 
 // The reference sample `gfa-to-tabix --walks` names a walk file after:
-// GRCh38 in `chr22.GRCh38.walks.gz`
-export function walkFileSample(loc: FileLocation) {
-  const name = locationName(loc).replace(/^.*[/\\]/, '')
-  if (!name.endsWith(WALKS_SUFFIX)) {
-    return undefined
-  }
-  const prefix = name.slice(0, -WALKS_SUFFIX.length)
+// GRCh38 in `chr22.GRCh38.walks.gz`. The name does not mark where a dotted
+// sample starts, so a digits-only tail, the version of an accession such as
+// `GCA_000005845.2`, gives no guess; the file's header names it for certain.
+export function walkFileSample(path: string) {
+  const name = path.replace(/^.*[/\\]/, '')
+  const prefix = name.endsWith(WALKS_SUFFIX)
+    ? name.slice(0, -WALKS_SUFFIX.length)
+    : ''
   const dot = prefix.lastIndexOf('.')
-  return dot === -1 ? undefined : prefix.slice(dot + 1) || undefined
+  const sample = dot === -1 ? '' : prefix.slice(dot + 1)
+  return sample === '' || /^\d+$/.test(sample) ? undefined : sample
 }
 
 // A schema's unset file slot defaults to an empty uri

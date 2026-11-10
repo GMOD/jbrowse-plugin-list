@@ -1,4 +1,9 @@
-import { walkRowsTree } from '@jbrowse/bandage-core/layout/walkRowDraw'
+import {
+  barEnd,
+  readoutPlacement,
+  walkRowReadout,
+  walkRowsTree,
+} from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { groupKeyComparator } from '@jbrowse/core/util/groupKeys'
 
 import type { El } from '@jbrowse/bandage-core/el'
@@ -219,4 +224,35 @@ export function walkRowTrees(
           )
         }),
       ]
+}
+
+// What walkRowTrees decides from where the frame sits rather than from its
+// scale: which rows it culls past the pane's top and bottom, and which side of
+// its bar's end each readout goes. While this holds, a pan only moves the
+// trees.
+export function walkRowTreesPanKey(
+  bars: WalkRowsWithCalls,
+  rowY: (i: number) => number,
+  frame: WalkRowsFrame & { barPx: number },
+) {
+  const { scaleX, scaleY, translateX, translateY, width, height, barPx } = frame
+  return [bars.reference, ...bars.rows]
+    .map((row, i) => {
+      const y = rowY(i) * scaleY + translateY
+      return y < -barPx || y > height + barPx
+        ? '-'
+        : (frame.readouts ?? true)
+          ? readoutPlacement(
+              walkRowReadout(
+                row,
+                i === 0 ? undefined : bars.reference,
+                bars.unit,
+                row.call,
+              ),
+              (bars.origin + barEnd(row)) * scaleX + translateX,
+              width,
+            ).anchor
+          : '+'
+    })
+    .join(' ')
 }

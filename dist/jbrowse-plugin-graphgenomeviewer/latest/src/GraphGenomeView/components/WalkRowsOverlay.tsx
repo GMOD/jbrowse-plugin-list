@@ -1,16 +1,26 @@
 import { useCallback, useMemo } from 'react'
 
 import { barEnd } from '@jbrowse/bandage-core/layout/walkRowDraw'
-import { computed } from 'mobx'
+import { computed, untracked } from 'mobx'
 import { observer } from 'mobx-react'
 
 import ElTree, { useSvgId } from './ElTree'
-import { PaneOverlayCanvas, PaneSvgLayer } from './PaneLayer'
+import {
+  PaneOverlayCanvas,
+  PaneSvgLayer,
+  PaneTranslateGroup,
+} from './PaneLayer'
+import { dependOn } from '../pane/paneBase'
 import { paintWalkRowBlocks } from '../walkRowBlocks'
-import { SECTION_HEADER_PX, walkRowTrees } from '../walkRowGroups'
+import {
+  SECTION_HEADER_PX,
+  walkRowTrees,
+  walkRowTreesPanKey,
+} from '../walkRowGroups'
 import { paintWalkRowSpans, walkRowSpans } from '../walkRowSpans'
 
 import type { GraphPaneModel } from '../model'
+import type { RowPitch } from '@jbrowse/bandage-core/layout/walkRowDraw'
 
 // The walk-rows layout's bars: one per haplotype walk under the reference
 // row, each on its own bp axis from the window's left edge. The runs paint as
@@ -194,6 +204,100 @@ const HoveredWalkRow = observer(function HoveredWalkRow({
   )
 })
 
+type WalkRowTreesSource = Pick<
+  GraphPaneModel,
+  | 'walkRowBars'
+  | 'walkRowPlacement'
+  | 'walkRowPitch'
+  | 'walkRowGroups'
+  | 'referenceRampDomain'
+  | 'walkRowGenes'
+  | 'scaleX'
+  | 'scaleY'
+  | 'translateX'
+  | 'translateY'
+  | 'paneWidth'
+  | 'canvasHeight'
+>
+
+// The rows' trees and the translate they were drawn at. A zoom redraws them,
+// and a pan only when it culls another row or turns a readout round.
+export function walkRowTreesOnPane(
+  model: WalkRowTreesSource,
+  idPrefix: string,
+  vector: boolean,
+) {
+  const translate = () => ({
+    translateX: model.translateX,
+    translateY: model.translateY,
+  })
+  const frameAt = (
+    pitch: RowPitch,
+    at: { translateX: number; translateY: number },
+  ) => ({
+    scaleX: model.scaleX,
+    scaleY: model.scaleY,
+    translateX: at.translateX,
+    translateY: at.translateY,
+    width: model.paneWidth,
+    height: model.canvasHeight,
+    ...pitch,
+    bars: vector,
+  })
+  const panKey = computed(() => {
+    const bars = model.walkRowBars
+    const place = model.walkRowPlacement
+    const pitch = model.walkRowPitch
+    return bars && place && pitch
+      ? walkRowTreesPanKey(bars, place.rowY, frameAt(pitch, translate()))
+      : undefined
+  })
+  return computed(() => {
+    const bars = model.walkRowBars
+    const place = model.walkRowPlacement
+    const pitch = model.walkRowPitch
+    dependOn(panKey.get())
+    const at = untracked(translate)
+    return bars && place && pitch
+      ? {
+          at,
+          trees: walkRowTrees(
+            bars,
+            model.walkRowGroups?.sections ?? [],
+            place.rowY,
+            frameAt(pitch, at),
+            {
+              ramp: model.referenceRampDomain,
+              rowGenes: model.walkRowGenes,
+              idPrefix,
+            },
+          ),
+        }
+      : undefined
+  })
+}
+
+const WalkSectionHeaders = observer(function WalkSectionHeaders({
+  model,
+}: {
+  model: GraphPaneModel
+}) {
+  return model.walkRowPlacement?.headers.map(header => (
+    <text
+      key={header.key}
+      x={10}
+      y={model.toScreen({ x: 0, y: header.top }).y + SECTION_HEADER_PX - 4}
+      fontFamily="sans-serif"
+      fontSize={11}
+      fontWeight="bold"
+      fill="#333"
+      data-testid="graph-walk-section"
+    >
+      {header.title}
+    </text>
+  ))
+})
+
 // `vector` for an SVG export, which draws the bars as walkRowsTree's rects
 const WalkRowsOverlay = observer(function WalkRowsOverlay({
   model,
@@ -203,22 +307,11 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
   vector?: boolean
 }) {
   const idPrefix = useSvgId()
-  const bars = model.walkRowBars
-  const place = model.walkRowPlacement
-  const pitch = model.walkRowPitch
-  if (!bars || !place || !pitch) {
-    return null
-  }
-  const { paneWidth: width, canvasHeight } = model
-  // the canvas paints the bars, except in a vector export
-  const frame = {
-    ...model.screenTransform,
-    width,
-    height: canvasHeight,
-    ...pitch,
-    bars: vector,
-  }
-  return (
+  const drawn = useMemo(
+    () => walkRowTreesOnPane(model, idPrefix, vector),
+    [model, idPrefix, vector],
+  ).get()
+  return drawn ? (
     <>
       {vector || !model.walkRowRibbons ? null : (
         <WalkRowRibbonsCanvas model={model} />
@@ -233,39 +326,16 @@ const WalkRowsOverlay = observer(function WalkRowsOverlay({
         overflow="visible"
         testId="graph-walk-rows"
       >
-        {walkRowTrees(
-          bars,
-          model.walkRowGroups?.sections ?? [],
-          place.rowY,
-          frame,
-          {
-            ramp: model.referenceRampDomain,
-            rowGenes: model.walkRowGenes,
-            idPrefix,
-          },
-        ).map((tree, i) => (
-          <ElTree key={i} el={tree} />
-        ))}
-        {place.headers.map(header => (
-          <text
-            key={header.key}
-            x={10}
-            y={
-              model.toScreen({ x: 0, y: header.top }).y + SECTION_HEADER_PX - 4
-            }
-            fontFamily="sans-serif"
-            fontSize={11}
-            fontWeight="bold"
-            fill="#333"
-            data-testid="graph-walk-section"
-          >
-            {header.title}
-          </text>
-        ))}
+        <PaneTranslateGroup model={model} drawnAt={drawn.at}>
+          {drawn.trees.map((tree, i) => (
+            <ElTree key={i} el={tree} />
+          ))}
+        </PaneTranslateGroup>
+        <WalkSectionHeaders model={model} />
         <HoveredWalkRow model={model} />
       </PaneSvgLayer>
     </>
-  )
+  ) : null
 })
 
 export default WalkRowsOverlay

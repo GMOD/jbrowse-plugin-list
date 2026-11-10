@@ -79,6 +79,21 @@ export const PaneTransformGroup = observer(function PaneTransformGroup({
   )
 })
 
+// Children drawn in pane px at an earlier translate, moved to the current one
+export const PaneTranslateGroup = observer(function PaneTranslateGroup({
+  model,
+  drawnAt,
+  children,
+}: {
+  model: GraphPaneModel
+  drawnAt: { translateX: number; translateY: number }
+  children: ReactNode
+}) {
+  const dx = model.translateX - drawnAt.translateX
+  const dy = model.translateY - drawnAt.translateY
+  return <g transform={`translate(${dx} ${dy})`}>{children}</g>
+})
+
 // A canvas the pane's size that an autorun repaints, so a pan moves its ink in
 // the same frame as the drawing. `paint` draws in css px.
 export const PaneOverlayCanvas = observer(function PaneOverlayCanvas({

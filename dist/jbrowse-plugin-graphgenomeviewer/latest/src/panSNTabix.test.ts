@@ -67,6 +67,10 @@ describe('a region the file holds no name for', () => {
     ).resolves.toBeUndefined()
   })
 
+  test('is a contig the graph lacks where the index holds no contigs', async () => {
+    await expect(refNamesOf([]).resolveMapped(chrM)).resolves.toBeUndefined()
+  })
+
   // an assemblyNameToPanSN hint would send the user to fix a config that is
   // already right
   test('fails a cut by saying the graph has nothing there', async () => {

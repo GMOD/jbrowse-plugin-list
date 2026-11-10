@@ -96,6 +96,12 @@ test('the anchor window answers one record per haplotype, on the reference with 
   ])
 })
 
+test('an anchor the walk file names under no prefix says to map it, rather than drawing no lanes', async () => {
+  await expect(feats(makeAdapter({ assemblyNameToPanSN: {} }))).rejects.toThrow(
+    /hg38 chr1 is not in this graph's index/,
+  )
+})
+
 test('a fetch for some haplotypes answers those lanes in the order asked, named by the assembly mapped to them', async () => {
   const adapter = makeAdapter({
     assemblyNameToPanSN: { hg38: 'GRCh38', 'HG002.2': 'HG002#2' },

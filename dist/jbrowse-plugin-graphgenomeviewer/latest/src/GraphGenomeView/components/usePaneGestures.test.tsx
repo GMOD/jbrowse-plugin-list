@@ -431,6 +431,22 @@ describe('a press on a bubble label', () => {
     expect(click()).toBe(false)
   })
 
+  test('keeps panning when the pointer crosses off the canvas onto a label', () => {
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+      frames.push(cb),
+    )
+    const { model, result } = pressLabel()
+    act(() => {
+      pointer('pointermove', 102)
+      pointer('pointermove', 140)
+      result.current.handlers.onPointerLeave(at(140, 20))
+      frames.shift()?.(0)
+    })
+    expect(model.isPanning).toBe(true)
+    expect(model.setTransform).toHaveBeenCalledWith(1, 40, 0)
+  })
+
   // The pointer leaves a 3px tick at once, so the canvas under it sees the
   // same moves the window listener pans by
   test('pans once, not again through the canvas under the pointer', () => {

@@ -389,7 +389,9 @@ export const withFitViews = withHostViews
   }))
   .views(self => ({
     // The corner the key takes: top right, or bottom left where the drawing
-    // runs under the top right and less of it under the bottom left
+    // runs under the top right and less of it under the bottom left. The fit
+    // gives the key no room of its own (e640b21): room shrank every drawing,
+    // and a hosted KIV-2 track's loops fill its height whatever the fit does.
     get legendCorner() {
       return legendCorner(self)
     },

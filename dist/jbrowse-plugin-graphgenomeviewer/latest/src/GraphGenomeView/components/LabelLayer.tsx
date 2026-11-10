@@ -53,8 +53,11 @@ const LabelLayer = observer(function LabelLayer({
   const hoveredTick = hoveredBubble
     ? ticks.find(t => sameBubble(t.item.bubble, hoveredBubble))
     : undefined
-  const tickAt = (target: EventTarget) =>
-    ticks[Number((target as Element).getAttribute('data-tick'))]
+  const tickAt = (target: EventTarget) => {
+    const index =
+      target instanceof Element ? target.getAttribute('data-tick') : null
+    return index === null ? undefined : ticks[Number(index)]
+  }
   const dimmedBubble = (h: BubbleHalo) => model.bubbleFaded(h)
   const isOpen = (h: BubbleHalo) => model.bubbleIsOpen(h.bubble)
 

@@ -7,6 +7,7 @@ import {
 import { wheelZoomFactor } from '@jbrowse/bandage-core/util/wheelZoom'
 import { screenToLayout } from '@jbrowse/bandage-core/viewport'
 import { isAlive } from '@jbrowse/mobx-state-tree'
+import { runInAction } from 'mobx'
 
 import { chipReadoutAt } from './LabelLayer'
 import { PANS_WITH_DRAWING } from './PaneLayer'
@@ -205,7 +206,7 @@ export function usePaneGestures(model: GraphPaneModel) {
 
   // the event's point in pane px, against the canvas it is on
   function pointerAt(e: React.MouseEvent) {
-    const rect = (e.currentTarget as HTMLCanvasElement).getBoundingClientRect()
+    const rect = e.currentTarget.getBoundingClientRect()
     return { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
 
@@ -380,33 +381,35 @@ export function usePaneGestures(model: GraphPaneModel) {
     setHoveredChip(was =>
       was?.label === chip?.label && was?.readout === chip?.readout ? was : chip,
     )
-    if (model.walkRowBars) {
-      const i = model.walkRowAt(sx, sy)
-      model.setHoveredWalkRow(
-        i === undefined ? null : model.walkRowList[i]!.name,
-      )
-    }
-    if (model.nodePositions && model.graph) {
-      const node = nodeAt(sx, sy)
-      model.setHoveredPanel(model.tubeMapPanelAt(sy))
-      model.setHoveredNode(node, { x: sx, y: sy })
-      setOverDraggable(
-        node !== null &&
-          !model.hostPlacesX &&
-          !model.layoutResult?.tubeMap &&
-          sy >= model.referenceStripZonePx,
-      )
-      model.setHoveredTube(
-        node === null && model.layoutResult?.tubeMap
-          ? model.tubeAt(sx, sy)
-          : null,
-      )
-      model.setHoveredEdge(
-        node || model.layoutResult?.tubeMap || !model.hoverLightsEverything
-          ? null
-          : edgeAt(sx, sy),
-      )
-    }
+    runInAction(() => {
+      if (model.walkRowBars) {
+        const i = model.walkRowAt(sx, sy)
+        model.setHoveredWalkRow(
+          i === undefined ? null : model.walkRowList[i]!.name,
+        )
+      }
+      if (model.nodePositions && model.graph) {
+        const node = nodeAt(sx, sy)
+        model.setHoveredPanel(model.tubeMapPanelAt(sy))
+        model.setHoveredNode(node, { x: sx, y: sy })
+        setOverDraggable(
+          node !== null &&
+            !model.hostPlacesX &&
+            !model.layoutResult?.tubeMap &&
+            sy >= model.referenceStripZonePx,
+        )
+        model.setHoveredTube(
+          node === null && model.layoutResult?.tubeMap
+            ? model.tubeAt(sx, sy)
+            : null,
+        )
+        model.setHoveredEdge(
+          node || model.layoutResult?.tubeMap || !model.hoverLightsEverything
+            ? null
+            : edgeAt(sx, sy),
+        )
+      }
+    })
   }
 
   function scheduleFrame() {
@@ -458,9 +461,7 @@ export function usePaneGestures(model: GraphPaneModel) {
       }
       scheduleFrame()
     } else {
-      const rect = (
-        e.currentTarget as HTMLCanvasElement
-      ).getBoundingClientRect()
+      const rect = e.currentTarget.getBoundingClientRect()
       pending.hover = { x: e.clientX - rect.left, y: e.clientY - rect.top }
       scheduleFrame()
     }
@@ -492,22 +493,29 @@ export function usePaneGestures(model: GraphPaneModel) {
   }
 
   // also fired by the canvas unmounting under a resting pointer, after the
-  // view closing it has destroyed the model, and by a finger lifting
+  // view closing it has destroyed the model, and by a finger lifting. A pan
+  // started on a label runs on window listeners, so crossing onto another
+  // label or the legend leaves it going.
   function onPointerLeave(e: React.PointerEvent) {
     if (isOtherPointer(e)) {
       return
     }
-    dragPointerRef.current = undefined
-    pointsRef.current.clear()
-    pinchRef.current = null
-    dropPending()
     setHoveredChip(undefined)
     setOverDraggable(false)
-    if (!isAlive(model)) {
-      return
+    if (labelPanRef.current) {
+      pendingRef.current.hover = null
+    } else {
+      dragPointerRef.current = undefined
+      pointsRef.current.clear()
+      pinchRef.current = null
+      dropPending()
+      if (isAlive(model)) {
+        model.stopDragging()
+      }
     }
-    model.stopDragging()
-    model.clearHover()
+    if (isAlive(model)) {
+      model.clearHover()
+    }
   }
 
   // Right-clicking a node is the gesture that asks "where is this?", and until

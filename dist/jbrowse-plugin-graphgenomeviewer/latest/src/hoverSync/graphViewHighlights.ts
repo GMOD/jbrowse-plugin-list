@@ -90,11 +90,11 @@ function trackGraphs(view: Record<string, unknown>) {
   return tracks.flatMap((track: unknown) =>
     isRecord(track) && Array.isArray(track.displays)
       ? track.displays.filter(
-          (display: unknown) =>
+          (display: unknown): display is Record<string, unknown> =>
             isRecord(display) && display.type === 'LinearGraphDisplay',
         )
       : [],
-  ) as Record<string, unknown>[]
+  )
 }
 
 // The highlights a linear view should draw for the graph views connected to it.

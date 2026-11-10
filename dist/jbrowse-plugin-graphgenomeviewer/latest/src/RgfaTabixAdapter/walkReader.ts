@@ -1,6 +1,7 @@
 import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { checkRange, walksKept } from '@jbrowse/graph-walks'
 
+import { EXPAND_NAMED_MAX } from '../GetSubgraph.ts'
 import { walkCutFor } from './walkCut.ts'
 
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
@@ -16,11 +17,6 @@ export const BUDGET_SLOTS = {
   steps: 'walkStepBudget',
   bytes: 'walkByteBudget',
 }
-
-// Walk rows read a list of haplotypes, or of the samples they show, this long or
-// shorter in full where the walk file abridged it; a longer list, or every
-// haplotype, keeps the abridged rows
-export const EXPAND_NAMED_MAX = 64
 
 /**
  * A walk file and the answers both walk-indexed adapters give from it,

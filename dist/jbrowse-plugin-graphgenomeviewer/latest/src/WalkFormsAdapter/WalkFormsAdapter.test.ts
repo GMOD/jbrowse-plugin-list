@@ -112,10 +112,48 @@ test('features are the pinned window changes, with a genotype per form', async (
   ])
 })
 
-test('a query with no change gives no features', async () => {
+test('a query with no change, or off the pinned sequence, gives no features', async () => {
   const adapter = makeAdapter({ pinned: pinned(3) })
   expect(await featuresOf(adapter, region(1900, 2300))).toEqual([])
+  expect(await featuresOf(adapter, region(2900, 3600))).toHaveLength(1)
+})
+
+test('a query off the pinned sequence starts no cut', async () => {
+  vi.mocked(formsCut).mockClear()
+  const adapter = makeAdapter({ pinned: pinned(11) })
   expect(await featuresOf(adapter, region(0, 3600, 'chr2'))).toEqual([])
+  expect(formsCut).not.toHaveBeenCalled()
+})
+
+test("a window pinned on the assembly's name for a contig cuts by the alias the walk file holds", async () => {
+  vi.mocked(formsCut).mockClear()
+  const window = { refName: '1', start: 12, end: 3600 }
+  const adapter = makeAdapter({ pinned: window, pinnedAliases: ['chr1'] })
+  const { sources, warnings } = await adapter.getSourcesAndWarnings()
+  expect(sources).toHaveLength(3)
+  expect(warnings).toEqual([])
+  expect(formsCut).toHaveBeenCalledWith(
+    expect.anything(),
+    { ...window, refName: 'GRCh38#0#chr1' },
+    expect.anything(),
+  )
+  expect(
+    (await featuresOf(adapter)).map(f => [f.get('start'), f.get('end')]),
+  ).toEqual([
+    [1200, 1800],
+    [2400, 3000],
+  ])
+})
+
+test('a window pinned on a name the walk file lacks places no haplotype', async () => {
+  const adapter = makeAdapter({
+    pinned: { refName: '1', start: 13, end: 3600 },
+  })
+  const { warnings } = await adapter.getSourcesAndWarnings()
+  expect(warnings).toEqual([
+    expect.stringMatching(/no walk over the pinned window/),
+  ])
+  expect(await featuresOf(adapter)).toEqual([])
 })
 
 test('a floor change regroups the cut without cutting again', async () => {
@@ -144,6 +182,7 @@ test('maxForms gives the smaller forms one empty row', async () => {
   expect(warnings).toEqual([
     expect.stringMatching(/^Forms of chr1:7-3,600: 2 smaller forms/),
   ])
+  expect(await featuresOf(adapter)).toEqual([])
 })
 
 test('a pinned window past walkByteBudget says so, without a zoom-in notice', async () => {

@@ -168,6 +168,11 @@ const WalkStrip = observer(function WalkStrip({
         width={frame.width}
         height={frame.height}
         style={{ display: 'block' }}
+        onMouseLeave={() => {
+          if (isAlive(model)) {
+            model.setStripHover(null)
+          }
+        }}
         onMouseMove={e => {
           const at = hit(e)
           e.currentTarget.style.cursor = at && at.index > 0 ? 'pointer' : ''

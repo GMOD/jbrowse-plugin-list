@@ -361,6 +361,43 @@ describe('canceling and retrying', () => {
     })
   })
 
+  test("picking a sample in walk rows cuts again with its abridged walk's name", async () => {
+    const tables = gfaTables(
+      [
+        GFA,
+        'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+        'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+      ].join('\n'),
+    )!
+    tables.walks.abridgedSteps = Float64Array.from([Number.NaN, 40])
+    tables.walks.abridgedBp = Float64Array.from([Number.NaN, 9000])
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(tables)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const { view: model } = types.model({ view: stateModelFactory() }).create({
+      view: {
+        type: 'GraphGenomeView',
+        layoutMode: 'walkrows',
+        loadedTrackId: TRACK.trackId,
+        loadedRegion: ON_HG38,
+      } as never,
+    })
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
+    mockRpcCall.mockClear()
+    model.setWalkRowSamples(['NA20809'])
+    expect(model.expandedWalks).toEqual(['NA20809#2#CM094351.1'])
+    await vi.waitFor(() => {
+      expect(mockRpcCall).toHaveBeenCalledTimes(1)
+    })
+    expect(mockRpcCall.mock.calls[0]?.[2]).toMatchObject({
+      opts: { expand: ['NA20809#2#CM094351.1'] },
+    })
+  })
+
   test('a newer cut aborts the one it replaces', () => {
     pendingCuts()
     const model = launchedView()

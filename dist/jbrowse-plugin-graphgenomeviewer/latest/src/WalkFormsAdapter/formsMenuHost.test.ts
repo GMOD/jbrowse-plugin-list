@@ -29,14 +29,19 @@ test("the host's multi-sample variant display carries the forms menu", async () 
   ).filter(takesFormsMenu)
   await Promise.all(displays.map(d => d.loadStateModel()))
   const withRows = displays.flatMap(t => {
-    const display = t.stateModel.create(
-      {
-        type: t.name,
-        configuration: t.configSchema.create({ displayId: 'x', type: t.name }),
-      },
+    const configuration: unknown = t.configSchema.create({
+      displayId: 'x',
+      type: t.name,
+    })
+    const display: unknown = t.stateModel.create(
+      { type: t.name, configuration },
       { pluginManager },
     )
-    return 'sourcesBase' in display ? [{ name: t.name, display }] : []
+    return typeof display === 'object' &&
+      display !== null &&
+      'sourcesBase' in display
+      ? [{ name: t.name, display }]
+      : []
   })
   expect(withRows.map(d => d.name)).not.toEqual([])
   for (const { display } of withRows) {

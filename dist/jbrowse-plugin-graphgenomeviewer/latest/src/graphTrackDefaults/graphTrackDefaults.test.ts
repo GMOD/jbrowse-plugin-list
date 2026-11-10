@@ -225,3 +225,34 @@ test("a walk file with no PanSN map reads as its name's sample on the track's as
     assemblyNameToPanSN: { hg38: 'GRCh38' },
   })
 })
+
+test('a walk file named by the walksUri shorthand reads as its sample too', () => {
+  const track = {
+    type: 'GraphTrack',
+    assemblyNames: ['hg38'],
+    adapter: {
+      type: 'RgfaTabixAdapter',
+      walksUri: 'https://example.com/hprc-v2.1-mc-grch38-f5s.GRCh38',
+    },
+  }
+  expect(withWalkReference(track).adapter).toMatchObject({
+    assemblyNameToPanSN: { hg38: 'GRCh38' },
+  })
+  const segments = {
+    ...track,
+    adapter: { ...track.adapter, walksUri: '' },
+  }
+  expect(withWalkReference(segments)).toBe(segments)
+})
+
+test('a walk file named after a dotted accession gets no guessed map', () => {
+  const track = {
+    type: 'GraphTrack',
+    assemblyNames: ['ecoli'],
+    adapter: {
+      type: 'WalkTabixSyntenyAdapter',
+      walksLocation: uri('https://example.com/pg.GCA_000005845.2.walks.gz'),
+    },
+  }
+  expect(withWalkReference(track)).toBe(track)
+})

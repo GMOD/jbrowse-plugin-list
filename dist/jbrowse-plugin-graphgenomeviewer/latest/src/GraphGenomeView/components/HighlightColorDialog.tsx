@@ -88,7 +88,10 @@ const Row = observer(function Row({
           select: { SelectDisplayProps: { 'aria-label': `Color ${label} by` } },
         }}
         onChange={e => {
-          onField(e.target.value as Field)
+          const picked = WALK_FIELDS.find(f => f.value === e.target.value)
+          if (picked) {
+            onField(picked.value)
+          }
         }}
       >
         {WALK_FIELDS.map(f => (
@@ -107,7 +110,10 @@ const Row = observer(function Row({
           },
         }}
         onChange={e => {
-          onScheme(e.target.value as Scheme)
+          const picked = WALK_SCHEMES.find(s => s.value === e.target.value)
+          if (picked) {
+            onScheme(picked.value)
+          }
         }}
       >
         {WALK_SCHEMES.filter(

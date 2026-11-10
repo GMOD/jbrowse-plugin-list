@@ -13,6 +13,7 @@ import { types } from '@jbrowse/mobx-state-tree'
 import { WALKS_SUFFIX, locationIsSet, renamed } from './locationName.ts'
 import { bytesForRegions } from './tabixRange.ts'
 
+import type PluginManager from '@jbrowse/core/PluginManager'
 import type {
   BaseFeatureDataAdapter,
   BaseOptions,
@@ -88,6 +89,7 @@ export function openTabixSlot(
   index: string[],
 ) {
   const pm = adapter.pluginManager
+  /* eslint-disable @typescript-eslint/no-unsafe-argument -- a slot named by a runtime path reads as any */
   return new TabixIndexedFile({
     filehandle: openLocation(adapter.getConf(location), pm),
     ...openTabixIndexFilehandle(
@@ -96,6 +98,7 @@ export function openTabixSlot(
       pm,
     ),
   })
+  /* eslint-enable @typescript-eslint/no-unsafe-argument */
 }
 
 /**
@@ -103,15 +106,29 @@ export function openTabixSlot(
  * `walksIndex`, or from `<walksLocation>.idx` beside it where that slot is
  * unset
  */
-export function openWalkReader(adapter: BaseFeatureDataAdapter) {
-  const pm = adapter.pluginManager
-  const data: FileLocation = adapter.getConf('walksLocation')
-  const index: FileLocation = adapter.getConf('walksIndex')
+export function openWalkReader(adapter: {
+  pluginManager?: PluginManager
+  getConf(slot: 'walksLocation' | 'walksIndex'): FileLocation
+}) {
+  const index = adapter.getConf('walksIndex')
+  return openWalkFile(
+    adapter.getConf('walksLocation'),
+    locationIsSet(index) ? index : undefined,
+    adapter.pluginManager,
+  )
+}
+
+// A walk file, with its directory at `index` or at `<data>.idx` beside it
+export function openWalkFile(
+  data: FileLocation,
+  index: FileLocation | undefined,
+  pluginManager?: PluginManager,
+) {
   return WalkReader.fromFilehandles({
-    data: openLocation(data, pm),
+    data: openLocation(data, pluginManager),
     directory: openLocation(
-      locationIsSet(index) ? index : renamed(data, name => `${name}.idx`),
-      pm,
+      index ?? renamed(data, name => `${name}.idx`),
+      pluginManager,
     ),
   })
 }
@@ -209,6 +226,7 @@ export class PanSNRefNames {
       const names = await this.source.names(opts)
       const prefix = resolvePanSNPrefix(this.adapter, region.assemblyName)
       if (
+        names.length > 0 &&
         names.every(n => n.includes('#')) &&
         !names.some(n => panSNMatchesPrefix(n, prefix))
       ) {

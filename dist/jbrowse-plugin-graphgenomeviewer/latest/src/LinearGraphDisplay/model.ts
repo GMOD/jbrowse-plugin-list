@@ -38,7 +38,6 @@ import { pushLaunchItem } from '../launchFromGraph/pushLaunchItem'
 
 import type { LinearGraphDisplayConfigModel } from './configSchema'
 import type { SubgraphRegion, SubgraphTier } from '../GetSubgraph'
-import type { GraphLayers } from '../GraphGenomeView/graphLayers'
 import type { HostWindow } from '../GraphGenomeView/host'
 import type { GraphGrammar } from '../GraphGenomeView/pane/graphViews'
 import type { LaunchGraphGenomeViewArgs } from '../LaunchGraphGenomeView'
@@ -122,12 +121,13 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
     }))
     .views(self => ({
       get grammar(): GraphGrammar {
+        /* eslint-disable @typescript-eslint/no-unsafe-assignment -- core reads a frozen slot as any */
         return {
           layoutMode: getConf(self, 'layoutMode'),
           layoutEngine: getConf(self, 'layoutEngine'),
           encoding: getConf(self, 'encoding'),
           size: getConf(self, 'size'),
-          layers: getConf(self, 'layers') as GraphLayers,
+          layers: getConf(self, 'layers'),
           facet: {
             field: getConf(self, ['facet', 'field']),
             sort: getConf(self, ['facet', 'sort']),
@@ -136,6 +136,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           rows: getConf(self, 'rows'),
           hover: getConf(self, 'hover'),
         }
+        /* eslint-enable @typescript-eslint/no-unsafe-assignment */
       },
       // The linear view leaves its highlight bands off this track while false
       get drawsGenomicCoordinates() {
@@ -700,6 +701,9 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             self.openGraphView()
           },
         })
+        // Per-haplotype items go under Haplotypes, and figure export stays in
+        // the graph genome view's menu: the linear view's Export SVG already
+        // draws this track
         const haplotypes = [
           ...this.cutMenuItems(),
           ...self.highlightMenuItems(),

@@ -1,9 +1,10 @@
 import { guessGraphAdapter } from './guessAdapter'
-import { walkFileSample } from '../locationName'
+import { walkIndexed } from '../graphTrackConfig'
+import { isRecord } from '../isRecord'
+import { WALKS_SUFFIX, splitUri, walkFileSample } from '../locationName'
 import { LANE_ADAPTERS } from '../panSNAliases/trackAdapterConfig'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
-import type { FileLocation } from '@jbrowse/core/util'
 import type {
   AdapterGuesser,
   TrackTypeGuesser,
@@ -31,31 +32,36 @@ export function withLaneAnchor(snap: TrackConfigSnapshot) {
     : snap
 }
 
-const WALK_ADAPTERS = new Set(['RgfaTabixAdapter', 'WalkTabixSyntenyAdapter'])
+// The walk file a config snapshot names, by the `walksUri` shorthand or the
+// location it expands to
+function walkFileName({ walksUri, walksLocation }: Record<string, unknown>) {
+  const { uri, localPath, name } = isRecord(walksLocation) ? walksLocation : {}
+  return typeof walksUri === 'string' && walksUri !== ''
+    ? `${walksUri}${WALKS_SUFFIX}`
+    : typeof uri === 'string'
+      ? splitUri(uri).name
+      : typeof localPath === 'string'
+        ? localPath
+        : typeof name === 'string'
+          ? name
+          : undefined
+}
 
 // A walk file opened with no PanSN map reads as the sample its name gives, on
 // the track's assembly; a guessed adapter had no assembly to key that by
 export function withWalkReference(snap: TrackConfigSnapshot) {
-  const adapter = snap.adapter as
-    | {
-        type?: string
-        walksLocation?: FileLocation
-        assemblyNameToPanSN?: unknown
-      }
-    | undefined
+  const adapter = isRecord(snap.adapter) ? snap.adapter : undefined
   const [assembly] = Array.isArray(snap.assemblyNames)
     ? (snap.assemblyNames as string[])
     : []
-  const sample =
-    adapter?.type !== undefined &&
-    WALK_ADAPTERS.has(adapter.type) &&
-    adapter.walksLocation
-      ? walkFileSample(adapter.walksLocation)
-      : undefined
-  return assembly &&
+  const file =
+    adapter && walkIndexed(adapter) ? walkFileName(adapter) : undefined
+  const sample = file ? walkFileSample(file) : undefined
+  return adapter &&
+    assembly &&
     sample &&
     sample !== assembly &&
-    adapter?.assemblyNameToPanSN === undefined
+    adapter.assemblyNameToPanSN === undefined
     ? {
         ...snap,
         adapter: { ...adapter, assemblyNameToPanSN: { [assembly]: sample } },

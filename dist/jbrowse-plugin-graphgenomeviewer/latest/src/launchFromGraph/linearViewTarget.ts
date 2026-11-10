@@ -1,4 +1,4 @@
-import { isRecord } from '../isRecord'
+import { isArray, isRecord } from '../isRecord'
 
 export interface NavigableLinearView {
   id: string
@@ -25,9 +25,7 @@ function isLinearView(view: unknown): view is NavigableLinearView {
 // level of rows.
 export function withRows(views: unknown[]) {
   return views.flatMap(view =>
-    isRecord(view) && Array.isArray(view.views)
-      ? [view, ...view.views]
-      : [view],
+    isRecord(view) && isArray(view.views) ? [view, ...view.views] : [view],
   )
 }
 

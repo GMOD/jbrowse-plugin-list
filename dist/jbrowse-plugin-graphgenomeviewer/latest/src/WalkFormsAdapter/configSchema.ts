@@ -64,6 +64,17 @@ const WalkFormsAdapter = ConfigurationSchema(
     },
     /**
      * #slot
+     * The assembly's other names for `pinned.refName`, tried in turn when the
+     * walk file's reference sample has no contig by that name. The forms menu
+     * fills it in from the track's assembly, so a window pinned on `6` in a
+     * view of an assembly with bare contig names cuts `GRCh38#0#chr6`.
+     */
+    pinnedAliases: {
+      type: 'stringArray',
+      defaultValue: [],
+    },
+    /**
+     * #slot
      * The smallest change that tells two forms apart: `auto`, which follows
      * the pinned window's width (50 bp under 25 kb, 1 kb to 300 kb, 10 kb
      * past it), or 50, 1000 or 10000. A change of floor regroups the same

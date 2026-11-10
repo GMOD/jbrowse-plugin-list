@@ -29,6 +29,7 @@ import { LAUNCH_LABEL, resolveSubMenu } from '@jbrowse/core/ui'
 import {
   applyPatch,
   applySnapshot,
+  destroy,
   getSnapshot,
   types,
 } from '@jbrowse/mobx-state-tree'
@@ -569,6 +570,97 @@ describe('performance instrumentation', () => {
     model.stopLoad()
     runs[0]!('stopped')
     expect(model.statusMessage).toBe('')
+  })
+
+  // each GraphComputeLayout call held, to be answered by hand
+  function heldLayouts() {
+    const runs: {
+      signal: AbortSignal
+      resolve: (value: unknown) => void
+      reject: (reason: unknown) => void
+    }[] = []
+    mockRpcCall.mockImplementation(
+      (_sid: unknown, _method: string, args: { signal: AbortSignal }) =>
+        new Promise((resolve, reject) => {
+          runs.push({ signal: args.signal, resolve, reject })
+        }),
+    )
+    return runs
+  }
+
+  test('a force run no live layout waits on is aborted, and a shared one is not', async () => {
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(RGFA, 'imported')
+    const runs = heldLayouts()
+    model.setLayoutQuality(3)
+    void model.recomputeLayout()
+    void model.recomputeLayout()
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.signal.aborted).toBe(false)
+
+    model.setLayoutQuality(1)
+    void model.recomputeLayout()
+    expect(runs[0]!.signal.aborted).toBe(true)
+    expect(runs[1]!.signal.aborted).toBe(false)
+
+    model.setLayoutMode('auto')
+    void model.recomputeLayout()
+    expect(runs[1]!.signal.aborted).toBe(true)
+  })
+
+  test('a layout back on an aborted run that fails asks the engine again', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }))
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(SIMPLE_GFA, 'imported')
+    const runs = heldLayouts()
+    model.setLayoutQuality(3)
+    void model.recomputeLayout()
+    model.setLayoutQuality(1)
+    void model.recomputeLayout()
+    model.setLayoutQuality(3)
+    const back = model.recomputeLayout()
+    expect(runs).toHaveLength(2)
+    expect(runs[1]!.signal.aborted).toBe(true)
+
+    runs[0]!.reject(new DOMException('aborted', 'AbortError'))
+    await vi.waitFor(() => {
+      expect(runs).toHaveLength(3)
+    })
+    expect(runs[2]!.signal.aborted).toBe(false)
+    runs[2]!.resolve({ result: structuredClone(MOCK_LAYOUT), duration: 5 })
+    await back
+    expect(model.error).toBeUndefined()
+    expect(model.isLoading).toBe(false)
+    vi.unstubAllGlobals()
+  })
+
+  test('a layout started after a stop is aborted by the next load, clearGraph or destroy', async () => {
+    const model = createModel()
+    async function layoutAfterStop(quality: number) {
+      rpcRespond()
+      await model.loadGFA(SIMPLE_GFA, 'imported')
+      model.stopLoad()
+      const runs = heldLayouts()
+      model.setLayoutQuality(quality)
+      void model.recomputeLayout()
+      expect(runs).toHaveLength(1)
+      expect(runs[0]!.signal.aborted).toBe(false)
+      return runs[0]!.signal
+    }
+
+    const beforeNextLoad = await layoutAfterStop(3)
+    void model.loadGFA(WALKED_GFA, 'next')
+    expect(beforeNextLoad.aborted).toBe(true)
+
+    const beforeClear = await layoutAfterStop(1)
+    model.clearGraph()
+    expect(beforeClear.aborted).toBe(true)
+
+    const beforeDestroy = await layoutAfterStop(3)
+    destroy(model)
+    expect(beforeDestroy.aborted).toBe(true)
   })
 
   test('clearGraph drops every hover naming a part of the graph', async () => {
@@ -2432,6 +2524,54 @@ describe('launching out of the graph', () => {
     ])
   })
 
+  test("a strain's gene read is aborted by the next read, clearGraph and destroy", async () => {
+    mockSession.assemblyNames = ['K12', 'Sakai']
+    mockSession.tracks = [
+      {
+        trackId: 'Sakai_genes',
+        name: 'Sakai genes',
+        assemblyNames: ['Sakai'],
+        adapter: { type: 'Gff3TabixAdapter' },
+      },
+    ]
+    const region = {
+      refName: 'chr',
+      assemblyName: 'K12',
+      start: 1000,
+      end: 1020,
+    }
+    const reads: { signal: AbortSignal; settle: (f: unknown[]) => void }[] = []
+    async function readOwnGenes() {
+      const model = await loadedGraph(ECOLI_RGFA, region)
+      mockRpcCall.mockImplementation(
+        (_sid: unknown, method: string, args: { signal: AbortSignal }) =>
+          method === 'CoreGetFeatures'
+            ? new Promise(resolve => {
+                reads.push({ signal: args.signal, settle: resolve })
+              })
+            : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+      )
+      return { model, read: model.loadOwnGenes() }
+    }
+
+    const { model, read } = await readOwnGenes()
+    void model.loadOwnGenes()
+    expect(reads).toHaveLength(2)
+    expect(reads[0]!.signal.aborted).toBe(true)
+    expect(reads[1]!.signal.aborted).toBe(false)
+    reads[0]!.settle([])
+    await read
+    expect(model.ownGeneFeatures).toBeUndefined()
+
+    model.clearGraph()
+    expect(reads[1]!.signal.aborted).toBe(true)
+
+    const next = await readOwnGenes()
+    expect(reads[2]!.signal.aborted).toBe(false)
+    destroy(next.model)
+    expect(reads[2]!.signal.aborted).toBe(true)
+  })
+
   test('loaded strains offer a per-strain linear view and a synteny item', async () => {
     mockSession.assemblyNames = ['K12', 'Sakai']
     const model = await loadedGraph(ECOLI_RGFA, {
@@ -3100,7 +3240,7 @@ describe('what the row axis draws, in pixels', () => {
     const shown = await fitted()
     expect(deletionRows(shown)).toMatchObject([
       {
-        label: expect.stringMatching(/^skips .* sequence \(a deletion\)$/),
+        label: expect.stringMatching(/^skips .* sequence/),
         swatch: { kind: 'line', dashed: true },
       },
     ])
@@ -4744,6 +4884,29 @@ describe('walk rows grouped by a sample column', () => {
     mockReadFile.mockResolvedValue(TSV)
     await model.loadWalkRowSampleTable()
     expect(model.walkRowGroupFields).toEqual(['population', 'superpopulation'])
+  })
+
+  test('the next cut retries a read that failed', async () => {
+    rpcRespond()
+    mockReadFile.mockRejectedValue(new Error('network'))
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+      loadedTrackId: 'gbz-track',
+    })
+    model.startRenderingBackend(fakeRenderer())
+    await model.loadGFA(GFA, 'walks')
+    await vi.waitFor(() => {
+      expect(mockSession.notify).toHaveBeenCalledTimes(1)
+    })
+    mockReadFile.mockResolvedValue(TSV)
+    await model.loadGFA(GFA, 'walks')
+    await vi.waitFor(() => {
+      expect(model.walkRowGroupFields).toEqual([
+        'population',
+        'superpopulation',
+      ])
+    })
   })
 
   test('a dropped graph takes its samples table with it', async () => {

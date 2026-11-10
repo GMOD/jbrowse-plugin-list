@@ -7,7 +7,7 @@ import {
 import { computed } from 'mobx'
 import { observer } from 'mobx-react'
 
-import ElTree, { useSvgId } from './ElTree'
+import ElTree, { PANE_TRANSFORM, useSvgId } from './ElTree'
 import { PaneSvgLayer } from './PaneLayer'
 
 import type { GraphPaneModel } from '../model'
@@ -22,7 +22,7 @@ const GenePins = observer(function GenePins({
   model: GraphPaneModel
 }) {
   const id = `exon-outline-${useSvgId()}`
-  // in layout units, so a pan frame reuses them and only moves the transform
+  // in layout units, so neither a pan nor a zoom rebuilds them
   const stretches = useMemo(
     () =>
       computed(() => {
@@ -41,17 +41,15 @@ const GenePins = observer(function GenePins({
       }),
     [model],
   )
-  const { scaleX, scaleY, translateX, translateY, paneWidth, canvasHeight } =
-    model
   const tree = exonOutlineTree(stretches.get(), {
     id,
-    width: paneWidth,
-    height: canvasHeight,
-    transform: `translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})`,
+    width: model.paneWidth,
+    height: model.canvasHeight,
+    transform: PANE_TRANSFORM,
   })
   return tree ? (
     <PaneSvgLayer model={model} zIndex={2} testId="graph-gene-pins">
-      <ElTree el={tree} />
+      <ElTree el={tree} pane={model} />
     </PaneSvgLayer>
   ) : null
 })

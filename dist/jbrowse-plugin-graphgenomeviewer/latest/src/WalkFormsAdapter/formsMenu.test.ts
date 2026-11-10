@@ -13,7 +13,14 @@ const FakeDisplay = types
   }))
   .views(self => ({
     get parentTrack() {
-      return { configuration: { adapter: self.adapter } }
+      return {
+        configuration: {
+          trackId: 'forms',
+          type: 'VariantTrack',
+          assemblyNames: ['hg38'],
+          adapter: self.adapter,
+        },
+      }
     },
     trackMenuItems(): MenuItem[] {
       return [{ label: 'Core item', onClick: () => {} }]
@@ -28,8 +35,8 @@ const FakeDisplay = types
     },
   }))
 
-const block = (start: number, end: number) => ({
-  refName: 'chr6',
+const block = (refName: string, start: number, end: number) => ({
+  refName,
   assemblyName: 'hg38',
   start,
   end,
@@ -40,6 +47,7 @@ const block = (start: number, end: number) => ({
 const FakeView = types
   .model('FakeView', {
     display: withFormsMenu(FakeDisplay),
+    refName: types.optional(types.string, 'chr6'),
     start: types.number,
     end: types.number,
   })
@@ -52,7 +60,7 @@ const FakeView = types
   }))
   .views(self => ({
     get dynamicBlocks() {
-      return { contentBlocks: [block(self.start, self.end)] }
+      return { contentBlocks: [block(self.refName, self.start, self.end)] }
     },
     horizontalScroll: (d: number) => d,
     zoomTo: (bpPerPx: number) => bpPerPx,
@@ -65,11 +73,24 @@ const FakeView = types
     },
   }))
 
+// hg38 names chromosome 6 `6`, as Ensembl does, and knows `chr6` as an alias
+const aliases: Record<string, string[]> = {
+  '6': ['chr6', 'NC_000006.12'],
+  chr6: ['6', 'NC_000006.12'],
+}
+
+const hg38 = {
+  getAliasesForRefName: (refName: string) => aliases[refName] ?? [],
+}
+
 const FakeSession = types
   .model('FakeSession', { view: FakeView })
   .volatile(() => ({
     rpcManager: {},
     configuration: {},
+    assemblyManager: {
+      get: (name: string) => (name === 'hg38' ? hg38 : undefined),
+    },
     snackbarMessages: [] as { message: string }[],
   }))
   .actions(self => ({
@@ -83,9 +104,14 @@ const FakeSession = types
     },
   }))
 
-function makeSession(adapter: Record<string, unknown>) {
+function makeSession(adapter: Record<string, unknown>, refName = 'chr6') {
   return FakeSession.create({
-    view: { display: { adapter }, start: 160_600_000.4, end: 160_700_000.6 },
+    view: {
+      display: { adapter },
+      refName,
+      start: 160_600_000.4,
+      end: 160_700_000.6,
+    },
   })
 }
 
@@ -203,7 +229,28 @@ test('the floor items set floorBp and check the one in force', () => {
 test('the floor defaults to auto when the config leaves it unset', () => {
   const { display } = makeView(formsAdapter)
   expect(display.formsFloor).toBe('auto')
-  expect(display.adapterConfig).toEqual(formsAdapter)
+  expect(display.adapterConfig).not.toHaveProperty('floorBp')
+})
+
+test("a re-pin on the assembly's contig name sends its aliases for the worker to match", () => {
+  const { display } = makeSession(formsAdapter, '6').view
+  expect(display.adapterConfig.pinnedAliases).toEqual(['6', 'NC_000006.12'])
+  item(display.trackMenuItems(), 'Re-pin to visible region').onClick()
+  expect(display.adapterConfig).toMatchObject({
+    pinned: { refName: '6', start: 160_600_000, end: 160_700_001 },
+    pinnedAliases: ['chr6', 'NC_000006.12'],
+  })
+  expect(
+    item(display.trackMenuItems(), 'Re-pin to visible region').disabled,
+  ).toBe(true)
+})
+
+test('a pinned contig the assembly lacks sends no aliases', () => {
+  const { display } = makeView({
+    ...formsAdapter,
+    pinned: { ...LPA, refName: 'chrUn' },
+  })
+  expect(display.adapterConfig).not.toHaveProperty('pinnedAliases')
 })
 
 test("a floor change or new rows take down the old window's warnings", () => {
