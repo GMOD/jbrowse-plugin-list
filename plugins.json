@@ -171,6 +171,18 @@
       "license": "Apache-2.0",
       "tags": ["needs-setup", "sequence", "remote-api"],
       "unlisted": true
+    },
+    {
+      "name": "Zarr",
+      "packageName": "jbrowse-plugin-zarr",
+      "authors": ["Colin Diesh"],
+      "description": "Multi-sample quantitative signal from a Zarr v3 store: per-base or binned values for hundreds to thousands of samples in a few requests",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-zarr",
+      "umdPath": "dist/jbrowse-plugin-zarr.umd.production.min.js",
+      "license": "MIT",
+      "tags": ["bring-your-own-data", "quantitative"],
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/zarr-screenshot-fs8.png",
+      "jbrowseRange": ">=5.0.0"
     }
   ]
 }
