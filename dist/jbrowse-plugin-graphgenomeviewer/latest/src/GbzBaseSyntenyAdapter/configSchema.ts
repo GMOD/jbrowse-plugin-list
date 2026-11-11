@@ -1,9 +1,9 @@
-import { GBZ_CUT_DEFAULTS } from '@jbrowse/bandage-core/gbzWindow'
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { types } from '@jbrowse/mobx-state-tree'
 
 import { splitUri } from '../locationName'
-import { fileLocationSlot, tabixIndexSchema } from '../panSNTabix.ts'
+import { GBZ_CUT_DEFAULTS } from '../slotDefaults.ts'
+import { fileLocationSlot, tabixIndexSchema } from '../tabixSlots.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 

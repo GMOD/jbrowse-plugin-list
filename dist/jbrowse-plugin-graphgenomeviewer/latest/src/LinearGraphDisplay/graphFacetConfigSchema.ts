@@ -29,9 +29,5 @@ export const graphFacetConfigSchema = ConfigurationSchema(
      * #baseConfiguration
      */
     baseConfiguration: facetConfigSchema,
-    // bandage-core's `domain` through 11.x, its `sort` since 12
-    retired: {
-      domain: (sort: unknown) => ({ sort }),
-    },
   },
 )

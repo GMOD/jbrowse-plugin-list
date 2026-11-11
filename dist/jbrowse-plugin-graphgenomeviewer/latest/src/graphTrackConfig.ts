@@ -31,6 +31,11 @@ export function walkIndexed(adapterConfig: Record<string, unknown>) {
   )
 }
 
+// Names typed as a list, by comma or space
+export function parseHaplotypes(text: string) {
+  return text.split(/[\s,]+/).filter(name => name !== '')
+}
+
 // Whether a track's cut reads `haplotypes`: a GBZ cut does, and so does an
 // rGFA one with a walk file
 export function cutsByHaplotype(adapterConfig: Record<string, unknown>) {

@@ -16,12 +16,7 @@ import {
 } from '@jbrowse/core/pluggableElementTypes/models'
 import { LAUNCH_LABEL } from '@jbrowse/core/ui'
 import SimpleFeature from '@jbrowse/core/util/simpleFeature'
-import {
-  applyPatch,
-  getSnapshot,
-  getType,
-  types,
-} from '@jbrowse/mobx-state-tree'
+import { applyPatch, getType, types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { reaction } from 'mobx'
@@ -198,8 +193,7 @@ function createEnvironment({
   RgfaTabixAdapterF(pluginManager)
   GbzBaseSyntenyAdapterF(pluginManager)
   addGeneLaneTypes(pluginManager)
-  // the track types a 4.0 config names its graph on, and the gene lane's
-  for (const name of ['FeatureTrack', 'SyntenyTrack', 'GeneLaneTrack']) {
+  for (const name of ['GeneLaneTrack']) {
     pluginManager.addTrackType(() => {
       const trackConfigSchema = ConfigurationSchema(
         name,
@@ -298,17 +292,17 @@ function createEnvironment({
     },
     { pluginManager },
   )
-  const featureTrackConfig = trackSchema.create(
+  const bareTrackConfig = trackSchema.create(
     {
-      type: 'FeatureTrack',
-      trackId: 'graph-as-feature',
-      name: 'graph as a 4.0 config states it',
+      type: 'GraphTrack',
+      trackId: 'graph-bare',
+      name: 'graph whose display states nothing',
       assemblyNames: [ASM],
       adapter: { type: 'RgfaTabixAdapter', uri: 'graph' },
       displays: [
         {
           type: 'LinearGraphDisplay',
-          displayId: 'graph-as-feature-LinearGraphDisplay',
+          displayId: 'graph-bare-LinearGraphDisplay',
         },
       ],
     },
@@ -334,7 +328,7 @@ function createEnvironment({
     trackConfig,
     gbzTrackConfig,
     walkIndexedTrackConfig,
-    featureTrackConfig,
+    bareTrackConfig,
     aliasTrackConfig,
   ]
   if (geneLaneFilter) {
@@ -383,6 +377,9 @@ function createEnvironment({
   const signals: AbortSignal[] = []
   // a GBZ cut of more than this many bp fails over its node limit
   let denseAbove = Infinity
+  // a GBZ cut under a forced byte budget of fewer bytes than this fails where
+  // no zoom fits
+  let unzoomableBytes = 0
   // what a walk-indexed graph's header names
   let haplotypeNames: string[] | undefined = ['HG1#1', 'HG1#2', 'HG2#1']
   const rpcCall = vi.fn(
@@ -391,12 +388,35 @@ function createEnvironment({
       method: string,
       args: {
         region: SubgraphRegion
-        opts?: { tier?: SubgraphTier; snarls?: string; hops?: number }
+        opts?: {
+          tier?: SubgraphTier
+          snarls?: string
+          hops?: number
+          forcedByteBudget?: number
+        }
         options?: { engine: string }
         signal?: AbortSignal
         adapterConfig?: { type?: string }
       },
     ) => {
+      if (
+        method === 'GetSubgraph' &&
+        args.adapterConfig?.type === 'GbzBaseSyntenyAdapter' &&
+        unzoomableBytes > (args.opts?.forcedByteBudget ?? 0)
+      ) {
+        cuts.push({ tier: 'fine', region: args.region })
+        return Promise.reject(
+          Object.assign(
+            new Error('Too much graph here to fetch, even zoomed in'),
+            {
+              name: 'NodeLimitError',
+              regionTooLarge: true,
+              zoomHelps: false,
+              bytes: unzoomableBytes,
+            },
+          ),
+        )
+      }
       if (
         method === 'GetSubgraph' &&
         args.adapterConfig?.type === 'GbzBaseSyntenyAdapter' &&
@@ -535,6 +555,9 @@ function createEnvironment({
     rpcCall,
     setDenseAbove(bp: number) {
       denseAbove = bp
+    },
+    setUnzoomableBytes(bytes: number) {
+      unzoomableBytes = bytes
     },
     setHaplotypeNames(names: string[] | undefined) {
       haplotypeNames = names
@@ -1032,51 +1055,6 @@ test("a launch names the pane's props without its type, and opens in that layout
 })
 
 test.each([
-  ['uniform', 'uniform'],
-  [{ field: 'id', scale: 'categorical' }, 'random'],
-  [{ field: 'id', scheme: 'rainbow' }, 'rainbow'],
-  [{ field: 'depth' }, 'depth'],
-])('a flat color %j in a saved config is read as %s', async (color, scheme) => {
-  const { view } = createEnvironment()
-  view.showTrack('graph', {}, { type: 'LinearGraphDisplay', color })
-  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
-  expect(display.chosenColorScheme).toBe(scheme)
-  expect(getSnapshot(display.configuration)).not.toHaveProperty('color')
-})
-
-test('a flat color lifts to encoding.color', async () => {
-  const { view } = createEnvironment()
-  view.showTrack(
-    'graph',
-    {},
-    {
-      type: 'LinearGraphDisplay',
-      color: { field: 'position', domainMin: 5, domainMax: 50 },
-    },
-  )
-  const lifted = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
-  expect(readConfObject(lifted.configuration, 'encoding')).toEqual({
-    color: { field: 'position', scale: { domainMin: 5, domainMax: 50 } },
-  })
-  expect(lifted.statedColorDomain).toEqual({ start: 5, end: 50 })
-})
-
-test('an encoding beside a flat color wins', () => {
-  const { view } = createEnvironment()
-  view.showTrack(
-    'graph',
-    {},
-    {
-      type: 'LinearGraphDisplay',
-      color: { field: 'depth', domainMin: 1 },
-      encoding: { color: { field: 'length' } },
-    },
-  )
-  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
-  expect(display.chosenColorScheme).toBe('node-length')
-})
-
-test.each([
   ['force', false],
   ['auto', true],
 ])(
@@ -1207,26 +1185,11 @@ test('closing a drawn track reads nothing of the dead display', async () => {
   )
 })
 
-// every hosted config and share link through 4.0.7 names the graph on a
-// FeatureTrack, and a store update reaches them all at once
-test('a 4.0 FeatureTrack config still opens as the graph', async () => {
-  const { view, cuts } = createEnvironment()
-  view.zoomTo(60_000 / WIDTH_PX)
-  view.scrollTo(1_000_000 / view.bpPerPx)
-  view.showTrack('graph-as-feature', {}, { type: 'LinearGraphDisplay' })
-  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
-  expect(display.type).toBe('LinearGraphDisplay')
-  display.startRenderingBackend(fakeRenderer())
-  await wait(SETTLE_MS)
-  expect(cuts).toHaveLength(1)
-  expect(display.hasGraph).toBe(true)
-})
-
 test('a track whose config names no layout opens force-directed, drawn by stress', async () => {
   const { view } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
-  view.showTrack('graph-as-feature', {}, { type: 'LinearGraphDisplay' })
+  view.showTrack('graph-bare', {}, { type: 'LinearGraphDisplay' })
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
   display.startRenderingBackend(fakeRenderer())
   await wait(SETTLE_MS)
@@ -1240,7 +1203,7 @@ test('a config that picks FMMM opens with it, and the graph view it launches kee
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
   view.showTrack(
-    'graph-as-feature',
+    'graph-bare',
     {},
     { type: 'LinearGraphDisplay', layoutEngine: 'fmmm' },
   )
@@ -1391,8 +1354,12 @@ test('a walk-indexed graph whose header names no haplotype counts none', async (
   expect(menu()[1]!.label).toBe('Every haplotype in the graph')
 })
 
-async function shownWalks(windowBp: number, setup?: (env: Env) => void) {
-  const env = createEnvironment()
+async function shownWalks(
+  windowBp: number,
+  setup?: (env: Env) => void,
+  options?: Parameters<typeof createEnvironment>[0],
+) {
+  const env = createEnvironment(options)
   setup?.(env)
   const { view } = env
   view.zoomTo(windowBp / WIDTH_PX)
@@ -1457,6 +1424,31 @@ test('a cut over its node limit shows its zoom-in notice at that span and wider 
     expect(display.hasGraph).toBe(true)
   })
   expect(display.error).toBeUndefined()
+})
+
+test('a cut no zoom fits is too large to show, and loading it anyway raises the byte budget to what it fetches, cutting once', async () => {
+  const { view, display, cuts, rpcCall } = await shownWalks(60_000, env => {
+    env.setUnzoomableBytes(45_600_000)
+  })
+  await vi.waitFor(() => {
+    expect(display.displayPhase).toBe('tooLarge')
+  })
+  expect(display.regionTooLargeReason).toMatch(/even zoomed in/)
+  expect(display.zoomCanReleaseGate).toBe(false)
+  view.zoomTo(20_000 / WIDTH_PX)
+  await wait(SETTLE_MS)
+  expect(display.displayPhase).toBe('tooLarge')
+  const refused = cuts.length
+  display.forceLoad()
+  await vi.waitFor(() => {
+    expect(display.hasGraph).toBe(true)
+  })
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(refused + 1)
+  expect(display.forcedByteBudget).toBe(45_600_000)
+  expect(display.displayPhase).not.toBe('tooLarge')
+  const last = rpcCall.mock.calls.findLast(([, m]) => m === 'GetSubgraph')
+  expect(last?.[2].opts?.forcedByteBudget).toBe(45_600_000)
 })
 
 test('a refused cut stands only near where it was refused: far along the contig the same zoom cuts again', async () => {
@@ -1562,10 +1554,32 @@ test('after a refused cut, a context change cuts the window again', async () => 
   })
   env.setDenseAbove(Infinity)
   display.setSubgraphContext(0)
-  display.recut()
   expect(cuts).toHaveLength(2)
   await vi.waitFor(() => {
     expect(display.hasGraph).toBe(true)
+  })
+})
+
+test('on a graph with walks, a context change whose cut is refused leaves the window to cut again, and zooming in cuts', async () => {
+  const env = await shownWalks(400_000, undefined, { paths: true })
+  const { view, display, cuts } = env
+  await vi.waitFor(() => {
+    expect(display.hasGraph).toBe(true)
+  })
+  env.setDenseAbove(500_000)
+  display.setSubgraphContext(0)
+  await vi.waitFor(() => {
+    expect(display.dense).toBeDefined()
+  })
+  expect(display.cutRegion).toBeUndefined()
+  expect(display.error).toMatchObject({ regionTooLarge: true })
+  const refused = cuts.length
+  view.zoomTo(50_000 / WIDTH_PX)
+  await wait(SETTLE_MS)
+  expect(cuts.length).toBeGreaterThan(refused)
+  await vi.waitFor(() => {
+    expect(display.hasGraph).toBe(true)
+    expect(display.error).toBeUndefined()
   })
 })
 

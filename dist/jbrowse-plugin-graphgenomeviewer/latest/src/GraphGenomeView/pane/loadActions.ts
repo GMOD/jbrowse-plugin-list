@@ -109,8 +109,11 @@ export const withLoadActions = withEngineSettings.actions(self => {
   // the node cap is a drawing's cost
   function assertDrawable(graph: Graph) {
     if (graph.nodes.length > self.maxGraphNodes) {
+      const ways = layoutModeByValue('walkrows').available(graph)
+        ? 'Pick Layout → Walk rows, zoom in to a smaller region'
+        : 'Zoom in to a smaller region'
       throw new Error(
-        `Graph too large to draw: ${graph.nodes.length.toLocaleString()} nodes (limit ${self.maxGraphNodes.toLocaleString()}). Pick Layout → Walk rows, zoom in to a smaller region, or raise the node limit in Graph settings.`,
+        `Graph too large to draw: ${graph.nodes.length.toLocaleString()} nodes (limit ${self.maxGraphNodes.toLocaleString()}). ${ways}, or raise the node limit in Graph settings.`,
       )
     }
   }
@@ -238,21 +241,25 @@ export const withLoadActions = withEngineSettings.actions(self => {
   let laidOutGraph: Graph | undefined
   // a haplotype's genes by track and contig span
   const walkGeneCache = new Map<string, GeneModel[]>()
-  // the haplotype gene reads in flight, aborted when the next replaces them
-  const geneReads = {
+  // the reads of other tracks in flight, each aborted when the next of its
+  // kind replaces it
+  const trackReads = {
     walk: new AbortController(),
     own: new AbortController(),
+    genes: new AbortController(),
+    repeats: new AbortController(),
   }
 
-  function restartGeneReads(kind: keyof typeof geneReads) {
-    geneReads[kind].abort()
-    geneReads[kind] = new AbortController()
-    return geneReads[kind].signal
+  function restartTrackRead(kind: keyof typeof trackReads) {
+    trackReads[kind].abort()
+    trackReads[kind] = new AbortController()
+    return trackReads[kind].signal
   }
 
-  function abortGeneReads() {
-    geneReads.walk.abort()
-    geneReads.own.abort()
+  function abortTrackReads() {
+    for (const controller of Object.values(trackReads)) {
+      controller.abort()
+    }
   }
 
   function dropLayoutOfReplacedGraph() {
@@ -379,7 +386,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     self.walkGeneFeatures = undefined
     self.ownGeneFeatures = undefined
     walkGeneCache.clear()
-    abortGeneReads()
+    abortTrackReads()
     self.repeatArrays = undefined
     self.clearInteractionState()
   }
@@ -725,7 +732,12 @@ export const withLoadActions = withEngineSettings.actions(self => {
     const region = self.graphRegion
     if (region) {
       annotations[kind].set(undefined)
-      yield* loadAnnotation(kind, region, () => self.graphRegion === region)
+      yield* loadAnnotation(
+        kind,
+        region,
+        () => self.graphRegion === region,
+        restartTrackRead(kind),
+      )
     }
   }
 
@@ -788,6 +800,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     self.drawnBatch = EMPTY_BATCH
     self.paintedViewport = undefined
     resetCut()
+    self.cutKeyOnRecord = undefined
     laidOutGraph = undefined
     layoutError = undefined
     self.layoutResult = undefined
@@ -810,6 +823,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     // back to the import form
     clearGraph() {
       dropGraph()
+      self.expandedWalks = []
     },
     // The user's stop before anything is drawn. The source stays, so a
     // retry can load it again.
@@ -833,7 +847,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     },
     beforeDestroy() {
       abortLoad()
-      abortGeneReads()
+      abortTrackReads()
     },
     loadGFA: flow(function* (text: string, name?: string) {
       yield* loadWholeGFA(name ?? 'Imported GFA', text)
@@ -990,7 +1004,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
       const reads = self.walkGeneReads?.reads ?? []
       const key = JSON.stringify(reads)
       const graph = self.graph
-      const signal = restartGeneReads('walk')
+      const signal = restartTrackRead('walk')
       const fetched = new Map<string, GeneModel[]>()
       yield Promise.all(
         reads.map(({ row, trackId, region }) =>
@@ -1017,7 +1031,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
       const reads = self.ownGeneReads
       const key = JSON.stringify(reads)
       const graph = self.graph
-      const signal = restartGeneReads('own')
+      const signal = restartTrackRead('own')
       const fetched = (yield Promise.all(
         reads.map(({ stableRefName, trackId, region }) =>
           flow(function* () {

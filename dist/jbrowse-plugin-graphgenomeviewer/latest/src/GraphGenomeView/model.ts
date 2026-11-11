@@ -1,15 +1,17 @@
-import { getSession } from '@jbrowse/core/util'
+import { getRpcSessionId, getSession } from '@jbrowse/core/util'
+import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
+import { reaction } from 'mobx'
 
 import {
   configHaplotypes,
   graphReferenceAssembly,
   offReferenceProblem,
+  walkIndexed,
 } from '../graphTrackConfig'
 import { canonicalAssemblyName } from '../launchFromGraph/launchFromGraph'
 import { withLaunchActions } from './pane/launchActions'
 
 import type { SubgraphCutOptions, SubgraphRegion } from '../GetSubgraph'
-import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
 export { MAX_GRAPH_REGION_BP, fileName, formatSpanBp } from './pane/paneBase'
@@ -44,14 +46,6 @@ export const GraphPane = withLaunchActions
             canonicalAssemblyName(session, region.assemblyName),
           )
     },
-    // A layout change that changes the cut options cuts the track again:
-    // whole walks (cutsWholeWalksIn), or the walk-row step budget.
-    cutChangedFrom(from: LayoutModeValue) {
-      return (
-        self.cutsWholeWalks !== self.cutsWholeWalksIn(from) ||
-        (from === 'walkrows') !== (self.chosenLayoutMode === 'walkrows')
-      )
-    },
   }))
   .views(self => ({
     get cutOptions(): SubgraphCutOptions {
@@ -70,7 +64,113 @@ export const GraphPane = withLaunchActions
         ...(self.expandedWalks.length > 0
           ? { expand: self.expandedWalks }
           : {}),
+        ...(self.forcedByteBudget
+          ? { forcedByteBudget: self.forcedByteBudget }
+          : {}),
       }
+    },
+  }))
+  .views(self => ({
+    // `expandSamples` is left out: a sample filter alone fetches nothing, and
+    // the walks it finds abridged join `expand`
+    get cutKey() {
+      const { expandSamples: _filter, ...fetched } = self.cutOptions
+      return JSON.stringify(fetched)
+    },
+  }))
+  .views(self => ({
+    get cutStale() {
+      return (
+        self.cutKeyOnRecord !== undefined && self.cutKeyOnRecord !== self.cutKey
+      )
+    },
+  }))
+  .actions(self => ({
+    markCut() {
+      self.cutKeyOnRecord = self.cutKey
+    },
+    setSubgraphContext(hops: number) {
+      self.subgraphContext = hops
+    },
+    setSubgraphHaplotypes(haplotypes: string[] | undefined) {
+      self.subgraphHaplotypes = haplotypes
+    },
+    setHaplotypeNames(names: string[] | undefined) {
+      self.haplotypeNames = names
+    },
+  }))
+  .actions(self => ({
+    // A failed read leaves the picker taking typed names
+    async fetchHaplotypeNames(
+      adapterConfig: Record<string, unknown>,
+      signal?: AbortSignal,
+    ) {
+      try {
+        const names = await getSession(self).rpcManager.call(
+          getRpcSessionId(self),
+          'GetGraphHaplotypes',
+          // eslint-disable-next-line no-restricted-syntax -- a background read for the haplotype picker, which has no status line; the pane's belongs to the cut
+          { adapterConfig, signal },
+        )
+        if (isAlive(self) && !signal?.aborted) {
+          self.setHaplotypeNames(names)
+        }
+      } catch (e) {
+        if (!signal?.aborted) {
+          console.warn('[GraphGenomeView] no haplotype names', e)
+        }
+      }
+    },
+  }))
+  .actions(self => ({
+    afterAttach() {
+      let namesRead: AbortController | undefined
+      addDisposer(self, () => {
+        namesRead?.abort()
+      })
+      addDisposer(
+        self,
+        reaction(
+          () => {
+            const adapter = self.sourceAdapter
+            return adapter && walkIndexed(adapter) ? adapter : undefined
+          },
+          adapterConfig => {
+            namesRead?.abort()
+            namesRead = undefined
+            self.setHaplotypeNames(undefined)
+            if (adapterConfig) {
+              namesRead = new AbortController()
+              void self.fetchHaplotypeNames(adapterConfig, namesRead.signal)
+            }
+          },
+          {
+            fireImmediately: true,
+            // a lane adapter's config is rebuilt whenever an assembly is
+            // added, which would drop and re-read the names
+            equals: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+            name: 'GraphHaplotypeNames',
+          },
+        ),
+      )
+      // A cut option changed by anything cuts again: a setting, the config
+      // editor, undo or a session delta. A change of layout mode cuts through
+      // relayout.
+      addDisposer(
+        self,
+        reaction(
+          () => ({ mode: self.chosenLayoutMode, key: self.cutKey }),
+          (now, was) => {
+            if (now.mode === was.mode && self.cutStale) {
+              self.retryLoad()
+            }
+          },
+          {
+            equals: (a, b) => a.mode === b.mode && a.key === b.key,
+            name: 'GraphCutOptions',
+          },
+        ),
+      )
     },
   }))
 

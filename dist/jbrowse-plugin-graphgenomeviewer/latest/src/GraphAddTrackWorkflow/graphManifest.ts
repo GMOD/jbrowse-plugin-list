@@ -20,7 +20,7 @@ export interface GraphManifest {
   tier?: { prefix: string; foldBelowBp: number; format?: 2 }
 }
 
-const FETCH_TIMEOUT_MS = 5000
+export const FETCH_TIMEOUT_MS = 5000
 
 // A bare file name beside the manifest: no directory, scheme or leading dot
 function isSiblingName(name: unknown): name is string {

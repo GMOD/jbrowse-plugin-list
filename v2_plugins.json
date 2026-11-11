@@ -359,12 +359,12 @@
       ],
       "license": "GPL-3.0-or-later",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/graphgenomeview.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/9.0.1/dist/jbrowse-plugin-graphgenomeviewer.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/9.1.0/dist/jbrowse-plugin-graphgenomeviewer.esm.js",
       "versions": [
         {
-          "pluginVersion": "9.0.1",
+          "pluginVersion": "9.1.0",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/9.0.1/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/9.1.0/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-graphgenomeviewer/latest/dist/jbrowse-plugin-graphgenomeviewer.esm.js"
@@ -395,6 +395,32 @@
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-blat/latest/dist/jbrowse-plugin-blat.umd.production.min.js"
+    },
+    {
+      "name": "Zarr",
+      "packageName": "jbrowse-plugin-zarr",
+      "authors": [
+        "Colin Diesh"
+      ],
+      "description": "Multi-sample quantitative signal from a Zarr v3 store: per-base or binned values for hundreds to thousands of samples in a few requests",
+      "location": "https://github.com/cmdcolin/jbrowse-plugin-zarr",
+      "tags": [
+        "bring-your-own-data",
+        "quantitative"
+      ],
+      "license": "MIT",
+      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/zarr-screenshot-fs8.png",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/0.0.1/dist/jbrowse-plugin-zarr.umd.production.min.js",
+      "integrity": "sha384-yumcbZytGff2xf7JpippljHsf5csWzb/7IziDhFszW8P93EBouKCUsS2/DLgt/YK",
+      "versions": [
+        {
+          "pluginVersion": "0.0.1",
+          "jbrowseRange": ">=5.0.0",
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/0.0.1/dist/jbrowse-plugin-zarr.umd.production.min.js",
+          "integrity": "sha384-yumcbZytGff2xf7JpippljHsf5csWzb/7IziDhFszW8P93EBouKCUsS2/DLgt/YK"
+        }
+      ],
+      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/latest/dist/jbrowse-plugin-zarr.umd.production.min.js"
     }
   ]
 }

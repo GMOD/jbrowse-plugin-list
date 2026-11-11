@@ -150,11 +150,6 @@ function readsConfig(readsLoc: FileLocation | undefined) {
     : {}
 }
 
-// Names typed as a list, by comma or space
-export function parseHaplotypes(text: string) {
-  return text.split(/[\s,]+/).filter(name => name !== '')
-}
-
 export function buildAdapterConfig({
   choice,
   loc,

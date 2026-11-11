@@ -1,7 +1,7 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 
-import { DEFAULT_MAX_FORMS } from './formRows.ts'
-import { fileLocationSlot, walksLocations } from '../panSNTabix.ts'
+import { DEFAULT_MAX_FORMS } from '../slotDefaults.ts'
+import { fileLocationSlot, walksLocations } from '../tabixSlots.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 

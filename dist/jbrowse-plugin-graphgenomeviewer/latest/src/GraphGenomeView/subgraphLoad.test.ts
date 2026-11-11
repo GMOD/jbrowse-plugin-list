@@ -114,6 +114,27 @@ async function cut(region: typeof ON_HG38, gfa = GFA) {
   return model
 }
 
+// in a tree, as a session holds a view, so its reactions run
+function attachedView(snapshot: Record<string, unknown> = {}) {
+  return types.model({ view: stateModelFactory() }).create({
+    view: {
+      type: 'GraphGenomeView',
+      layoutMode: 'auto',
+      loadedTrackId: TRACK.trackId,
+      loadedRegion: ON_HG38,
+      ...snapshot,
+    } as never,
+  }).view
+}
+
+function answerCutsWith(cut: unknown) {
+  mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+    method === 'GetSubgraph'
+      ? Promise.resolve(cut)
+      : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+}
+
 beforeEach(() => {
   mockRpcCall.mockReset()
   mockSession.tracks = [TRACK]
@@ -309,7 +330,11 @@ describe('canceling and retrying', () => {
   })
 
   test('expanding a walk cuts again with its name', async () => {
-    const model = await cut(ON_HG38)
+    answerCutsWith(GFA)
+    const model = attachedView()
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
     mockRpcCall.mockClear()
     model.expandWalk('HG002#1#chr1')
     model.expandWalk('HG002#1#chr1')
@@ -337,14 +362,7 @@ describe('canceling and retrying', () => {
         ? Promise.resolve(tables)
         : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
     )
-    const { view: model } = types.model({ view: stateModelFactory() }).create({
-      view: {
-        type: 'GraphGenomeView',
-        layoutMode: 'auto',
-        loadedTrackId: TRACK.trackId,
-        loadedRegion: ON_HG38,
-      } as never,
-    })
+    const model = attachedView()
     await vi.waitFor(() => {
       expect(model.hasGraph).toBe(true)
     })
@@ -376,14 +394,7 @@ describe('canceling and retrying', () => {
         ? Promise.resolve(tables)
         : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
     )
-    const { view: model } = types.model({ view: stateModelFactory() }).create({
-      view: {
-        type: 'GraphGenomeView',
-        layoutMode: 'walkrows',
-        loadedTrackId: TRACK.trackId,
-        loadedRegion: ON_HG38,
-      } as never,
-    })
+    const model = attachedView({ layoutMode: 'walkrows' })
     await vi.waitFor(() => {
       expect(model.hasGraph).toBe(true)
     })
@@ -396,6 +407,66 @@ describe('canceling and retrying', () => {
     expect(mockRpcCall.mock.calls[0]?.[2]).toMatchObject({
       opts: { expand: ['NA20809#2#CM094351.1'] },
     })
+  })
+
+  test('a cut option changed on a drawn view cuts again with it', async () => {
+    answerCutsWith(GFA)
+    const model = attachedView()
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
+    mockRpcCall.mockClear()
+    model.setSubgraphHaplotypes(['NA20809'])
+    model.setSubgraphHaplotypes(['NA20809'])
+    expect(mockRpcCall).toHaveBeenCalledTimes(1)
+    expect(mockRpcCall.mock.calls[0]?.[2]).toMatchObject({
+      opts: { haplotypes: ['NA20809'] },
+    })
+  })
+
+  test('a sample filter over whole walks fetches nothing', async () => {
+    answerCutsWith(
+      gfaTables(
+        [
+          GFA,
+          'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+          'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+        ].join('\n'),
+      ),
+    )
+    const model = attachedView({ layoutMode: 'walkrows' })
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
+    mockRpcCall.mockClear()
+    model.setWalkRowSamples(['NA20809'])
+    expect(model.cutOptions.expandSamples).toEqual(['NA20809'])
+    expect(mockRpcCall).not.toHaveBeenCalled()
+  })
+
+  test('a layout change that changes the cut cuts once', async () => {
+    answerCutsWith(GFA)
+    const model = attachedView()
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
+    mockRpcCall.mockClear()
+    void model.switchLayout('walkrows')
+    expect(mockRpcCall).toHaveBeenCalledTimes(1)
+    expect(mockRpcCall.mock.calls[0]?.[2]).toMatchObject({
+      opts: { walkRows: true },
+    })
+  })
+
+  test('closing the graph forgets the walks it expanded', async () => {
+    answerCutsWith(GFA)
+    const model = attachedView()
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
+    model.expandWalk('HG002#1#chr1')
+    model.clearGraph()
+    expect(model.expandedWalks).toEqual([])
   })
 
   test('a newer cut aborts the one it replaces', () => {

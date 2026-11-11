@@ -1,6 +1,6 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 
-import { fileLocationSlot, tabixIndexSchema, tbiBeside } from '../panSNTabix.ts'
+import { fileLocationSlot, tabixIndexSchema, tbiBeside } from '../tabixSlots.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 

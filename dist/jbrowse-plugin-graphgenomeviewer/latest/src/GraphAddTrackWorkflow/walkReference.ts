@@ -1,9 +1,8 @@
+import { FETCH_TIMEOUT_MS } from './graphManifest'
 import { openWalkFile } from '../panSNTabix'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { FileLocation } from '@jbrowse/core/util'
-
-const FETCH_TIMEOUT_MS = 5000
 
 // The reference sample a walk file's header names, which its file name only
 // suggests. Undefined for a header that is missing or unreadable, so the form

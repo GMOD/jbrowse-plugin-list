@@ -4,15 +4,15 @@ import { makeStyles } from 'tss-react/mui'
 
 import type { GraphPaneModel } from '../model'
 
-const useStyles = makeStyles()({
+const useStyles = makeStyles()(theme => ({
   stats: {
     marginLeft: 'auto',
   },
   perf: {
-    color: '#888',
+    color: theme.palette.text.secondary,
     fontVariantNumeric: 'tabular-nums',
   },
-})
+}))
 
 function fmtMs(ms: number | undefined) {
   return ms === undefined ? '–' : `${Math.round(ms)}ms`

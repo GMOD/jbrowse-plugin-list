@@ -35,6 +35,7 @@ export interface SubgraphCutOptions {
   expand?: string[]
   // the samples walk rows show, whose walks a walk-file cut reads in full
   expandSamples?: string[]
+  forcedByteBudget?: number
 }
 
 // Walk rows read a list of haplotypes, or of the samples they show, this long or

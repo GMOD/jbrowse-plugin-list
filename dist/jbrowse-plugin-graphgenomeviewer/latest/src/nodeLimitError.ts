@@ -10,3 +10,16 @@ export function isNodeLimitError(error: unknown) {
       ))
   )
 }
+
+export function isUnzoomableNodeLimitError(
+  error: unknown,
+): error is Error & { bytes: number } {
+  return (
+    isNodeLimitError(error) &&
+    error instanceof Error &&
+    'zoomHelps' in error &&
+    error.zoomHelps === false &&
+    'bytes' in error &&
+    typeof error.bytes === 'number'
+  )
+}

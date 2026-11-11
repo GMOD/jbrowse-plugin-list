@@ -9,7 +9,7 @@ import {
 } from '@jbrowse/core/configuration'
 import { BaseDisplay } from '@jbrowse/core/pluggableElementTypes'
 import { computeSvgReady } from '@jbrowse/core/svg/svgReady'
-import { getRpcSessionId, getSession } from '@jbrowse/core/util'
+import { getSession } from '@jbrowse/core/util'
 import TrackHeightMixin from '@jbrowse/display-kit/TrackHeightMixin'
 import { editPlotMenuItems } from '@jbrowse/display-kit/plotMenu'
 import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
@@ -22,7 +22,7 @@ import RouteIcon from '@mui/icons-material/Route'
 import SettingsIcon from '@mui/icons-material/Settings'
 import { reaction } from 'mobx'
 
-import { isNodeLimitError } from '../nodeLimitError'
+import { isNodeLimitError, isUnzoomableNodeLimitError } from '../nodeLimitError'
 import { denseCovers } from './denseWindow'
 import { cutHolds, hostCut, hostWindow } from '../GraphGenomeView/host'
 import { GraphPane, formatSpanBp } from '../GraphGenomeView/model'
@@ -32,7 +32,6 @@ import {
   configHaplotypes,
   cutsByHaplotype,
   trackLanes,
-  walkIndexed,
 } from '../graphTrackConfig'
 import { pushLaunchItem } from '../launchFromGraph/pushLaunchItem'
 
@@ -86,8 +85,8 @@ export function coarseHandover(coarse: unknown) {
       : undefined
 }
 
-const GraphTrackSettingsDialog = lazy(
-  () => import('./components/GraphTrackSettingsDialog'),
+const GraphSettingsDialog = lazy(
+  () => import('../GraphGenomeView/components/GraphSettingsDialog'),
 )
 
 export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
@@ -114,8 +113,6 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       settledWindow: undefined as HostWindow | undefined,
       // where a cut came back over its node limit (denseCovers)
       dense: undefined as SubgraphRegion | undefined,
-      // the haplotypes a walk-indexed graph's header names, once read
-      haplotypeNames: undefined as string[] | undefined,
       // the fold the latest cut asked for
       cutFoldBp: 0,
     }))
@@ -193,6 +190,11 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         const seen = self.settledWindow
         return seen ? self.capFor(self.tierAt(seen.bpPerPx)) : Infinity
       },
+      get unzoomableBytes() {
+        return isUnzoomableNodeLimitError(self.error)
+          ? self.error.bytes
+          : undefined
+      },
     }))
     .views(self => ({
       get regionTooLarge() {
@@ -201,15 +203,22 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
       get regionTooLargeReason() {
         const seen = self.settledWindow
-        return seen
-          ? `Region too large for a graph cut (${formatSpanBp(seen.end - seen.start)}, max ${formatSpanBp(self.settledCapBp)})`
-          : ''
+        return isUnzoomableNodeLimitError(self.error)
+          ? self.error.message
+          : seen
+            ? `Region too large for a graph cut (${formatSpanBp(seen.end - seen.start)}, max ${formatSpanBp(self.settledCapBp)})`
+            : ''
       },
       get zoomCanReleaseGate() {
-        return true
+        return self.unzoomableBytes === undefined
       },
       get fetchCanceled() {
         return self.loadCanceled
+      },
+    }))
+    .views(self => ({
+      get showsTooLarge() {
+        return self.regionTooLarge || self.unzoomableBytes !== undefined
       },
     }))
     .views(self => ({
@@ -217,7 +226,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         return computeSvgReady(
           {
             error: self.error,
-            regionTooLarge: self.regionTooLarge,
+            regionTooLarge: self.showsTooLarge,
             extraTerminal: false,
             fetchCanceled: self.loadCanceled,
           },
@@ -232,7 +241,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         return computeDisplayPhase(
           {
             renderError: self.renderError,
-            regionTooLarge: self.regionTooLarge,
+            regionTooLarge: self.showsTooLarge,
             error: self.error,
           },
           () =>
@@ -255,6 +264,20 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         )
       },
     }))
+    .actions(self => {
+      const { setSubgraphContext, setSubgraphHaplotypes } = self
+      return {
+        // a refused cut may fit under other options
+        setSubgraphContext(hops: number) {
+          setSubgraphContext(hops)
+          self.dense = undefined
+        },
+        setSubgraphHaplotypes(haplotypes: string[] | undefined) {
+          setSubgraphHaplotypes(haplotypes)
+          self.dense = undefined
+        },
+      }
+    })
     .actions(self => ({
       // Into the config, so a share link, Edit plot and Reset track
       // settings all see it
@@ -263,20 +286,8 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           setConf(self, slot as keyof GraphGrammar, value)
         }
       },
-      // The setters describe the next cut, which recut makes
-      setSubgraphContext(hops: number) {
-        self.subgraphContext = hops
-        self.dense = undefined
-      },
-      setSubgraphHaplotypes(haplotypes: string[] | undefined) {
-        self.subgraphHaplotypes = haplotypes
-        self.dense = undefined
-      },
       setDense(window: SubgraphRegion | undefined) {
         self.dense = window
-      },
-      setHaplotypeNames(names: string[] | undefined) {
-        self.haplotypeNames = names
       },
       setMaxRegionBp(bp: number) {
         self.maxRegionBp = bp
@@ -299,6 +310,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         self.cutFoldBp = Math.round(
           FOLD_PX * (self.settledWindow?.bpPerPx ?? self.host?.bpPerPx ?? 0),
         )
+        self.markCut()
         return self.cutSubgraph(
           adapterConfig,
           region,
@@ -320,103 +332,94 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         return self.cut()
       },
     }))
-    .actions(self => ({
-      // The settle clock. A window the cut still holds fetches nothing; one
-      // past its edge re-cuts, on the tier the zoom asks for, with margins
-      // when the host places x and the window alone when the layout draws
-      // its own picture of it. A canceled cut is re-made by the next move,
-      // and a window a refused cut covers keeps its notice without asking
-      // again. Returns whether it re-cut.
-      settleOn(seen: HostWindow): boolean {
-        self.settledWindow = seen
-        const margins = layoutModeByValue(self.chosenLayoutMode).cutMargins
-        if (
-          self.regionTooLarge ||
-          denseCovers(self.dense, seen) ||
-          (!self.loadCanceled &&
-            self.tierAt(seen.bpPerPx) === self.cutTier &&
-            cutHolds(self.cutRegion, seen, margins) &&
-            !self.foldDrifted(seen.bpPerPx))
-        ) {
-          return false
-        }
+    .actions(self => {
+      let followed = 0
+      return {
         // An outrun cut resolves without touching the error, so the error
         // is this cut's only while no later one has started
-        const cut = self.recutAt(seen)
-        const recut = self.recuts
-        void Promise.resolve(cut).then(() => {
+        followCut(cut: ReturnType<typeof self.cut>, seen: HostWindow) {
+          const latest = ++followed
+          void Promise.resolve(cut).then(() => {
+            if (
+              isAlive(self) &&
+              followed === latest &&
+              isNodeLimitError(self.error)
+            ) {
+              this.refuseDenseCut(seen)
+            }
+          })
+        },
+        // The settle clock. A window the cut still holds fetches nothing;
+        // one past its edge re-cuts, on the tier the zoom asks for, with
+        // margins when the host places x and the window alone when the
+        // layout draws its own picture of it. A canceled cut is re-made by
+        // the next move, and a window a refused cut covers keeps its notice
+        // without asking again. Returns whether it re-cut.
+        settleOn(seen: HostWindow): boolean {
+          self.settledWindow = seen
+          const margins = layoutModeByValue(self.chosenLayoutMode).cutMargins
           if (
-            isAlive(self) &&
-            self.recuts === recut &&
-            isNodeLimitError(self.error)
+            self.regionTooLarge ||
+            denseCovers(self.dense, seen) ||
+            (!self.loadCanceled &&
+              self.tierAt(seen.bpPerPx) === self.cutTier &&
+              cutHolds(self.cutRegion, seen, margins) &&
+              !self.cutStale &&
+              !self.foldDrifted(seen.bpPerPx))
           ) {
-            this.refuseDenseCut(seen)
+            return false
           }
-        })
-        return true
-      },
-      // A cut refused for its node count holds nothing, so a window
-      // narrower than this one cuts again
-      refuseDenseCut(seen: HostWindow) {
-        self.setDense(seen)
-        self.cutRegion = undefined
-        this.settleOn(self.settledWindow ?? seen)
-      },
-      // Cut the region again with the current options, or the window on
-      // screen where a refused cut left no region
-      recut() {
-        if (self.cutRegion) {
-          void self.cut()
-        } else if (self.settledWindow) {
-          this.settleOn(self.settledWindow)
-        }
-      },
-      relayoutFrom(from: LayoutModeValue) {
-        const seen = self.host ? hostWindow(self.host) : undefined
-        if (
-          seen &&
-          !self.regionTooLarge &&
-          (self.cutChangedFrom(from) ||
-            layoutModeByValue(from).cutMargins !==
-              layoutModeByValue(self.chosenLayoutMode).cutMargins)
-        ) {
-          return self.recutAt(seen)
-        }
-        return self.recomputeLayout()
-      },
-      retryLoad() {
-        void self.cut()
-      },
-      reload() {
-        void self.cut()
-      },
-      cancelFetchByUser() {
-        self.stopLoad()
-      },
-    }))
-    .actions(self => ({
-      // A failed read leaves the picker taking typed names
-      async fetchHaplotypeNames(
-        adapterConfig: Record<string, unknown>,
-        signal?: AbortSignal,
-      ) {
-        try {
-          const names = await getSession(self).rpcManager.call(
-            getRpcSessionId(self),
-            'GetGraphHaplotypes',
-            // eslint-disable-next-line no-restricted-syntax -- a background read for the haplotype picker, which has no status line; the display's belongs to the cut
-            { adapterConfig, signal },
-          )
-          if (isAlive(self) && !signal?.aborted) {
-            self.setHaplotypeNames(names)
+          this.followCut(self.recutAt(seen), seen)
+          return true
+        },
+        // A cut refused for its node count holds nothing, so a window
+        // narrower than this one cuts again
+        refuseDenseCut(seen: HostWindow) {
+          self.setDense(seen)
+          self.cutRegion = undefined
+          this.settleOn(self.settledWindow ?? seen)
+        },
+        // Cut the region again with the current options, or the window on
+        // screen where a refused cut left no region
+        recut() {
+          if (self.cutRegion) {
+            this.reload()
+          } else if (self.settledWindow) {
+            this.settleOn(self.settledWindow)
           }
-        } catch (e) {
-          if (!signal?.aborted) {
-            console.warn('[LinearGraphDisplay] no haplotype names', e)
+        },
+        relayoutFrom(from: LayoutModeValue) {
+          const seen = self.host ? hostWindow(self.host) : undefined
+          if (
+            seen &&
+            !self.regionTooLarge &&
+            (self.cutStale ||
+              layoutModeByValue(from).cutMargins !==
+                layoutModeByValue(self.chosenLayoutMode).cutMargins)
+          ) {
+            const cut = self.recutAt(seen)
+            this.followCut(cut, seen)
+            return cut
           }
-        }
-      },
-    }))
+          return self.recomputeLayout()
+        },
+        retryLoad() {
+          this.recut()
+        },
+        reload() {
+          const seen =
+            self.settledWindow ??
+            (self.host ? hostWindow(self.host) : undefined)
+          const cut = self.cut()
+          if (seen) {
+            this.followCut(cut, seen)
+          }
+        },
+        cancelFetchByUser() {
+          self.stopLoad()
+        },
+      }
+    })
     .actions(self => ({
       stretchWithHost(
         before: { bpPerPx: number; offsetPx: number },
@@ -441,8 +444,13 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
     }))
     .actions(self => ({
       forceLoad() {
+        const bytes = self.unzoomableBytes
         const seen = self.settledWindow
-        if (seen) {
+        if (bytes !== undefined) {
+          self.forcedByteBudget = bytes
+          self.setDense(undefined)
+          self.recut()
+        } else if (seen) {
           self.setMaxRegionBp(Math.ceil(seen.end - seen.start))
           self.settleOn(seen)
         }
@@ -454,35 +462,6 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         if (self.cutRegion && !self.graph) {
           void self.cut()
         }
-        let namesRead: AbortController | undefined
-        addDisposer(self, () => {
-          namesRead?.abort()
-        })
-        addDisposer(
-          self,
-          reaction(
-            () => {
-              const adapter = self.sourceAdapter
-              return adapter && walkIndexed(adapter) ? adapter : undefined
-            },
-            adapterConfig => {
-              namesRead?.abort()
-              namesRead = undefined
-              self.setHaplotypeNames(undefined)
-              if (adapterConfig) {
-                namesRead = new AbortController()
-                void self.fetchHaplotypeNames(adapterConfig, namesRead.signal)
-              }
-            },
-            {
-              fireImmediately: true,
-              // a lane adapter's config is rebuilt whenever an assembly is
-              // added, which would drop and re-read the names
-              equals: (a, b) => JSON.stringify(a) === JSON.stringify(b),
-              name: 'GraphHaplotypeNames',
-            },
-          ),
-        )
         addDisposer(
           self,
           reaction(
@@ -632,10 +611,6 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         const lanes = trackLanes(track)
         const names = self.haplotypeNames
         const chosen = self.subgraphHaplotypes
-        const recut = (haplotypes: string[] | undefined) => {
-          self.setSubgraphHaplotypes(haplotypes)
-          self.recut()
-        }
         return [
           { type: 'subHeader', label: 'Load' },
           {
@@ -645,7 +620,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
               : 'Every haplotype in the graph',
             checked: chosen ? chosen.length === 0 : !defaults && !lanes,
             onClick: () => {
-              recut([])
+              self.setSubgraphHaplotypes([])
             },
           },
           ...(defaults || lanes
@@ -657,7 +632,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
                     : `The track's ${lanes?.length} assemblies`,
                   checked: chosen === undefined,
                   onClick: () => {
-                    recut(undefined)
+                    self.setSubgraphHaplotypes(undefined)
                   },
                 },
               ]
@@ -674,7 +649,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
       openSettings() {
         getSession(self).queueDialog(onClose => [
-          GraphTrackSettingsDialog,
+          GraphSettingsDialog,
           { model: self, onClose },
         ])
       },
@@ -696,7 +671,9 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
               ? 'The track could not cut a graph here'
               : self.isLoading && !self.hasGraph
                 ? 'The track is still cutting its graph'
-                : 'Zoom in until the track cuts a graph',
+                : self.unzoomableBytes !== undefined
+                  ? 'Force load the track to cut a graph here'
+                  : 'Zoom in until the track cuts a graph',
           onClick: () => {
             self.openGraphView()
           },
@@ -730,9 +707,3 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
 
 export type LinearGraphDisplayStateModel = ReturnType<typeof stateModelFactory>
 export type LinearGraphDisplayModel = Instance<LinearGraphDisplayStateModel>
-// what the track's own settings read, which the menus that open them cannot
-// name without naming themselves
-export type LinearGraphCutModel = Omit<
-  LinearGraphDisplayModel,
-  'trackMenuItems' | 'cutMenuItems' | 'openSettings' | 'renderSvg'
->

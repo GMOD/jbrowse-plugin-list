@@ -14,16 +14,16 @@ import WalkSelect from './WalkSelect'
 
 import type { GraphPaneModel } from '../model'
 
-const useStyles = makeStyles()({
+const useStyles = makeStyles()(theme => ({
   toolbar: {
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 4,
     padding: '2px 4px',
-    borderBottom: '1px solid #ddd',
+    borderBottom: `1px solid ${theme.palette.divider}`,
   },
-})
+}))
 
 const ZoomDisplay = observer(function ZoomDisplay({
   model,

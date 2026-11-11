@@ -124,7 +124,6 @@ import type { WalkLift } from '@jbrowse/bandage-core/walkHighlight'
 import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 import type { FileLocation } from '@jbrowse/core/util/types'
 
-// A repeat pick slices the cut's walks again, by the repeat's own array
 // The rows again from the cut's tables: for a repeat pick, by the repeat's
 // own array, or with each row's visits, which ribbons need and the worker's
 // runs leave out
@@ -686,13 +685,16 @@ export const withGraphViews = paneBase
       const base = self.indexBubbles?.length
         ? self.indexBubbles
         : self.derivedBubbles
+      const bubbles = [...base]
       const seen = new Set(base.map(bubbleKey))
-      return [
-        ...base,
-        ...self.openBubbleInsides
-          .flat()
-          .filter(b => !seen.has(bubbleKey(b)) && seen.add(bubbleKey(b))),
-      ]
+      for (const bubble of self.openBubbleInsides.flat()) {
+        const key = bubbleKey(bubble)
+        if (!seen.has(key)) {
+          seen.add(key)
+          bubbles.push(bubble)
+        }
+      }
+      return bubbles
     },
     // what the legend says the drawing leaves out, when it was folded
     get foldNote() {

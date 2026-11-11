@@ -77,6 +77,7 @@ export class WalkIndex {
       walkRows,
       expand,
       expandSamples,
+      forcedByteBudget = 0,
     }: SubgraphAdapterOptions,
   ) {
     const budgets = this.budgets()
@@ -105,6 +106,7 @@ export class WalkIndex {
       region,
       {
         ...budgets,
+        byteBudget: Math.max(budgets.byteBudget, forcedByteBudget),
         stepBudget: walkRows ? Infinity : budgets.stepBudget,
         signal,
         keep,

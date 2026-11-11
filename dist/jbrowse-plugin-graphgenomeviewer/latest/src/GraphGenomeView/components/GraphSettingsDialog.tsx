@@ -19,6 +19,8 @@ import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
 import LabelledSelect from './LabelledSelect'
+import SubgraphContextSelect from './SubgraphContextSelect'
+import SubgraphHaplotypesField from './SubgraphHaplotypesField'
 import { pickGeneTrack } from '../genes/geneFeatures'
 import { pickRepeatTrack } from '../repeats/repeatFeatures'
 
@@ -170,20 +172,19 @@ const TrackPickSetting = observer(function TrackPickSetting({
 })
 
 // Toggles the menus already offer (halos, genes, color) stay out of here.
-// `children` is the host's own part of the subgraph group.
 const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
   model: GraphPaneModel
   onClose: () => void
-  children?: ReactNode
 }) {
-  const { model, onClose, children } = props
+  const { model, onClose } = props
   const { classes } = useStyles()
 
   return (
     <Dialog open onClose={onClose} title="Graph settings">
       <DialogContent>
         <Group title="Subgraph">
-          {children}
+          <SubgraphContextSelect model={model} />
+          <SubgraphHaplotypesField model={model} />
           <SettingSelect
             label="Node limit"
             value={String(model.maxGraphNodes)}

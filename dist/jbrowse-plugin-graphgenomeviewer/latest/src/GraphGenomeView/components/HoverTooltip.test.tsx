@@ -37,3 +37,48 @@ test('a node outranks the walk row under it', () => {
     }),
   ).toEqual(['s7 — 1,200 bp, depth 2.0'])
 })
+
+const region = {
+  assemblyName: 'GRCh38',
+  refName: 'chr6',
+  start: 0,
+  end: 10_000,
+}
+
+test('a node off the reference also says where it sits on the reference', () => {
+  const node = {
+    id: '7',
+    name: 's7',
+    length: 1200,
+    depth: 1,
+    stable: { refName: 'HG002#1#h1tg01', start: 500, rank: 1 },
+  }
+  expect(
+    shown({
+      hoveredNode: '7',
+      hoverNodeById: new Map([['7', node]]),
+      graphRegion: region,
+      hoveredSpan: { start: 1000, end: 2000 },
+    }),
+  ).toEqual([
+    's7 — 1,200 bp, depth 1.0HG002 h1tg01:501-1,700 (rank 1)Reference GRCh38 chr6:1,001-2,000',
+  ])
+})
+
+test('a backbone node reads its own location only', () => {
+  const node = {
+    id: '7',
+    name: 's7',
+    length: 1000,
+    depth: 1,
+    stable: { refName: 'GRCh38#0#chr6', start: 1000, rank: 0 },
+  }
+  expect(
+    shown({
+      hoveredNode: '7',
+      hoverNodeById: new Map([['7', node]]),
+      graphRegion: region,
+      hoveredSpan: { start: 1000, end: 2000 },
+    }),
+  ).toEqual(['s7 — 1,000 bp, depth 1.0GRCh38 chr6:1,001-2,000 (rank 0)'])
+})

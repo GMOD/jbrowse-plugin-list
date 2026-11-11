@@ -1,13 +1,13 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
-import { WALK_BUDGETS } from '@jbrowse/graph-walks'
 
 import { GRAPH_SUFFIX } from '../locationName.ts'
+import { WALK_BUDGETS } from '../slotDefaults.ts'
 import {
   fileLocationSlot,
   tabixIndexSchema,
   tbiBeside,
   walksLocations,
-} from '../panSNTabix.ts'
+} from '../tabixSlots.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 

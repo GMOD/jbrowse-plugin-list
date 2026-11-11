@@ -26,10 +26,10 @@ import {
   GRAPH_FILE_LABELS,
   GRAPH_INDEX_FIELDS,
   buildTrackConfig,
-  parseHaplotypes,
 } from './buildTrackConfig'
 import { readGraphManifest } from './graphManifest'
 import { readWalkReference } from './walkReference'
+import { parseHaplotypes } from '../graphTrackConfig'
 
 import type { GraphFileChoice } from './buildTrackConfig'
 import type {
@@ -224,7 +224,7 @@ const GraphAddTrackWidget = observer(function GraphAddTrackWidget({
           void handleSubmit()
         }}
       >
-        {submitting ? 'Reading graph.json…' : 'Submit'}
+        {submitting ? 'Reading…' : 'Submit'}
       </Button>
     </Paper>
   )

@@ -3,7 +3,7 @@ import { Button, LinearProgress, Paper, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
-import type { GraphPaneModel } from '../model'
+import type { GraphGenomeViewModel } from '../viewModel'
 
 const useStyles = makeStyles()({
   paper: {
@@ -21,6 +21,29 @@ const useStyles = makeStyles()({
     justifyContent: 'space-between',
     gap: 8,
   },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+})
+
+const ChooseAnotherGraph = observer(function ChooseAnotherGraph({
+  model,
+}: {
+  model: GraphGenomeViewModel
+}) {
+  return (
+    <Button
+      size="small"
+      data-testid="graph-genome-choose-another"
+      onClick={() => {
+        model.clearGraph()
+      }}
+    >
+      Choose another graph
+    </Button>
+  )
 })
 
 // What a view with no graph on screen shows while its load runs or waits on
@@ -29,7 +52,7 @@ const useStyles = makeStyles()({
 const GraphLoadStatus = observer(function GraphLoadStatus({
   model,
 }: {
-  model: GraphPaneModel
+  model: GraphGenomeViewModel
 }) {
   const { classes } = useStyles()
   if (!model.error && !model.loadCanceled) {
@@ -65,6 +88,9 @@ const GraphLoadStatus = observer(function GraphLoadStatus({
             model.retryLoad()
           }}
         />
+        <div className={classes.actions}>
+          <ChooseAnotherGraph model={model} />
+        </div>
       </Paper>
     )
   }
@@ -72,16 +98,19 @@ const GraphLoadStatus = observer(function GraphLoadStatus({
     <Paper className={classes.paper} data-testid="graph-genome-load-canceled">
       <div className={classes.row}>
         <Typography variant="h6">Loading canceled</Typography>
-        <Button
-          variant="contained"
-          size="small"
-          data-testid="graph-genome-retry"
-          onClick={() => {
-            model.retryLoad()
-          }}
-        >
-          Retry
-        </Button>
+        <div className={classes.actions}>
+          <ChooseAnotherGraph model={model} />
+          <Button
+            variant="contained"
+            size="small"
+            data-testid="graph-genome-retry"
+            onClick={() => {
+              model.retryLoad()
+            }}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     </Paper>
   )

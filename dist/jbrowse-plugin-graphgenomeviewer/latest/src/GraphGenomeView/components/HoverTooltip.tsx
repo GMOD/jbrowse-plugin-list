@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { isBackbone } from '@jbrowse/bandage-core/anchoredNodes'
 import { edgeHoverText, regionLabel } from '@jbrowse/bandage-core/hoverText'
 import { observer } from 'mobx-react'
 
@@ -50,6 +51,12 @@ function hoverTip(
   if (node) {
     const merged = model.hoverDrawing?.members.get(node.id)
     const own = nodeOwnLocation(node)
+    const region = model.graphRegion
+    const span = model.hoveredSpan
+    const onReference =
+      region && span && !isBackbone(node)
+        ? `${region.assemblyName} ${regionLabel({ refName: region.refName, ...span })}`
+        : undefined
     return {
       body: (
         <>
@@ -61,6 +68,12 @@ function hoverTip(
             <>
               <br />
               {own.sample} {regionLabel(own)} (rank {node.stable?.rank})
+            </>
+          ) : null}
+          {onReference ? (
+            <>
+              <br />
+              Reference {onReference}
             </>
           ) : null}
           {/* gfa-to-tabix --max-component left its component off the

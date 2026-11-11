@@ -2,13 +2,11 @@ import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { BaseViewModel } from '@jbrowse/core/pluggableElementTypes/models'
 import { getSession } from '@jbrowse/core/util'
-import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
-import { reaction } from 'mobx'
+import { isAlive, types } from '@jbrowse/mobx-state-tree'
 
 import { HOVER_HIGHLIGHT_VALUES } from './hoverHighlight'
 import { lenientMaybeEnum, lenientOptionalEnum } from './lenientEnum'
 import { GraphPane, fileName, formatSpanBp } from './model'
-import { liftFlatNodeColor } from './retiredNodeColor'
 import { canonicalRegion } from '../launchFromGraph/launchFromGraph'
 
 import type { GraphLayers } from './graphLayers'
@@ -52,11 +50,6 @@ export default function stateModelFactory() {
         // unset is nodes
         hover: lenientMaybeEnum(HOVER_HIGHLIGHT_VALUES),
       }),
-    )
-    .preProcessSnapshot(snap =>
-      snap.color === undefined
-        ? snap
-        : { ...snap, color: liftFlatNodeColor(snap.color) as NodeColor },
     )
     .views(self => ({
       get grammar(): GraphGrammar {
@@ -155,6 +148,7 @@ export default function stateModelFactory() {
             ),
           )
         } else {
+          self.markCut()
           return self.cutSubgraph(adapter, region, self.cutOptions)
         }
         return undefined
@@ -205,9 +199,8 @@ export default function stateModelFactory() {
       setGfaLocation(location: FileLocation) {
         self.gfaLocation = location
       },
-      // the strip's toggle cuts the track again too (afterAttach)
-      relayoutFrom(from: LayoutModeValue) {
-        return self.loadedTrackId && self.cutChangedFrom(from)
+      relayoutFrom(_from: LayoutModeValue) {
+        return self.loadedTrackId && self.cutStale
           ? self.load()
           : self.recomputeLayout()
       },
@@ -229,21 +222,6 @@ export default function stateModelFactory() {
         if (!self.graph) {
           void self.load()
         }
-        addDisposer(
-          self,
-          reaction(
-            () => self.walkStrip,
-            on => {
-              if (
-                self.loadedTrackId &&
-                self.cutsWholeWalks !==
-                  self.cutsWholeWalksIn(self.chosenLayoutMode, !on)
-              ) {
-                void self.load()
-              }
-            },
-          ),
-        )
       },
     }))
 }

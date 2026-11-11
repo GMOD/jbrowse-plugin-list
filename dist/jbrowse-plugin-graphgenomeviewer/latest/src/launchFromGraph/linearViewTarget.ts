@@ -29,6 +29,14 @@ export function withRows(views: unknown[]) {
   )
 }
 
+export function liveViewIds(views: unknown[]) {
+  return new Set(
+    withRows(views).flatMap(view =>
+      isRecord(view) && typeof view.id === 'string' ? [view.id] : [],
+    ),
+  )
+}
+
 // The linear view a "show me this" from the graph should move, rather than
 // opening a pane beside it. Three cases, in order:
 //

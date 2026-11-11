@@ -7,6 +7,8 @@ import {
   markTag,
 } from '@jbrowse/graph-walks'
 
+import { DEFAULT_MAX_FORMS } from '../slotDefaults.ts'
+
 import type { Mark, MarkKind, StructuralForms } from '@jbrowse/graph-walks'
 
 export const CONSEQUENCES = [
@@ -64,8 +66,6 @@ const consequenceOf = (m: Mark): Consequence =>
 export const formName = (i: number) => `F${i + 1}`
 
 export const OTHER_FORMS = 'other'
-
-export const DEFAULT_MAX_FORMS = 8
 
 function percent(n: number, of: number) {
   const p = (100 * n) / of

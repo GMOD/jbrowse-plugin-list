@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/nodeLimitError.ts"],
+  "sourcesContent": ["// The GBZ adapter's own refusal, marked regionTooLarge so core shows it as a\n// zoom-in notice, or gbz-base's when it reaches the display unwrapped\nexport function isNodeLimitError(error: unknown) {\n  return (\n    error instanceof Error &&\n    (error.name === 'NodeLimitError' ||\n      (error as { regionTooLarge?: unknown }).regionTooLarge === true ||\n      /reads more than nodeLimit|^Subgraph size limit of \\d+ nodes exceeded/.test(\n        error.message,\n      ))\n  )\n}\n\nexport function isUnzoomableNodeLimitError(\n  error: unknown,\n): error is Error & { bytes: number } {\n  return (\n    isNodeLimitError(error) &&\n    error instanceof Error &&\n    'zoomHelps' in error &&\n    error.zoomHelps === false &&\n    'bytes' in error &&\n    typeof error.bytes === 'number'\n  )\n}\n"],
+  "mappings": "AAEO,SAASA,EAAiBC,EAAgB,CAC/C,OACEA,aAAiB,QAChBA,EAAM,OAAS,kBACbA,EAAuC,iBAAmB,IAC3D,uEAAuE,KACrEA,EAAM,OACR,EAEN,CAEO,SAASC,EACdD,EACoC,CACpC,OACED,EAAiBC,CAAK,GACtBA,aAAiB,OACjB,cAAeA,GACfA,EAAM,YAAc,IACpB,UAAWA,GACX,OAAOA,EAAM,OAAU,QAE3B",
+  "names": ["isNodeLimitError", "error", "isUnzoomableNodeLimitError"]
+}

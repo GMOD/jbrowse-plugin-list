@@ -169,21 +169,21 @@ export const Legends = observer(function Legends({
     // the whole key, even where the pane caps it to scroll, so the pane
     // still grows to show it all when it can. The key mounts once it has
     // sections, which can be after this, so each measure observes it.
-    const observer = new ResizeObserver(() => {
+    const resizes = new ResizeObserver(() => {
       measure()
     })
     const measure = () => {
       if (el.firstElementChild) {
-        observer.observe(el.firstElementChild)
+        resizes.observe(el.firstElementChild)
       }
       if (isAlive(model) && model.legendAtRest) {
         model.setLegendSize({ width: el.offsetWidth, height: el.scrollHeight })
       }
     }
-    observer.observe(el)
+    resizes.observe(el)
     measure()
     return () => {
-      observer.disconnect()
+      resizes.disconnect()
     }
   }, [model, atRest])
   return (

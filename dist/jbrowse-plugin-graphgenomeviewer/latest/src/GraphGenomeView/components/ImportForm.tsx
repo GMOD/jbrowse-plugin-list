@@ -17,7 +17,7 @@ L\t1\t+\t3\t+\t0M
 L\t2\t+\t4\t+\t0M
 L\t3\t+\t4\t+\t0M`
 
-const useStyles = makeStyles()({
+const useStyles = makeStyles()(theme => ({
   column: { display: 'flex', flexDirection: 'column', gap: 8 },
   rowEnd: { display: 'flex', gap: 8, alignItems: 'flex-end' },
   rowCenter: { display: 'flex', gap: 8, alignItems: 'center' },
@@ -25,15 +25,20 @@ const useStyles = makeStyles()({
   paper: { padding: 16, margin: 8, maxWidth: 560, marginInline: 'auto' },
   header: { marginBottom: 12 },
   footer: { marginTop: 12, display: 'flex', justifyContent: 'flex-end' },
-})
+  dragging: {
+    outline: `2px dashed ${theme.palette.primary.main}`,
+    outlineOffset: -4,
+  },
+}))
 
 const ImportForm = observer(function ImportForm({
   model,
 }: {
   model: GraphGenomeViewModel
 }) {
-  const { classes } = useStyles()
+  const { classes, cx } = useStyles()
   const [url, setUrl] = useState('')
+  const [dragging, setDragging] = useState(false)
 
   function handleUrlLoad() {
     const uri = url.trim()
@@ -51,8 +56,35 @@ const ImportForm = observer(function ImportForm({
     }
   }
 
+  function handleDrop(event: React.DragEvent) {
+    event.preventDefault()
+    setDragging(false)
+    const file = event.dataTransfer.files[0]
+    if (file) {
+      void model.loadGFAFile(file, file.name)
+    }
+  }
+
   return (
-    <Paper className={classes.paper}>
+    <Paper
+      className={cx(classes.paper, dragging && classes.dragging)}
+      data-testid="graph-import-form"
+      onDragOver={event => {
+        event.preventDefault()
+        setDragging(event.dataTransfer.types.includes('Files'))
+      }}
+      onDragLeave={event => {
+        if (
+          !(event.relatedTarget instanceof Node) ||
+          !event.currentTarget.contains(event.relatedTarget)
+        ) {
+          setDragging(false)
+        }
+      }}
+      onDrop={event => {
+        handleDrop(event)
+      }}
+    >
       <div className={classes.header}>
         <Typography variant="h6">Load a GFA graph</Typography>
       </div>
@@ -71,7 +103,7 @@ const ImportForm = observer(function ImportForm({
             />
           </Button>
           <Typography variant="caption" color="text.secondary">
-            Whole-file GFA; best for small/medium graphs.
+            Or drop one here. Whole-file GFA; best for small/medium graphs.
           </Typography>
         </div>
 

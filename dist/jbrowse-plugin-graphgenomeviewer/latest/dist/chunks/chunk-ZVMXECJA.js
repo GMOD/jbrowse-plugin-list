@@ -1,0 +1,2 @@
+function s(n){let{refName:e,start:t,end:o}=n??{};return typeof e=="string"&&Number.isFinite(t)&&Number.isFinite(o)&&t<o?{refName:e,start:t,end:o}:void 0}function u(n){let e=Number(n);return n!=="auto"&&Number.isFinite(e)?e:"auto"}var r=n=>n.toLocaleString("en-US"),i=({refName:n,start:e,end:t})=>`${n}:${r(e+1)}-${r(t)}`,d=n=>`Forms of ${i(n)}: `;var c={stepBudget:4e6,byteBudget:8e6},p={context:1e3,snarls:"contained",limit:1e5},f=8;export{c as a,p as b,f as c,s as d,u as e,i as f,d as g};
+//# sourceMappingURL=chunk-ZVMXECJA.js.map

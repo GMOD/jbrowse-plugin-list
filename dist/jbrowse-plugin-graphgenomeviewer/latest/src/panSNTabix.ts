@@ -4,13 +4,11 @@ import {
   panSNMatchesPrefix,
   resolvePanSNPrefix,
 } from '@jbrowse/bandage-core/pansn'
-import { ConfigurationSchema } from '@jbrowse/core/configuration'
 import { cachedSetup } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { openLocation, openTabixIndexFilehandle } from '@jbrowse/core/util/io'
 import { WalkReader, refNameLookup, resolveRefName } from '@jbrowse/graph-walks'
-import { types } from '@jbrowse/mobx-state-tree'
 
-import { WALKS_SUFFIX, locationIsSet, renamed } from './locationName.ts'
+import { locationIsSet, renamed } from './locationName.ts'
 import { bytesForRegions } from './tabixRange.ts'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
@@ -32,53 +30,6 @@ import type { FileLocation, Region } from '@jbrowse/core/util/types'
 // keeps the two lines that read its own slots and hands over the file. Reading
 // `assemblyNameToPanSN` IS hoistable, because every schema here declares it and
 // `resolvePanSNPrefix` is already generic over the base adapter type.
-
-// A file slot whose default is a url, '' for none
-export const fileLocationSlot = (uri: string) => ({
-  type: 'fileLocation' as const,
-  defaultValue: { uri, locationType: 'UriLocation' },
-})
-
-/**
- * The index slot `openTabixSlot` reads: its own `location` and `indexType`
- */
-export const tabixIndexSchema = (name: string, defaultUri = '') =>
-  ConfigurationSchema(name, {
-    /**
-     * #slot
-     */
-    indexType: {
-      model: types.enumeration('IndexType', ['TBI', 'CSI']),
-      type: 'stringEnum',
-      defaultValue: 'TBI',
-    },
-    /**
-     * #slot
-     */
-    location: fileLocationSlot(defaultUri),
-  })
-
-// The index slot's snapshot for a file whose `.tbi`, or `.csi`, sits beside it
-export function tbiBeside(uri: string, baseUri: unknown, csi: unknown) {
-  return {
-    indexType: csi ? 'CSI' : 'TBI',
-    location: { uri: `${uri}.${csi ? 'csi' : 'tbi'}`, baseUri },
-  }
-}
-
-// The `walksUri` shorthand: `<walksUri>.walks.gz` and its directory beside it
-export function walksLocations(snap: Record<string, unknown>) {
-  const { walksUri, baseUri } = snap
-  if (typeof walksUri !== 'string') {
-    return snap
-  }
-  const walks = `${walksUri}${WALKS_SUFFIX}`
-  return {
-    ...snap,
-    walksLocation: { uri: walks, baseUri },
-    walksIndex: { uri: `${walks}.idx`, baseUri },
-  }
-}
 
 // One indexed file from the pair of slots that names it: the data location, and
 // an index slot holding its own `location` and `indexType`. Paths, so the pair

@@ -1,7 +1,7 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
-import { WALK_BUDGETS } from '@jbrowse/graph-walks'
 
-import { fileLocationSlot, walksLocations } from '../panSNTabix.ts'
+import { WALK_BUDGETS } from '../slotDefaults.ts'
+import { fileLocationSlot, walksLocations } from '../tabixSlots.ts'
 
 import type { Instance } from '@jbrowse/mobx-state-tree'
 

@@ -6,7 +6,6 @@ import { types } from '@jbrowse/mobx-state-tree'
 
 import { graphFacetConfigSchema } from './graphFacetConfigSchema'
 import { HOVER_HIGHLIGHT_VALUES } from '../GraphGenomeView/hoverHighlight'
-import { retiredGraphColor } from '../GraphGenomeView/retiredNodeColor'
 
 /**
  * #config LinearGraphDisplay
@@ -119,7 +118,6 @@ export function configSchemaFactory() {
     {
       explicitlyTyped: true,
       explicitIdentifier: 'displayId',
-      retired: retiredGraphColor,
     },
   )
 }

@@ -13,6 +13,7 @@ import { toArray } from 'rxjs/operators'
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
 import { EXPAND_NAMED_MAX } from '../GetSubgraph.ts'
+import { isUnzoomableNodeLimitError } from '../nodeLimitError.ts'
 
 import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
@@ -303,6 +304,19 @@ test('a cut over walkByteBudget reads no unit', async () => {
   })
   expect(read).not.toHaveBeenCalled()
   read.mockRestore()
+})
+
+test('a cut no zoom fits under walkByteBudget cuts under a budget forced to what it fetches', async () => {
+  const adapter = makeAdapter(headerPrefix, { walkByteBudget: 100 })
+  const refusal = await adapter
+    .getSubgraph(chr1(1000, 2600))
+    .catch((e: unknown) => e)
+  expect(isUnzoomableNodeLimitError(refusal)).toBe(true)
+  const forced = isUnzoomableNodeLimitError(refusal) ? refusal.bytes : 0
+  const gfa = await gfaOf(
+    adapter.getSubgraph(chr1(1000, 2600), { forcedByteBudget: forced }),
+  )
+  expect(walkNames(gfa)).toContain('GRCh38#0#chr1')
 })
 
 test('a cut or a feature read over a range that is not finite reads nothing', async () => {

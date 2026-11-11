@@ -6,7 +6,11 @@ import { viewportOf } from '@jbrowse/bandage-core/viewport'
 import { types } from '@jbrowse/mobx-state-tree'
 import { RenderLifecycleMixin } from '@jbrowse/render-core/RenderLifecycleMixin'
 
-import { GRAPH_SUFFIX, SEGMENTS_SUFFIX } from '../../locationName.ts'
+import {
+  GRAPH_SUFFIX,
+  SEGMENTS_SUFFIX,
+  locationName,
+} from '../../locationName.ts'
 import { lenientOptionalEnum } from '../lenientEnum'
 
 import type { MorphEntering } from './morph'
@@ -157,7 +161,9 @@ export const MAX_GRAPH_REGION_BP = 5_000_000
 export function formatSpanBp(bp: number) {
   return bp >= 1_000_000
     ? `${+(bp / 1_000_000).toFixed(1)} Mb`
-    : `${Math.round(bp / 1000)} kb`
+    : bp >= 1000
+      ? `${Math.round(bp / 1000)} kb`
+      : `${bp} bp`
 }
 
 // What the view will actually draw, checked once the graph is parsed and so
@@ -172,15 +178,7 @@ export const DEFAULT_MAX_GRAPH_NODES = 20_000
 
 // the last segment of a file's path, its query dropped, or a blob's own name
 export function fileName(location: FileLocation) {
-  const path =
-    'uri' in location
-      ? location.uri.split(/[?#]/)[0]!
-      : 'localPath' in location
-        ? location.localPath
-        : 'name' in location
-          ? location.name
-          : ''
-  return path.split(/[\\/]/).at(-1) ?? ''
+  return locationName(location).split(/[\\/]/).at(-1) ?? ''
 }
 
 type ViewportOwner = 'fit' | 'user' | 'host'
@@ -318,6 +316,7 @@ export const paneBase = types
       // The bp ceiling on a fine cut, a proxy for node count that only
       // holds at fine granularity; `maxGraphNodes` counts what came back.
       maxRegionBp: types.optional(types.number, MAX_GRAPH_REGION_BP),
+      forcedByteBudget: types.maybe(types.number),
       // How far the cut follows links past the region's own segments. At
       // 0 a detour that leaves the backbone before the window and rejoins
       // after it arrives as a fragment, since its interior is indexed only
@@ -339,6 +338,8 @@ export const paneBase = types
     walkCut: undefined as WalkCut | undefined,
     // the reference window the graph on screen was cut for, set with it
     graphRegion: undefined as SubgraphRegion | undefined,
+    cutKeyOnRecord: undefined as string | undefined,
+    haplotypeNames: undefined as string[] | undefined,
     // The walk the track's graph lies on for the region's assembly, which
     // the track's config declares; x starts along it unless the user chose
     // another. Undefined for an rGFA, whose backbone is fixed, and for a
@@ -430,9 +431,6 @@ export const paneBase = types
     // and then never re-fit.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     viewportOwner: 'fit' as ViewportOwner,
-    viewportDirtyTimer: undefined as ReturnType<typeof setTimeout> | undefined,
-    // 0 is never a live rAF handle, so it doubles as "nothing pending"
-    positionsDirtyFrame: 0,
     // Performance instrumentation, surfaced in GraphStats for browser tests
     // to assert against budgets. `fetchMs` is the GetSubgraph RPC round-trip,
     // `layoutMs` the last layout's compute time in any mode (near zero on a
