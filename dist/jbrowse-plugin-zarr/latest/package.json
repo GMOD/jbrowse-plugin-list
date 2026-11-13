@@ -1,6 +1,6 @@
 {
   "name": "jbrowse-plugin-zarr",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "JBrowse 2 plugin reading multi-sample quantitative signal from a Zarr v3 store",
   "repository": "github:cmdcolin/jbrowse-plugin-zarr",
   "jbrowse-plugin": {

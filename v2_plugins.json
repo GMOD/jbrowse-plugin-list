@@ -410,14 +410,14 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/zarr-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/0.1.0/dist/jbrowse-plugin-zarr.umd.production.min.js",
-      "integrity": "sha384-wY2lNnQDfiDtfzCSSldlPYVYRfgtJDw9pRZf2nGtkmVlHVDOZc+rPxDnPdTNJhOg",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/0.2.0/dist/jbrowse-plugin-zarr.umd.production.min.js",
+      "integrity": "sha384-RpG3qYKRh7x9Hb+ei6XxTVr1BqbXvfISBs4I8sLQMksrzxGRKbKvFvOdKIBlHONa",
       "versions": [
         {
-          "pluginVersion": "0.1.0",
+          "pluginVersion": "0.2.0",
           "jbrowseRange": ">=5.0.0",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/0.1.0/dist/jbrowse-plugin-zarr.umd.production.min.js",
-          "integrity": "sha384-wY2lNnQDfiDtfzCSSldlPYVYRfgtJDw9pRZf2nGtkmVlHVDOZc+rPxDnPdTNJhOg"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/0.2.0/dist/jbrowse-plugin-zarr.umd.production.min.js",
+          "integrity": "sha384-RpG3qYKRh7x9Hb+ei6XxTVr1BqbXvfISBs4I8sLQMksrzxGRKbKvFvOdKIBlHONa"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-zarr/latest/dist/jbrowse-plugin-zarr.umd.production.min.js"

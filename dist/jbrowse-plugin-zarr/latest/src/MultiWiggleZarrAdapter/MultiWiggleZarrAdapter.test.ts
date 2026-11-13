@@ -71,14 +71,21 @@ function chunkFiles(path: string, values: Float32Array, numBins: number) {
   return files
 }
 
-function groupMetadata(levels: unknown[], version = 1) {
+const DEMO_SAMPLES: (string | { name: string; group?: string; color?: string })[] =
+  SAMPLES.map(name => ({ name, group: 'demo' }))
+
+function groupMetadata(
+  levels: unknown[],
+  version = 1,
+  samples = DEMO_SAMPLES,
+) {
   return JSON.stringify({
     zarr_format: 3,
     node_type: 'group',
     attributes: {
       jbrowse_signal_matrix: {
         version,
-        samples: SAMPLES.map(name => ({ name, group: 'demo' })),
+        samples,
         levels,
       },
     },
@@ -145,8 +152,18 @@ const GAPPED_SUMMARY_STORE: Record<string, Uint8Array | string> = {
   ...chunkFiles('bin200', GAPPED_COARSE_VALUES, COARSE_BINS),
 }
 
+const MIXED_SAMPLES_STORE: Record<string, Uint8Array | string> = {
+  ...STORE,
+  '/zarr.json': groupMetadata(LEVELS, 1, [
+    { name: 's1', group: 'demo', color: '#f00' },
+    's2',
+    { name: 's3', group: 'ctl' },
+  ]),
+}
+
 const STORES: Record<string, Record<string, Uint8Array | string>> = {
   'test.zarr': STORE,
+  'mixed.zarr': MIXED_SAMPLES_STORE,
   'wrongshape.zarr': WRONG_SHAPE_STORE,
   'summary.zarr': SUMMARY_STORE,
   'gappedsummary.zarr': GAPPED_SUMMARY_STORE,
@@ -196,6 +213,26 @@ test('reads sample names and refNames from the store metadata', async () => {
   expect(await adapter.getRefNames()).toEqual(['ctgA'])
   expect((await adapter.getSources([])).map(s => s.name)).toEqual(SAMPLES)
   expect((await adapter.getSources([]))[0]!.group).toBe('demo')
+})
+
+test('lists the samples as rows with their color and group attributes', async () => {
+  const adapter = makeAdapter('mixed.zarr')
+  expect(await adapter.listRowSources()).toEqual({
+    field: 'source',
+    sources: [
+      { name: 's1', color: '#f00', attributes: { group: 'demo' } },
+      { name: 's2' },
+      { name: 's3', attributes: { group: 'ctl' } },
+    ],
+  })
+})
+
+test('the row listing never repeats a name, label or color as an attribute', async () => {
+  const { sources } = await makeAdapter().listRowSources()
+  expect(sources.map(s => s.name)).toEqual(SAMPLES)
+  expect(sources.map(s => s.attributes)).toEqual(
+    SAMPLES.map(() => ({ group: 'demo' })),
+  )
 })
 
 test('returns one array per sample, aligned to the requested region', async () => {

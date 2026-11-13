@@ -45,6 +45,16 @@ export default class MultiWiggleZarrAdapter extends BaseFeatureDataAdapter {
         group?: string;
         color?: string;
     }[]>;
+    listRowSources(opts?: BaseOptions): Promise<{
+        field: string;
+        sources: {
+            attributes?: {
+                [k: string]: string;
+            } | undefined;
+            color?: string | undefined;
+            name: string;
+        }[];
+    }>;
     getFeatures(region: Region, opts?: WiggleOptions): Observable<Feature>;
 }
 export {};

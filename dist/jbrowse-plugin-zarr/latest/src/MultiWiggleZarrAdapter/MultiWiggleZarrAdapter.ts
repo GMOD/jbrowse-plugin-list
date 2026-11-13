@@ -92,6 +92,10 @@ function wantedNames(sources: { name: string }[] | undefined) {
   return sources?.length ? new Set(sources.map(s => s.name)) : undefined
 }
 
+function isText(value: unknown): value is string {
+  return typeof value === 'string' && value !== ''
+}
+
 // A bin the converter never wrote (no k-mers, a gap, or outside the store's
 // covered window) comes back as the array's NaN fill value. Dropping those keeps
 // an unmeasured region visibly empty rather than drawing it as zero coverage.
@@ -412,6 +416,25 @@ export default class MultiWiggleZarrAdapter extends BaseFeatureDataAdapter {
   public async getSources(_regions: Region[]) {
     const { meta } = await this.setup()
     return meta.samples.map(sample => ({ ...sample, source: sample.name }))
+  }
+
+  public async listRowSources(opts?: BaseOptions) {
+    const { meta } = await this.setup(opts)
+    return {
+      field: 'source',
+      sources: meta.samples.map(({ name, color, ...rest }) => {
+        const attributes = Object.fromEntries(
+          Object.entries(rest).filter((entry): entry is [string, string] =>
+            isText(entry[1]),
+          ),
+        )
+        return {
+          name,
+          ...(isText(color) ? { color } : {}),
+          ...(Object.keys(attributes).length ? { attributes } : {}),
+        }
+      }),
+    }
   }
 
   // The feature-object path, which the multiwiggle render never takes — it uses

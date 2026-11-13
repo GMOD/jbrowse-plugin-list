@@ -26,6 +26,9 @@ const EMPTY_RAW = {
 function wantedNames(sources) {
     return (sources === null || sources === void 0 ? void 0 : sources.length) ? new Set(sources.map(s => s.name)) : undefined;
 }
+function isText(value) {
+    return typeof value === 'string' && value !== '';
+}
 // A bin the converter never wrote (no k-mers, a gap, or outside the store's
 // covered window) comes back as the array's NaN fill value. Dropping those keeps
 // an unmeasured region visibly empty rather than drawing it as zero coverage.
@@ -289,6 +292,20 @@ class MultiWiggleZarrAdapter extends BaseFeatureDataAdapter {
     async getSources(_regions) {
         const { meta } = await this.setup();
         return meta.samples.map(sample => ({ ...sample, source: sample.name }));
+    }
+    async listRowSources(opts) {
+        const { meta } = await this.setup(opts);
+        return {
+            field: 'source',
+            sources: meta.samples.map(({ name, color, ...rest }) => {
+                const attributes = Object.fromEntries(Object.entries(rest).filter((entry) => isText(entry[1])));
+                return {
+                    name,
+                    ...(isText(color) ? { color } : {}),
+                    ...(Object.keys(attributes).length ? { attributes } : {}),
+                };
+            }),
+        };
     }
     // The feature-object path, which the multiwiggle render never takes — it uses
     // the typed arrays above. This is what clustering (getScoreMatrix) reads, and
