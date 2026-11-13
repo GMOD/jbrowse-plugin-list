@@ -16,7 +16,7 @@ import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory'
 import type { RootStructureDefinition } from 'molstar/lib/mol-plugin-state/helpers/root-structure'
 import type { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
-import type { StateObjectSelector } from 'molstar/lib/mol-state'
+import type { StateBuilder, StateObjectSelector } from 'molstar/lib/mol-state'
 
 type RawStructure = StateObjectSelector<
   PluginStateObject.Data.String | PluginStateObject.Data.Binary
@@ -32,6 +32,48 @@ function parseTrajectory(
   StateObjectSelector<PluginStateObject.Molecule.Trajectory> | undefined
 > {
   return plugin.builders.structure.parseTrajectory(raw, format)
+}
+
+// Typed as always resolving to a selector, but a commit that reverts resolves
+// with nothing
+function commitDownload(
+  built: StateBuilder.To<
+    PluginStateObject.Data.String | PluginStateObject.Data.Binary
+  >,
+): Promise<RawStructure | undefined> {
+  return built.commit({ revertOnError: true })
+}
+
+/** Mol*'s download reverts a failed request, as it must: a failed update left
+ * in the tree flags any data transaction open beside it, which then rolls
+ * back. The revert takes the cell's error with it, so the parse after it said
+ * only "Invalid data cell"; the error is read off the cell as it fails. */
+async function download(plugin: PluginContext, url: string) {
+  const molstar = await loadMolstar()
+  const state = plugin.state.data
+  const built = state
+    .build()
+    .toRoot()
+    .apply(
+      molstar.StateTransforms.Data.Download,
+      { url, isBinary: isBinaryStructureUrl(url) },
+      { state: { isGhost: true } },
+    )
+  const failures: string[] = []
+  const watch = state.events.cell.stateUpdated.subscribe(({ ref, cell }) => {
+    if (ref === built.ref && cell.status === 'error') {
+      failures.push(cell.errorText?.replace(/^Error: /, '') ?? 'no data')
+    }
+  })
+  const raw = await commitDownload(built).finally(() => {
+    watch.unsubscribe()
+  })
+  if (!raw?.isOk) {
+    throw new Error(
+      `Could not download ${url}: ${failures.at(-1) ?? 'no data'}`,
+    )
+  }
+  return raw
 }
 
 /** Download or ingest a structure and parse it into a trajectory, with the
@@ -61,16 +103,15 @@ export async function parseStructureTrajectory({
     )
   } else if (url !== undefined) {
     parsedAs = structureFormatFromName(url)
-    raw = await plugin.builders.data.download(
-      { url, isBinary: isBinaryStructureUrl(url) },
-      { state: { isGhost: true } },
-    )
+    raw = await download(plugin, url)
   } else {
     throw new Error('a structure needs either data or a url')
   }
   const trajectory = await parseTrajectory(plugin, raw, parsedAs)
   if (!trajectory?.obj?.data.frameCount) {
-    await removeWithGhosts(plugin, await loadMolstar(), raw.ref)
+    // a plugin disposed mid-load fails the removal too, and the parse's own
+    // error is the one to report
+    await removeWithGhosts(plugin, await loadMolstar(), raw.ref).catch(() => {})
     throw new Error(
       `No model could be read from ${url ?? 'the structure data'} as ${parsedAs}`,
     )

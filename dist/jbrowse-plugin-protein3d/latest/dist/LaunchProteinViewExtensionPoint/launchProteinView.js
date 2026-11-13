@@ -28,6 +28,18 @@ export function launchViewSettings({ alignmentAlgorithm, color, colorScheme, ...
     };
 }
 /**
+ * The structures a launch opens, given the AlphaFold model its `gene` lookup
+ * picked for the transcript, an isoform's for an isoform transcript. That
+ * model fills only the structure the launch leaves to the gene; every entry of
+ * `structures` names its own source, so `{ uniprotId: 'P04637' }` there opens
+ * the canonical model beside any transcript.
+ */
+export function withGeneModel({ requested, geneModel }, named) {
+    return named && geneModel
+        ? requested.map(s => ({ ...s, url: named.url }))
+        : requested;
+}
+/**
  * A LaunchView point is a transformer, so the launch returns its extendee. A
  * failure throws: the host launches a spec through
  * `evaluateAsyncExtensionPointStrict`, reports the error on screen, and tells
@@ -63,9 +75,7 @@ export async function launchProteinView(args) {
         throw new Error(`${describeMissingStructure(gene, named)}; name a ${named.uniprotId ? 'pdbId or url' : 'uniprotId or pdbId'}`);
     }
     const launchFeature = resolved?.feature ?? feature;
-    const withTranscripts = (named && geneModel
-        ? normalized.requested.map(s => ({ ...s, url: named.url }))
-        : normalized.requested).map(s => ({
+    const withTranscripts = withGeneModel(normalized, named).map(s => ({
         ...s,
         userProvidedTranscriptSequence: s.userProvidedTranscriptSequence ??
             resolved?.userProvidedTranscriptSequence ??
