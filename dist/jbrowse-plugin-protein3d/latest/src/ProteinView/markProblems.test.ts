@@ -55,7 +55,7 @@ test('a site, mark or color that does not parse is named', () => {
     ]),
   ).toEqual([
     'marks[0].site is a site such as A:248, A:248@NH2, MOV or G:*, not not a site!',
-    'marks[0].mark is one of spheres, sticks, cartoon, not {"type":"cartoon"}',
+    'marks[0].mark is one of spheres, sticks, cartoon, none, not {"type":"cartoon"}',
     'marks[1].encoding.color.value is a #rrggbb color, not "green"',
   ])
 })
@@ -84,12 +84,19 @@ test('checkedFigure throws every problem at once', () => {
       distances: [{ a: 'A:1', b: '??' }],
     }),
   ).toThrow(
-    'marks[0].mark is one of spheres, sticks, cartoon, not "balls"; distances[0].b is a site such as A:248, A:248@NH2, MOV or G:*, not ??',
+    'marks[0].mark is one of spheres, sticks, cartoon, none, not "balls"; distances[0].b is a site such as A:248, A:248@NH2, MOV or G:*, not ??',
   )
 })
 
 test('a distance needs both sites', () => {
   expect(distanceProblems([{ a: 'A:46@NZ' }])).toEqual([
     'distances[0].b is a site such as A:248, A:248@NH2, MOV or G:*, not undefined',
+  ])
+})
+
+test('a label is text to write', () => {
+  expect(markProblems([{ site: 'A:*', label: 'VHL' }])).toEqual([])
+  expect(markProblems([{ site: 'A:*', label: ' ' }])).toEqual([
+    'marks[0].label is the text to write, not " "',
   ])
 })

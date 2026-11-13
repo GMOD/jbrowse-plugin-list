@@ -17,8 +17,6 @@ const EMPTY_RAW = {
     starts: new Int32Array(0),
     ends: new Int32Array(0),
     scores: new Float32Array(0),
-    minScores: undefined,
-    maxScores: undefined,
     count: 0,
 };
 // The subtree filter in the clustering sidebar narrows the source list the
@@ -36,8 +34,9 @@ function slabToRaw(slab, sampleIndex) {
     const lo = sampleIndex * stride + offset;
     const hi = lo + numBins;
     const row = values.subarray(lo, hi);
-    const minRow = mins === null || mins === void 0 ? void 0 : mins.subarray(lo, hi);
-    const maxRow = maxs === null || maxs === void 0 ? void 0 : maxs.subarray(lo, hi);
+    const rowSummary = mins && maxs
+        ? { minScores: mins.subarray(lo, hi), maxScores: maxs.subarray(lo, hi) }
+        : undefined;
     let count = 0;
     for (let i = 0; i < numBins; i++) {
         if (!Number.isNaN(row[i])) {
@@ -73,8 +72,7 @@ function slabToRaw(slab, sampleIndex) {
             starts: gridStarts,
             ends: gridEnds,
             scores: row,
-            minScores: minRow,
-            maxScores: maxRow,
+            summary: rowSummary,
             count,
         };
     }
@@ -83,8 +81,10 @@ function slabToRaw(slab, sampleIndex) {
     const scores = new Float32Array(count);
     // Allocated only on a summary level, so a base-resolution read still transfers
     // three arrays rather than five.
-    const minScores = minRow ? new Float32Array(count) : undefined;
-    const maxScores = maxRow ? new Float32Array(count) : undefined;
+    const summary = rowSummary && {
+        minScores: new Float32Array(count),
+        maxScores: new Float32Array(count),
+    };
     let out = 0;
     for (let i = 0; i < numBins; i++) {
         const score = row[i];
@@ -95,16 +95,16 @@ function slabToRaw(slab, sampleIndex) {
             // The converter writes all three from the same set of finer bins, so a
             // NaN here would mean a torn store; fall back to the mean rather than
             // emit a NaN the renderer would carry into its scale.
-            if (minScores && maxScores) {
-                const min = minRow[i];
-                const max = maxRow[i];
-                minScores[out] = Number.isNaN(min) ? score : min;
-                maxScores[out] = Number.isNaN(max) ? score : max;
+            if (summary) {
+                const min = rowSummary.minScores[i];
+                const max = rowSummary.maxScores[i];
+                summary.minScores[out] = Number.isNaN(min) ? score : min;
+                summary.maxScores[out] = Number.isNaN(max) ? score : max;
             }
             out++;
         }
     }
-    return { starts, ends, scores, minScores, maxScores, count };
+    return { starts, ends, scores, summary, count };
 }
 // Checked rather than trusted, because the failure is silent otherwise: a level
 // with fewer rows than the metadata claims makes the last samples' `subarray`
@@ -231,12 +231,15 @@ class MultiWiggleZarrAdapter extends BaseFeatureDataAdapter {
             return regions.map(() => EMPTY_SLAB);
         }
         const zarr = await zarritaP;
+        // Read whenever the level declares them, as the host's BigWig adapter
+        // ships every summary its file holds: the host sends no summary mode, and
+        // one fetch serves the mean, the extremes and the band between them, so
+        // switching the y field or the extent re-encodes without a refetch.
         const { minPath, maxPath } = level;
-        // `avg` draws the mean and nothing else, and it is the default, so reading
-        // the summary arrays there triples the bytes for a screenful to buy a pair
-        // the consumer allocates, fills and then discards.
-        const wantSummary = minPath && maxPath && opts.summaryScoreMode !== 'avg';
-        const paths = [level.path, ...(wantSummary ? [minPath, maxPath] : [])];
+        const paths = [
+            level.path,
+            ...(minPath && maxPath ? [minPath, maxPath] : []),
+        ];
         const arrays = await Promise.all(paths.map(p => this.openArray(p, opts)));
         const chunkBins = (_a = arrays[0].chunks[1]) !== null && _a !== void 0 ? _a : 1;
         const runs = this.planFetch(present, chunkBins);

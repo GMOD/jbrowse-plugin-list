@@ -305,12 +305,12 @@ test('a load that fails because its plugin was swapped away retries into the cur
 // A `{ uniprotId }` structure has no file until AlphaFold DB names one: the
 // spelled AF-<acc>-F1-model_v6 404s for anything folded in fragments, and the
 // version moves under every config already published.
-test('a uniprotId structure opens the model AlphaFold DB names for the transcript', async () => {
+test('a uniprotId structure opens the model AlphaFold DB names for the accession', async () => {
   mockLoad.mockResolvedValue({})
   const fetchModels = vi.fn(() =>
     Promise.resolve([
-      alphaFoldModel('P04637', 'MEEPQSDP'),
       alphaFoldModel('P04637-2', 'MEEPQ'),
+      alphaFoldModel('P04637', 'MEEPQSDP'),
     ]),
   )
   const { load, structure } = setupAlphaFold(
@@ -320,8 +320,40 @@ test('a uniprotId structure opens the model AlphaFold DB names for the transcrip
   load()
   await tick()
   expect(fetchModels).toHaveBeenCalledWith('P04637')
-  expect(structure.url).toBe(alphaFoldModel('P04637-2', '').url)
+  expect(structure.url).toBe(alphaFoldModel('P04637', '').url)
   expect(mockLoad).toHaveBeenCalledTimes(1)
+})
+
+test('an isoform accession opens its isoform model, not the one its transcript matches', async () => {
+  mockLoad.mockResolvedValue({})
+  const { load, structure } = setupAlphaFold(
+    { uniprotId: 'P04637-2', transcript: 'MEEPQSDP*' },
+    () =>
+      Promise.resolve([
+        alphaFoldModel('P04637', 'MEEPQSDP'),
+        alphaFoldModel('P04637-2', 'MEEPQ'),
+      ]),
+  )
+  load()
+  await tick()
+  expect(structure.url).toBe(alphaFoldModel('P04637-2', '').url)
+})
+
+// Past the length cap AlphaFold DB folds isoforms alone, dystrophin's fourteen
+// and no canonical model
+test('an accession with only isoform models opens the one folded from the transcript', async () => {
+  mockLoad.mockResolvedValue({})
+  const { load, structure } = setupAlphaFold(
+    { uniprotId: 'P11532', transcript: 'MLWWEEV*' },
+    () =>
+      Promise.resolve([
+        alphaFoldModel('P11532-2', 'MLWWEEVEDCY'),
+        alphaFoldModel('P11532-5', 'MLWWEEV'),
+      ]),
+  )
+  load()
+  await tick()
+  expect(structure.url).toBe(alphaFoldModel('P11532-5', '').url)
 })
 
 test('with no transcript match the canonical model wins over an isoform', async () => {

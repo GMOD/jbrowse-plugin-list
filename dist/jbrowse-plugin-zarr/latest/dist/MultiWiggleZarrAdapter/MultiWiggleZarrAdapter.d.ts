@@ -8,8 +8,10 @@ export interface RawFeatureArrays {
     starts: Int32Array;
     ends: Int32Array;
     scores: Float32Array;
-    minScores: Float32Array | undefined;
-    maxScores: Float32Array | undefined;
+    summary?: {
+        minScores: Float32Array;
+        maxScores: Float32Array;
+    };
     count: number;
 }
 interface WiggleOptions extends BaseOptions {
@@ -18,7 +20,6 @@ interface WiggleOptions extends BaseOptions {
     sources?: {
         name: string;
     }[];
-    summaryScoreMode?: string;
 }
 export default class MultiWiggleZarrAdapter extends BaseFeatureDataAdapter {
     static capabilities: string[];

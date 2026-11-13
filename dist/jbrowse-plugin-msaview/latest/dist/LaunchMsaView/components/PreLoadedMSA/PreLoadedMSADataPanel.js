@@ -107,7 +107,7 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
                         showBranchLen: false,
                         colWidth: 10,
                         rowHeight: 12,
-                        colorSchemeName: 'percent_identity_dynamic',
+                        residueColor: { scale: { scheme: 'percent_identity_dynamic' } },
                         querySeqName,
                         querySeqOffset: queryRow.querySeqOffset,
                         data: { msa: msaText, tree: msaData?.tree },

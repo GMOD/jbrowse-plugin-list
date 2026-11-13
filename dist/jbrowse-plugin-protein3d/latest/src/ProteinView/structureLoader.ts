@@ -89,9 +89,10 @@ export function makeStructureLoader(
   /**
    * Which AlphaFold file an accession opens. Asked rather than spelled: a
    * protein folded past the length cap has no F1 fragment, and the model
-   * version moves, so a hardcoded name 404s. The transcript's own translation
-   * goes to the picker, so an isoform AlphaFold folded exactly maps as an
-   * identity.
+   * version moves, so a hardcoded name 404s. The accession's own model wins,
+   * so `P04637` opens the canonical model beside an isoform's transcript and
+   * `P04637-4` the isoform's. Only an accession AlphaFold DB folded as
+   * isoforms alone goes to the picker, with the transcript's translation.
    *
    * The two ways that can come back empty are not the same answer. An
    * unreachable API says nothing about the accession, so the spelled canonical
@@ -112,9 +113,11 @@ export function makeStructureLoader(
       structure.setUrl(getAlphaFoldStructureUrl(uniprotId))
       return
     }
-    const picked = pickAlphaFoldModel(models, {
-      transcript: { seq: structure.userProvidedTranscriptSequence },
-    })
+    const picked =
+      models.find(m => m.accession === uniprotId) ??
+      pickAlphaFoldModel(models, {
+        transcript: { seq: structure.userProvidedTranscriptSequence },
+      })
     if (!picked) {
       throw new Error(`AlphaFold DB has no model for ${uniprotId}`)
     }

@@ -1,0 +1,65 @@
+{
+  "name": "jbrowse-plugin-zarr",
+  "version": "0.1.0",
+  "description": "JBrowse 2 plugin reading multi-sample quantitative signal from a Zarr v3 store",
+  "repository": "github:cmdcolin/jbrowse-plugin-zarr",
+  "jbrowse-plugin": {
+    "name": "Zarr"
+  },
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "author": "Colin Diesh",
+  "license": "MIT",
+  "keywords": [
+    "jbrowse",
+    "jbrowse2",
+    "zarr"
+  ],
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all",
+    "arrowParens": "avoid"
+  },
+  "dependencies": {
+    "zarrita": "^0.7.3"
+  },
+  "peerDependencies": {
+    "@jbrowse/core": "^5.0.0-beta.21"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@jbrowse/core": "5.0.0-beta.21",
+    "@jbrowse/mobx-state-tree": "^5.6.0",
+    "@types/node": "^25.6.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.8.0",
+    "eslint-plugin-import-x": "^4.17.1",
+    "prettier": "^3.8.1",
+    "pretty-bytes": "^7.1.0",
+    "rimraf": "^6.1.2",
+    "rxjs": "^7.8.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.0.18"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "format": "prettier --write .",
+    "prebuild": "pnpm clean",
+    "start": "node esbuild.mjs --watch",
+    "build": "tsc && NODE_ENV=production node esbuild.mjs",
+    "build:bundle": "NODE_ENV=production node esbuild.mjs",
+    "betabuild": "bash scripts/betabuild.sh",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest run",
+    "preversion": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "postversion": "git push --follow-tags"
+  }
+}

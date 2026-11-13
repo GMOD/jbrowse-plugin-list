@@ -134,10 +134,22 @@ const WRONG_SHAPE_STORE: Record<string, Uint8Array | string> = {
   '/bin100/zarr.json': JSON.stringify(arrayMetadata(NUM_BINS, 2)),
 }
 
+// s2's middle coarse bin unmeasured, so s2 takes the copying path on a
+// summary level, where s1 and s3 view the slab
+const GAPPED_COARSE_VALUES = COARSE_VALUES.map((v, i) =>
+  i === COARSE_BINS + 1 ? Number.NaN : v,
+)
+
+const GAPPED_SUMMARY_STORE: Record<string, Uint8Array | string> = {
+  ...SUMMARY_STORE,
+  ...chunkFiles('bin200', GAPPED_COARSE_VALUES, COARSE_BINS),
+}
+
 const STORES: Record<string, Record<string, Uint8Array | string>> = {
   'test.zarr': STORE,
   'wrongshape.zarr': WRONG_SHAPE_STORE,
   'summary.zarr': SUMMARY_STORE,
+  'gappedsummary.zarr': GAPPED_SUMMARY_STORE,
 }
 
 function makeAdapter(store = 'test.zarr') {
@@ -336,8 +348,23 @@ test('a summary level returns the min and max beside the mean', async () => {
   })
   const s1 = result[0]!.raws[0]!
   expect([...s1.scores]).toEqual([0.5, 2.5, 4.5])
-  expect([...s1.minScores!]).toEqual([0, 2, 4])
-  expect([...s1.maxScores!]).toEqual([1, 3, 5])
+  expect([...s1.summary!.minScores]).toEqual([0, 2, 4])
+  expect([...s1.summary!.maxScores]).toEqual([1, 3, 5])
+})
+
+// @jbrowse/plugin-wiggle reads a bin's extremes off `summary` alone, so a flat
+// minScores/maxScores pair is dropped there without a word: no whiskers, and a
+// y field of minScore or maxScore plots the mean.
+test('the extremes travel as one summary, the shape the host reads', async () => {
+  const adapter = makeAdapter('summary.zarr')
+  const result = await adapter.getMultiSourceFeatureArraysMulti([REGION], {
+    bpPerPx: 200,
+  })
+  const s1 = result[0]!.raws[0]!
+  expect(Object.keys(s1).sort()).toEqual(
+    ['count', 'ends', 'scores', 'starts', 'summary'].sort(),
+  )
+  expect(Object.keys(s1.summary!).sort()).toEqual(['maxScores', 'minScores'])
 })
 
 // The bin whose second input was unmeasured: a summary over one value is that
@@ -349,8 +376,20 @@ test('a partly unmeasured coarse bin summarizes only what it measured', async ()
   })
   const s2 = result[1]!.raws[0]!
   expect([...s2.scores]).toEqual([10.5, 12, 14.5])
-  expect([...s2.minScores!]).toEqual([10, 12, 14])
-  expect([...s2.maxScores!]).toEqual([11, 12, 15])
+  expect([...s2.summary!.minScores]).toEqual([10, 12, 14])
+  expect([...s2.summary!.maxScores]).toEqual([11, 12, 15])
+})
+
+test('a gapped sample on a summary level keeps the extremes of the bins it keeps', async () => {
+  const adapter = makeAdapter('gappedsummary.zarr')
+  const result = await adapter.getMultiSourceFeatureArraysMulti([REGION], {
+    bpPerPx: 200,
+  })
+  const s2 = result[1]!.raws[0]!
+  expect([...s2.starts]).toEqual([1000, 1400])
+  expect([...s2.scores]).toEqual([10.5, 14.5])
+  expect([...s2.summary!.minScores]).toEqual([10, 14])
+  expect([...s2.summary!.maxScores]).toEqual([11, 15])
 })
 
 // Presence of the paths is the feature test, not the version number: the finest
@@ -361,8 +400,7 @@ test('the finest level of a summary store reports no summary', async () => {
     bpPerPx: 1,
   })
   expect([...result[0]!.raws[0]!.scores]).toEqual([0, 1, 2, 3, 4, 5])
-  expect(result[0]!.raws[0]!.minScores).toBeUndefined()
-  expect(result[0]!.raws[0]!.maxScores).toBeUndefined()
+  expect(result[0]!.raws[0]!.summary).toBeUndefined()
 })
 
 test('a level declaring one of minPath/maxPath is rejected', () => {
@@ -515,29 +553,17 @@ test('a region the level does not cover comes back empty, not wrong', async () =
   expect([...result[0]!.raws[1]!.scores]).toEqual([0, 1, 2, 3, 4, 5])
 })
 
-// avg is the default and draws the mean alone, so the summary arrays are two
-// thirds of a screenful's bytes bought for nothing. Unknown still means read
-// them: an older caller sends no mode at all.
-test('avg mode does not read the summary arrays', async () => {
-  const adapter = makeAdapter('summary.zarr')
-  const result = await adapter.getMultiSourceFeatureArraysMulti([REGION], {
+// The host sends no summary mode: one fetch serves the mean, the extremes and
+// the band around them, so switching the y field or the extent re-encodes
+// without a refetch.
+test('a summary level reads the extremes under the options the host sends', async () => {
+  const result = await makeAdapter(
+    'summary.zarr',
+  ).getMultiSourceFeatureArraysMulti([REGION], {
     bpPerPx: 200,
-    summaryScoreMode: 'avg',
+    resolution: 1,
+    sources: [{ name: 's1' }],
   })
-  expect([...result[0]!.raws[0]!.scores]).toEqual([0.5, 2.5, 4.5])
-  expect(result[0]!.raws[0]!.minScores).toBeUndefined()
-  expect(result[0]!.raws[0]!.maxScores).toBeUndefined()
-})
-
-test('max mode still reads them, and so does a caller that sends no mode', async () => {
-  for (const opts of [
-    { bpPerPx: 200, summaryScoreMode: 'max' },
-    { bpPerPx: 200 },
-  ]) {
-    const result = await makeAdapter(
-      'summary.zarr',
-    ).getMultiSourceFeatureArraysMulti([REGION], opts)
-    expect([...result[0]!.raws[0]!.minScores!]).toEqual([0, 2, 4])
-    expect([...result[0]!.raws[0]!.maxScores!]).toEqual([1, 3, 5])
-  }
+  expect([...result[0]!.raws[0]!.summary!.minScores]).toEqual([0, 2, 4])
+  expect([...result[0]!.raws[0]!.summary!.maxScores]).toEqual([1, 3, 5])
 })

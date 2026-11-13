@@ -175,8 +175,11 @@ its mean. They are the same shape and chunking as the level itself:
 
 Without them a zoomed-out view can only show a mean, and anything narrower than
 a coarse bin averages back into the baseline at exactly the zoom someone would
-be scanning for it. With them, `summaryScoreMode` (`whiskers`, `min`, `max`) in
-the multi-wiggle display does what it does for a BigWig.
+be scanning for it. With them, the multi-wiggle display's `mark.extent`
+`min-max` and `encoding.y.field` `minScore` or `maxScore` do what they do for a
+BigWig. A view at a summary level reads all three arrays whatever it draws, as a
+BigWig ships its zoom record whole, so changing either setting redraws without
+a refetch.
 
 The min and max are over the store's own finer bins, not over whatever the input
 was. If the finest level is itself an aggregate of something finer, the whiskers

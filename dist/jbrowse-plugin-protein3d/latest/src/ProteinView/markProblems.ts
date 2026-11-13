@@ -1,7 +1,7 @@
 import { narrowsChains } from './residueFilter'
 import { parseSite } from './residueSpec'
 
-const MARK_TYPES = ['spheres', 'sticks', 'cartoon']
+const MARK_TYPES = ['spheres', 'sticks', 'cartoon', 'none']
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -72,6 +72,12 @@ export function markProblems(
       ...(mark.mark !== undefined && !MARK_TYPES.includes(mark.mark as string)
         ? [
             `${where}.mark is one of ${MARK_TYPES.join(', ')}, not ${JSON.stringify(mark.mark)}`,
+          ]
+        : []),
+      ...(mark.label !== undefined &&
+      (typeof mark.label !== 'string' || mark.label.trim() === '')
+        ? [
+            `${where}.label is the text to write, not ${JSON.stringify(mark.label)}`,
           ]
         : []),
       ...encodingProblems(where, mark),

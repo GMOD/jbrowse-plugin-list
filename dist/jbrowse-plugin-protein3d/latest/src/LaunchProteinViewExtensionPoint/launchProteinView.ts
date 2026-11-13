@@ -14,7 +14,11 @@ import { checkedColor, colorOfScheme } from '../ProteinView/proteinColor'
 import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec'
 import { viewAssemblyName } from '../ProteinView/util'
 
-import type { LaunchStructure, LaunchViewSettings } from './normalizeLaunch'
+import type {
+  LaunchStructure,
+  LaunchViewSettings,
+  NormalizedLaunch,
+} from './normalizeLaunch'
 import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type { ProteinStructureSpec } from '../ProteinView/proteinViewSpec'
 import type { AbstractSessionModel } from '@jbrowse/core/util'
@@ -64,6 +68,22 @@ export interface LaunchArgs extends LaunchViewSettings, ProteinStructureSpec {
   // place a connectedView this launch creates beside the protein view;
   // unset, the launch dialog's stored preference decides
   sideBySide?: boolean
+}
+
+/**
+ * The structures a launch opens, given the AlphaFold model its `gene` lookup
+ * picked for the transcript, an isoform's for an isoform transcript. That
+ * model fills only the structure the launch leaves to the gene; every entry of
+ * `structures` names its own source, so `{ uniprotId: 'P04637' }` there opens
+ * the canonical model beside any transcript.
+ */
+export function withGeneModel(
+  { requested, geneModel }: Pick<NormalizedLaunch, 'requested' | 'geneModel'>,
+  named: { url?: string } | undefined,
+) {
+  return named && geneModel
+    ? requested.map(s => ({ ...s, url: named.url }))
+    : requested
 }
 
 /**
@@ -121,11 +141,7 @@ export async function launchProteinView(args: LaunchArgs) {
     )
   }
   const launchFeature = resolved?.feature ?? feature
-  const withTranscripts = (
-    named && geneModel
-      ? normalized.requested.map(s => ({ ...s, url: named.url }))
-      : normalized.requested
-  ).map(s => ({
+  const withTranscripts = withGeneModel(normalized, named).map(s => ({
     ...s,
     userProvidedTranscriptSequence:
       s.userProvidedTranscriptSequence ??

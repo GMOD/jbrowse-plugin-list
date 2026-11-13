@@ -16,10 +16,10 @@ function markRepresentation(mark) {
                 : { type: 'spacefill', typeParams: { sizeFactor: 1 } };
 }
 export const DEFAULT_MARK_COLOR = '#f28e2b';
-export function syncResidueMarks({ plugin, structures, marks, }) {
+export function syncResidueMarks({ plugin, structures, marks, labels = true, }) {
     return serialPerPlugin(plugin, async () => {
         const molstar = await loadMolstar();
-        const { Color, MolScriptBuilder: MS, StateSelection, StateTransforms, createStructureRepresentationParams, } = molstar;
+        const { Color, MolScriptBuilder: MS, Script, StateSelection, StructureSelection, StateTransforms, createStructureRepresentationParams, } = molstar;
         const update = plugin.state.data.build();
         for (const cell of plugin.state.data.select(StateSelection.Generators.root.subtree().withTag(RESIDUE_MARKS_TAG))) {
             update.delete(cell.transform.ref);
@@ -33,20 +33,46 @@ export function syncResidueMarks({ plugin, structures, marks, }) {
             if (!structure || !site || !root) {
                 continue;
             }
-            const color = encodedColor(mark.encoding, DEFAULT_MARK_COLOR);
-            update
-                .to(root)
-                .apply(StateTransforms.Model.StructureComponent, {
-                type: { name: 'expression', params: siteExpression(MS, site) },
-                nullIfEmpty: true,
-                label: mark.site,
-            }, drawnUnder(root, RESIDUE_MARKS_TAG))
-                .apply(StateTransforms.Representation.StructureRepresentation3D, createStructureRepresentationParams(plugin, structure, {
-                ...markRepresentation(mark.mark),
-                color: 'uniform',
-                colorParams: { value: Color.fromHexStyle(color) },
-            }), drawnUnder(root, RESIDUE_MARKS_TAG));
+            if (mark.mark !== 'none') {
+                const color = encodedColor(mark.encoding, DEFAULT_MARK_COLOR);
+                update
+                    .to(root)
+                    .apply(StateTransforms.Model.StructureComponent, {
+                    type: { name: 'expression', params: siteExpression(MS, site) },
+                    nullIfEmpty: true,
+                    label: mark.site,
+                }, drawnUnder(root, RESIDUE_MARKS_TAG))
+                    .apply(StateTransforms.Representation.StructureRepresentation3D, createStructureRepresentationParams(plugin, structure, {
+                    ...markRepresentation(mark.mark),
+                    color: 'uniform',
+                    colorParams: { value: Color.fromHexStyle(color) },
+                }), drawnUnder(root, RESIDUE_MARKS_TAG));
+            }
         }
         await update.commit();
+        if (labels) {
+            for (const mark of marks) {
+                const structure = structures[mark.structure ?? 0];
+                const site = parseSite(mark.site);
+                if (mark.label && structure && site) {
+                    const loci = StructureSelection.toLociWithSourceUnits(Script.getStructureSelection(siteExpression(MS, site), structure));
+                    await plugin.managers.structure.measurement.addLabel(loci, {
+                        selectionTags: [RESIDUE_MARKS_TAG],
+                        reprTags: [RESIDUE_MARKS_TAG],
+                        labelParams: {
+                            customText: mark.label,
+                            textColor: Color.fromHexStyle(encodedColor(mark.encoding, DEFAULT_MARK_COLOR)),
+                            textSize: 0.14,
+                            borderWidth: 0,
+                            offsetZ: 4,
+                            background: true,
+                            backgroundColor: Color.fromHexStyle('#ffffff'),
+                            backgroundOpacity: 0.85,
+                            backgroundMargin: 0.2,
+                        },
+                    });
+                }
+            }
+        }
     });
 }

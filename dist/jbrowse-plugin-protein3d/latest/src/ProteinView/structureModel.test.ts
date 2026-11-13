@@ -150,7 +150,7 @@ test('keeps a uniprotId shorthand for the loader, and names the structure by it'
   expect(s.label).toBe('AlphaFold P04637')
 })
 
-// The loader may open an isoform file for a canonical accession, and reading
+// A gene launch opens an isoform file for a canonical accession, and reading
 // the accession back off that url would save P04637-2 — which UniProt's GFF
 // endpoint does not serve, so the reopened session would lose its feature
 // tracks and its entry link.

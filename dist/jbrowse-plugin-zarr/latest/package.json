@@ -1,6 +1,6 @@
 {
   "name": "jbrowse-plugin-zarr",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "JBrowse 2 plugin reading multi-sample quantitative signal from a Zarr v3 store",
   "repository": "github:cmdcolin/jbrowse-plugin-zarr",
   "jbrowse-plugin": {
@@ -8,21 +8,6 @@
   },
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "scripts": {
-    "clean": "rimraf dist",
-    "format": "prettier --write .",
-    "prebuild": "pnpm clean",
-    "start": "node esbuild.mjs --watch",
-    "build": "tsc && NODE_ENV=production node esbuild.mjs",
-    "build:bundle": "NODE_ENV=production node esbuild.mjs",
-    "betabuild": "bash scripts/betabuild.sh",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest run",
-    "prepack": "pnpm build",
-    "preversion": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "postversion": "git push --follow-tags"
-  },
   "files": [
     "dist",
     "src"
@@ -44,7 +29,7 @@
     "zarrita": "^0.7.3"
   },
   "peerDependencies": {
-    "@jbrowse/core": "^5.0.0-beta.12"
+    "@jbrowse/core": "^5.0.0-beta.21"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -62,5 +47,19 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.65.0",
     "vitest": "^4.0.18"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "format": "prettier --write .",
+    "prebuild": "pnpm clean",
+    "start": "node esbuild.mjs --watch",
+    "build": "tsc && NODE_ENV=production node esbuild.mjs",
+    "build:bundle": "NODE_ENV=production node esbuild.mjs",
+    "betabuild": "bash scripts/betabuild.sh",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest run",
+    "preversion": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "postversion": "git push --follow-tags"
   }
 }

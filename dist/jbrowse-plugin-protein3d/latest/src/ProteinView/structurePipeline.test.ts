@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
+import { createServer } from 'node:http'
+
 import {
   StructureElement,
   StructureProperties,
 } from 'molstar/lib/mol-model/structure'
+import { PluginCommands } from 'molstar/lib/mol-plugin/commands'
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test, vi } from 'vitest'
@@ -67,6 +70,70 @@ test('a file with no model says so, and names the parser it tried', async () => 
     await expect(
       parseStructureTrajectory({ plugin, data: 'not a structure\n' }),
     ).rejects.toThrow('No model could be read from the structure data as pdb')
+  })
+})
+
+// A server answering every request with `status`, as AlphaFold DB answers 429
+// when hit hard
+async function withStatusServer(
+  status: number,
+  callback: (url: string) => Promise<void>,
+) {
+  const server = createServer((_req, res) => {
+    res.writeHead(status, { 'access-control-allow-origin': '*' }).end()
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  const address = server.address()
+  const port = typeof address === 'object' ? address?.port : undefined
+  try {
+    await callback(`http://127.0.0.1:${port}/AF-P04637-4-F1-model_v6.cif`)
+  } finally {
+    server.close()
+  }
+}
+
+// Mol* reverts a failed download, and the parse after it said only "Invalid
+// data cell", which reads as a broken file rather than AlphaFold DB's 429.
+test('a download that fails names the url and the status', async () => {
+  await withStatusServer(429, async url => {
+    await withTemporaryMolstarPlugin(async plugin => {
+      await expect(parseStructureTrajectory({ plugin, url })).rejects.toThrow(
+        `Could not download ${url}: Download failed with status code 429`,
+      )
+      const { tree } = plugin.state.data
+      expect(tree.children.get(tree.root.ref).size).toBe(0)
+    })
+  })
+})
+
+// A failed update left in the tree flags the data transaction open beside it,
+// which then rolls back everything it did.
+test('a failed download leaves a data transaction beside it standing', async () => {
+  await withStatusServer(429, async url => {
+    await withTemporaryMolstarPlugin(async plugin => {
+      await plugin.dataTransaction(async () => {
+        await plugin.builders.data.rawData({ data: 'kept' })
+        await expect(parseStructureTrajectory({ plugin, url })).rejects.toThrow(
+          'Could not download',
+        )
+      })
+      const { tree } = plugin.state.data
+      expect(tree.children.get(tree.root.ref).size).toBe(1)
+    })
+  })
+})
+
+// A plugin disposed mid-load fails the clean-up too, which used to replace
+// the parse's own error.
+test('a clean-up that fails after a bad parse still reports the parse', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const removal = vi
+      .spyOn(PluginCommands.State, 'RemoveObject')
+      .mockRejectedValue(new Error('plugin disposed'))
+    await expect(
+      parseStructureTrajectory({ plugin, data: 'not a structure\n' }),
+    ).rejects.toThrow('No model could be read from the structure data as pdb')
+    removal.mockRestore()
   })
 })
 

@@ -45,3 +45,25 @@ test('a cartoon mark of a chain draws that chain as a cartoon in its color', asy
     )
   })
 })
+
+test('a label with mark none draws no geometry of its own', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const { structure } = await loadPocket(plugin)
+    await syncResidueMarks({
+      plugin,
+      structures: [structure],
+      marks: [{ site: 'A:*', mark: 'none', label: 'VHL' }],
+      labels: false,
+    })
+    expect(
+      plugin.state.data.select(
+        StateSelection.Generators.root
+          .subtree()
+          .withTag(RESIDUE_MARKS_TAG)
+          .withTransformer(
+            StateTransforms.Representation.StructureRepresentation3D,
+          ),
+      ),
+    ).toEqual([])
+  })
+})
