@@ -78,33 +78,6 @@
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-biothings/latest/dist/jbrowse-plugin-biothings.umd.production.min.js"
     },
     {
-      "name": "Ideogram",
-      "packageName": "jbrowse-plugin-ideogram",
-      "authors": [
-        "Colin Diesh",
-        "Caroline Bridge"
-      ],
-      "description": "JBrowse 2 plugin for rendering ideograms",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
-      "tags": [
-        "bring-your-own-data",
-        "ideogram"
-      ],
-      "license": "Apache License 2.0",
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ideogram-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/2.0.0/dist/jbrowse-plugin-ideogram.umd.production.min.js",
-      "integrity": "sha384-LD/+MUK8XaVmNsslVgoxvtiSCqqzCM/OqO6tZqOjmslQg/l9luyQcvGNOmj3YBzH",
-      "versions": [
-        {
-          "pluginVersion": "2.0.0",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/2.0.0/dist/jbrowse-plugin-ideogram.umd.production.min.js",
-          "integrity": "sha384-LD/+MUK8XaVmNsslVgoxvtiSCqqzCM/OqO6tZqOjmslQg/l9luyQcvGNOmj3YBzH"
-        }
-      ],
-      "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-ideogram/latest/dist/jbrowse-plugin-ideogram.umd.production.min.js"
-    },
-    {
       "name": "CIVIC",
       "packageName": "jbrowse-plugin-civic",
       "authors": [

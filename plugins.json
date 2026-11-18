@@ -35,17 +35,6 @@
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/biothings-screenshot-fs8.png"
     },
     {
-      "name": "Ideogram",
-      "packageName": "jbrowse-plugin-ideogram",
-      "authors": ["Colin Diesh", "Caroline Bridge"],
-      "description": "JBrowse 2 plugin for rendering ideograms",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-ideogram",
-      "umdPath": "dist/jbrowse-plugin-ideogram.umd.production.min.js",
-      "license": "Apache License 2.0",
-      "tags": ["bring-your-own-data", "ideogram"],
-      "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ideogram-screenshot-fs8.png"
-    },
-    {
       "name": "CIVIC",
       "packageName": "jbrowse-plugin-civic",
       "authors": ["Colin Diesh"],
