@@ -198,11 +198,11 @@ test('an exon on a node the drawing folds is not outlined, and its gene stays ov
   const outlinedOn = (id: string) =>
     model.exonOutlines.filter(s => s.key.endsWith(`-${id}`))
   expect(outlinedOn('h0+').length).toBeGreaterThan(0)
-  const { batch, viewportBounds } = model.buildDrawing(undefined, false)!
+  const { batch, view } = model.buildDrawing(undefined, false)!
   model.setGeometryMetrics(
     0,
     { ...batch, collapsed: { ...NO_FOLD, nodes: new Set(['h0+']) } },
-    { scale: model.scale, bounds: viewportBounds },
+    view,
   )
   expect(outlinedOn('h0+')).toEqual([])
   expect(outlinedOn('h1+').length).toBeGreaterThan(0)
@@ -214,11 +214,11 @@ test('an exon on a reference node that only the lanes across a folded site draw 
   const outlinedOn = (id: string) =>
     model.exonOutlines.filter(s => s.key.endsWith(`-${id}`))
   expect(outlinedOn('h0+').length).toBeGreaterThan(0)
-  const { batch, viewportBounds } = model.buildDrawing(undefined, false)!
+  const { batch, view } = model.buildDrawing(undefined, false)!
   model.setGeometryMetrics(
     0,
     { ...batch, laneOnly: { nodes: new Set(['h0+']), edges: new Set() } },
-    { scale: model.scale, bounds: viewportBounds },
+    view,
   )
   expect(outlinedOn('h0+')).toEqual([])
   expect(outlinedOn('h1+').length).toBeGreaterThan(0)

@@ -1,4 +1,5 @@
 import { MAX_PATH_COLORS } from '@jbrowse/bandage-core/pathColors'
+import { types } from '@jbrowse/mobx-state-tree'
 
 import stateModelFactory from './viewModel'
 
@@ -122,7 +123,10 @@ async function drawnModel() {
       ? Promise.resolve({ result: WIDE_LAYOUT, duration: 5 })
       : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
   )
-  const model = stateModelFactory().create({ type: 'GraphGenomeView' })
+  // attached, so afterAttach settles the build window as the app's does
+  const model = types
+    .model({ view: stateModelFactory() })
+    .create({ view: { type: 'GraphGenomeView' } }).view
   await model.loadGFA(GFA, 'wide')
   model.startRenderingBackend(fakeRenderer([]))
   model.setWidth(1000)
@@ -165,21 +169,21 @@ test('a pan drops it too, and the tube or walk row under the pointer', async () 
 })
 
 // The two signals name different events and are read by different consumers:
-// `viewportDirty` says the window onto the drawing moved past what was built,
-// `positionsVersion` says the drawing itself did. Conflating them rebuilt a
+// `buildView` moves when the window onto the drawing leaves what was built,
+// `positionsVersion` when the drawing itself does. Conflating them rebuilt a
 // 12k-edge hit index on the first mousemove after every pan, for an index that
 // is in layout units and had not changed.
-test('a pan past the built window moves the viewport signal and a node drag moves the positions one', async () => {
+test('a pan past the built window moves the build window and a node drag moves the positions one', async () => {
   const model = await drawnModel()
   // zoomed in, so a pan of several panes still leaves the drawing on screen
   model.zoom(8, model.width / 2, 0)
   await sleep(300)
-  const dirty = model.viewportDirty
+  const view = model.buildView
   const positions = model.positionsVersion
 
   model.setTransform(model.scale, model.translateX - 3 * model.width, 0)
   await sleep(300)
-  expect(model.viewportDirty).toBeGreaterThan(dirty)
+  expect(model.buildView).not.toBe(view)
   expect(model.positionsVersion).toBe(positions)
 
   model.moveNode('1+', 10, 10)
@@ -187,20 +191,35 @@ test('a pan past the built window moves the viewport signal and a node drag move
   expect(model.positionsVersion).toBe(positions + 1)
 })
 
+// A zoom held over several debounce periods rebuilds once, when it rests: each
+// step restarts the wait, so the geometry is not rebuilt under a moving gesture
+test('a long zoom rebuilds once it rests, not while it moves', async () => {
+  const model = await drawnModel()
+  const before = model.builtViewport
+  for (let step = 0; step < 20; step++) {
+    model.zoom(1.05, 100, 100)
+    await sleep(50)
+  }
+  expect(model.builtViewport).toBe(before)
+  await sleep(400)
+  expect(model.builtViewport).not.toBe(before)
+  expect(model.buildViewSettled).toBe(true)
+})
+
 // A build covers a pane on every side of the one shown, so an ordinary pan is
 // a repaint of strokes already uploaded: no debounce, no blank margin, no
 // rebuild. A zoom changes what the strokes are and rebuilds however small.
 test('a pan inside the built window rebuilds nothing, a zoom always does', async () => {
   const model = await drawnModel()
-  const dirty = model.viewportDirty
+  const view = model.buildView
 
   model.setTransform(model.scale, model.translateX + 40, model.translateY + 40)
   await sleep(300)
-  expect(model.viewportDirty).toBe(dirty)
+  expect(model.buildView).toBe(view)
 
   model.zoom(1.01, 100, 100)
   await sleep(300)
-  expect(model.viewportDirty).toBe(dirty + 1)
+  expect(model.buildView).not.toBe(view)
 })
 
 // The three consumers of a path colour disagreed about how many paths is too

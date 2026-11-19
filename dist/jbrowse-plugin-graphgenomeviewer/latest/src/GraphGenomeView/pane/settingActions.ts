@@ -3,7 +3,8 @@ import { anchorFromPaths } from '@jbrowse/bandage-core/pathAnchoring'
 import { clampZoom, fittedTranslateY } from '@jbrowse/bandage-core/pipeline'
 import { zoomAbout } from '@jbrowse/bandage-core/viewport'
 import { getSession, isSessionModelWithWidgets } from '@jbrowse/core/util'
-import { isAlive } from '@jbrowse/mobx-state-tree'
+import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
+import { autorun } from 'mobx'
 
 import { keepInView, onScreen } from './keepInView'
 import {
@@ -14,7 +15,7 @@ import {
   routeStarts,
   runMorph,
 } from './morph'
-import { VIEWPORT_DEBOUNCE_MS, forceLayouts } from './paneBase'
+import { VIEWPORT_DEBOUNCE_MS, dependOn, forceLayouts } from './paneBase'
 import { withTubeMapViews } from './tubeMapViews'
 import { nodeOwnLocation } from '../../launchFromGraph/contributors'
 import { liveViewIds } from '../../launchFromGraph/linearViewTarget'
@@ -25,7 +26,7 @@ import { sizeOf } from '../nodeSize'
 import type { GraphGrammar } from './graphViews'
 import type { ScreenTransform } from './keepInView'
 import type { MorphEntering } from './morph'
-import type { HoveredTube, TubeMapRoutes } from './paneBase'
+import type { BuildView, HoveredTube, TubeMapRoutes } from './paneBase'
 import type { GraphLayer } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
 import type { WalkRowGroupBy } from '../walkRowGroups'
@@ -37,7 +38,6 @@ import type { FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { NodeWidth } from '@jbrowse/bandage-core/nodeWidths'
-import type { Bounds } from '@jbrowse/bandage-core/pipeline'
 import type { RenderBatch } from '@jbrowse/bandage-core/renderer/types'
 import type { LayoutResult } from '@jbrowse/bandage-core/types'
 import type {
@@ -113,14 +113,10 @@ export const withSettingActions = withTubeMapViews
     setLayoutMs(ms: number) {
       self.lastLayoutMs = ms
     },
-    setGeometryMetrics(
-      ms: number,
-      batch: RenderBatch,
-      built: { scale: number; bounds: Bounds },
-    ) {
+    setGeometryMetrics(ms: number, batch: RenderBatch, view: BuildView) {
       self.lastGeometryMs = ms
       self.lastGeometryStrokeCount = batch.nodeStrokes.length
-      self.builtViewport = { ...built, viewportDirty: self.viewportDirty }
+      self.builtViewport = { view }
       self.drawnBatch = batch
       if (!self.morphing) {
         self.settledBatch = batch
@@ -491,9 +487,11 @@ export const withSettingActions = withTubeMapViews
       self.translateY = t.translateY
       self.keepDrawingInView()
     },
-    setViewportDirty() {
-      self.viewportRebuildPending = false
-      self.viewportDirty++
+    settleBuildView() {
+      self.settledBuildView = {
+        view: self.liveBuildView,
+        layout: self.layoutResult,
+      }
     },
     // The positions themselves moved, as opposed to the window onto them.
     setPositionsDirty() {
@@ -635,21 +633,8 @@ export const withSettingActions = withTubeMapViews
     },
   }))
   .actions(self => {
-    let viewportDirtyTimer: ReturnType<typeof setTimeout> | undefined
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
     let positionsDirtyFrame = 0
-
-    // Pan/zoom can wait: the geometry on screen is still correct while the
-    // gesture runs (the viewport bounds carry 20% overscan), so rebuilding is
-    // deferred until the user settles.
-    function scheduleViewportDirty() {
-      clearTimeout(viewportDirtyTimer)
-      self.viewportRebuildPending = true
-      viewportDirtyTimer = setTimeout(() => {
-        if (isAlive(self)) {
-          self.setViewportDirty()
-        }
-      }, VIEWPORT_DEBOUNCE_MS)
-    }
 
     // A node drag cannot wait — the node only moves on screen when its
     // geometry is rebuilt — but a bump costs a full geometry rebuild plus
@@ -792,6 +777,40 @@ export const withSettingActions = withTubeMapViews
           requestPositionsDirtyFrame()
         }
       },
-      scheduleViewportDirty,
+      // A gesture can wait: the geometry on screen holds while a pan or zoom
+      // runs, as the build window carries a pane of overscan all round, so
+      // the window settles once the view has rested off it. A new layout and
+      // a fit move the view once, and settle it at once.
+      afterAttach() {
+        addDisposer(self, () => {
+          clearTimeout(settleTimer)
+        })
+        addDisposer(
+          self,
+          autorun(
+            () => {
+              // every move of the view restarts the wait, so the window
+              // settles once the gesture rests rather than while it runs
+              dependOn(self.liveBuildView)
+              clearTimeout(settleTimer)
+              if (!self.buildViewSettled) {
+                if (
+                  self.settledBuildView?.layout !== self.layoutResult ||
+                  self.viewportOwner === 'fit'
+                ) {
+                  self.settleBuildView()
+                } else {
+                  settleTimer = setTimeout(() => {
+                    if (isAlive(self)) {
+                      self.settleBuildView()
+                    }
+                  }, VIEWPORT_DEBOUNCE_MS)
+                }
+              }
+            },
+            { name: 'GraphBuildViewSettle' },
+          ),
+        )
+      },
     }
   })

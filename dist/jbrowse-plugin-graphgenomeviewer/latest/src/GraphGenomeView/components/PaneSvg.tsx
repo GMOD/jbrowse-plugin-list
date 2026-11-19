@@ -53,7 +53,8 @@ function Body({
   height: number
   rasterize: boolean
 }) {
-  const built = model.buildDrawing(lift, drawPaths)
+  // the view as it is, though a gesture's window may not have settled yet
+  const built = model.buildDrawing(lift, drawPaths, model.liveBuildView)
   if (!built) {
     return null
   }

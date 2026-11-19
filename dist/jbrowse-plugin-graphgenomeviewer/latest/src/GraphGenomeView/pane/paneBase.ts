@@ -184,23 +184,37 @@ export function fileName(location: FileLocation) {
 
 type ViewportOwner = 'fit' | 'user' | 'host'
 
-interface BuiltViewport {
-  scale: number
+// The zoom and the window a drawing is built for
+export interface BuildView {
+  axis: AxisScale
   bounds: Bounds
-  viewportDirty: number
+}
+
+export const sameBounds = (a: Bounds, b: Bounds) =>
+  a.minX === b.minX &&
+  a.maxX === b.maxX &&
+  a.minY === b.minY &&
+  a.maxY === b.maxY
+
+export const sameAxis = (a: AxisScale, b: AxisScale) =>
+  a.scaleX === b.scaleX && a.scaleY === b.scaleY && a.pixelRows === b.pixelRows
+
+// One upload's record of the view its batch was built for
+interface BuiltViewport {
+  view: BuildView
 }
 
 export function geometryPainted(model: {
-  viewportRebuildPending: boolean
-  viewportDirty: number
+  buildView: BuildView
+  buildViewSettled: boolean
   builtViewport?: BuiltViewport
   paintedViewport?: BuiltViewport
 }) {
   return (
     model.builtViewport !== undefined &&
     model.paintedViewport === model.builtViewport &&
-    model.builtViewport.viewportDirty === model.viewportDirty &&
-    !model.viewportRebuildPending
+    model.builtViewport.view === model.buildView &&
+    model.buildViewSettled
   )
 }
 
@@ -424,10 +438,13 @@ export const paneBase = types
     hoveredWalkRow: null as string | null,
     hoveredEdge: null as number | null,
     selectedNode: null as string | null,
-    viewportDirty: 0,
+    // The build window last settled, and the layout it was settled on (see
+    // buildView)
+    settledBuildView: undefined as
+      { view: BuildView; layout: PaneLayout | undefined } | undefined,
     // Bumped when the layout's positions are mutated IN PLACE, which only a
-    // node drag does. Separate from `viewportDirty` because that one also
-    // fires on pan and zoom, and the things keyed off this — the two hit
+    // node drag does. Separate from the build window because that one also
+    // moves on pan and zoom, and the things keyed off this — the two hit
     // indexes and the label placement's per-layout caches — do not depend on
     // the transform at all. Rebuilding a 12k-edge hit index because the user
     // panned cost ~14 ms of the first mousemove after every gesture.
@@ -441,8 +458,7 @@ export const paneBase = types
     // the batch of the last frame no morph was under way in, which the key
     // reads so it never shows a morph's in-between folds
     settledBatch: EMPTY_BATCH,
-    // The zoom and the window the current batch was built for; a pan that
-    // stays inside it needs no rebuild.
+    // The view the current batch was built for
     builtViewport: undefined as BuiltViewport | undefined,
     // The builtViewport whose batch is on the canvas
     paintedViewport: undefined as BuiltViewport | undefined,
@@ -470,5 +486,4 @@ export const paneBase = types
     lastLayoutMs: undefined as number | undefined,
     lastGeometryMs: undefined as number | undefined,
     lastGeometryStrokeCount: undefined as number | undefined,
-    viewportRebuildPending: false,
   }))

@@ -58,11 +58,8 @@ async function liftedByPass(walkStrip = false) {
     { walk: 'hap#1#ctg', color: { field: 'pass' } },
   ])
   model.zoomToFit()
-  const { batch, viewportBounds } = model.buildDrawing(model.walkLift, false)!
-  model.setGeometryMetrics(0, batch, {
-    scale: model.scale,
-    bounds: viewportBounds,
-  })
+  const { batch, view } = model.buildDrawing(model.walkLift, false)!
+  model.setGeometryMetrics(0, batch, view)
   return model
 }
 

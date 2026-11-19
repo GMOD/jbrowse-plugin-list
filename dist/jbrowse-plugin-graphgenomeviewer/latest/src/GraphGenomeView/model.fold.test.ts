@@ -52,11 +52,8 @@ async function drawnGap571(layers: GraphLayers = { lengths: true }) {
 
 // the batch the canvas holds
 function draw(model: GraphPaneModel) {
-  const { batch, viewportBounds } = model.buildDrawing(undefined, false)!
-  model.setGeometryMetrics(0, batch, {
-    scale: model.scale,
-    bounds: viewportBounds,
-  })
+  const { batch, view } = model.buildDrawing(undefined, false)!
+  model.setGeometryMetrics(0, batch, view)
 }
 
 // A reference of two 5 kb nodes, and between them two stretches the cut did

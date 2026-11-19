@@ -1450,11 +1450,11 @@ test('the reference strip draws no line to a selected node the drawing folds', a
   const node = pane.graph!.nodes.find(n => pane.nodeSpan(n.id))!.id
   pane.setSelectedNode(node)
   expect(pane.referenceStripLit?.anchor).toBeDefined()
-  const { batch, viewportBounds } = pane.buildDrawing(undefined, false)!
+  const { batch, view } = pane.buildDrawing(undefined, false)!
   pane.setGeometryMetrics(
     0,
     { ...batch, collapsed: { ...NO_FOLD, nodes: new Set([node]) } },
-    { scale: pane.scale, bounds: viewportBounds },
+    view,
   )
   expect(pane.referenceStripLit).toMatchObject({ anchor: undefined })
 })
@@ -2969,7 +2969,7 @@ test('while a morph slides a re-cut in, the labels wait and the key holds the fr
   )!.id
   pane.setMorphing(true)
   expect(pane.labelFrameSettled).toBe(false)
-  const { batch, viewportBounds } = pane.buildDrawing(undefined, false)!
+  const { batch, view } = pane.buildDrawing(undefined, false)!
   const site = {
     nodes: [node],
     edges: [],
@@ -2977,15 +2977,15 @@ test('while a morph slides a re-cut in, the labels wait and the key holds the fr
     start: LOOP_BP,
     end: LOOP_BP,
     bp: 1,
-    x: (viewportBounds.minX + viewportBounds.maxX) / 2,
-    y: (viewportBounds.minY + viewportBounds.maxY) / 2,
+    x: (view.bounds.minX + view.bounds.maxX) / 2,
+    y: (view.bounds.minY + view.bounds.maxY) / 2,
     count: 1,
     total: 2,
   }
   pane.setGeometryMetrics(
     0,
     { ...batch, collapsed: { ...NO_FOLD, sites: [site] } },
-    { scale: pane.scale, bounds: viewportBounds },
+    view,
   )
   expect(pane.graphKey.map(s => s.id)).not.toContain('too-small')
   pane.setMorphing(false)

@@ -15,7 +15,7 @@ import {
 } from '../graphTrackConfig'
 import { canonicalAssemblyName } from '../launchFromGraph/launchFromGraph'
 import { withLaunchActions } from './pane/launchActions'
-import { VIEWPORT_DEBOUNCE_MS } from './pane/paneBase'
+import { VIEWPORT_DEBOUNCE_MS, sameBounds } from './pane/paneBase'
 
 import type { SubgraphCutOptions, SubgraphRegion } from '../GetSubgraph'
 import type { PaneLayout } from './tubeMapPanels'
@@ -33,12 +33,6 @@ const NO_LABELS: LabelLayout = {
   passes: [],
   sizes: [],
 }
-
-const sameBounds = (a: Bounds, b: Bounds) =>
-  a.minX === b.minX &&
-  a.maxX === b.maxX &&
-  a.minY === b.minY &&
-  a.maxY === b.maxY
 
 const sameEntry = (a: GraphKeyEntry, b: GraphKeyEntry | undefined) =>
   !!b &&
@@ -328,7 +322,7 @@ export const GraphPane = withLaunchActions
           () => ({
             shape: self.keyShape,
             view: self.keyView,
-            rebuilt: self.builtViewport?.viewportDirty,
+            rebuilt: self.builtViewport?.view,
             layout: self.layoutResult,
             width: self.paneWidth,
             owner: self.viewportOwner,

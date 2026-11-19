@@ -45,9 +45,8 @@ import {
   GENE_ROW_PX,
   tubeMapGeneRows,
 } from '@jbrowse/bandage-core/tubeMap/genes'
-import { padded } from '@jbrowse/bandage-core/viewport'
+import { contains, padded } from '@jbrowse/bandage-core/viewport'
 import { walkPosition } from '@jbrowse/bandage-core/walkKey'
-import { untracked } from 'mobx'
 
 import { cutRuleOf, hostWindow, paneWindow } from '../host'
 import { measureReadout } from '../readoutMeasure'
@@ -62,10 +61,13 @@ import {
   SELECT_BRIGHTEN,
   VIEWPORT_PANES_BUILT,
   dependOn,
+  geometryPainted,
   paneViewportOf,
+  sameAxis,
 } from './paneBase'
 import { trackedDpr } from '../trackedDpr'
 
+import type { BuildView } from './paneBase'
 import type { SubgraphRegion } from '../../GetSubgraph'
 import type { FacetGrid, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type {
@@ -675,11 +677,54 @@ export const withFitViews = withHostViews
     },
   }))
   .views(self => ({
-    // The window the transform shows plus a pane of overscan all round,
-    // which a pan inside needs no rebuild for
-    viewportToBuild() {
-      return padded(paneViewportOf(self), VIEWPORT_PANES_BUILT)
+    // The zoom and the window the transform shows plus a pane of overscan
+    // all round, which a pan inside needs no rebuild for
+    get liveBuildView(): BuildView {
+      return {
+        axis: self.axisScale,
+        bounds: padded(paneViewportOf(self), VIEWPORT_PANES_BUILT),
+      }
     },
+    // Whether the window settled on this layout still holds the zoom and
+    // the window the pane shows
+    get buildViewSettled() {
+      const settled = self.settledBuildView
+      return (
+        settled !== undefined &&
+        settled.layout === self.layoutResult &&
+        sameAxis(settled.view.axis, self.axisScale) &&
+        contains(settled.view.bounds, paneViewportOf(self))
+      )
+    },
+  }))
+  .views(self => ({
+    // What the drawing is built for: the window last settled (afterAttach),
+    // so a gesture rebuilds nothing until it ends, and the pane's view as it
+    // is until one is
+    get buildView() {
+      return self.settledBuildView?.view ?? self.liveBuildView
+    },
+  }))
+  .views(self => ({
+    get geometryPainted() {
+      return geometryPainted(self)
+    },
+    get paintSuperseded() {
+      return !this.geometryPainted
+    },
+    // The app-wide readiness contract (AppReadyMarker, @jbrowse/capture)
+    // reads this: a declared source still fetching, or a graph whose
+    // settled geometry is not on the canvas yet.
+    get showLoading() {
+      return (
+        self.error === undefined &&
+        (self.isLoading ||
+          self.hasPendingSource ||
+          (self.graph !== undefined && !this.geometryPainted))
+      )
+    },
+  }))
+  .views(self => ({
     // The selection as a draw-time colour override, keyed by node so it
     // survives a rebuild renumbering the batch, and none while the drawing
     // folds it. The hover is paintHover's, on a layer of its own.
@@ -724,21 +769,19 @@ export const withFitViews = withHostViews
     },
   }))
   .views(self => ({
-    // The drawing's batch with `highlight`'s walks lifted, for the window
-    // the transform shows. A caller's autorun rebuilds it when the window
-    // settles after a pan or zoom, when a drag moves the positions, and when
-    // any display option read here changes.
-    buildDrawing(highlight: WalkLift | undefined, drawPaths: boolean) {
+    // The drawing's batch with `highlight`'s walks lifted, for `view`. A
+    // caller's autorun rebuilds it when that window moves, when a drag moves
+    // the positions, and when any display option read here changes.
+    buildDrawing(
+      highlight: WalkLift | undefined,
+      drawPaths: boolean,
+      view = self.buildView,
+    ) {
       const { graph, nodeById, layoutResult, deletionDrawing } = self
       if (!graph || !nodeById || !layoutResult || !deletionDrawing) {
         return undefined
       }
-      dependOn(self.viewportDirty, self.positionsVersion)
-      const viewportBounds = untracked(() => self.viewportToBuild())
-      // Untracked, so a zoom does not eagerly rebuild geometry — the
-      // debounced viewportDirty bump drives the scale-dependent rebuild
-      // (flatness, arrow visibility, viewport culling), same as pan.
-      const axis = untracked(() => self.axisScale)
+      dependOn(self.positionsVersion)
       const batch = buildGeometry({
         // walk rows' overlay draws every bar, the reference's among them;
         // its nodes stay in the hit index, so hovering the bar finds them
@@ -754,9 +797,9 @@ export const withFitViews = withHostViews
         nodeWidth: self.nodeWidth,
         edgeWidth: self.linkWidth,
         highlight,
-        axis,
+        axis: view.axis,
         linearLayout: self.linearLayout,
-        viewportBounds,
+        viewportBounds: view.bounds,
         // Held against the graph rather than derived here, the same way the
         // deletion drawing is and for the same reason — see `drawnReferenceRamp`.
         referenceRamp: self.referenceRamp,
@@ -768,7 +811,7 @@ export const withFitViews = withHostViews
       if (entering?.layout === layoutResult) {
         fadeEntering(batch, graph.edges, entering)
       }
-      return { batch, viewportBounds, scale: untracked(() => self.scale) }
+      return { batch, view }
     },
     // Each facet panel's drawing, which the panel paints and the key reads
     get facetDrawings() {

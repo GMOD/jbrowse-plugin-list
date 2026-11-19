@@ -1,16 +1,10 @@
 import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
-import { contains } from '@jbrowse/bandage-core/viewport'
 import { getSession } from '@jbrowse/core/util'
 import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
-import { autorun, reaction, untracked } from 'mobx'
+import { autorun, reaction } from 'mobx'
 
 import { withLoadActions } from './loadActions'
-import {
-  EMPTY_BATCH,
-  TUBE_MAP_MODES,
-  dependOn,
-  paneViewportOf,
-} from './paneBase'
+import { EMPTY_BATCH, TUBE_MAP_MODES, dependOn } from './paneBase'
 import {
   bubbleForLgvHover,
   hoverFromPair,
@@ -102,22 +96,23 @@ export const withRenderingActions = withLoadActions
             { fireImmediately: true },
           ),
         )
-        // Autorun: keep the view fitted to the graph until the user moves it.
-        // Reading fittedTransform tracks everything the fit depends on, so
+        // Keep the view fitted to the graph until the user moves it.
+        // fittedTransform tracks everything the fit depends on, so
         // it re-fits as the layout arrives, the canvas is measured and the
         // genes over a tube map claim their rows. A manual pan/zoom (or a
         // restored-session transform) makes the viewport the user's, and a
         // host makes it the linear view's.
         addDisposer(
           self,
-          autorun(() => {
-            if (
-              self.fittedTransform &&
-              untracked(() => self.viewportOwner === 'fit')
-            ) {
-              self.zoomToFit()
-            }
-          }),
+          reaction(
+            () => self.fittedTransform,
+            fit => {
+              if (fit && self.viewportOwner === 'fit') {
+                self.zoomToFit()
+              }
+            },
+            { fireImmediately: true, name: 'GraphKeepFitted' },
+          ),
         )
 
         // A narrower or shorter pane can leave a placed drawing off screen
@@ -219,7 +214,7 @@ export const withRenderingActions = withLoadActions
           ),
         )
 
-        // Autorun: mirror a connected linear view's hover onto the graph. An
+        // Mirror a connected linear view's hover onto the graph. An
         // LGV writes `{hoverPosition, hoverFeature}` to session.hovered on
         // every mousemove; neither field names the source view, so the guard
         // is that the position lies in the region this graph was cut from.
@@ -229,16 +224,18 @@ export const withRenderingActions = withLoadActions
         // a bp lights only on `hover: 'everything'`, since every track's
         // pointer passes over some node's bp.
         //
-        // Only `hovered` and the setting are tracked — the graph reads are
-        // untracked, so a geometry rebuild can't re-fire this and clobber a
-        // hover the canvas itself set. Assigning an unchanged id doesn't notify, so a hover
-        // that travels within one segment costs nothing downstream.
+        // Only `hovered` and the setting are watched, so a geometry rebuild
+        // can't re-fire this and clobber a hover the canvas itself set.
+        // Assigning an unchanged id doesn't notify, so a hover that travels
+        // within one segment costs nothing downstream.
         addDisposer(
           self,
-          autorun(() => {
-            const hover = readLgvHover(getSession(self).hovered)
-            const lightsNode = self.hoverLightsEverything
-            untracked(() => {
+          reaction(
+            () => ({
+              hover: readLgvHover(getSession(self).hovered),
+              lightsNode: self.hoverLightsEverything,
+            }),
+            ({ hover, lightsNode }) => {
               const region = self.graphRegion
               const graph = self.graph
               const inRegion =
@@ -271,8 +268,9 @@ export const withRenderingActions = withLoadActions
                 )
               }
               self.setHoveredRowWalks(rowWalks)
-            })
-          }),
+            },
+            { fireImmediately: true, name: 'GraphMirrorLgvHover' },
+          ),
         )
 
         // A click on a bubble feature or graph-derived variant in a linear
@@ -332,24 +330,6 @@ export const withRenderingActions = withLoadActions
           ),
         )
 
-        // Autorun: a build that misses the view shown schedules a debounced
-        // rebuild, whether a zoom or a pan left it or it was made for a view
-        // the pane had already left, as facet panels built before a track's
-        // fit are. A pan inside it costs a repaint and nothing else.
-        addDisposer(
-          self,
-          autorun(() => {
-            const { scale, builtViewport } = self
-            if (
-              builtViewport &&
-              (builtViewport.scale !== scale ||
-                !contains(builtViewport.bounds, paneViewportOf(self)))
-            ) {
-              self.scheduleViewportDirty()
-            }
-          }),
-        )
-
         // Autorun: the selection. The hover paints on a layer of its own.
         addDisposer(
           self,
@@ -368,31 +348,22 @@ export const withRenderingActions = withLoadActions
       // read it, which is what lets a per-backend memo work.
       // eslint-disable-next-line no-restricted-syntax -- the pane uploads one batch, not keyed cells, which installUpload has no form for; its callbacks keep no memo, reading only the model
       self.attachRenderingBackend<Renderer>(backend, () => ({
-        // Autorun: rebuild geometry when graph data or display options
-        // change. scale/translate are untracked so they don't trigger a full
-        // rebuild — only the debounced viewportDirty flag does.
+        // Autorun: rebuild geometry when graph data, display options or the
+        // build window change. The transform itself repaints, in `render`.
         upload: (b: Renderer) => {
           dependOn(trackedDpr())
           b.resize(self.paneWidth, self.canvasHeight)
           if (self.layoutResult?.tubeMap) {
-            dependOn(self.viewportDirty)
             b.uploadGeometry(EMPTY_BATCH)
-            self.setGeometryMetrics(0, EMPTY_BATCH, {
-              scale: untracked(() => self.scale),
-              bounds: untracked(() => self.viewportToBuild()),
-            })
+            self.setGeometryMetrics(0, EMPTY_BATCH, self.buildView)
             return true
           }
-          // The panels paint the drawings, built whenever the key first read
-          // them, so the view recorded as built is theirs: a fit that lands
-          // before or after it schedules their rebuild as it would the pane's
+          // The panels paint the drawings, so the view recorded as built is
+          // theirs
           const panel = self.facetDrawings?.[0]
           if (panel) {
             b.uploadGeometry(EMPTY_BATCH)
-            self.setGeometryMetrics(0, EMPTY_BATCH, {
-              scale: panel.scale,
-              bounds: panel.viewportBounds,
-            })
+            self.setGeometryMetrics(0, EMPTY_BATCH, panel.view)
             return true
           }
           const geometryStart = performance.now()
@@ -405,10 +376,7 @@ export const withRenderingActions = withLoadActions
             self.setGeometryMetrics(
               performance.now() - geometryStart,
               built.batch,
-              {
-                scale: untracked(() => self.scale),
-                bounds: built.viewportBounds,
-              },
+              built.view,
             )
             return true
           }

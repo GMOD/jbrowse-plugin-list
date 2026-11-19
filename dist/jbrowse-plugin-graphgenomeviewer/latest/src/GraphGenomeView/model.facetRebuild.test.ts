@@ -2,7 +2,7 @@ import { layoutEngine } from '@jbrowse/bandage-core/layoutEngines'
 import { reaction } from 'mobx'
 
 import { mockRpcCall } from './modelTestMocks'
-import { createModel, fakeRenderer } from './modelTestSupport'
+import { attachedModel, fakeRenderer } from './modelTestSupport'
 import { VIEWPORT_DEBOUNCE_MS } from './pane/paneBase'
 
 import type { EngineRequest } from '@jbrowse/bandage-core/pipeline'
@@ -40,7 +40,7 @@ beforeEach(() => {
   )
 })
 
-async function splitByWalk(model: ReturnType<typeof createModel>) {
+async function splitByWalk(model: ReturnType<typeof attachedModel>) {
   await model.loadGFA(BUBBLE, 'bubble')
   model.liftWalks(['GRCh38#0#chr1', 'A#1#ctg'])
   model.setFacet('walk')
@@ -54,24 +54,27 @@ async function splitByWalk(model: ReturnType<typeof createModel>) {
   return { early, stop }
 }
 
-function fit(model: ReturnType<typeof createModel>) {
+function fit(model: ReturnType<typeof attachedModel>) {
   model.setWidth(1200)
   model.setLegendSize({ width: 150, height: 60 })
 }
 
 function expectBuiltFor(
-  model: ReturnType<typeof createModel>,
+  model: ReturnType<typeof attachedModel>,
   drawings: typeof model.facetDrawings,
 ) {
   const panels = (drawings ?? []).flatMap(panel => panel ?? [])
-  expect(panels.map(p => p.scale)).toEqual([model.scale, model.scale])
+  expect(panels.map(p => p.view.axis)).toEqual([
+    model.axisScale,
+    model.axisScale,
+  ])
   expect(panels.map(p => p.batch.nodeStrokes.length > 0)).toEqual([true, true])
 }
 
 // The key reads the panels' drawings as soon as the layout lands, before the
 // pane is sized and fitted, as a restored session's does
 test('a panel drawing built before the fit is built again for the fitted view', async () => {
-  const model = createModel()
+  const model = attachedModel()
   model.startRenderingBackend(fakeRenderer())
   const { early, stop } = await splitByWalk(model)
   fit(model)
@@ -85,7 +88,7 @@ test('a panel drawing built before the fit is built again for the fitted view', 
 // A track's pane takes its view before its canvas mounts, so the renderer
 // starts on a view the panels were never built for
 test('a panel drawing built before a view the renderer never saw is built again', async () => {
-  const model = createModel()
+  const model = attachedModel()
   const { early, stop } = await splitByWalk(model)
   fit(model)
   model.zoomToFit()

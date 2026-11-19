@@ -70,7 +70,7 @@ import {
 import { getTrackName } from '@jbrowse/core/util/tracks'
 import { computed } from 'mobx'
 
-import { TUBE_MAP_MODES, dependOn, geometryPainted, paneBase } from './paneBase'
+import { TUBE_MAP_MODES, dependOn, paneBase } from './paneBase'
 import { trackAdapterSnapshot } from '../../graphTrackConfig'
 import {
   canonicalAssemblyName,
@@ -415,23 +415,6 @@ export const withGraphViews = paneBase
     },
     get hasGraph() {
       return self.graph !== undefined
-    },
-    get geometryPainted() {
-      return geometryPainted(self)
-    },
-    get paintSuperseded() {
-      return !this.geometryPainted
-    },
-    // The app-wide readiness contract (AppReadyMarker, @jbrowse/capture)
-    // reads this: a declared source still fetching, or a graph whose
-    // settled geometry is not on the canvas yet.
-    get showLoading() {
-      return (
-        self.error === undefined &&
-        (self.isLoading ||
-          self.hasPendingSource ||
-          (self.graph !== undefined && !this.geometryPainted))
-      )
     },
     // Only before anything is drawn: past that point a reload is superseded
     // by the next setting change, and stopping one midway would leave a new

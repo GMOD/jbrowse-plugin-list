@@ -74,23 +74,19 @@ describe('performance instrumentation', () => {
     expect(model.showLoading).toBe(false)
     await model.loadGFA(SIMPLE_GFA, 'imported')
     expect(model.showLoading).toBe(true)
-    model.setGeometryMetrics(1, EMPTY_BATCH, {
-      scale: 1,
-      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
-    })
+    model.settleBuildView()
+    model.setGeometryMetrics(1, EMPTY_BATCH, model.buildView)
     expect(model.showLoading).toBe(true)
     model.markPainted()
     expect(model.showLoading).toBe(false)
 
-    model.setGeometryMetrics(1, EMPTY_BATCH, {
-      scale: 1,
-      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
-    })
+    model.setGeometryMetrics(1, EMPTY_BATCH, model.buildView)
     expect(model.showLoading).toBe(true)
     model.markPainted()
     expect(model.showLoading).toBe(false)
 
-    model.setViewportDirty()
+    // a zoom off the settled window holds it until a build for the new one
+    model.zoom(2, 0, 0)
     expect(model.showLoading).toBe(true)
   })
 
@@ -111,10 +107,7 @@ describe('performance instrumentation', () => {
     const model = createModel()
     await model.loadGFA(SIMPLE_GFA, 'imported')
     const batch = { ...model.drawnBatch, nodeStrokes: [] }
-    model.setGeometryMetrics(1, batch, {
-      scale: 1,
-      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
-    })
+    model.setGeometryMetrics(1, batch, model.buildView)
     model.setMorphFrame({
       layout: model.layoutResult!,
       ids: new Set(['1']),
