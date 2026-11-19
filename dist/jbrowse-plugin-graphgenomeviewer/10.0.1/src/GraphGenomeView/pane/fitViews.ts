@@ -735,6 +735,10 @@ export const withFitViews = withHostViews
       }
       dependOn(self.viewportDirty, self.positionsVersion)
       const viewportBounds = untracked(() => self.viewportToBuild())
+      // Untracked, so a zoom does not eagerly rebuild geometry — the
+      // debounced viewportDirty bump drives the scale-dependent rebuild
+      // (flatness, arrow visibility, viewport culling), same as pan.
+      const axis = untracked(() => self.axisScale)
       const batch = buildGeometry({
         // walk rows' overlay draws every bar, the reference's among them;
         // its nodes stay in the hit index, so hovering the bar finds them
@@ -750,10 +754,7 @@ export const withFitViews = withHostViews
         nodeWidth: self.nodeWidth,
         edgeWidth: self.linkWidth,
         highlight,
-        // Untracked, so a zoom does not eagerly rebuild geometry — the
-        // debounced viewportDirty bump drives the scale-dependent rebuild
-        // (flatness, arrow visibility, viewport culling), same as pan.
-        axis: untracked(() => self.axisScale),
+        axis,
         linearLayout: self.linearLayout,
         viewportBounds,
         // Held against the graph rather than derived here, the same way the
@@ -767,7 +768,11 @@ export const withFitViews = withHostViews
       if (entering?.layout === layoutResult) {
         fadeEntering(batch, graph.edges, entering)
       }
-      return { batch, viewportBounds }
+      return { batch, viewportBounds, scale: untracked(() => self.scale) }
+    },
+    // Each facet panel's drawing, which the panel paints and the key reads
+    get facetDrawings() {
+      return self.facetPanels?.map(panel => this.buildDrawing(panel, false))
     },
     // where the hovered node sits on a lifted walk, while one is hovered
     hoveredOn(walk: LiftedWalk) {

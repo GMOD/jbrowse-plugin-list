@@ -377,12 +377,24 @@ export const withRenderingActions = withLoadActions
         upload: (b: Renderer) => {
           dependOn(trackedDpr())
           b.resize(self.paneWidth, self.canvasHeight)
-          if (self.layoutResult?.tubeMap || self.facetPanels) {
+          if (self.layoutResult?.tubeMap) {
             dependOn(self.viewportDirty)
             b.uploadGeometry(EMPTY_BATCH)
             self.setGeometryMetrics(0, EMPTY_BATCH, {
               scale: untracked(() => self.scale),
               bounds: untracked(() => self.viewportToBuild()),
+            })
+            return true
+          }
+          // The panels paint the drawings, built whenever the key first read
+          // them, so the view recorded as built is theirs: a fit that lands
+          // after it schedules their rebuild as it would the pane's
+          const panel = self.facetDrawings?.[0]
+          if (panel) {
+            b.uploadGeometry(EMPTY_BATCH)
+            self.setGeometryMetrics(0, EMPTY_BATCH, {
+              scale: panel.scale,
+              bounds: panel.viewportBounds,
             })
             return true
           }

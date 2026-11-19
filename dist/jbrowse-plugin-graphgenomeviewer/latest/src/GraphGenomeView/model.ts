@@ -67,12 +67,6 @@ const sameKey = (a: GraphKey, b: GraphKey) =>
 // linear view. Built in stages under pane/, each extending the one before,
 // and given here the cut options both hosts share.
 export const GraphPane = withLaunchActions
-  // Each facet panel's drawing, which the panel paints and the key reads
-  .views(self => ({
-    get facetDrawings() {
-      return self.facetPanels?.map(panel => self.buildDrawing(panel, false))
-    },
-  }))
   // The view the key keys, set once a pan or zoom has settled (afterAttach),
   // so the key, and the labels that wait on its measure, hold still through a
   // gesture. Until one is set on the drawing's layout, the pane's view as it
