@@ -31,17 +31,16 @@ const BUBBLE = [
   '',
 ].join('\n')
 
-// The key reads the panels' drawings as soon as the layout lands, before the
-// pane is sized and fitted, as a restored session's does
-test('a panel drawing built before the fit is built again for the fitted view', async () => {
+beforeEach(() => {
   mockRpcCall.mockImplementation(
     (_session: unknown, method: string, request: EngineRequest) =>
       method === 'GraphComputeLayout'
         ? layoutEngine(request)
         : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
   )
-  const model = createModel()
-  model.startRenderingBackend(fakeRenderer())
+})
+
+async function splitByWalk(model: ReturnType<typeof createModel>) {
   await model.loadGFA(BUBBLE, 'bubble')
   model.liftWalks(['GRCh38#0#chr1', 'A#1#ctg'])
   model.setFacet('walk')
@@ -52,13 +51,49 @@ test('a panel drawing built before the fit is built again for the fitted view', 
   )
   const early = model.facetDrawings
   expect(early).toHaveLength(2)
+  return { early, stop }
+}
+
+function fit(model: ReturnType<typeof createModel>) {
   model.setWidth(1200)
   model.setLegendSize({ width: 150, height: 60 })
+}
+
+function expectBuiltFor(
+  model: ReturnType<typeof createModel>,
+  drawings: typeof model.facetDrawings,
+) {
+  const panels = (drawings ?? []).flatMap(panel => panel ?? [])
+  expect(panels.map(p => p.scale)).toEqual([model.scale, model.scale])
+  expect(panels.map(p => p.batch.nodeStrokes.length > 0)).toEqual([true, true])
+}
+
+// The key reads the panels' drawings as soon as the layout lands, before the
+// pane is sized and fitted, as a restored session's does
+test('a panel drawing built before the fit is built again for the fitted view', async () => {
+  const model = createModel()
+  model.startRenderingBackend(fakeRenderer())
+  const { early, stop } = await splitByWalk(model)
+  fit(model)
   await later(VIEWPORT_DEBOUNCE_MS + 100)
   const rebuilt = model.facetDrawings
   stop()
   expect(rebuilt).not.toBe(early)
-  const panels = (rebuilt ?? []).flatMap(panel => panel ?? [])
-  expect(panels.map(p => p.scale)).toEqual([model.scale, model.scale])
-  expect(panels.map(p => p.batch.nodeStrokes.length > 0)).toEqual([true, true])
+  expectBuiltFor(model, rebuilt)
+})
+
+// A track's pane takes its view before its canvas mounts, so the renderer
+// starts on a view the panels were never built for
+test('a panel drawing built before a view the renderer never saw is built again', async () => {
+  const model = createModel()
+  const { early, stop } = await splitByWalk(model)
+  fit(model)
+  model.zoomToFit()
+  expect(model.scale).not.toBe(1)
+  model.startRenderingBackend(fakeRenderer())
+  await later(VIEWPORT_DEBOUNCE_MS + 100)
+  const rebuilt = model.facetDrawings
+  stop()
+  expect(rebuilt).not.toBe(early)
+  expectBuiltFor(model, rebuilt)
 })

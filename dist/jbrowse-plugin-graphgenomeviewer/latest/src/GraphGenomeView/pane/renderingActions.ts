@@ -332,24 +332,21 @@ export const withRenderingActions = withLoadActions
           ),
         )
 
-        // Autorun: a zoom, or a pan that leaves the window the last build
-        // covered, schedules a debounced rebuild. A pan inside it costs a
-        // repaint and nothing else. Skips the first run.
-        let firstViewport = true
+        // Autorun: a build that misses the view shown schedules a debounced
+        // rebuild, whether a zoom or a pan left it or it was made for a view
+        // the pane had already left, as facet panels built before a track's
+        // fit are. A pan inside it costs a repaint and nothing else.
         addDisposer(
           self,
           autorun(() => {
-            const { scale } = self
-            const viewport = paneViewportOf(self)
-            if (firstViewport) {
-              firstViewport = false
-              return
+            const { scale, builtViewport } = self
+            if (
+              builtViewport &&
+              (builtViewport.scale !== scale ||
+                !contains(builtViewport.bounds, paneViewportOf(self)))
+            ) {
+              self.scheduleViewportDirty()
             }
-            const built = untracked(() => self.builtViewport)
-            if (built?.scale === scale && contains(built.bounds, viewport)) {
-              return
-            }
-            self.scheduleViewportDirty()
           }),
         )
 
@@ -388,7 +385,7 @@ export const withRenderingActions = withLoadActions
           }
           // The panels paint the drawings, built whenever the key first read
           // them, so the view recorded as built is theirs: a fit that lands
-          // after it schedules their rebuild as it would the pane's
+          // before or after it schedules their rebuild as it would the pane's
           const panel = self.facetDrawings?.[0]
           if (panel) {
             b.uploadGeometry(EMPTY_BATCH)

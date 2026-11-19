@@ -25,3 +25,4 @@ build skipfollow skipfollow.GRCh38.gfa --refs GRCh38 --tile 1000
 build skipinv skipinv.GRCh38.gfa --refs GRCh38 --tile 1000
 build inversion inversion.GRCh38.gfa --refs GRCh38 --tile 10000
 build lanepairs lanepairs.GRCh38.gfa --refs GRCh38 --tile 1000
+build chain chain.GRCh38.gfa --refs GRCh38 --tile 30000
