@@ -1,9 +1,19 @@
 import { useState } from 'react'
 
 import { ErrorBanner } from '@jbrowse/core/ui'
-import { Button, Paper, TextField, Typography } from '@mui/material'
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
+import {
+  Alert,
+  Button,
+  Divider,
+  Paper,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
+
+import GraphTrackPicker from './GraphTrackPicker'
 
 import type { GraphGenomeViewModel } from '../viewModel'
 
@@ -24,6 +34,8 @@ const useStyles = makeStyles()(theme => ({
   flex1: { flex: 1 },
   paper: { padding: 16, margin: 8, maxWidth: 560, marginInline: 'auto' },
   header: { marginBottom: 12 },
+  tip: { marginBottom: 16 },
+  divider: { marginBlock: 16 },
   footer: { marginTop: 12, display: 'flex', justifyContent: 'flex-end' },
   dragging: {
     outline: `2px dashed ${theme.palette.primary.main}`,
@@ -39,6 +51,7 @@ const ImportForm = observer(function ImportForm({
   const { classes, cx } = useStyles()
   const [url, setUrl] = useState('')
   const [dragging, setDragging] = useState(false)
+  const { graphTracks } = model
 
   function handleUrlLoad() {
     const uri = url.trim()
@@ -85,9 +98,36 @@ const ImportForm = observer(function ImportForm({
         handleDrop(event)
       }}
     >
-      <div className={classes.header}>
-        <Typography variant="h6">Load a GFA graph</Typography>
-      </div>
+      <Alert
+        severity="info"
+        icon={<LightbulbOutlinedIcon fontSize="inherit" />}
+        className={classes.tip}
+        data-testid="graph-import-tip"
+      >
+        A pangenome graph usually reads best as a track in a linear genome view,
+        which redraws it as you pan and zoom.{' '}
+        {graphTracks.length > 0
+          ? 'Pick a graph track and a region below.'
+          : 'Index it with gfa-to-tabix and open it with File → Open track.'}
+      </Alert>
+      {graphTracks.length > 0 ? (
+        <>
+          <div className={classes.header}>
+            <Typography variant="h6">Show a graph track</Typography>
+          </div>
+          <GraphTrackPicker model={model} choices={graphTracks} />
+          <Divider className={classes.divider} />
+          <div className={classes.header}>
+            <Typography variant="subtitle1">
+              Or open a small GFA file
+            </Typography>
+          </div>
+        </>
+      ) : (
+        <div className={classes.header}>
+          <Typography variant="h6">Open a small GFA file</Typography>
+        </div>
+      )}
 
       <div className={classes.column}>
         <div className={classes.rowCenter}>
@@ -103,7 +143,7 @@ const ImportForm = observer(function ImportForm({
             />
           </Button>
           <Typography variant="caption" color="text.secondary">
-            Or drop one here. Whole-file GFA; best for small/medium graphs.
+            Or drop one here. The whole file is drawn at once.
           </Typography>
         </div>
 

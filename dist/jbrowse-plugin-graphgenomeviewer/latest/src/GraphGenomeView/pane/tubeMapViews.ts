@@ -29,7 +29,7 @@ import {
   boxOf,
   memberAt,
   paintPanelHover,
-  walksThrough,
+  panelWalksThrough,
 } from '../tubeMapPanels'
 import { withFitViews } from './fitViews'
 import { HOVER_BRIGHTEN } from './paneBase'
@@ -210,10 +210,14 @@ export const withTubeMapViews = withFitViews
         return undefined
       }
       const node = this.hoveredMember ?? id
+      const laid = self.layoutResult?.tubeMap?.coarse?.graph ?? self.graph
+      const laidNode = laid?.nodes.find(n => n.id === node)
       return pictures.map(({ panel }) => {
         const drawing = panel.result.tubeMap
         const box = boxOf(drawing, node)
-        return box ? { box, ...walksThrough(drawing.graph, box) } : undefined
+        return box && laid && laidNode
+          ? { box, ...panelWalksThrough(laid, laidNode, drawing.graph) }
+          : undefined
       })
     },
     // apart from the pictures, so a lane row's hover redraws no panel

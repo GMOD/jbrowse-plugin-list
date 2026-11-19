@@ -1,0 +1,2 @@
+var s=JBrowseExports["@jbrowse/core/util/samplesTsv"],o=e=>s!=null&&e in Object(s)?s[e]:Object.assign(function(){throw new Error("This JBrowse does not provide '"+e+"' from '@jbrowse/core/util/samplesTsv' to plugins: GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse")},{jbrowseHostMissing:e}),r=o("getSamplesTsvSources"),t=o("parseSamplesTsv");var p=s&&s.__esModule?s.default:s;export{r as a,t as b};
+//# sourceMappingURL=chunk-IK5G3JHR.js.map

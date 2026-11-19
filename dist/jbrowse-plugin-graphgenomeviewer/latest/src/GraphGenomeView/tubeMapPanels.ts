@@ -2,6 +2,7 @@ import { parsePanSN } from '@jbrowse/bandage-core/alleleProjection/projectAllele
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
 import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 import { drawTubeMapHighlight } from '@jbrowse/bandage-core/tubeMap/draw'
+import { walksThrough } from '@jbrowse/bandage-core/walksThrough'
 import { groupKeyComparator } from '@jbrowse/core/util/groupKeys'
 
 import { columnValueOf, groupsByColumn, plural } from './walkRowGroups'
@@ -11,7 +12,11 @@ import type { FacetBy } from '@jbrowse/bandage-core/facetGrid'
 import type { TubeMapDrawing } from '@jbrowse/bandage-core/layout/tubeMapLayout'
 import type { TubeMapPicture } from '@jbrowse/bandage-core/tubeMap/draw'
 import type { TubeMapTransform } from '@jbrowse/bandage-core/tubeMap/frame'
-import type { Graph, LayoutResult } from '@jbrowse/bandage-core/types'
+import type {
+  Graph,
+  GraphNode,
+  LayoutResult,
+} from '@jbrowse/bandage-core/types'
 
 // A tube map split into small multiples: a panel per sample, or per walk, each
 // the reference and that group's walks laid out alone, stacked down the pane.
@@ -207,23 +212,28 @@ export function memberAt(
   return spans.reduce((a, b) => (distance(b) < distance(a) ? b : a)).id
 }
 
-// How many of a panel's walks pass through `box`, of how many it holds, a
-// bundle counting each walk it stands for
-export function walksThrough(graph: Graph, box: string) {
+// How many of a panel's walks pass `node` of the graph the panels were laid
+// out from, the cut or its fold, of how many it holds, a bundle counting each
+// walk it stands for
+export function panelWalksThrough(
+  laid: Pick<Graph, 'paths'>,
+  node: Pick<GraphNode, 'id' | 'departureVisits'>,
+  panel: Pick<Graph, 'paths' | 'referencePath'>,
+) {
   const all = new Set<string>()
-  const here = new Set<string>()
-  for (const p of graph.paths ?? []) {
+  for (const p of panel.paths ?? []) {
     const walk = walkOf(p.name)
-    if (walk !== graph.referencePath) {
-      const through = p.nodeIds.includes(box)
+    if (walk !== panel.referencePath) {
       for (const member of p.members ?? [walk]) {
-        all.add(member)
-        if (through) {
-          here.add(member)
-        }
+        all.add(walkOf(member))
       }
     }
   }
+  const here = new Set(
+    walksThrough(laid, node)
+      .map(w => walkOf(w.name))
+      .filter(walk => all.has(walk)),
+  )
   return { here: here.size, of: all.size }
 }
 

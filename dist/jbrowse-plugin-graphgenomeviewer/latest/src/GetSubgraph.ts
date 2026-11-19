@@ -31,16 +31,13 @@ export interface SubgraphCutOptions {
   // a cut for walk rows: its runs come with the tables, and the
   // step budget, which guards a Graph of every step, does not apply
   walkRows?: boolean
-  // abridged walks, `sample#haplotype#contig`, a walk-file cut reads in full
+  // walks, `sample#haplotype#contig`, a walk-file cut fetches every node of
   expand?: string[]
-  // the samples walk rows show, whose walks a walk-file cut reads in full
-  expandSamples?: string[]
   forcedByteBudget?: number
 }
 
-// Walk rows read a list of haplotypes, or of the samples they show, this long or
-// shorter in full where the walk file abridged it; a longer list, or every
-// haplotype, keeps the abridged rows
+// The most walks a view fetches every node of on its own: those a tube map
+// shows, or the rows a comparison of walk rows would leave out
 export const EXPAND_NAMED_MAX = 64
 
 // What an adapter's cut is handed: the payload, plus the call's own signal so

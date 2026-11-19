@@ -1,5 +1,5 @@
+import { BUBBLE_HALO_COLOR } from '@jbrowse/bandage-core/bubbles/bubbleLabel'
 import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
-import { BUBBLE_KIND_COLORS } from '@jbrowse/bandage-core/bubbles/classifyBubble'
 import { HALO_FACTOR } from '@jbrowse/bandage-core/labelLayout'
 import { observer } from 'mobx-react'
 
@@ -38,7 +38,7 @@ const BubbleHalos = observer(function BubbleHalos({
               key={bubbleKey(h.bubble)}
               d={h.path}
               fill="none"
-              stroke={BUBBLE_KIND_COLORS[h.kind]}
+              stroke={BUBBLE_HALO_COLOR}
               strokeOpacity={
                 hoveredBubble && sameBubble(h.bubble, hoveredBubble)
                   ? 0.45

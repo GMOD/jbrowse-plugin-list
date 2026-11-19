@@ -1,6 +1,8 @@
 import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
+import { DEFAULT_TRACK_FIT } from '@jbrowse/bandage-core/trackFit'
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
+import { heightModeConfigSchemaFields } from '@jbrowse/display-kit/heightModeConfigSchemaFields'
 import { trackHeightConfigSchemaFields } from '@jbrowse/display-kit/trackHeightConfigSchemaFields'
 import { types } from '@jbrowse/mobx-state-tree'
 
@@ -20,9 +22,8 @@ export function configSchemaFactory() {
     {
       /**
        * #slot
-       * the layout the track opens in: `force`, which the stress engine draws
-       * in reference order and keeps steady across a pan (ADR-046), or `auto`
-       * for the anchored layout, whose x is reference bp
+       * the layout the track opens in: `force`, which `layoutEngine` draws,
+       * or `auto` for the anchored layout, whose x is reference bp
        */
       layoutMode: {
         type: 'stringEnum',
@@ -31,13 +32,14 @@ export function configSchemaFactory() {
       },
       /**
        * #slot
-       * the engine that draws `force`: `stress`, which keeps a re-cut's
-       * drawing in place (ADR-044), or Bandage's `fmmm`
+       * the engine that draws `force`: Bandage's `fmmm`, or `stress`, which
+       * holds the reference straight and keeps a re-cut's drawing in place
+       * (ADR-044)
        */
       layoutEngine: {
         type: 'stringEnum',
         model: types.enumeration('LayoutEngine', LAYOUT_ENGINE_VALUES),
-        defaultValue: 'stress',
+        defaultValue: 'fmmm',
       },
       /**
        * #slot
@@ -72,8 +74,8 @@ export function configSchemaFactory() {
       /**
        * #slot
        * what the drawing adds over its nodes and edges, stated as changes to
-       * the defaults: `paths`, `bubbles`, `walkStrip` and `walkRibbons` are
-       * off, `deletions`, `genes` and `referenceStrip` on
+       * the defaults: `paths`, `bubbles`, `walkStrip`, `walkRibbons` and
+       * `smallSites` are off, `deletions`, `genes` and `referenceStrip` on
        * ```js
        * { layers: { bubbles: true, genes: false } }
        * ```
@@ -92,7 +94,9 @@ export function configSchemaFactory() {
       facet: graphFacetConfigSchema,
       /**
        * #slot
-       * the rows walk rows draw: `{ kept: [...] }` names the samples shown
+       * the rows walk rows draw: `{ kept: [...] }` names the samples, or
+       * `sample#haplotype` haplotypes, shown; `{ kept: 'lifted' }` shows the
+       * haplotypes of the lifted walks
        */
       rows: {
         type: 'frozen',
@@ -113,6 +117,12 @@ export function configSchemaFactory() {
       ...trackHeightConfigSchemaFields({
         defaultHeight: 300,
         height: 'the height of the track the graph is drawn in',
+      }),
+      ...heightModeConfigSchemaFields({
+        heightMode:
+          "how a force drawing the view's window places meets the track's height: `fit` shrinks the whole cut to the track's height; `fixed` draws it at the window's scale, so a zoom magnifies it, lowered only as far as keeps the reference the window shows inside the track, which it holds whole, and marks where what hangs off that reference runs past the top or bottom; `grow` does the same in a track grown to hold the cut, up to `growMaxHeight`",
+        growMaxHeight: 'the tallest `grow` makes the track, in px',
+        defaultHeightMode: DEFAULT_TRACK_FIT,
       }),
     },
     {

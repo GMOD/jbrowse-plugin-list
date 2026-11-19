@@ -92,13 +92,17 @@ export function nodeAssemblySpans(
 // Each stable sequence off the reference that the cut's nodes lie on, with
 // the loaded assembly holding it and the span its nodes cover there. A gene
 // read over that span, renamed to `stableRefName`, lands on those nodes the
-// way the reference's genes land on the backbone.
+// way the reference's genes land on the backbone. Where the cut has walks,
+// only a shown haplotype's sequence counts, so no gene names one not drawn.
 export function offReferenceContigs(
   graph: Graph,
   resolve: (sample: string) => string | undefined,
   except?: string,
 ) {
   const contigs = new Map<string, AssemblySpan & { stableRefName: string }>()
+  const shown = new Set(
+    (graph.paths ?? []).flatMap(path => panSNHaplotype(path.name) ?? []),
+  )
   // an HPRC cut names hundreds of haplotypes no session loads
   const unloaded = new Set<string>()
   for (const node of graph.nodes) {
@@ -107,6 +111,10 @@ export function offReferenceContigs(
     }
     const stableRefName = node.stable.refName
     if (unloaded.has(stableRefName)) {
+      continue
+    }
+    if (shown.size > 0 && !shown.has(panSNHaplotype(stableRefName) ?? '')) {
+      unloaded.add(stableRefName)
       continue
     }
     const loc = anchoredNodeLocation(node)

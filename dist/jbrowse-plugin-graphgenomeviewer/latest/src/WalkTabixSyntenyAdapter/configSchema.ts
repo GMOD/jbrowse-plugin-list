@@ -21,7 +21,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  *
  * `walksUri` takes the prefix of one reference's walk file, `<prefix>.<sample>`,
  * and resolves `<walksUri>.walks.gz` and its directory `<walksUri>.walks.gz.idx`.
- * The adapter reads walk format 7, which gfa-to-tabix writes from 4.0, through
+ * The adapter reads walk format 8, which gfa-to-tabix writes from 5.0, through
  * @jbrowse/graph-walks.
  * Only a window on the anchor is answered.
  *
@@ -29,7 +29,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * ```js
  * {
  *   type: 'WalkTabixSyntenyAdapter',
- *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38.GRCh38',
+ *   walksUri: 'https://jbrowse.org/demos/hprc/hprc-v2.1-mc-grch38-f8.GRCh38',
  *   assemblyNames: ['hg38'],
  *   assemblyNameToPanSN: { hg38: 'GRCh38' },
  * }
@@ -53,7 +53,7 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
     },
     /**
      * #slot
-     * a `gfa-to-tabix --walks` file in walk format 7
+     * a `gfa-to-tabix --walks` file in walk format 8
      */
     walksLocation: fileLocationSlot('/path/to/graph.walks.gz'),
     /**
@@ -99,7 +99,10 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      * A tab-separated table of per-sample metadata, which the graph view's
      * walk rows group by. Its header row names the columns, and its first
      * column is the walk's sample (`HG00097`) or haplotype (`HG00097#1`).
-     * Empty means no grouping.
+     * Empty means no grouping. A `color` column (`#rgb` or `#rrggbb`) colours
+     * that haplotype's lane, as the header's `lanes[].color` and
+     * `anchorColor`, and its lifted walk in the graph display; a row whose
+     * `assembly` column names a lane's assembly counts for it too.
      */
     samplesTsvLocation: fileLocationSlot(''),
     /**

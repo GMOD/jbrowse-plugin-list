@@ -11,6 +11,7 @@ import {
   PaneTranslateGroup,
 } from './PaneLayer'
 import { dependOn } from '../pane/paneBase'
+import { measureReadout } from '../readoutMeasure'
 import { paintWalkRowBlocks } from '../walkRowBlocks'
 import {
   SECTION_HEADER_PX,
@@ -67,7 +68,7 @@ const WalkRowSpansCanvas = observer(function WalkRowSpansCanvas({
       }
       paintWalkRowSpans(ctx, painted, {
         ...model.screenTransform,
-        width: model.paneWidth,
+        width: model.drawingWidth,
         height: model.canvasHeight,
         rowPx: pitch.rowPx,
         barPx: pitch.barPx,
@@ -216,8 +217,9 @@ type WalkRowTreesSource = Pick<
   | 'scaleY'
   | 'translateX'
   | 'translateY'
-  | 'paneWidth'
+  | 'drawingWidth'
   | 'canvasHeight'
+  | 'rowVisitsNeeded'
 >
 
 // The rows' trees and the translate they were drawn at. A zoom redraws them,
@@ -239,17 +241,20 @@ export function walkRowTreesOnPane(
     scaleY: model.scaleY,
     translateX: at.translateX,
     translateY: at.translateY,
-    width: model.paneWidth,
+    width: model.drawingWidth,
     height: model.canvasHeight,
     ...pitch,
     bars: vector,
+    measure: measureReadout,
   })
   const panKey = computed(() => {
     const bars = model.walkRowBars
     const place = model.walkRowPlacement
     const pitch = model.walkRowPitch
     return bars && place && pitch
-      ? walkRowTreesPanKey(bars, place.rowY, frameAt(pitch, translate()))
+      ? walkRowTreesPanKey(bars, place.rowY, frameAt(pitch, translate()), {
+          comparing: model.rowVisitsNeeded,
+        })
       : undefined
   })
   return computed(() => {
@@ -270,6 +275,7 @@ export function walkRowTreesOnPane(
               ramp: model.referenceRampDomain,
               rowGenes: model.walkRowGenes,
               idPrefix,
+              comparing: model.rowVisitsNeeded,
             },
           ),
         }

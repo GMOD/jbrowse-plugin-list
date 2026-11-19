@@ -154,13 +154,25 @@ export const withHostViews = withWalkRowViews
       )
       return left > 0 || right > 0
     },
+    // Grey the window shows, a boolean for the reason the overhang is one
     get referenceStripFaded() {
-      return self.referenceStripBlocks.some(b => b.faded)
+      const frame = self.hostBpFrame
+      return (
+        frame !== undefined &&
+        self.referenceStripBlocks.some(b => {
+          const x0 = b.bp0 * frame.scale + frame.translateX
+          const x1 = b.bp1 * frame.scale + frame.translateX
+          return (
+            b.faded && Math.max(x0, x1) > 0 && Math.min(x0, x1) < self.paneWidth
+          )
+        })
+      )
     },
   }))
   .views(self => ({
     // The lit span on the strip, and where the graph drew what it is of:
-    // the hovered node, the hovered bubble's name, or the selected node
+    // the hovered node, the hovered bubble's name, or the selected node,
+    // unless the drawing folded it
     get referenceStripLit() {
       if (!self.referenceStripShown) {
         return undefined
@@ -179,7 +191,9 @@ export const withHostViews = withWalkRowViews
       return span && nodeId !== null
         ? {
             ...span,
-            anchor: nodeAnchor(self.nodePositions?.[nodeId], self.toScreen),
+            anchor: self.folded.has(nodeId)
+              ? undefined
+              : nodeAnchor(self.nodePositions?.[nodeId], self.toScreen),
           }
         : undefined
     },

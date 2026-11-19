@@ -36,8 +36,9 @@ function pane() {
     scaleY: 1,
     translateX: 20,
     translateY: 10,
-    paneWidth: 600,
+    drawingWidth: 600,
     canvasHeight: 200,
+    rowVisitsNeeded: false,
   })
   const trees = walkRowTreesOnPane(source, 't', false)
   const seen: unknown[] = []

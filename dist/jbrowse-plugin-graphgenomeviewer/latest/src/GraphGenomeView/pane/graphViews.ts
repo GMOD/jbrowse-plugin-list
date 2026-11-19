@@ -1,7 +1,6 @@
-import { isBackbone } from '@jbrowse/bandage-core/anchoredNodes'
 import { bubbleHalos } from '@jbrowse/bandage-core/bubbles/bubbleHalos'
+import { bubbleSegmentIds } from '@jbrowse/bandage-core/bubbles/bubbleLabel'
 import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
-import { bubbleSegmentIds } from '@jbrowse/bandage-core/bubbles/classifyBubble'
 import { bubbleSubgraph } from '@jbrowse/bandage-core/bubbles/popBubble'
 import { graphBubbles } from '@jbrowse/bandage-core/bubbles/superbubbles'
 import { resolveColorScheme } from '@jbrowse/bandage-core/colorSchemes'
@@ -9,10 +8,14 @@ import {
   deletionDrawing,
   deletionEdges,
 } from '@jbrowse/bandage-core/deletionEdges'
-import { busiestEdge } from '@jbrowse/bandage-core/edgeWidths'
 import { facetSettingOf } from '@jbrowse/bandage-core/facetGrid'
+import { exonStretches } from '@jbrowse/bandage-core/genes/exonOutline'
 import { genePins } from '@jbrowse/bandage-core/genes/genePins'
-import { formatBp } from '@jbrowse/bandage-core/graphLabels'
+import {
+  formatBp,
+  labelledNodeLengths,
+} from '@jbrowse/bandage-core/graphLabels'
+import { walkNamesRow } from '@jbrowse/bandage-core/layout/rowInks'
 import {
   sharedRowOrder,
   walkRowBlocks,
@@ -22,12 +25,18 @@ import {
   walkRowRuns,
   walkRowsOf,
 } from '@jbrowse/bandage-core/layout/walkRowRuns'
-import { filterSamples, walkRows } from '@jbrowse/bandage-core/layout/walkRows'
+import {
+  filterSamples,
+  rowHaplotype,
+  walkRows,
+} from '@jbrowse/bandage-core/layout/walkRows'
 import {
   layoutModeByValue,
   modeUsesLayoutEngine,
 } from '@jbrowse/bandage-core/layoutModes'
-import { meanDepth, nodeInk } from '@jbrowse/bandage-core/nodeWidths'
+import { NO_FOLD, nodesNotDrawn } from '@jbrowse/bandage-core/levelOfDetail'
+import { nodeInk } from '@jbrowse/bandage-core/nodeWidths'
+import { assemblyByPanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 import {
   pathColorsLegible,
@@ -38,6 +47,7 @@ import {
   backboneAssembly,
   featuresOnBackbone,
   graphBackbone,
+  referenceLabel,
 } from '@jbrowse/bandage-core/reference'
 import {
   buildNeighbors,
@@ -49,7 +59,6 @@ import {
 } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { tubeMapNodeColors } from '@jbrowse/bandage-core/tubeMap/nodeColors'
 import { axisScaleOf } from '@jbrowse/bandage-core/viewport'
-import { NO_VALUE_COLOR } from '@jbrowse/bandage-core/walkEncoding'
 import { facetLifts, walkLift } from '@jbrowse/bandage-core/walkHighlight'
 import SerializableFilterChain from '@jbrowse/core/pluggableElementTypes/renderers/util/serializableFilterChain'
 import {
@@ -69,6 +78,7 @@ import {
 } from '../../launchFromGraph/launchFromGraph'
 import { locationIsSet } from '../../locationName.ts'
 import { trackAdapterConfig } from '../../panSNAliases/trackAdapterConfig'
+import { sheetColorOf } from '../../synteny/sheetColors.ts'
 import {
   GENE_ADAPTER_TYPES,
   annotationNoun,
@@ -113,8 +123,10 @@ import type {
 } from '@jbrowse/bandage-core/colorSchemes'
 import type { EdgeWidth } from '@jbrowse/bandage-core/edgeWidths'
 import type { FacetInput, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
+import type { GenePin } from '@jbrowse/bandage-core/genes/genePins'
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
+import type { SmallSites } from '@jbrowse/bandage-core/levelOfDetail'
 import type { NodeWidth } from '@jbrowse/bandage-core/nodeWidths'
 import type { AssemblyNames } from '@jbrowse/bandage-core/reference'
 import type { Graph, GraphNode } from '@jbrowse/bandage-core/types'
@@ -135,6 +147,42 @@ function walkRowsFromCut(
 ) {
   const runs = walkRowRuns(cut, region, { visits })
   return runs ? walkRowsOf(runs, unit) : undefined
+}
+
+const NO_PINS: GenePin[] = []
+
+function samePin(a: GenePin, b: GenePin) {
+  return (
+    a.gene.name === b.gene.name &&
+    a.gene.refName === b.gene.refName &&
+    a.gene.start === b.gene.start &&
+    a.gene.end === b.gene.end &&
+    a.exons === b.exons &&
+    a.at.x === b.at.x &&
+    a.at.y === b.at.y &&
+    a.covered === b.covered &&
+    a.onReference === b.onReference &&
+    a.walks === b.walks &&
+    a.nodeIds.size === b.nodeIds.size &&
+    [...a.nodeIds].every(id => b.nodeIds.has(id))
+  )
+}
+
+function samePins(a: GenePin[], b: GenePin[]) {
+  return (
+    a.length === b.length &&
+    a.every((pin, i) => {
+      const other = b[i]
+      return other !== undefined && samePin(pin, other)
+    })
+  )
+}
+
+function sameKeys(
+  a: ReadonlySet<string> | ReadonlyMap<string, unknown>,
+  b: ReadonlySet<string> | ReadonlyMap<string, unknown>,
+) {
+  return a.size === b.size && [...a.keys()].every(key => b.has(key))
 }
 
 // undefined for a pane outside any track or view, as a test makes one
@@ -181,11 +229,13 @@ export interface GraphGrammar {
 type TubeColorKind = 'value' | 'tinted' | 'role' | 'path'
 
 // The rows walk rows draw: `kept` names the samples whose walks show, by the
-// name before the haplotype number; unset shows every walk the cut holds.
+// name before the haplotype number, or one haplotype as `sample#haplotype`;
+// `'lifted'` keeps the haplotypes of the lifted walks, as they change; unset
+// shows every walk the cut holds.
 // `order: 'shared'` stacks each row under the one it shares the most sequence
 // with, so ribbons stay short and shared blocks line up.
 export interface GraphRows {
-  kept?: string[]
+  kept?: string[] | 'lifted'
   order?: 'shared'
 }
 
@@ -208,6 +258,10 @@ export const withGraphViews = paneBase
     // the track the graph is cut from: the one the pane is a display of
     get sourceTrack(): AnyTrackConfig | undefined {
       return orUndefined(() => getContainingTrack(self).configuration)
+    },
+    get sourceAdapter() {
+      const track = this.sourceTrack
+      return track ? trackAdapterConfig(self, track) : undefined
     },
     get containingView(): object | undefined {
       return orUndefined(() => getContainingView(self))
@@ -270,6 +324,9 @@ export const withGraphViews = paneBase
       get showDeletionEdges() {
         return this.layerSet.has('deletions')
       },
+      get smallSites(): SmallSites {
+        return this.layerSet.has('smallSites') ? 'nodes' : 'hidden'
+      },
       get showGenes() {
         return this.layerSet.has('genes')
       },
@@ -298,6 +355,9 @@ export const withGraphViews = paneBase
       get walkRowSamples() {
         const kept = self.grammar.rows?.kept
         return Array.isArray(kept) ? kept : undefined
+      },
+      get walkRowsFollowLift() {
+        return self.grammar.rows?.kept === 'lifted'
       },
       get walkRowOrder() {
         return self.grammar.rows?.order === 'shared' ? 'shared' : undefined
@@ -330,16 +390,14 @@ export const withGraphViews = paneBase
     get nodeById() {
       return self.drawnGraph && nodeMapOf(self.drawnGraph)
     },
-    // bp per node id, which is all the label overlay needs of a GraphNode.
-    // Held here rather than rebuilt in the component: that render runs on
-    // every pan, and the map is a fact about the graph (measured 6.9 ms an
-    // allocation on a 30k-node cut).
+    // The lengths the label overlay writes, by node id. Held here rather than
+    // rebuilt in the component: that render runs on every pan, and the map is
+    // a fact about the graph (measured 6.9 ms an allocation on a 30k-node cut).
     get nodeLengths() {
-      const m = new Map<string, number>()
-      for (const n of self.drawnGraph?.nodes ?? []) {
-        m.set(n.id, n.length)
-      }
-      return m
+      return labelledNodeLengths(
+        self.drawnGraph?.nodes ?? [],
+        self.layerSet.has('lengths'),
+      )
     },
     get nodeCount() {
       return self.graph?.nodes.length ?? 0
@@ -460,11 +518,38 @@ export const withGraphViews = paneBase
         ? self.walkLayers
         : self.hoveredRowWalks.map(walk => ({ walk }))
     },
+    // A walk's colour in the source track's samples sheet, as its lane
+    // takes it
+    get sheetColorOf() {
+      const table = self.walkRowSampleTable
+      const adapter = self.sourceAdapter
+      return table && adapter
+        ? sheetColorOf(
+            table,
+            assemblyByPanSNPrefix({ getConf: slot => adapter[slot] }),
+          )
+        : undefined
+    },
+    // The lifted walks, each whose layer states no colour taking its sheet
+    // colour
+    get coloredWalkLayers(): WalkLayer[] {
+      const colorOf = this.sheetColorOf
+      return this.liftedWalkLayers.map(layer => {
+        const { field, scheme, value } = layer.color ?? {}
+        const sheet =
+          (field ?? scheme ?? value) === undefined
+            ? colorOf?.(layer.walk)
+            : undefined
+        return sheet === undefined
+          ? layer
+          : { ...layer, color: { ...layer.color, value: sheet } }
+      })
+    },
     // The lifted walks the graph on screen carries, or undefined when none
     // is named or it carries none of those that were
     get walkLift() {
       const { graph } = self
-      const layers = this.liftedWalkLayers
+      const layers = this.coloredWalkLayers
       return graph &&
         !self.walkCut &&
         layers.length > 0 &&
@@ -484,7 +569,7 @@ export const withGraphViews = paneBase
         lift &&
         self.walkLayers.length > 1 &&
         lift.walks.length > 1
-        ? facetLifts(graph, lift, self.walkLayers, this.walkRamp)
+        ? facetLifts(graph, lift, this.coloredWalkLayers, this.walkRamp)
         : undefined
     },
     // The lifted walks as drawn, each panel's own while faceted
@@ -495,6 +580,12 @@ export const withGraphViews = paneBase
         []
       )
     },
+    get walksShadedAlong() {
+      const walks = this.drawnWalks
+      return (
+        walks.length > 0 && walks.every(w => w.encoding.field === 'progress')
+      )
+    },
     // A tube map draws every walk as a tube of its own
     get liftsWalks() {
       return !TUBE_MAP_MODES.has(self.chosenLayoutMode)
@@ -502,7 +593,16 @@ export const withGraphViews = paneBase
     // The window a lane coloured by reference position spans, by name
     get walkReference() {
       const domain = this.walkLift?.referenceDomain
-      return domain && { ...domain, name: self.graphRegion?.refName }
+      return (
+        domain && {
+          ...domain,
+          name: self.graph && referenceLabel(self.graph, self.graphRegion),
+        }
+      )
+    },
+    // the names of the lifted walks, whose own genes the labels name
+    get liftedWalks() {
+      return this.walkLift?.walks.map(walk => walk.name)
     },
     // A label per walk, which the pickers, the keys and a bubble's label all
     // read, so a walk name repeated across records reads the same everywhere
@@ -511,15 +611,6 @@ export const withGraphViews = paneBase
     },
     walkLabel(name: string) {
       return this.walkLabels.get(name) ?? name
-    },
-    // Whether a lifted lane paints a node charcoal, the colour a lane coloured
-    // by reference position gives what is off the reference
-    get liftPaintsOffReference() {
-      return !!this.walkLift?.walks.some(
-        w =>
-          w.encoding.field !== 'walk' &&
-          [...w.colors.values()].includes(NO_VALUE_COLOR),
-      )
     },
     // what the faded rest of the drawing is not on
     get liftedWalksLabel() {
@@ -709,10 +800,6 @@ export const withGraphViews = paneBase
     get cutHaplotypes(): string[] | undefined {
       return undefined
     },
-    get sourceAdapter() {
-      const track = self.sourceTrack
-      return track ? trackAdapterConfig(self, track) : undefined
-    },
     get sourceTrackId() {
       return self.sourceTrack?.trackId as string | undefined
     },
@@ -882,35 +969,59 @@ export const withGraphViews = paneBase
         : undefined
     },
   }))
+  // The nodes the drawing on the canvas folded as too small to draw, and the
+  // reference nodes inside the sites it folded, kept while a rebuild folds
+  // the same ones, so what reads them is not laid out again for nothing
+  .views(self => {
+    const fold = computed(
+      () => {
+        const collapsed = self.drawnBatch.collapsed
+        return {
+          nodes: collapsed?.nodes ?? NO_FOLD.nodes,
+          within: collapsed?.within ?? NO_FOLD.within,
+        }
+      },
+      {
+        equals: (a, b) =>
+          sameKeys(a.nodes, b.nodes) && sameKeys(a.within, b.within),
+      },
+    )
+    const notDrawn = computed(() => nodesNotDrawn(self.drawnBatch), {
+      equals: sameKeys,
+    })
+    return {
+      get folded() {
+        return fold.get().nodes
+      },
+      // the folded nodes and, with walks lifted, the reference nodes inside a
+      // folded site that only the lanes crossing it draw
+      get notDrawn() {
+        return notDrawn.get()
+      },
+      get foldedWithin() {
+        return fold.get().within
+      },
+    }
+  })
   .views(self => ({
     get nodeNeighbors() {
       return self.drawnGraph ? buildNeighbors(self.drawnGraph) : undefined
     },
+    // what the drawing on the canvas folded as too small to draw
+    get drawnFold() {
+      return self.drawnBatch.collapsed
+    },
+    // how wide each node is drawn, a node inside a run of folded sites as
+    // wide as the run's even stroke
     get nodeInk(): NodeInk {
       return nodeInk(
         self.drawnGraph,
         self.nodeById,
         self.contigThickness,
         self.nodeWidth,
+        0,
+        this.drawnFold?.through,
       )
-    },
-    // the depths the width key samples, swept once per graph rather than on
-    // each legend render
-    get depthRange() {
-      const nodes = self.graph?.nodes
-      if (!nodes?.length) {
-        return undefined
-      }
-      let min = Infinity
-      let max = -Infinity
-      for (const { depth } of nodes) {
-        min = Math.min(min, depth)
-        max = Math.max(max, depth)
-      }
-      return { min, max, mean: meanDepth(self.graph!) }
-    },
-    get busiestLink() {
-      return self.graph ? busiestEdge(self.graph) : 0
     },
     // Links that skip reference sequence, i.e. the deletions this graph
     // holds. Computed once per graph rather than per geometry rebuild: it is
@@ -1007,11 +1118,29 @@ export const withGraphViews = paneBase
           ? { by: 'column', ...grouped.groupBy, table: grouped.table }
           : undefined
     },
+    // The haplotypes of the cut's rows the lifted walks are, as the sample
+    // filter names them
+    get liftedRowHaplotypes() {
+      const walks = self.drawnWalks
+      return [
+        ...new Set(
+          (self.cutWalkRows?.rows ?? [])
+            .filter(row => walks.some(w => walkNamesRow(w.name, row)))
+            .map(rowHaplotype),
+        ),
+      ]
+    },
+    // The samples or haplotypes the rows keep
+    get keptRowSamples() {
+      return self.walkRowsFollowLift
+        ? this.liftedRowHaplotypes
+        : self.walkRowSamples
+    },
     // The cohort's rows the sample filter keeps, in the shared order where
     // asked; a grouping then keeps that order within each section
     get keptCohortRows() {
       const bars = this.cohortWalkRows
-      const rows = bars && filterSamples(bars.rows, self.walkRowSamples)
+      const rows = bars && filterSamples(bars.rows, this.keptRowSamples)
       if (!bars || !rows || self.walkRowOrder !== 'shared') {
         return rows
       }
@@ -1076,26 +1205,9 @@ export const withGraphViews = paneBase
       return layoutModeByValue(self.drawnLayoutMode ?? self.chosenLayoutMode)
         .drawsNodes
     },
-    // Exons and names on the nodes that carry them, in layout units. Reads
-    // positionsVersion so a dragged node takes its exons with it.
-    get genePins() {
-      dependOn(self.positionsVersion)
-      const positions = self.layoutResult?.nodePositions
-      // each haplotype's own genes ride its nodes off the reference
-      const genes = [
-        ...(self.backboneGenes ?? []),
-        ...(self.ownGeneFeatures ?? []),
-      ]
-      return self.showGenes &&
-        this.drawsNodes &&
-        self.graph &&
-        genes.length > 0 &&
-        positions
-        ? genePins(self.graph, genes, positions)
-        : []
-    },
-    // The bubbles as halos along their nodes.
-    // Reads positionsVersion so a dragged node takes its halo with it.
+    // The bubbles as halos along their drawn nodes, and none for a bubble
+    // the drawing folds whole. Reads positionsVersion so a dragged node
+    // takes its halo with it.
     get bubbleHalos() {
       dependOn(self.positionsVersion)
       const positions = self.layoutResult?.nodePositions
@@ -1109,7 +1221,15 @@ export const withGraphViews = paneBase
       if (shown.length === 0 || !this.drawsNodes || !self.graph || !positions) {
         return []
       }
-      return bubbleHalos(self.graph, shown, positions, self.repeatArrays)
+      const { folded, foldedWithin } = self
+      const drawn = folded.size
+        ? Object.fromEntries(
+            Object.entries(positions).filter(([id]) => !folded.has(id)),
+          )
+        : positions
+      return bubbleHalos(self.graph, shown, drawn, self.repeatArrays).filter(
+        halo => !halo.nodeIds.every(id => foldedWithin.has(id)),
+      )
     },
     // What `reference-position` paints from, which is also what `auto`
     // resolves to on any anchored graph
@@ -1158,6 +1278,60 @@ export const withGraphViews = paneBase
     },
     get scaleY() {
       return this.axisScale.scaleY
+    },
+  }))
+  // Exons and names on the nodes that carry them, in layout units. Reads
+  // positionsVersion so a dragged node takes its exons with it. Pins equal to
+  // the last ones are the last ones, so a recomputation that changes nothing,
+  // as a gene list read again or still empty, lays no label out again.
+  .views(self => {
+    const pins = computed(
+      () => {
+        dependOn(self.positionsVersion)
+        const positions = self.layoutResult?.nodePositions
+        // each haplotype's own genes ride its nodes off the reference
+        const genes = [
+          ...(self.backboneGenes ?? []),
+          ...(self.ownGeneFeatures ?? []),
+        ]
+        return self.showGenes &&
+          self.drawsNodes &&
+          self.graph &&
+          genes.length > 0 &&
+          positions
+          ? genePins(self.graph, genes, positions, self.layoutResult?.stranded)
+          : NO_PINS
+      },
+      { equals: samePins },
+    )
+    return {
+      get genePins() {
+        return pins.get()
+      },
+    }
+  })
+  .views(self => ({
+    // Each exon's stretch of drawn node, in layout units, so neither a pan
+    // nor a zoom inside one fold rebuilds them; an open bubble rings only its
+    // own exons
+    get exonOutlines() {
+      const { genePins, walkLift } = self
+      const focus = walkLift ? undefined : self.openBubbleFocus
+      const pins = focus
+        ? genePins.map(pin => ({
+            ...pin,
+            exonsByNode: pin.exonsByNode.filter(e =>
+              focus.nodeIds.has(e.nodeId),
+            ),
+          }))
+        : genePins
+      return exonStretches(
+        pins,
+        self.nodeInk.halfWidthPx,
+        walkLift,
+        undefined,
+        self.notDrawn,
+      )
     },
   }))
   .views(self => ({
@@ -1211,15 +1385,6 @@ export const withGraphViews = paneBase
     // map's boxes. Walk rows draw bars with a key of their own.
     get paintsNodeColors() {
       return self.drawsNodes || !!self.layoutResult?.tubeMap
-    },
-    // Whether the ramp paints a drawn node charcoal, as getNodeColor does
-    // every node off the backbone
-    get referenceRampDrawsOffReference() {
-      return (
-        !!self.referenceRamp &&
-        this.paintsNodeColors &&
-        !!self.drawnGraph?.nodes.some(node => !isBackbone(node))
-      )
     },
     // Each tube map box in its node's colour, where the scheme paints one
     get tubeMapNodeColors() {

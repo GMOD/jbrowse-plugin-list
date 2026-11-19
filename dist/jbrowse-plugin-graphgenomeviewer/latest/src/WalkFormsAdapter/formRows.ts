@@ -11,13 +11,7 @@ import { DEFAULT_MAX_FORMS } from '../slotDefaults.ts'
 
 import type { Mark, MarkKind, StructuralForms } from '@jbrowse/graph-walks'
 
-export const CONSEQUENCES = [
-  'loss',
-  'gain',
-  'shift',
-  'inversion',
-  'net',
-] as const
+export const CONSEQUENCES = ['loss', 'gain', 'shift', 'inversion'] as const
 
 export type Consequence = (typeof CONSEQUENCES)[number]
 
@@ -46,12 +40,6 @@ const KINDS: Record<
     type: 'complex_structural_alteration',
     alt: '<CPX>',
     consequence: 'shift',
-  },
-  net: {
-    svType: 'CPX',
-    type: 'complex_structural_alteration',
-    alt: '<CPX>',
-    consequence: 'net',
   },
 }
 
@@ -125,18 +113,13 @@ export function formWarnings(
   result: StructuralForms,
   maxForms = DEFAULT_MAX_FORMS,
 ) {
-  const { abridged, unplaced, forms } = result
+  const { unplaced, forms } = result
   const shown = shownCount(result, maxForms)
   const rest = forms.slice(shown)
   return [
     ...(rest.length > 0
       ? [
           `${rest.length} smaller forms, ${haplotypeCount(sum(rest))}, share the empty "other forms" row; maxForms sets how many forms get a row of their own`,
-        ]
-      : []),
-    ...(abridged.length > 0
-      ? [
-          `${haplotypeCount(abridged.length)} kept an abridged walk past the forms cut's step budget, which shows as a net change over its span: ${names(abridged)}`,
         ]
       : []),
     ...(unplaced.length > 0

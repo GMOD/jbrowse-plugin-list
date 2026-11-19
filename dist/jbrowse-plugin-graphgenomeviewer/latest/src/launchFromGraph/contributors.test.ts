@@ -6,6 +6,7 @@ import {
   locString,
   nodeAssemblySpans,
   nodeOwnLocation,
+  offReferenceContigs,
   resolveContributors,
   resolveLocationAssembly,
 } from './contributors'
@@ -252,4 +253,30 @@ test("a node's spans are where each walk through it passes it, on loaded assembl
     { assemblyName: 'HG002.1', refName: 'CM1', start: 500, end: 800 },
     { assemblyName: 'HG002.2', refName: 'CM2', start: 9100, end: 9400 },
   ])
+})
+
+test("a cut with walks reads genes only off its shown haplotypes' sequence", () => {
+  const g = {
+    ...graph([
+      node('s1', 'GRCh38#0#chr17', 63_488_000, 500, 0),
+      node('s2', 'HG00099#2#CM2', 1000, 289, 1),
+      node('s3', 'HG00097#1#CM1', 2000, 289, 1),
+    ]),
+    paths: [
+      { name: 'GRCh38#0#chr17', nodeIds: ['s1'] },
+      { name: 'HG00097#1#CM1', nodeIds: ['s1', 's3'] },
+    ],
+  }
+  const resolve = (sample: string) =>
+    ({ GRCh38: 'hg38', 'HG00097#1': 'HG00097.1', 'HG00099#2': 'HG00099.2' })[
+      sample
+    ]
+  expect(
+    offReferenceContigs(g, resolve, 'hg38').map(c => c.stableRefName),
+  ).toEqual(['HG00097#1#CM1'])
+  expect(
+    offReferenceContigs({ ...g, paths: [] }, resolve, 'hg38').map(
+      c => c.stableRefName,
+    ),
+  ).toEqual(['HG00099#2#CM2', 'HG00097#1#CM1'])
 })

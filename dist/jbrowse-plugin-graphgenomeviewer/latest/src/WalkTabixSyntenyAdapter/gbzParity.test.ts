@@ -12,9 +12,9 @@ import type { Feature } from '@jbrowse/core/util'
 import type { SyntenyMate } from '@jbrowse/synteny-core'
 
 // chr22 of HPRC v2.1 as a gbz-base database and as gfa-to-tabix's GRCh38
-// walk file in walk format 7. Skipped where the files are absent.
+// walk file in walk format 8. Skipped where the files are absent.
 const dir = '/home/cdiesh/work/scratch/walks-20261008'
-const walkPrefix = `${dir}/walks7/chr22.GRCh38`
+const walkPrefix = `${dir}/walks8/chr22.GRCh38`
 const present =
   existsSync(`${walkPrefix}.walks.gz`) && existsSync(`${dir}/chr22.gbz.db`)
 

@@ -1,7 +1,7 @@
 import { readWalkReference } from './walkReference'
 
 const walks =
-  require.resolve('../RgfaTabixAdapter/test_data/walks7/header.GRCh38.walks.gz')
+  require.resolve('../RgfaTabixAdapter/test_data/walks8/header.GRCh38.walks.gz')
 
 const local = (path: string) => ({
   localPath: path,

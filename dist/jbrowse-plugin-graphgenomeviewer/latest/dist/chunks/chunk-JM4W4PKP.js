@@ -1,0 +1,2 @@
+function o(n){return n instanceof Error&&(n.name==="NodeLimitError"||n.regionTooLarge===!0||/reads more than nodeLimit|^Subgraph size limit of \d+ nodes exceeded/.test(n.message))}function t(n){return o(n)&&n instanceof Error&&"zoomHelps"in n&&n.zoomHelps===!1&&"bytes"in n&&typeof n.bytes=="number"}var e=class extends Error{constructor(){super(...arguments);this.name="DrawLimitError"}};function r(n){return n instanceof e}export{o as a,t as b,e as c,r as d};
+//# sourceMappingURL=chunk-JM4W4PKP.js.map

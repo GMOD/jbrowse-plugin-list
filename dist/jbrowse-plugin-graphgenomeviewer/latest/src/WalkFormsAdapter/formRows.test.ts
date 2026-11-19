@@ -63,7 +63,7 @@ const departures = [
     departure(18_000, 19_500, 0),
     departure(19_600, 19_600, 1480),
   ]),
-  haplotype('F#2', [departure(21_000, 21_500, 3000, { abridged: true })]),
+  haplotype('F#2', [departure(21_000, 21_000, 3000)]),
   haplotype('G#1', []),
   haplotype('G#2', [], [[0, 12_000]]),
   haplotype('H#1', [], []),
@@ -95,7 +95,7 @@ test('each mark kind names its consequence, svType and SO type', () => {
     [13_000, 13_600, 'gain', 'CPX', 'complex_substitution', '<CPX>'],
     [15_000, 17_000, 'loss', 'CPX', 'complex_substitution', '<CPX>'],
     [18_000, 19_600, 'shift', 'CPX', 'complex_structural_alteration', '<CPX>'],
-    [21_000, 21_500, 'net', 'CPX', 'complex_structural_alteration', '<CPX>'],
+    [21_000, 21_001, 'gain', 'INS', 'insertion', '<INS>'],
   ])
 })
 
@@ -192,9 +192,8 @@ test('one form past maxForms keeps its own row', () => {
   expect(formSources(result, 10).at(-1)?.name).toBe(OTHER_FORMS)
 })
 
-test('warnings name the abridged and unplaced haplotypes', () => {
+test('warnings name the unplaced haplotypes', () => {
   expect(formWarnings(result, Infinity)).toEqual([
-    "1 haplotype kept an abridged walk past the forms cut's step budget, which shows as a net change over its span: F#2",
     '1 haplotype has no walk over the pinned window, so no form: H#1',
   ])
 })

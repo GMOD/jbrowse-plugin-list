@@ -1,5 +1,5 @@
 import PluginManager from '@jbrowse/core/PluginManager'
-import { ExpansionTooLargeError, formsCut } from '@jbrowse/graph-walks'
+import { formsCut } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -21,7 +21,7 @@ vi.mock('@jbrowse/graph-walks', async importOriginal => {
 //   W HG002   2 chr1 >1>2>3>4>8>6   8 (20 bp) replaces 5
 //   W HG00097 1 chr1 >1>2>3>4>5>6
 const walks =
-  require.resolve('../RgfaTabixAdapter/test_data/walks7/header.GRCh38.walks.gz')
+  require.resolve('../RgfaTabixAdapter/test_data/walks8/header.GRCh38.walks.gz')
 
 const local = (path: string) => ({
   localPath: path,
@@ -193,25 +193,6 @@ test('a pinned window past walkByteBudget says so, without a zoom-in notice', as
   expect(error).not.toHaveProperty('regionTooLarge')
   expect(`${error}`).toMatch(
     /^Error: The pinned window chr1:8-3,600 is too large to cut for structural forms: .*walkByteBudget, 0\.0 MB\. .*Raise walkByteBudget$/,
-  )
-})
-
-test('a window whose walks are too many to read in full says so', async () => {
-  vi.mocked(formsCut).mockClear()
-  vi.mocked(formsCut).mockRejectedValueOnce(
-    new ExpansionTooLargeError(24_000_000, 16_000_000, 3592),
-  )
-  const error = await makeAdapter({ pinned: pinned(9) })
-    .getSourcesAndWarnings()
-    .catch((e: unknown) => e)
-  expect(formsCut).toHaveBeenCalledWith(
-    expect.anything(),
-    expect.anything(),
-    expect.objectContaining({ partial: false }),
-  )
-  expect(error).not.toHaveProperty('regionTooLarge')
-  expect(`${error}`).toBe(
-    'Error: The pinned window chr1:10-3,600 is too large to read every walk in full for structural forms: its walks take 24.0 M steps, over the 16.0 M step budget, and about 2.39Kbp of it fits. Pin a narrower window',
   )
 })
 

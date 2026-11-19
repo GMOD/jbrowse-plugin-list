@@ -17,6 +17,7 @@ function view(state: Partial<GraphGenomeViewModel>) {
     error: undefined,
     cancelLoad: vi.fn(),
     retryLoad: vi.fn(),
+    graphTracks: [],
     ...state,
   }
   render(<GraphGenomeView model={model as unknown as GraphGenomeViewModel} />)
@@ -24,7 +25,7 @@ function view(state: Partial<GraphGenomeViewModel>) {
 }
 
 function importFormHidden() {
-  return screen.getByText('Load a GFA graph').closest('[hidden]') !== null
+  return screen.getByTestId('graph-import-form').closest('[hidden]') !== null
 }
 
 test('a view with nothing to load offers the import form', () => {
@@ -51,7 +52,7 @@ test('a view fetching its first graph shows the loading state instead', () => {
 test('a restored view waiting on its assembly shows loading, not the form', () => {
   view({ canRetryLoad: true })
   expect(screen.getByTestId('graph-genome-loading')).toBeTruthy()
-  expect(screen.queryByText('Load a GFA graph')).toBeNull()
+  expect(screen.queryByTestId('graph-import-form')).toBeNull()
   expect(screen.queryByTestId('graph-genome-cancel')).toBeNull()
 })
 
@@ -61,7 +62,7 @@ test('a launched view whose cut failed offers a retry, not the import form', () 
     error: new Error('Region too large'),
   })
   expect(screen.getByText(/Region too large/)).toBeTruthy()
-  expect(screen.queryByText('Load a GFA graph')).toBeNull()
+  expect(screen.queryByTestId('graph-import-form')).toBeNull()
 
   fireEvent.click(screen.getByTestId('reload_button'))
   expect(model.retryLoad).toHaveBeenCalled()

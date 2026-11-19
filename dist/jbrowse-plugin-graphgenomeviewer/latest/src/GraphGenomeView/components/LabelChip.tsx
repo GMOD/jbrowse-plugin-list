@@ -37,6 +37,7 @@ export default observer(function LabelChip({
   color,
   edge = color,
   italic,
+  bold,
   dimmed,
   title,
   testId,
@@ -51,6 +52,7 @@ export default observer(function LabelChip({
   color: string
   edge?: string
   italic?: boolean
+  bold?: boolean
   dimmed?: boolean
   title?: string
   testId?: string
@@ -105,7 +107,7 @@ export default observer(function LabelChip({
         fontSize={LABEL_PX}
         fontFamily="sans-serif"
         fontStyle={italic ? 'italic' : undefined}
-        fontWeight={italic ? 600 : undefined}
+        fontWeight={italic ? 600 : bold ? 'bold' : undefined}
         fill={color}
         textAnchor="middle"
       >

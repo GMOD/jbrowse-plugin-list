@@ -6,29 +6,41 @@ import {
 } from '@jbrowse/bandage-core/facetGrid'
 import { figureSvg } from '@jbrowse/bandage-core/figure'
 import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
-import {
-  LEGEND_INSET_PX,
-  layoutLabels,
-} from '@jbrowse/bandage-core/labelLayout'
+import { keyColumnPx, keyHeightPx } from '@jbrowse/bandage-core/keyColumn'
+import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
+import { FIT_PADDING } from '@jbrowse/bandage-core/layout/fitAssumptions'
 import {
   barEnd,
   boxesGenes,
   rowPitch,
-  walkRowReadout,
+  walkRowReadoutAt,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import {
   walkRowLabels,
   walkRowsExtent,
 } from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
-import { legendCorner } from '@jbrowse/bandage-core/legendCorner'
 import {
-  FIT_PADDING,
+  cutScale,
   drawingBounds,
   fitTransform,
+  followTransform,
+  layoutExtent,
+  referenceProfile,
+  referenceReach,
+  referenceScale,
+  shownBounds,
 } from '@jbrowse/bandage-core/pipeline'
+import { REFERENCE_STRIP_ZONE_PX } from '@jbrowse/bandage-core/referenceStrip'
 import { buildGeometry } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { layoutGeometryInputs } from '@jbrowse/bandage-core/renderer/geometryInputs'
+import {
+  drawnSegments,
+  edgeOverruns,
+  referenceSegments,
+  scalesByWindow,
+  windowTranslateY,
+} from '@jbrowse/bandage-core/trackFit'
 import {
   GENE_ROW_PX,
   tubeMapGeneRows,
@@ -37,6 +49,8 @@ import { padded } from '@jbrowse/bandage-core/viewport'
 import { walkPosition } from '@jbrowse/bandage-core/walkKey'
 import { untracked } from 'mobx'
 
+import { cutRuleOf, hostWindow, paneWindow } from '../host'
+import { measureReadout } from '../readoutMeasure'
 import { sectionHeadersPx, sectionPlacement } from '../walkRowGroups'
 import { withHostViews } from './hostViews'
 import { fadeEntering } from './morph'
@@ -52,13 +66,45 @@ import {
 } from './paneBase'
 import { trackedDpr } from '../trackedDpr'
 
+import type { SubgraphRegion } from '../../GetSubgraph'
 import type { FacetGrid, FacetSetting } from '@jbrowse/bandage-core/facetGrid'
 import type {
   GeneGaps,
   RowPitch,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
+import type { TrackFit } from '@jbrowse/bandage-core/trackFit'
+import type { Graph, LayoutResult } from '@jbrowse/bandage-core/types'
 import type { LiftedWalk, WalkLift } from '@jbrowse/bandage-core/walkHighlight'
+
+function heldLayoutOf(
+  graph: Graph,
+  layout: LayoutResult,
+  region: SubgraphRegion | undefined,
+) {
+  const profile = referenceProfile(graph, layout.nodePositions)
+  return {
+    profile,
+    bounds: region && shownBounds(graph, layout, region),
+    segments: drawnSegments(graph, layout),
+    reference: referenceSegments(profile),
+  }
+}
+
+const landedLayouts = new WeakMap<
+  LayoutResult,
+  ReturnType<typeof heldLayoutOf>
+>()
+
+export function holdReference(
+  graph: Graph,
+  layout: LayoutResult,
+  region: SubgraphRegion | undefined,
+) {
+  if (!landedLayouts.has(layout)) {
+    landedLayouts.set(layout, heldLayoutOf(graph, layout, region))
+  }
+}
 
 export const TOOLTIP_INSET_PX = 8
 export const FACET_KEY_ROW_PX = 19
@@ -179,32 +225,66 @@ export const withFitViews = withHostViews
           })
         : undefined
     },
-    // What a hovered row's label and readout would say, while its rows are
-    // too thin to draw them
-    get hoveredWalkRowText() {
+    // The key's column down the pane's right edge. A faceted pane mounts no
+    // key, so its last measured size is stale; a tube map of reads keys
+    // marks that come and go with the fit's scale, so a column for them would
+    // refit the drawing it is measured from.
+    get keyColumnPx() {
+      return self.facetPanels || self.tubeMapReads
+        ? 0
+        : keyColumnPx({ legendSize: this.framedLegendSize })
+    },
+    get framedLegendSize() {
+      return self.keyFrame ?? self.legendSize
+    },
+    // How far the drawing, walk rows and their readouts reach: to the key's
+    // column
+    get drawingWidth() {
+      return self.paneWidth - this.keyColumnPx
+    },
+    // The height that shows every row of the key, and the drawing's own
+    // floor, which leaves room to hover a node and read its tooltip
+    get canvasFloor() {
+      return Math.max(
+        MIN_CANVAS_HEIGHT,
+        self.facetPanels
+          ? 0
+          : keyHeightPx({
+              legendSize: this.framedLegendSize,
+              referenceStripZonePx: self.referenceStripZonePx,
+            }),
+      )
+    },
+    // Row i's readout as the pane places it, measured as it is drawn
+    walkRowReadoutOf(i: number) {
       const bars = self.walkRowBars
-      const name = self.hoveredWalkRow
-      if (!bars || name === null || this.walkRowPitch?.readouts !== false) {
-        return undefined
-      }
-      const isReference = bars.reference.name === name
-      const row = isReference
-        ? bars.reference
-        : bars.rows.find(r => r.name === name)
-      return row
-        ? {
-            label: row.label,
-            readout: walkRowReadout(
-              row,
-              isReference ? undefined : bars.reference,
-              bars.unit,
-              row.call,
-            ),
-          }
+      return bars
+        ? walkRowReadoutAt(
+            bars,
+            i,
+            {
+              scaleX: self.scaleX,
+              translateX: self.translateX,
+              width: this.drawingWidth,
+              measure: measureReadout,
+            },
+            { comparing: self.rowVisitsNeeded },
+          )
+        : undefined
+    },
+    // A hovered row's label and its readout in full, while its rows are too
+    // thin to draw readouts or where its own readout is drawn cut short
+    get hoveredWalkRowText() {
+      const i = self.walkRowList.findIndex(r => r.name === self.hoveredWalkRow)
+      const row = self.walkRowList[i]
+      const at = row ? this.walkRowReadoutOf(i) : undefined
+      return row && at && (this.walkRowPitch?.readouts === false || at.cut)
+        ? { label: row.label, readout: at.text }
         : undefined
     },
     // The walk row under a pane point, as its index among the reference row
-    // and the rows below it, where the point is on its bar
+    // and the rows below it, where the point is on its bar or, for a readout
+    // drawn cut, between the bar's end and the readout's
     walkRowAt(screenX: number, screenY: number) {
       const bars = self.walkRowBars
       const pitch = this.walkRowPitch
@@ -219,17 +299,24 @@ export const withFitViews = withHostViews
       const row = self.walkRowList[i]
       const y = place.rowY(i) * self.scaleY + self.translateY
       const bp = (screenX - self.translateX) / self.scaleX - bars.origin
+      const at = row && pitch.readouts ? this.walkRowReadoutOf(i) : undefined
+      const endX = row
+        ? (bars.origin + barEnd(row)) * self.scaleX + self.translateX
+        : 0
+      const overCut =
+        !!at?.cut &&
+        screenX >= endX &&
+        screenX <= at.x + measureReadout(at.shown)
       return row &&
         Math.abs(screenY - y) <= pitch.barPx / 2 + 2 &&
-        bp >= 0 &&
-        bp <= barEnd(row)
+        ((bp >= 0 && bp <= barEnd(row)) || overCut)
         ? i
         : undefined
     },
     // Room over a tube map for the rows its genes need, one inside the
     // padding and one more for each further gene that overlaps it, and
-    // room for the reference strip. The legend floats over the drawing, as
-    // a JBrowse track's legend does, so the fit leaves it no room.
+    // room for the reference strip. The key has a column of its own beside
+    // the drawing, so it takes no room above.
     get fitPadTop() {
       const rows = tubeMapGeneRows(self.tubeMapGenes)
       return (
@@ -237,6 +324,20 @@ export const withFitViews = withHostViews
         Math.max(0, rows - 1) * GENE_ROW_PX +
         self.referenceStripZonePx
       )
+    },
+    // The pane a force layout is sized for, the one the fit maps it into:
+    // the width to the key's column, and the height the fit fills less the
+    // reference strip a linear view draws over it, which shows only once the
+    // layout lands
+    get layoutFit() {
+      return {
+        width: this.drawingWidth,
+        height:
+          this.fitRoom -
+          (self.host?.initialized && self.showReferenceStrip
+            ? REFERENCE_STRIP_ZONE_PX
+            : 0),
+      }
     },
     // A tube map on its own axis reads by panning along it, as in
     // sequenceTubeMap. Rather than shrink a long cut to a strip, the fit
@@ -316,19 +417,14 @@ export const withFitViews = withHostViews
       if (grid) {
         return Math.max(MIN_CANVAS_HEIGHT, grid.total + FACET_KEY_PX)
       }
-      // never shorter than the legend, which a flat drawing would clip
-      const floor = Math.max(
-        MIN_CANVAS_HEIGHT,
-        self.legendSize.height +
-          2 * LEGEND_INSET_PX +
-          self.referenceStripZonePx,
-      )
+      const floor = this.canvasFloor
       const pads = this.fitPads
       const padsY = pads.top + pads.bottom
       if (self.pixelRows) {
         return Math.min(ceiling, Math.max(floor, bounds.h + padsY))
       }
-      const usableWidth = self.paneWidth - pads.left - pads.right
+      const usableWidth =
+        self.paneWidth - this.keyColumnPx - pads.left - pads.right
       return bounds.w > 0 && usableWidth > 0
         ? Math.min(
             ceiling,
@@ -349,7 +445,7 @@ export const withFitViews = withHostViews
         : { width: self.paneWidth, height: this.canvasHeight }
     },
     // The fit's margins: a facet panel's all round, else room for the row
-    // labels and the genes and strip above
+    // labels, and the genes and strip above
     get fitPads() {
       return this.facetGrid
         ? {
@@ -370,42 +466,211 @@ export const withFitViews = withHostViews
       const { top, bottom } = this.fitPads
       return this.viewBox.height - top - bottom
     },
-    // Where the fit puts the drawing, or undefined until there is a layout
-    // and a measured canvas to fit it into
+    // A flipped view runs bp right to left, which a held cut's slide does not
+    get snapsHostCut() {
+      const { host, graphRegion } = self
+      const seen = host && hostWindow(host)
+      return (
+        !!host &&
+        cutRuleOf(self.chosenLayoutMode) === 'snapped' &&
+        !host.dynamicBlocks.contentBlocks.some(
+          b =>
+            b.reversed &&
+            (b.refName === graphRegion?.refName || b.refName === seen?.refName),
+        )
+      )
+    },
+    get followsWindow() {
+      const layout = self.layoutResult
+      return (
+        this.snapsHostCut &&
+        self.drawnLayoutMode === 'force' &&
+        !!layout &&
+        !layout.referenceAxis &&
+        !layout.pixelRows &&
+        !layout.tubeMap &&
+        !self.facetPanels
+      )
+    },
+    // How a drawing the window places meets the pane's height (core's
+    // trackFit). A pane of its own fits the whole cut; a track says.
+    get trackFit(): TrackFit {
+      return 'fit'
+    },
+    // The height a drawing at the window's scale keeps the window's reference
+    // inside: the pane's own, or the most a track grows to
+    get referenceRoom(): number {
+      return this.canvasHeight
+    },
+    get heldLayout() {
+      const { graph, layoutResult, graphRegion } = self
+      return graph && layoutResult && this.followsWindow
+        ? (landedLayouts.get(layoutResult) ??
+            heldLayoutOf(graph, layoutResult, graphRegion))
+        : undefined
+    },
+    get heldReference() {
+      return this.heldLayout?.profile
+    },
+    get heldBounds() {
+      return this.heldLayout?.bounds ?? this.layoutBounds
+    },
+    // fitPads where no facet grid tiles the pane, which a followed window
+    // never has, read without the grid so a track grown to the drawing does
+    // not read its own height
+    get followPads() {
+      return {
+        padLeft: this.fitPadLeft,
+        padTop: this.fitPadTop,
+        padRight: FIT_PADDING,
+        padBottom: FIT_PADDING,
+      }
+    },
+    get heldWindow() {
+      const { host } = self
+      return host && this.followsWindow ? hostWindow(host) : undefined
+    },
+    get viewSpan() {
+      return this.heldWindow?.span
+    },
+    get heldScale() {
+      const pieces = this.heldReference
+      const region = self.graphRegion
+      const bounds = this.heldBounds
+      const span = this.viewSpan
+      return pieces && region && bounds && span
+        ? scalesByWindow(this.trackFit)
+          ? referenceScale(
+              pieces,
+              region,
+              span,
+              this.drawingWidth,
+              this.referenceRoom,
+              this.followPads,
+            )
+          : cutScale(
+              pieces,
+              region,
+              span,
+              bounds,
+              this.drawingWidth,
+              this.canvasHeight,
+              this.followPads,
+            )
+        : undefined
+    },
+    // a window on another sequence puts the held cut past the pane's edge,
+    // and a view past its sequence's end lays its bp there as the ruler does
+    get windowTransform() {
+      const { graphRegion, layoutResult, host } = self
+      const seen = this.heldWindow
+      const ruler = seen && host ? paneWindow(host) : undefined
+      const pieces = this.heldReference
+      const scale = this.heldScale
+      const bounds = this.heldBounds
+      const held = this.heldLayout
+      const followed =
+        seen && ruler && pieces && scale !== undefined && bounds
+          ? followTransform(
+              pieces,
+              ruler,
+              scale,
+              bounds,
+              this.drawingWidth,
+              this.canvasHeight,
+              this.followPads,
+            )
+          : undefined
+      const placed =
+        seen && followed && held && bounds && scalesByWindow(this.trackFit)
+          ? {
+              ...followed,
+              translateY: windowTranslateY({
+                segments: held.segments,
+                reference: held.reference,
+                held: referenceReach(held.profile, seen),
+                scale: followed.scale,
+                translateX: followed.translateX,
+                bounds,
+                paneWidth: this.drawingWidth,
+                paneHeight: this.canvasHeight,
+                pads: this.followPads,
+              }),
+            }
+          : followed
+      return placed &&
+        layoutResult &&
+        (graphRegion?.refName !== seen?.refName ||
+          graphRegion?.assemblyName !== seen?.assemblyName)
+        ? {
+            ...placed,
+            translateX:
+              self.paneWidth +
+              this.drawingWidth -
+              placed.scale * layoutExtent(layoutResult.nodePositions).minX,
+          }
+        : placed
+    },
+    // Where the drawing runs past the pane's top, under the reference
+    // strip, or its bottom, for a drawing the window places
+    get edgeMarks() {
+      const held = this.followsWindow ? this.heldLayout : undefined
+      return held
+        ? edgeOverruns(
+            held.segments,
+            {
+              scale: self.scale,
+              translateX: self.translateX,
+              translateY: self.translateY,
+            },
+            this.drawingWidth,
+            { top: self.referenceStripZonePx, bottom: this.canvasHeight },
+          )
+        : undefined
+    },
+    get runsPastEdge() {
+      const marks = this.edgeMarks
+      return !!marks && marks.top.length + marks.bottom.length > 0
+    },
+    get drawingClip() {
+      return this.followsWindow
+        ? `inset(0px ${self.paneWidth - this.drawingWidth}px 0px 0px)`
+        : undefined
+    },
+    // Where the fit puts the drawing, beside the key, or undefined until
+    // there is a layout and a measured canvas to fit it into
     get fittedTransform() {
       const bounds = this.layoutBounds
-      const { width, height } = this.viewBox
+      const grid = this.facetGrid
+      const { width, height } = grid ?? {
+        width: this.drawingWidth,
+        height: this.canvasHeight,
+      }
       const pads = this.fitPads
-      return bounds
-        ? fitTransform(bounds, width, height, self.pixelRows, {
-            minScale: this.facetGrid ? 0 : this.minFitScale,
-            padLeft: pads.left,
-            padTop: pads.top,
-            padRight: pads.right,
-            padBottom: pads.bottom,
-          })
-        : undefined
+      return (
+        this.windowTransform ??
+        (bounds
+          ? fitTransform(bounds, width, height, self.pixelRows, {
+              minScale: this.facetGrid ? 0 : this.minFitScale,
+              padLeft: pads.left,
+              padTop: pads.top,
+              padRight: pads.right,
+              padBottom: pads.bottom,
+            })
+          : undefined)
+      )
     },
   }))
   .views(self => ({
-    // The corner the key takes: top right, or bottom left where the drawing
-    // runs under the top right and less of it under the bottom left. The fit
-    // gives the key no room of its own (e640b21): room shrank every drawing,
-    // and a hosted KIV-2 track's loops fill its height whatever the fit does.
-    get legendCorner() {
-      return legendCorner(self)
-    },
     // The hover tooltip's distance from the pane's right edge: in the corner,
-    // unless the legend reaches down into its room, and then beside it. A
-    // faceted pane mounts no legend, so its last measured size is stale.
+    // unless the key reaches down into its room, and then beside the key. A
+    // faceted pane mounts no key, so its last measured size is stale.
     get tooltipRightPx() {
-      const { width, height } = self.legendSize
-      const legendBottom = LEGEND_INSET_PX + self.referenceStripZonePx + height
       return !self.facetPanels &&
-        width > 0 &&
-        this.legendCorner === 'top-right' &&
-        legendBottom > self.canvasHeight - TOOLTIP_ROOM_PX
-        ? width + 2 * LEGEND_INSET_PX
+        self.legendSize.width > 0 &&
+        keyHeightPx(self) - LEGEND_INSET_PX >
+          self.canvasHeight - TOOLTIP_ROOM_PX
+        ? keyColumnPx(self)
         : TOOLTIP_INSET_PX
     },
   }))
@@ -416,12 +681,14 @@ export const withFitViews = withHostViews
       return padded(paneViewportOf(self), VIEWPORT_PANES_BUILT)
     },
     // The selection as a draw-time colour override, keyed by node so it
-    // survives a rebuild renumbering the batch. The hover is paintHover's,
-    // on a layer of its own.
+    // survives a rebuild renumbering the batch, and none while the drawing
+    // folds it. The hover is paintHover's, on a layer of its own.
     applySelection(b: Renderer) {
       const id = self.selectedNode
       b.setNodeHighlights(
-        id === null ? new Map() : new Map([[id, SELECT_BRIGHTEN]]),
+        id === null || self.folded.has(id)
+          ? new Map()
+          : new Map([[id, SELECT_BRIGHTEN]]),
       )
     },
     // the hovered node, unless the selection already lights it
@@ -494,15 +761,13 @@ export const withFitViews = withHostViews
         referenceRamp: self.referenceRamp,
         // passed so the shared edge-curve cache can tell a drag from a pan
         version: self.positionsVersion,
+        smallSites: self.smallSites,
       })
       const entering = self.morphEntering
       if (entering?.layout === layoutResult) {
         fadeEntering(batch, graph.edges, entering)
       }
       return { batch, viewportBounds }
-    },
-    get overlayLabels() {
-      return layoutLabels(self)
     },
     // where the hovered node sits on a lifted walk, while one is hovered
     hoveredOn(walk: LiftedWalk) {
@@ -523,20 +788,25 @@ export const withFitViews = withHostViews
             ? undefined
             : `${layoutModeByValue(self.chosenLayoutMode).label} draws a picture of its own, which the SVG export does not`
     },
-    // The drawing as a standalone SVG, fitted, with its genes, its lifted
-    // walks' keys, facet panels and the strip of walk rows; see figureSvg
+    // The drawing as a standalone SVG with its genes, its lifted walks' keys,
+    // facet panels and the strip of walk rows; see figureSvg. A track's is
+    // the scene its pane shows: the drawing beside the key at the track's
+    // height, framed as the screen frames it. A view's own pane fits it.
     figure() {
       const { graph, layoutResult } = self
+      const framed = !!self.host && !self.facetGrid
       return graph && layoutResult && !this.figureUnavailable
         ? figureSvg(graph, layoutResult, {
-            width: self.paneWidth,
-            height: self.paneCeiling,
+            width: framed ? self.drawingWidth : self.paneWidth,
+            height: framed ? self.canvasHeight : self.paneCeiling,
+            frame: framed ? self.screenTransform : undefined,
             walks: self.walkLayers,
             facet: self.facetSpec,
             colorScheme: self.effectiveColorScheme,
             nodeWidth: self.nodeWidth,
             edgeWidth: self.linkWidth,
             showDeletionEdges: self.showDeletionEdges,
+            smallSites: self.smallSites,
             linearLayout: self.linearLayout,
             contigThickness: self.contigThickness,
             connectorThickness: self.connectorThickness,

@@ -60,6 +60,7 @@ const keyStyle = {
 const FacetPanel = observer(function FacetPanel({
   model,
   lift,
+  index,
   width,
   height,
   cell,
@@ -68,6 +69,8 @@ const FacetPanel = observer(function FacetPanel({
 }: {
   model: GraphPaneModel
   lift: WalkLift
+  // its place among the model's facet drawings
+  index: number
   width: number
   height: number
   cell: { gridRow: number; gridColumn: number }
@@ -83,7 +86,7 @@ const FacetPanel = observer(function FacetPanel({
     }
     const renderer = new Canvas2DRenderer(canvas)
     const hover = new Canvas2DRenderer(hoverCanvas)
-    const drawing = computed(() => model.buildDrawing(lift, false))
+    const drawing = computed(() => model.facetDrawings?.[index])
     let uploaded: ReturnType<typeof model.buildDrawing>
     const disposers = [
       autorun(() => {
@@ -120,7 +123,7 @@ const FacetPanel = observer(function FacetPanel({
       renderer.dispose()
       hover.dispose()
     }
-  }, [canvas, hoverCanvas, model, lift])
+  }, [canvas, hoverCanvas, model, index])
 
   const label = model.walkLabel(walk.name)
   return (
@@ -185,6 +188,7 @@ const FacetPanels = observer(function FacetPanels({
           key={lift.walks[0]!.name}
           model={model}
           lift={lift}
+          index={i}
           width={width}
           height={height}
           cell={{

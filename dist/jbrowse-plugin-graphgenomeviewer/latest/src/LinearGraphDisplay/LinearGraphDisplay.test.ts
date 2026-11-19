@@ -1,4 +1,19 @@
-import { fittedTranslateY } from '@jbrowse/bandage-core/pipeline'
+import { createElement } from 'react'
+
+import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/keyColumn'
+import { NO_FOLD } from '@jbrowse/bandage-core/levelOfDetail'
+import {
+  cutScale,
+  fittedTranslateY,
+  referenceScale,
+  windowScale,
+} from '@jbrowse/bandage-core/pipeline'
+import {
+  REFERENCE_STRIP_ZONE_PX,
+  stripOverhang,
+  stripPixels,
+} from '@jbrowse/bandage-core/referenceStrip'
+import { TRACK_FIT_LABELS, grownHeight } from '@jbrowse/bandage-core/trackFit'
 import PluginManager from '@jbrowse/core/PluginManager'
 import {
   ConfigurationReference,
@@ -19,19 +34,27 @@ import SimpleFeature from '@jbrowse/core/util/simpleFeature'
 import { applyPatch, getType, types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
-import { reaction } from 'mobx'
+import { reaction, runInAction } from 'mobx'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import LinearGraphDisplayF from './index'
 import { FOLD_PX, coarseHandover } from './model'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
-import { paneBase } from '../GraphGenomeView/pane/paneBase'
+import GraphCanvas from '../GraphGenomeView/components/GraphCanvas'
+import { PaneSvgLayer } from '../GraphGenomeView/components/PaneLayer'
+import { hostWindow, snappedCut } from '../GraphGenomeView/host'
+import {
+  MIN_CANVAS_HEIGHT,
+  forceLayouts,
+  paneBase,
+} from '../GraphGenomeView/pane/paneBase'
 import graphGenomeViewModel from '../GraphGenomeView/viewModel'
 import GraphTrackF from '../GraphTrack/index'
 import RgfaTabixAdapterF from '../RgfaTabixAdapter/index'
 
 import type { LinearGraphDisplayModel } from './model'
 import type { SubgraphRegion, SubgraphTier } from '../GetSubgraph'
+import type { EngineRequest } from '@jbrowse/bandage-core/pipeline'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 import type { MenuItem } from '@jbrowse/core/ui'
 import type { Instance } from '@jbrowse/mobx-state-tree'
@@ -47,6 +70,8 @@ const COARSE_TIER: Record<string, unknown> = {
 }
 // the linear view's coarse blocks settle behind a debounce
 const SETTLE_MS = 700
+// where loopInside hangs its chain, the middle of the windows tests open on
+const LOOP_BP = 1_030_000
 
 // A backbone of `step`-long segments with a small allele bubble on every
 // second one; past 1.5 Mb the fine tier's bubbles run eight ranks deep, so a
@@ -56,6 +81,8 @@ function syntheticGraph(
   tier: SubgraphTier,
   region: SubgraphRegion,
   paths = false,
+  loopAtStart = false,
+  loopInside = false,
 ) {
   const step = tier === 'fine' ? 10_000 : 250_000
   const lines = ['H\tVN:Z:1.0']
@@ -88,6 +115,35 @@ function syntheticGraph(
       lines.push(`L\t${from}\t+\t${tier[0]}${k + 1}\t+\t0M`)
     }
   }
+  // a chain off the reference node the cut's start runs through, so it
+  // hangs outside every window the cut holds
+  if (loopAtStart && tier === 'fine') {
+    const id = `${tier[0]}${first}`
+    let from = id
+    for (let rank = 1; rank <= 24; rank++) {
+      const allele = `${id}l${rank}`
+      lines.push(
+        `S\t${allele}\t*\tLN:i:${step}\tSN:Z:HG${rank}#1#${REF}\tSO:i:${first * step}\tSR:i:${rank}`,
+        `L\t${from}\t+\t${allele}\t+\t0M`,
+      )
+      from = allele
+    }
+  }
+  // a chain off the reference node at LOOP_BP, which every window over it
+  // shows
+  const loopAt = Math.floor(LOOP_BP / step)
+  if (loopInside && tier === 'fine' && loopAt > first && loopAt < last - 1) {
+    const id = `${tier[0]}${loopAt}`
+    let from = id
+    for (let rank = 1; rank <= 24; rank++) {
+      const allele = `${id}l${rank}`
+      lines.push(
+        `S\t${allele}\t*\tLN:i:${step}\tSN:Z:HG${rank}#1#${REF}\tSO:i:${loopAt * step}\tSR:i:${rank}`,
+        `L\t${from}\t+\t${allele}\t+\t0M`,
+      )
+      from = allele
+    }
+  }
   if (paths) {
     lines.push(`P\t${REF}\t${ref.join(',')}\t*`, `P\tHG1\t${alt.join(',')}\t*`)
   }
@@ -101,17 +157,41 @@ interface Cut {
   hops?: number
 }
 
-const FORCE_LAYOUT = {
-  nodePositions: {
-    'f100+': [
-      { x: 0, y: 0 },
-      { x: 400, y: 0 },
-    ],
-    'f101+': [
-      { x: 500, y: 300 },
-      { x: 900, y: 300 },
-    ],
-  },
+// The engine's request laid out where it was seeded: the reference along x
+// in bp order and each node off it a lane below, each a line short of the
+// next seed, but a chain stacked straight up from the node it hangs off. A
+// `zigzag` lays each reference node rising that many units up for each along
+// and the next falling as far, which no turn of the drawing lays flat.
+function fakeEngine({ nodes }: EngineRequest['graph'], zigzag = 0) {
+  const seeded = new Map(nodes.map(({ id, x = 0 }) => [id, x]))
+  return {
+    nodePositions: Object.fromEntries(
+      nodes.map(({ id, length, x = 0, y = 0 }) => {
+        const step = Number(/l(\d+)[+-]?$/.exec(id)?.[1] ?? 0)
+        const rise = length * 0.015
+        const from = seeded.get(id.replace(/l\d+(?=[+-]?$)/, '')) ?? x
+        return [
+          id,
+          step > 0
+            ? [
+                { x: from, y: -rise * (step - 1) },
+                { x: from, y: -rise * step },
+              ]
+            : [
+                { x, y: y - zigzag * rise * zigLift(id, false) },
+                { x: x + rise, y: y - zigzag * rise * zigLift(id, true) },
+              ],
+        ]
+      }),
+    ),
+  }
+}
+
+// A reference node of even number rises to its end, and one of odd number
+// falls from its start; any other node lies flat
+function zigLift(id: string, atEnd: boolean) {
+  const k = /^[fc](\d+)[+-]?$/.exec(id)?.[1]
+  return k === undefined ? 0 : Number(k) % 2 === (atEnd ? 0 : 1) ? 1 : 0
 }
 
 function fakeRenderer() {
@@ -187,8 +267,14 @@ function createEnvironment({
   coarse = COARSE_TIER,
   paths = false,
   geneLaneFilter = undefined as string[] | undefined,
+  contig = CONTIG,
+  loopAtStart = false,
+  loopInside = false,
+  zigzag = 0,
 } = {}) {
   console.warn = vi.fn()
+  // reduced motion, so a re-cut lands without a morph's frames
+  vi.stubGlobal('matchMedia', () => ({ matches: true }))
   const pluginManager = new PluginManager()
   RgfaTabixAdapterF(pluginManager)
   GbzBaseSyntenyAdapterF(pluginManager)
@@ -354,7 +440,7 @@ function createEnvironment({
   }
 
   const assemblyRegions = [
-    { refName: REF, start: 0, end: CONTIG, assemblyName: ASM },
+    { refName: REF, start: 0, end: contig, assemblyName: ASM },
   ]
   const assembly = {
     name: ASM,
@@ -395,6 +481,7 @@ function createEnvironment({
           forcedByteBudget?: number
         }
         options?: { engine: string }
+        graph?: EngineRequest['graph']
         signal?: AbortSignal
         adapterConfig?: { type?: string }
       },
@@ -439,8 +526,11 @@ function createEnvironment({
       if (method === 'GetGraphHaplotypes') {
         return Promise.resolve(haplotypeNames)
       }
-      if (method === 'GraphComputeLayout') {
-        return Promise.resolve({ result: FORCE_LAYOUT, duration: 1 })
+      if (method === 'GraphComputeLayout' && args.graph) {
+        return Promise.resolve({
+          result: fakeEngine(args.graph, zigzag),
+          duration: 1,
+        })
       }
       if (method === 'CoreGetFeatures') {
         return Promise.resolve(
@@ -460,7 +550,13 @@ function createEnvironment({
       if (args.signal) {
         signals.push(args.signal)
       }
-      const gfa = syntheticGraph(cut.tier, cut.region, paths)
+      const gfa = syntheticGraph(
+        cut.tier,
+        cut.region,
+        paths,
+        loopAtStart,
+        loopInside,
+      )
       const hold = held
       return hold
         ? new Promise<string>(resolve => {
@@ -903,12 +999,11 @@ test('a layout whose x is not reference bp draws its own viewport of the window 
   expect(pane.hostPlacesX).toBe(false)
   expect(pane.viewportOwner).not.toBe('host')
   expect(cuts).toHaveLength(2)
-  expect(cuts[1]!.region).toMatchObject({ start: 1_000_000, end: 1_060_000 })
+  expect(cuts[1]!.region).toMatchObject({ start: 966_656, end: 1_064_960 })
   view.scrollTo(2_000_000 / view.bpPerPx)
   await wait(SETTLE_MS)
   expect(cuts).toHaveLength(3)
-  expect(cuts[2]!.region.start).toBe(2_000_000)
-  expect(Math.abs(cuts[2]!.region.end - 2_060_000)).toBeLessThanOrEqual(1)
+  expect(cuts[2]!.region).toMatchObject({ start: 1_982_464, end: 2_080_768 })
   await pane.switchLayout('auto')
   await wait(SETTLE_MS)
   expect(pane.hostPlacesX).toBe(true)
@@ -936,15 +1031,18 @@ test('walk rows cut every snarl a GBZ walk takes past the window, so a walk come
   await pane.switchLayout('force')
   await wait(SETTLE_MS)
   const before = cuts.length
+  const forced = pane.graph
   expect(cuts.at(-1)!.snarls).toBeUndefined()
   await pane.switchLayout('walkrows')
   await wait(SETTLE_MS)
   expect(cuts).toHaveLength(before + 1)
   expect(cuts.at(-1)!.snarls).toBe('overlapping')
+  // the force cut is kept, so coming back fetches nothing
   await pane.switchLayout('force')
   await wait(SETTLE_MS)
-  expect(cuts).toHaveLength(before + 2)
-  expect(cuts.at(-1)!.snarls).toBeUndefined()
+  expect(cuts).toHaveLength(before + 1)
+  expect(pane.graph).toBe(forced)
+  expect(pane.cutOptions.snarls).toBeUndefined()
 })
 
 // A walk file cuts the same whatever the snarl option says
@@ -959,7 +1057,7 @@ test('walk rows on an rGFA track cut for the step budget, not for snarls', async
   expect(cuts.at(-1)!.snarls).toBeUndefined()
 })
 
-test('a launch in the force layout cuts the window alone', async () => {
+test('a launch in the force layout cuts the snapped window', async () => {
   const { view, cuts } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
@@ -975,12 +1073,472 @@ test('a launch in the force layout cuts the window alone', async () => {
   display.startRenderingBackend(fakeRenderer())
   await wait(SETTLE_MS)
   expect(cuts).toHaveLength(1)
-  expect(cuts[0]!.region).toMatchObject({ start: 1_000_000, end: 1_060_000 })
+  expect(cuts[0]!.region).toMatchObject({ start: 966_656, end: 1_064_960 })
 })
+
+async function forceGraph({
+  windowStart = 1_000_000,
+  windowBp = 60_000,
+  paths = false,
+  contig = CONTIG,
+  track = 'graph',
+  loopAtStart = false,
+  loopInside = false,
+  zigzag = 0,
+} = {}) {
+  const env = createEnvironment({
+    paths,
+    contig,
+    loopAtStart,
+    loopInside,
+    zigzag,
+  })
+  const { view } = env
+  view.zoomTo(windowBp / WIDTH_PX)
+  view.scrollTo(windowStart / view.bpPerPx)
+  view.showTrack(track, {}, { type: 'LinearGraphDisplay', layoutMode: 'force' })
+  const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  const layouts = () =>
+    env.rpcCall.mock.calls.filter(
+      ([, method]) => method === 'GraphComputeLayout',
+    ).length
+  const panTo = async (start: number) => {
+    view.scrollTo(start / view.bpPerPx)
+    await wait(SETTLE_MS)
+  }
+  return { ...env, pane, layouts, panTo }
+}
+
+// where the drawing puts reference bp: on the node holding it, inside the
+// window whichever end of the window it is
+function screenXOf(pane: LinearGraphDisplayModel, bp: number, end = false) {
+  const node = pane.graph?.nodes.find(
+    n =>
+      n.stable?.rank === 0 &&
+      (end
+        ? n.stable.start < bp && bp <= n.stable.start + n.length
+        : n.stable.start <= bp && bp < n.stable.start + n.length),
+  )
+  const line = node && pane.nodePositions?.[node.id]
+  const [a, b] = line ?? []
+  return node?.stable && a && b
+    ? (a.x + ((b.x - a.x) * (bp - node.stable.start)) / node.length) *
+        pane.scale +
+        pane.translateX
+    : undefined
+}
+
+function placement(pane: LinearGraphDisplayModel) {
+  return {
+    cut: pane.cutRegion,
+    layout: pane.layoutResult,
+    scale: pane.scale,
+    translateX: pane.translateX,
+    translateY: pane.translateY,
+  }
+}
+
+test('a force layout does not cut again for a pan inside its snapped cut', async () => {
+  const { view, pane, cuts, layouts, panTo } = await forceGraph()
+  expect(cuts).toHaveLength(1)
+  const layout = pane.layoutResult
+  const laid = layouts()
+  await panTo(1_002_000)
+  await panTo(980_000)
+  view.horizontalScroll(-100)
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(1)
+  expect(layouts()).toBe(laid)
+  expect(pane.layoutResult).toBe(layout)
+})
+
+test("the reference at the window's centre is drawn at the track's centre at every step of a pan inside the cut, the window's stretch its share of the widest stretch as wide as the view", async () => {
+  const { view, pane, cuts } = await forceGraph()
+  const { left, right } = pane.fitPads
+  const centre = (left + pane.drawingWidth - right) / 2
+  const scale = pane.scale
+  for (const start of [1_000_000, 1_001_000, 985_000, 975_000, 970_000]) {
+    view.scrollTo(start / view.bpPerPx)
+    const seen = hostWindow(pane.host!)!
+    const x0 = screenXOf(pane, seen.start)!
+    const x1 = screenXOf(pane, seen.end, true)!
+    expect((x0 + x1) / 2).toBeCloseTo(centre, 6)
+    expect(x1 - x0).toBeCloseTo(pane.drawingWidth - left - right, 6)
+    expect(pane.scale / scale).toBeCloseTo(1, 12)
+    await wait(SETTLE_MS)
+  }
+  expect(cuts).toHaveLength(1)
+})
+
+test("a view past its sequence's start draws the reference's start where the ruler puts bp 0, so a pan there slides the drawing as one inside does", async () => {
+  const { view, pane, cuts } = await forceGraph({ windowStart: 0 })
+  const { left, right } = pane.fitPads
+  const usable = pane.drawingWidth - left - right
+  for (const px of [0, 50, 100]) {
+    view.scrollTo(-px)
+    expect(view.offsetPx).toBeCloseTo(-px, 9)
+    expect(screenXOf(pane, 0)).toBeCloseTo(left + (usable * px) / WIDTH_PX, 6)
+    await wait(SETTLE_MS)
+  }
+  expect(cuts).toHaveLength(1)
+})
+
+// The window's stretch of the reference and every node off it anchored
+// inside the window, in pane px
+function windowInk(pane: LinearGraphDisplayModel) {
+  const seen = hostWindow(pane.host!)!
+  const points: { x: number; y: number }[] = []
+  for (const node of pane.graph!.nodes) {
+    const line = pane.nodePositions?.[node.id] ?? []
+    const start = node.stable?.start ?? -1
+    const [a, b] = line
+    if (node.stable?.rank === 0 && a && b) {
+      const lo = Math.max(seen.start, start)
+      const hi = Math.min(seen.end, start + node.length)
+      for (const bp of hi > lo ? [lo, hi] : []) {
+        const f = (bp - start) / node.length
+        points.push(
+          pane.toScreen({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }),
+        )
+      }
+    } else if (start >= seen.start && start < seen.end) {
+      for (const p of line) {
+        points.push(pane.toScreen(p))
+      }
+    }
+  }
+  return {
+    x0: points.reduce((m, p) => Math.min(m, p.x), Infinity),
+    x1: points.reduce((m, p) => Math.max(m, p.x), -Infinity),
+    y0: points.reduce((m, p) => Math.min(m, p.y), Infinity),
+    y1: points.reduce((m, p) => Math.max(m, p.y), -Infinity),
+  }
+}
+
+test('a zoom inside one level magnifies the held drawing as the view does, step by step, about the window centre, and clips nothing in the window', async () => {
+  for (const paths of [false, true]) {
+    const { view, pane, cuts } = await forceGraph({ paths })
+    const cut = pane.cutRegion
+    const { top, bottom } = pane.fitPads
+    const first = pane.scale
+    let before = { scale: first, span: 60_000 }
+    for (const span of [58_000, 56_000, 54_000, 52_000, 50_000, 48_000]) {
+      view.zoomTo(span / WIDTH_PX, WIDTH_PX / 2)
+      await wait(SETTLE_MS)
+      expect(pane.cutRegion).toEqual(cut)
+      expect(pane.scale).toBeGreaterThanOrEqual(before.scale)
+      if (!paths) {
+        expect(pane.scale / before.scale).toBeCloseTo(before.span / span, 9)
+      }
+      const ink = windowInk(pane)
+      expect(ink.x0).toBeGreaterThanOrEqual(0)
+      expect(ink.x1).toBeLessThanOrEqual(pane.drawingWidth)
+      expect(ink.y0).toBeGreaterThanOrEqual(top - 1e-6)
+      expect(ink.y1).toBeLessThanOrEqual(pane.canvasHeight - bottom + 1e-6)
+      before = { scale: pane.scale, span }
+    }
+    expect(before.scale).toBeGreaterThan(1.1 * first)
+    expect(cuts).toHaveLength(1)
+  }
+}, 30_000)
+
+test('a pan at any one width inside the level is a pure translation, and zoom then pan lands where pan then zoom does', async () => {
+  const { view, pane, panTo } = await forceGraph({ paths: true })
+  for (const span of [60_000, 54_000, 48_000]) {
+    view.zoomTo(span / WIDTH_PX, WIDTH_PX / 2)
+    await wait(SETTLE_MS)
+    const { scale, translateY } = pane
+    for (const start of [1_000_000, 1_002_000, 990_000]) {
+      view.scrollTo(start / view.bpPerPx)
+      expect(pane.scale / scale).toBeCloseTo(1, 12)
+      expect(pane.translateY).toBeCloseTo(translateY, 9)
+    }
+    await wait(SETTLE_MS)
+  }
+  const at = (p: LinearGraphDisplayModel) => ({
+    scale: p.scale,
+    translateX: p.translateX,
+    translateY: p.translateY,
+  })
+  await panTo(1_000_000)
+  view.zoomTo(60_000 / WIDTH_PX, WIDTH_PX / 2)
+  await wait(SETTLE_MS)
+  await panTo(1_001_000)
+  const zoomThenPan = at(pane)
+  view.zoomTo(54_000 / WIDTH_PX, WIDTH_PX / 2)
+  await panTo(995_000)
+  view.zoomTo(60_000 / WIDTH_PX, WIDTH_PX / 2)
+  await wait(SETTLE_MS)
+  await panTo(1_001_000)
+  const panThenZoom = at(pane)
+  expect(panThenZoom.scale).toBeCloseTo(zoomThenPan.scale, 9)
+  expect(panThenZoom.translateX).toBeCloseTo(zoomThenPan.translateX, 6)
+  expect(panThenZoom.translateY).toBeCloseTo(zoomThenPan.translateY, 6)
+}, 30_000)
+
+// a track as short as it goes leaves the cut's height, rather than its
+// width, to set the scale
+async function heldSteps(height: number | undefined) {
+  const windowBp = 60_000
+  const { view, pane, layouts } = await forceGraph({ paths: true })
+  if (height) {
+    pane.setHeight(height)
+  }
+  const { top, bottom } = pane.fitPads
+  const heightScale = (pane.canvasHeight - top - bottom) / pane.layoutBounds!.h
+  const binds = pane.scale < heightScale - 1e-9 ? 'width' : 'height'
+  const steps: { scale: number; translateY: number; same: boolean }[] = []
+  let layout = pane.layoutResult
+  for (let i = 1; i <= 20; i++) {
+    view.scrollTo((1_000_000 + i * 0.05 * windowBp) / view.bpPerPx)
+    await wait(SETTLE_MS)
+    steps.push({
+      scale: pane.scale,
+      translateY: pane.translateY,
+      same: pane.layoutResult === layout,
+    })
+    layout = pane.layoutResult
+  }
+  return { binds, steps, layouts: layouts() }
+}
+
+test('every held step of a 20-step pan is a pure translation, where the width sets the scale and where the height does', async () => {
+  for (const [height, binds] of [
+    [undefined, 'width'],
+    [MIN_CANVAS_HEIGHT, 'height'],
+  ] as const) {
+    const held = await heldSteps(height)
+    expect(held.binds).toBe(binds)
+    const pairs = held.steps
+      .slice(1)
+      .map((step, i) => ({ step, before: held.steps[i]! }))
+      .filter(({ step }) => step.same)
+    expect(pairs.length).toBeGreaterThanOrEqual(15)
+    for (const { step, before } of pairs) {
+      expect(step.scale / before.scale).toBeCloseTo(1, 12)
+      expect(step.translateY).toBeCloseTo(before.translateY, 9)
+    }
+  }
+}, 60_000)
+
+test('a force layout draws a window the same way however the view came to it', async () => {
+  const { view, pane, cuts, panTo } = await forceGraph({ paths: true })
+  await panTo(1_001_000)
+  const fromTheLeft = placement(pane)
+  await panTo(2_000_000)
+  await panTo(1_001_000)
+  const fromTheRight = placement(pane)
+  expect(fromTheRight.cut).toEqual(fromTheLeft.cut)
+  expect(fromTheRight.scale).toBeCloseTo(fromTheLeft.scale, 9)
+  expect(fromTheRight.translateX).toBeCloseTo(fromTheLeft.translateX, 6)
+  expect(fromTheRight.translateY).toBeCloseTo(fromTheLeft.translateY, 6)
+  expect(pane.cutRegion).toMatchObject({ start: 966_656, end: 1_064_960 })
+  expect(cuts).toHaveLength(2)
+
+  const centre = view.offsetPx + WIDTH_PX / 2
+  view.zoomTo(view.bpPerPx * 4, WIDTH_PX / 2)
+  await wait(SETTLE_MS)
+  expect(pane.cutRegion).not.toEqual(fromTheLeft.cut)
+  view.zoomTo(view.bpPerPx / 4, WIDTH_PX / 2)
+  await wait(SETTLE_MS)
+  expect(view.offsetPx + WIDTH_PX / 2).toBeCloseTo(centre, 6)
+  const zoomedBack = placement(pane)
+  expect(zoomedBack.cut).toEqual(fromTheLeft.cut)
+  expect(zoomedBack.scale).toBeCloseTo(fromTheLeft.scale, 9)
+  expect(zoomedBack.translateX).toBeCloseTo(fromTheLeft.translateX, 6)
+  expect(zoomedBack.translateY).toBeCloseTo(fromTheLeft.translateY, 6)
+})
+
+test('a snapped cut over the node limit falls back to the window alone, which a view always gets there however it came', async () => {
+  const { view, pane, cuts, panTo } = await forceGraph({ paths: true })
+  pane.setMaxGraphNodes(12)
+  await wait(SETTLE_MS)
+  const snappedAt = (start: number) =>
+    cuts.filter(c => c.region.start === start).length
+  expect(snappedAt(966_656)).toBeGreaterThan(0)
+  expect(pane.cutRegion).toMatchObject({ start: 1_000_000, end: 1_060_000 })
+  expect(pane.error).toBeUndefined()
+  expect(pane.graph!.nodes.length).toBeLessThanOrEqual(12)
+  const first = placement(pane)
+  const asked = snappedAt(966_656)
+
+  await panTo(1_200_000)
+  expect(pane.cutRegion).toMatchObject({ start: 1_200_000, end: 1_260_000 })
+  expect(pane.error).toBeUndefined()
+  await panTo(1_000_000)
+  const back = placement(pane)
+  expect(back.cut).toEqual(first.cut)
+  expect(back.scale).toBeCloseTo(first.scale, 9)
+  expect(back.translateX).toBeCloseTo(first.translateX, 6)
+  expect(back.translateY).toBeCloseTo(first.translateY, 6)
+  expect(snappedAt(966_656)).toBe(asked)
+  expect(view.bpPerPx).toBe(60)
+
+  pane.setMaxGraphNodes(1000)
+  await wait(SETTLE_MS)
+  expect(pane.cutRegion).toMatchObject({ start: 966_656, end: 1_064_960 })
+})
+
+test('a snapped cut the adapter refuses over its node limit falls back to the window alone, with no zoom-in notice', async () => {
+  const env = createEnvironment({ paths: true })
+  env.setDenseAbove(80_000)
+  const { view, cuts } = env
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack(
+    'walks',
+    {},
+    { type: 'LinearGraphDisplay', layoutMode: 'force' },
+  )
+  const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(cuts.map(c => c.region.start)).toEqual([966_656, 1_000_000])
+  expect(pane.cutRegion).toMatchObject({ start: 1_000_000, end: 1_060_000 })
+  expect(pane.dense).toBeUndefined()
+  expect(pane.displayPhase).not.toBe('tooLarge')
+  expect(pane.graph).toBeDefined()
+})
+
+test('a snapped cut panned back to is drawn again without a fetch or a layout, for the last four cuts', async () => {
+  const { pane, cuts, layouts, panTo } = await forceGraph()
+  const first = { graph: pane.graph, layout: pane.layoutResult }
+  await panTo(1_100_000)
+  expect(cuts).toHaveLength(2)
+  await panTo(1_000_000)
+  expect(cuts).toHaveLength(2)
+  expect(layouts()).toBe(2)
+  expect(pane.graph).toBe(first.graph)
+  expect(pane.layoutResult).toBe(first.layout)
+
+  for (const start of [1_100_000, 1_200_000, 1_300_000, 1_400_000]) {
+    await panTo(start)
+  }
+  expect(cuts).toHaveLength(5)
+  await panTo(1_000_000)
+  expect(cuts).toHaveLength(6)
+  expect(pane.graph).not.toBe(first.graph)
+})
+
+test('a pan inside the held cut keeps the reference strip whole and true to the linear view, with edge marks where the graph runs on', async () => {
+  const { view, pane, holdCuts } = await forceGraph()
+  holdCuts()
+  view.horizontalScroll(50)
+  await wait(SETTLE_MS)
+  const frame = pane.hostBpFrame!
+  const blocks = pane.referenceStripBlocks
+  expect(pane.referenceStripShown).toBe(true)
+  for (const b of blocks) {
+    expect(b.bp0 * frame.scale + frame.translateX).toBeCloseTo(
+      lgvX(view, b.bp0),
+      6,
+    )
+  }
+  const pixels = stripPixels(blocks, frame, pane.paneWidth, 1)
+  expect(pixels[0]!.x0).toBeLessThanOrEqual(0)
+  expect(pixels.at(-1)!.x1).toBeGreaterThanOrEqual(pane.paneWidth)
+  const over = stripOverhang(blocks, frame, pane.paneWidth)
+  expect(over.left).toBeGreaterThan(0)
+  expect(over.right).toBeGreaterThan(0)
+  expect(pane.referenceStripOverhangs).toBe(true)
+})
+
+test('the reference strip draws no line to a selected node the drawing folds', async () => {
+  const { pane } = await forceGraph()
+  const node = pane.graph!.nodes.find(n => pane.nodeSpan(n.id))!.id
+  pane.setSelectedNode(node)
+  expect(pane.referenceStripLit?.anchor).toBeDefined()
+  const { batch, viewportBounds } = pane.buildDrawing(undefined, false)!
+  pane.setGeometryMetrics(
+    0,
+    { ...batch, collapsed: { ...NO_FOLD, nodes: new Set([node]) } },
+    { scale: pane.scale, bounds: viewportBounds },
+  )
+  expect(pane.referenceStripLit).toMatchObject({ anchor: undefined })
+})
+
+test('a drawing placed by its window is clipped at the key column it runs under', async () => {
+  const { pane, panTo } = await forceGraph()
+  await panTo(970_000)
+  pane.setLegendSize({ width: 120, height: 40 })
+  await wait(0)
+  const key = pane.paneWidth - pane.drawingWidth
+  expect(key).toBe(120 + 2 * LEGEND_INSET_PX)
+  expect(pane.drawingClip).toBe(`inset(0px ${key}px 0px 0px)`)
+  const xs = Object.values(pane.nodePositions ?? {}).flatMap(line =>
+    line.map(p => p.x * pane.scale + pane.translateX),
+  )
+  expect(xs.some(x => x > pane.drawingWidth)).toBe(true)
+  await pane.switchLayout('auto')
+  await wait(SETTLE_MS)
+  expect(pane.drawingClip).toBeUndefined()
+})
+
+test("a track's SVG export is the scene its pane shows: the drawing beside the key at the track's height, framed as the screen frames it", async () => {
+  const { pane, panTo } = await forceGraph()
+  await panTo(970_000)
+  pane.setLegendSize({ width: 120, height: 40 })
+  await wait(0)
+  const svg = pane.figure()!
+  expect(svg).toContain(
+    `width="${pane.drawingWidth}" height="${pane.canvasHeight}">`,
+  )
+  expect(pane.canvasHeight).toBeLessThan(pane.paneCeiling)
+  const px = (v: number) => +v.toFixed(1)
+  const drawnAt = (pane.graph?.nodes ?? [])
+    .filter(n => n.stable?.rank === 0)
+    .map(n => pane.nodePositions?.[n.id]?.[0])
+    .filter(p => p !== undefined)
+    .map(
+      p =>
+        `M${px(p.x * pane.scaleX + pane.translateX)} ${px(p.y * pane.scaleY + pane.translateY)}L`,
+    )
+  expect(drawnAt.length).toBeGreaterThan(0)
+  expect(drawnAt.some(d => svg.includes(d))).toBe(true)
+})
+
+test('an rGFA force track folds by its snap level, so a zoom inside one cut folds as a fresh view of it does', async () => {
+  const { view, pane, cuts } = await forceGraph()
+  const foldAt = (span: number) =>
+    Math.round((FOLD_PX * 2 ** (Math.ceil(Math.log2(span) * 2) / 2)) / WIDTH_PX)
+  expect(pane.cutFoldBp).toBe(foldAt(60_000))
+  view.zoomTo(50_000 / WIDTH_PX, WIDTH_PX / 2)
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(1)
+  expect(pane.cutFoldBp).toBe(foldAt(50_000))
+  const centre = view.offsetPx * view.bpPerPx + 25_000
+  const fresh = await forceGraph({
+    windowStart: centre - 25_000,
+    windowBp: 50_000,
+  })
+  expect(fresh.pane.cutRegion).toEqual(pane.cutRegion)
+  expect(fresh.pane.cutFoldBp).toBe(pane.cutFoldBp)
+})
+
+test('a 20-step pan at GSTM1 and at the amylase locus lays the graph out at most three times', async () => {
+  for (const [start, end] of [
+    [109_670_011, 109_705_011],
+    [103_540_000, 103_780_000],
+  ] as const) {
+    const span = end - start
+    const offset = (i: number) => Math.round((i - 10) * 0.05 * span)
+    const { layouts, panTo } = await forceGraph({
+      windowStart: start + offset(0),
+      windowBp: span,
+      contig: 250_000_000,
+    })
+    for (let i = 1; i <= 20; i++) {
+      await panTo(start + offset(i))
+    }
+    expect(layouts()).toBeLessThanOrEqual(3)
+  }
+}, 60_000)
 
 // Reset track settings, undo and the config editor write the deletions
 // layer to the config, as setSlot does here
-test('a force track lays out with the stress engine by default, and an engine setting from anywhere lays it out again', async () => {
+test('a force track lays out with the FMMM engine by default, and an engine setting from anywhere lays it out again', async () => {
   const { view, rpcCall } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
@@ -999,17 +1557,51 @@ test('a force track lays out with the stress engine by default, and an engine se
     rpcCall.mock.calls
       .filter(c => c[1] === 'GraphComputeLayout')
       .map(c => c[2].options?.engine)
-  expect(engines()).toEqual(['stress'])
+  expect(engines()).toEqual(['fmmm'])
 
-  display.setLayoutEngine('fmmm')
+  display.setLayoutEngine('stress')
   await vi.waitFor(() => {
-    expect(engines()).toEqual(['stress', 'fmmm'])
+    expect(engines()).toEqual(['fmmm', 'stress'])
   })
 
   display.configuration.setSlot('layers', { deletions: false })
   await vi.waitFor(() => {
-    expect(engines()).toEqual(['stress', 'fmmm', 'fmmm'])
+    expect(engines()).toEqual(['fmmm', 'stress', 'stress'])
   })
+})
+
+test('a force track lays out for the pane it fits the drawing to: the width to the key column, and the track height less the reference strip', async () => {
+  const sized = vi.spyOn(forceLayouts, 'layout')
+  const { view } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  view.showTrack(
+    'graph',
+    {},
+    { type: 'LinearGraphDisplay', layoutMode: 'force' },
+  )
+  const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  const fits = () => sized.mock.calls.map(c => c[3])
+  expect(fits()).toEqual([
+    {
+      width: display.paneWidth,
+      height: 300 - REFERENCE_STRIP_ZONE_PX,
+    },
+  ])
+
+  display.setLegendSize({ width: 200, height: 100 })
+  display.resizeHeight(100)
+  display.setLayoutEngine('stress')
+  await vi.waitFor(() => {
+    expect(fits()).toHaveLength(2)
+  })
+  expect(fits()[1]).toEqual({
+    width: display.paneWidth - (200 + 2 * LEGEND_INSET_PX),
+    height: 400 - REFERENCE_STRIP_ZONE_PX,
+  })
+  sized.mockRestore()
 })
 
 test('the drawing is the track height, and resizing the track resizes it', async () => {
@@ -1018,6 +1610,39 @@ test('the drawing is the track height, and resizing the track resizes it', async
   expect(display.canvasHeight).toBe(300)
   display.resizeHeight(-100)
   expect(display.canvasHeight).toBe(200)
+})
+
+// KIV-2 and AMY2A lost the key's last row, "graph runs past this edge", to
+// the track's 300 px
+test('a key taller than the track grows the track to show its last row, and a shrink after stays', async () => {
+  const { display } = await shownGraph()
+  expect(display.height).toBe(300)
+  display.setLegendSize({ width: 200, height: 330 })
+  expect(display.height).toBe(330 + 2 * LEGEND_INSET_PX)
+  expect(display.canvasHeight).toBe(display.height)
+  // the labels wait for the floor to be answered, which it is at once
+  expect(display.answeredKeyFloor).toBe(display.canvasFloor)
+  display.setLegendSize({ width: 200, height: 100 })
+  expect(display.answeredKeyFloor).toBe(display.canvasFloor)
+
+  display.resizeHeight(-100)
+  expect(display.height).toBe(242)
+})
+
+test('a hosted drawing placed by its window lays the window beside the key, not under it', async () => {
+  const { pane } = await shownGraph()
+  await pane.switchLayout('force')
+  await wait(SETTLE_MS)
+  pane.setLegendSize({ width: 200, height: 100 })
+  pane.zoomToFit()
+  const seen = hostWindow(pane.host!)!
+  expect(pane.keyColumnPx).toBe(200 + 2 * LEGEND_INSET_PX)
+  expect(screenXOf(pane, seen.end, true)).toBeLessThanOrEqual(
+    pane.paneWidth - pane.keyColumnPx - pane.fitPads.right + 1e-6,
+  )
+  expect(screenXOf(pane, seen.start)).toBeGreaterThanOrEqual(
+    pane.fitPads.left - 1e-6,
+  )
 })
 
 test('side by side grows a track too short for its panels, and a shrink after stays', async () => {
@@ -1185,7 +1810,7 @@ test('closing a drawn track reads nothing of the dead display', async () => {
   )
 })
 
-test('a track whose config names no layout opens force-directed, drawn by stress', async () => {
+test('a track whose config names no layout opens force-directed, drawn by FMMM', async () => {
   const { view } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
@@ -1194,24 +1819,24 @@ test('a track whose config names no layout opens force-directed, drawn by stress
   display.startRenderingBackend(fakeRenderer())
   await wait(SETTLE_MS)
   expect(display.chosenLayoutMode).toBe('force')
-  expect(display.chosenLayoutEngine).toBe('stress')
+  expect(display.chosenLayoutEngine).toBe('fmmm')
   expect(display.usesLayoutEngine).toBe(true)
 })
 
-test('a config that picks FMMM opens with it, and the graph view it launches keeps it', async () => {
+test('a config that picks stress opens with it, and the graph view it launches keeps it', async () => {
   const { view } = createEnvironment()
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
   view.showTrack(
     'graph-bare',
     {},
-    { type: 'LinearGraphDisplay', layoutEngine: 'fmmm' },
+    { type: 'LinearGraphDisplay', layoutEngine: 'stress' },
   )
   const display = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
   display.startRenderingBackend(fakeRenderer())
   await wait(SETTLE_MS)
-  expect(display.chosenLayoutEngine).toBe('fmmm')
-  expect(display.graphViewSpec).toMatchObject({ layoutEngine: 'fmmm' })
+  expect(display.chosenLayoutEngine).toBe('stress')
+  expect(display.graphViewSpec).toMatchObject({ layoutEngine: 'stress' })
 })
 
 test("a track naming its reference by an alias of the view's assembly cuts the window", async () => {
@@ -1661,7 +2286,7 @@ test('the track menu opens the window on screen in a graph genome view, drawn as
     loadedRegion: { refName: REF, assemblyName: ASM },
     layoutMode: 'tubemapref',
     subgraphContext: display.subgraphContext,
-    layoutEngine: 'stress',
+    layoutEngine: 'fmmm',
     layoutQuality: 3,
     bubbleSpread: 'compress',
     linearLayout: true,
@@ -1797,6 +2422,19 @@ test("the linear view's SVG export draws the graph through the screen's transfor
   ).toContain('data-testid="graph-pane-svg"')
 })
 
+test('the SVG export clips a drawing placed by its window at the key column, as the screen does', async () => {
+  const { pane } = await forceGraph()
+  pane.setLegendSize({ width: 120, height: 40 })
+  const markup = renderToStaticMarkup(
+    (await pane.renderSvg()) as React.ReactElement,
+  )
+  const id = `graph-${pane.id}-drawing-clip`
+  expect(markup).toContain(
+    `<clipPath id="${id}"><rect width="${pane.drawingWidth}"`,
+  )
+  expect(markup).toContain(`clip-path="url(#${id})"`)
+})
+
 test('the SVG export greys what lies outside an open bubble, as the screen does', async () => {
   const { pane } = await shownGraph({ windowStart: 1_015_000, windowBp: 9000 })
   const exported = async () =>
@@ -1841,28 +2479,516 @@ test('a graph with walks is drawn whole at any zoom', async () => {
   expect(pane.foldNote).toBeUndefined()
 })
 
-test('a force drawing follows the linear view at once, as a screen map, until the re-cut lands', async () => {
-  const { view } = createEnvironment()
+test('a force drawing is placed by its window alone: a pan only slides it, a zoom magnifies it before the next cut lands, and no screen map of the last frame stands in', async () => {
+  const { view, pane, cuts } = await forceGraph()
+  expect(pane.hostPlacesX).toBe(false)
+  expect(pane.followsWindow).toBe(true)
+  const { scale, translateX, translateY } = pane
+  view.horizontalScroll(20)
+  expect(pane.viewportOwner).toBe('fit')
+  expect(pane.scale / scale).toBeCloseTo(1, 12)
+  expect(pane.translateY).toBeCloseTo(translateY, 9)
+  expect(pane.translateX).not.toBe(translateX)
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(1)
+  view.zoomTo(view.bpPerPx / 2, WIDTH_PX / 2)
+  expect(pane.scale / scale).toBeCloseTo(2, 6)
+  expect(pane.fittedTransform).toMatchObject({
+    scale: pane.scale,
+    translateX: pane.translateX,
+    translateY: pane.translateY,
+  })
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(2)
+  expect(pane.scale / scale).toBeCloseTo(2, 1)
+})
+
+function screenExtent(pane: LinearGraphDisplayModel) {
+  const xs = Object.values(pane.nodePositions ?? {}).flatMap(line =>
+    line.map(p => p.x * pane.scale + pane.translateX),
+  )
+  return {
+    x0: xs.reduce((m, x) => Math.min(m, x), Infinity),
+    x1: xs.reduce((m, x) => Math.max(m, x), -Infinity),
+  }
+}
+
+test('a held cut is never refitted to a view it does not cover: a jump far along slides it away with the ruler until the new cut lands, and a jump to another sequence shows none of it', async () => {
+  const { view, pane, holdCuts } = await forceGraph({ paths: true })
+  const { scale, translateY } = pane
+  const { left, right } = pane.fitPads
+  const usable = pane.drawingWidth - left - right
+  const ruler = (bp: number) => {
+    const seen = hostWindow(pane.host!)!
+    return left + (usable * (bp - seen.start)) / (seen.end - seen.start)
+  }
+  const answers = holdCuts()
+  view.scrollTo(1_080_000 / view.bpPerPx)
+  const off = pane.translateX
+  expect(screenXOf(pane, 1_070_000, true)).toBeCloseTo(ruler(1_070_000), 6)
+  view.scrollTo(1_090_000 / view.bpPerPx)
+  expect(pane.translateX - off).toBeCloseTo((-10_000 * usable) / 60_000, 6)
+  view.scrollTo(3_000_000 / view.bpPerPx)
+  expect(pane.scale).toBe(scale)
+  expect(pane.translateY).toBe(translateY)
+  expect(screenExtent(pane).x1).toBeLessThan(0)
+  await wait(SETTLE_MS)
+  expect(answers.length).toBeGreaterThan(0)
+  expect(pane.scale).toBe(scale)
+  expect(screenExtent(pane).x1).toBeLessThan(0)
+
+  view.setDisplayedRegions([
+    { refName: 'chr2', start: 0, end: CONTIG, assemblyName: ASM },
+  ])
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  expect(hostWindow(pane.host!)?.refName).toBe('chr2')
+  expect(pane.graphRegion?.refName).toBe(REF)
+  expect(screenExtent(pane).x0).toBeGreaterThan(pane.paneWidth)
+})
+
+test('in a flipped view a force track cuts and slides as the release line did, so its drawing moves with the ruler rather than against it', async () => {
+  const { view, pane, cuts } = await forceGraph({ paths: true })
+  expect(pane.snapsHostCut).toBe(true)
+  view.horizontallyFlip()
+  await wait(SETTLE_MS)
+  expect(pane.snapsHostCut).toBe(false)
+  expect(pane.followsWindow).toBe(false)
+  const seen = hostWindow(pane.host!)!
+  expect(cuts.at(-1)!.region).toMatchObject({
+    start: Math.floor(seen.start),
+    end: Math.ceil(seen.end),
+  })
+  const before = pane.translateX
+  view.horizontalScroll(100)
+  expect(pane.translateX - before).toBeCloseTo(-100, 6)
+})
+
+test('a restored force track fetches its snapped cut once, folded for the window it is restored into', async () => {
+  const { view, cuts, signals } = createEnvironment()
+  view.zoomTo(60_000 / WIDTH_PX)
+  view.scrollTo(1_000_000 / view.bpPerPx)
+  const saved = {
+    refName: REF,
+    assemblyName: ASM,
+    start: 966_656,
+    end: 1_064_960,
+  }
+  view.showTrack(
+    'graph',
+    {},
+    { type: 'LinearGraphDisplay', layoutMode: 'force', cutRegion: saved },
+  )
+  const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(cuts.map(c => c.region)).toEqual([saved])
+  expect(signals.some(s => s.aborted)).toBe(false)
+  const fresh = await forceGraph()
+  expect(pane.cutFoldBp).toBe(fresh.pane.cutFoldBp)
+})
+
+test('a force track restored before its view shows a window waits for one, and fetches its cut once', async () => {
+  const { view, cuts, signals } = createEnvironment()
+  view.setDisplayedRegions([])
+  const saved = {
+    refName: REF,
+    assemblyName: ASM,
+    start: 966_656,
+    end: 1_064_960,
+  }
+  view.showTrack(
+    'graph',
+    {},
+    { type: 'LinearGraphDisplay', layoutMode: 'force', cutRegion: saved },
+  )
+  const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
+  pane.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(0)
+  runInAction(() => {
+    view.setDisplayedRegions([
+      { refName: REF, start: 0, end: CONTIG, assemblyName: ASM },
+    ])
+    view.zoomTo(60_000 / WIDTH_PX)
+    view.scrollTo(1_000_000 / view.bpPerPx)
+  })
+  await wait(SETTLE_MS)
+  expect(cuts.map(c => c.region)).toEqual([saved])
+  expect(signals.some(s => s.aborted)).toBe(false)
+})
+
+test('a snapped cut over the node limit leaves the drawing on screen until the window alone lands, and the track never shows an error for it', async () => {
+  const { pane, cuts, panTo } = await forceGraph({
+    paths: true,
+    windowStart: 1_380_000,
+  })
+  const states: { phase: string; drawn: boolean; error: unknown }[] = []
+  const stop = reaction(
+    () => ({
+      phase: pane.displayPhase,
+      drawn: pane.layoutResult !== undefined,
+      error: pane.error,
+    }),
+    state => states.push(state),
+    { fireImmediately: true },
+  )
+  // past 1.5 Mb the bubbles run eight ranks deep: a window alone there
+  // holds 31 nodes and its snapped cut 51
+  pane.setMaxGraphNodes(40)
+  await wait(SETTLE_MS)
+  for (let i = 1; i <= 16; i++) {
+    await panTo(1_380_000 + i * 15_000)
+  }
+  stop()
+  expect(pane.cutRegion).toMatchObject({ start: 1_620_000, end: 1_680_000 })
+  expect(cuts.some(c => c.region.start === 1_620_000)).toBe(true)
+  expect(states.length).toBeGreaterThan(1)
+  expect(states.filter(s => !s.drawn)).toEqual([])
+  expect(states.filter(s => s.phase === 'error' || s.error)).toEqual([])
+}, 30_000)
+
+test("a chain hanging off where the cut's start runs through a reference node, which no window the cut holds shows, does not shrink the drawing", async () => {
+  const { pane } = await forceGraph({ paths: true, loopAtStart: true })
+  expect(pane.graph!.nodes.filter(n => /l\d+/.test(n.id))).toHaveLength(24)
+  const { top, bottom } = pane.fitPads
+  const usable = pane.canvasHeight - top - bottom
+  expect(pane.layoutBounds!.h).toBeGreaterThan(20 * pane.heldBounds!.h)
+  expect(pane.scale).toBeGreaterThan((10 * usable) / pane.layoutBounds!.h)
+  const ink = windowInk(pane)
+  expect(ink.y0).toBeGreaterThanOrEqual(top - 1e-6)
+  expect(ink.y1).toBeLessThanOrEqual(pane.canvasHeight - bottom + 1e-6)
+})
+
+test("a width that changes an rGFA cut's fold fetches the same snapped cut again, folded anew, rather than holding it or reusing the one folded for the old width", async () => {
+  const { view, pane, cuts } = await forceGraph()
+  const fold = pane.cutFoldBp
+  const region = pane.cutRegion
+  view.setWidth(990)
+  await wait(SETTLE_MS)
+  expect(pane.cutRegion).toEqual(region)
+  expect(pane.cutFoldBp).not.toBe(fold)
+  expect(cuts).toHaveLength(2)
+})
+
+test('a cut kept under other cut options is fetched again, not shown from the four kept', async () => {
+  const { pane, cuts, panTo } = await forceGraph()
+  await panTo(1_100_000)
+  pane.setSubgraphContext(3)
+  await panTo(1_000_000)
+  expect(pane.cutRegion).toMatchObject({ start: 966_656 })
+  expect(cuts.filter(c => c.region.start === 966_656).map(c => c.hops)).toEqual(
+    [cuts[0]!.hops, 3],
+  )
+})
+
+test('a cut kept under another reference path is fetched again, not shown from the four kept', async () => {
+  const { pane, cuts, panTo } = await forceGraph({ paths: true })
+  await panTo(1_100_000)
+  pane.setReferencePath('HG1')
+  await panTo(1_000_000)
+  expect(cuts.filter(c => c.region.start === 966_656)).toHaveLength(2)
+})
+
+test("a cut kept from the track's other adapter is fetched again, not shown from the four kept", async () => {
+  const { session, pane, cuts, panTo } = await forceGraph()
+  await panTo(1_100_000)
+  session.tracks[0]!.setSubschema('adapter', {
+    type: 'RgfaTabixAdapter',
+    uri: 'other',
+  })
+  expect(pane.sourceAdapter?.segmentsLocation).toMatchObject({
+    uri: 'other.segs.bed.gz',
+  })
+  await panTo(1_000_000)
+  expect(cuts.filter(c => c.region.start === 966_656)).toHaveLength(2)
+})
+
+test('a snapped cut found over the node limit stands for its own region, tier, fold and options alone, and the last 64 are remembered', async () => {
+  const { view, pane, cuts, panTo } = await forceGraph({ paths: true })
+  // past 1.5 Mb a window alone holds 31 nodes and its snapped cut 51
+  pane.setMaxGraphNodes(40)
+  const snappedHere = () => snappedCut(hostWindow(pane.host!)!)
+  const asked = (start: number) =>
+    cuts.filter(c => c.region.start === start).length
+  await panTo(1_620_000)
+  const deep = snappedHere()
+  expect(pane.cutRegion).toMatchObject({ start: 1_620_000, end: 1_680_000 })
+  expect(asked(deep.start)).toBe(1)
+  await panTo(1_800_000)
+  expect(pane.cutRegion).toMatchObject({ start: 1_800_000, end: 1_860_000 })
+  await panTo(1_000_000)
+  expect(pane.cutRegion).toMatchObject({ start: 966_656, end: 1_064_960 })
+  await panTo(1_620_000)
+  expect(pane.cutRegion).toMatchObject({ start: 1_620_000 })
+  expect(asked(deep.start)).toBe(1)
+
+  view.setWidth(990)
+  await wait(SETTLE_MS)
+  expect(snappedHere()).toEqual(deep)
+  expect(asked(deep.start)).toBe(2)
+  pane.setSubgraphContext(3)
+  await panTo(1_000_000)
+  await panTo(1_620_000)
+  expect(asked(deep.start)).toBe(3)
+  expect(pane.cutRegion).toMatchObject({ start: 1_620_000 })
+}, 30_000)
+
+test('a snapped cut wider than the bp cap is never asked for: the window is cut alone', async () => {
+  const { pane, cuts, panTo } = await forceGraph()
+  pane.setMaxRegionBp(80_000)
+  await panTo(1_100_000)
+  const snapped = snappedCut(hostWindow(pane.host!)!)
+  expect(snapped.end - snapped.start).toBeGreaterThan(80_000)
+  expect(cuts.some(c => c.region.start === snapped.start)).toBe(false)
+  expect(pane.cutRegion).toMatchObject({ start: 1_100_000, end: 1_160_000 })
+})
+
+test("a drawing its window places and fits to the track sits centred between the pane's top and bottom pads, below the reference strip", async () => {
+  const { pane } = await forceGraph({ paths: true })
+  pane.setHeightMode('fit')
+  const { top, bottom } = pane.fitPads
+  expect(top).toBeGreaterThan(REFERENCE_STRIP_ZONE_PX)
+  const bounds = pane.heldBounds!
+  const y0 = bounds.minY * pane.scale + pane.translateY
+  const y1 = (bounds.minY + bounds.h) * pane.scale + pane.translateY
+  expect(y0 - top).toBeCloseTo(pane.canvasHeight - bottom - y1, 6)
+  expect(y0).toBeGreaterThan(top + 1)
+})
+
+test('a drawing placed by its window is clipped at the key column on its canvas, its hover layer and its overlays alike', async () => {
+  const { pane } = await forceGraph()
+  pane.setLegendSize({ width: 120, height: 40 })
+  await wait(0)
+  const clip = `clip-path:${pane.drawingClip}`
+  const tagOf = (markup: string, testId: string) =>
+    new RegExp(`<[a-z]+ [^>]*data-testid="${testId}"[^>]*>`).exec(markup)?.[0]
+  const canvas = renderToStaticMarkup(
+    createElement(GraphCanvas, {
+      model: pane,
+      handle: { canvasRef: () => {}, canvas: null },
+    }),
+  )
+  expect(tagOf(canvas, 'graph-genome-canvas')).toContain(clip)
+  expect(tagOf(canvas, 'graph-hover-layer')).toContain(clip)
+  const overlay = renderToStaticMarkup(
+    createElement(PaneSvgLayer, {
+      model: pane,
+      zIndex: 2,
+      testId: 'an-overlay',
+    }),
+  )
+  expect(tagOf(overlay, 'an-overlay')).toContain(clip)
+})
+
+test('a force track restored with a viewport of its own is placed by its window once its cut lands, not where the session left the drawing', async () => {
+  const { view } = createEnvironment({ paths: true })
   view.zoomTo(60_000 / WIDTH_PX)
   view.scrollTo(1_000_000 / view.bpPerPx)
   view.showTrack(
     'graph',
     {},
-    { type: 'LinearGraphDisplay', layoutMode: 'force' },
+    {
+      type: 'LinearGraphDisplay',
+      layoutMode: 'force',
+      cutRegion: {
+        refName: REF,
+        assemblyName: ASM,
+        start: 966_656,
+        end: 1_064_960,
+      },
+      scale: 2,
+      translateX: 50,
+    },
   )
   const pane = view.tracks[0]!.displays[0] as LinearGraphDisplayModel
   pane.startRenderingBackend(fakeRenderer())
   await wait(SETTLE_MS)
-  expect(pane.hostPlacesX).toBe(false)
-  const { scale, translateX } = pane
-  view.horizontalScroll(40)
-  expect(pane.scale).toBe(scale)
-  expect(pane.translateX).toBeCloseTo(translateX - 40, 6)
+  expect(pane.layoutResult).toBeDefined()
+  expect(pane.viewportOwner).toBe('fit')
+  expect(pane.windowTransform).toMatchObject({
+    scale: pane.scale,
+    translateX: pane.translateX,
+    translateY: pane.translateY,
+  })
+})
 
-  const at = pane.translateX
-  const offset = view.offsetPx
-  view.zoomTo(view.bpPerPx / 2)
-  expect(pane.scale).toBeCloseTo(scale * 2, 9)
-  // a screen x maps as the view's own does: x' = 2 (x + offset) - offset'
-  expect(pane.translateX).toBeCloseTo(2 * (at + offset) - view.offsetPx, 6)
+// The window's reference as drawn, in screen px
+function windowReferenceInk(pane: LinearGraphDisplayModel) {
+  const seen = hostWindow(pane.host!)!
+  const ys: number[] = []
+  for (const node of pane.graph!.nodes) {
+    const [a, b] = pane.nodePositions?.[node.id] ?? []
+    const start = node.stable?.start ?? -1
+    const lo = Math.max(seen.start, start)
+    const hi = Math.min(seen.end, start + node.length)
+    if (node.stable?.rank === 0 && a && b && hi > lo) {
+      for (const bp of [lo, hi]) {
+        const f = (bp - start) / node.length
+        ys.push(
+          pane.toScreen({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f })
+            .y,
+        )
+      }
+    }
+  }
+  return {
+    y0: ys.reduce((m, y) => Math.min(m, y), Infinity),
+    y1: ys.reduce((m, y) => Math.max(m, y), -Infinity),
+  }
+}
+
+test("the track's sizing is its heightMode slot, fixed unless set, and the track menu switches it", async () => {
+  const { pane } = await forceGraph()
+  expect(pane.heightMode).toBe('fixed')
+  expect(pane.trackFit).toBe('fixed')
+  const sizing = pane
+    .trackMenuItems()
+    .find(item => 'label' in item && item.label === 'Track sizing') as
+    | { subMenu: (MenuItem & { label: string; onClick: () => void })[] }
+    | undefined
+  expect(sizing?.subMenu.map(item => item.label)).toEqual([
+    TRACK_FIT_LABELS.fixed,
+    TRACK_FIT_LABELS.grow,
+    TRACK_FIT_LABELS.fit,
+  ])
+  sizing!.subMenu[2]!.onClick()
+  expect(pane.heightMode).toBe('fit')
+  expect(pane.trackFit).toBe('fit')
+})
+
+test("at fixed a zoom magnifies a drawing whose cut is taller than the track, which fit holds still at the track's height", async () => {
+  const { view, pane } = await forceGraph({ loopInside: true, paths: true })
+  pane.setHeightMode('fit')
+  const { top, bottom } = pane.fitPads
+  const usable = pane.canvasHeight - top - bottom
+  expect(pane.heldBounds!.h * pane.scale).toBeCloseTo(usable, 6)
+  const fitted = pane.scale
+  view.zoomTo(view.bpPerPx / 1.2, WIDTH_PX / 2)
+  expect(pane.scale).toBeCloseTo(fitted, 9)
+  pane.setHeightMode('fixed')
+  const fixed = pane.scale
+  expect(fixed).toBeGreaterThan(2 * fitted)
+  view.zoomTo(view.bpPerPx / 1.2, WIDTH_PX / 2)
+  expect(pane.scale).toBeGreaterThan(fixed)
+})
+
+test("a drawing taller than a fixed track keeps the window's reference between the pads and marks the edges it runs past, which the key names", async () => {
+  const { pane } = await forceGraph({ loopInside: true, paths: true })
+  pane.setHeightMode('fixed')
+  const { top, bottom } = pane.fitPads
+  const ink = windowReferenceInk(pane)
+  expect(ink.y0).toBeGreaterThanOrEqual(top - 1e-6)
+  expect(ink.y1).toBeLessThanOrEqual(pane.canvasHeight - bottom + 1e-6)
+  const marks = pane.edgeMarks!
+  expect(marks.top.length + marks.bottom.length).toBeGreaterThan(0)
+  expect(pane.runsPastEdge).toBe(true)
+  expect(pane.graphKey.map(s => s.id)).toContain('overhang')
+  pane.setHeightMode('fit')
+  expect(pane.edgeMarks).toEqual({ top: [], bottom: [] })
+})
+
+test("a fixed track whose reference zigzags taller than the track draws it at the largest scale that keeps the reference any view-width window shows inside, and holds the window's own whole at every pan", async () => {
+  const { view, pane } = await forceGraph({
+    zigzag: 4,
+    loopInside: true,
+    paths: true,
+  })
+  pane.setHeightMode('fixed')
+  const { top, bottom } = pane.fitPads
+  const profile = pane.heldReference!
+  const cut = pane.graphRegion!
+  const span = pane.viewSpan!
+  const width = pane.drawingWidth
+  const pads = pane.followPads
+  const scale = pane.scale
+  expect(scale).toBeLessThan(windowScale(profile, cut, span, width, pads)! / 2)
+  expect(scale).toBeGreaterThan(
+    2 *
+      cutScale(
+        profile,
+        cut,
+        span,
+        pane.heldBounds!,
+        width,
+        pane.canvasHeight,
+        pads,
+      )!,
+  )
+  expect(scale).toBeCloseTo(
+    referenceScale(profile, cut, span, width, pane.canvasHeight, pads)!,
+    9,
+  )
+  for (let step = 0; step < 4; step++) {
+    const ink = windowReferenceInk(pane)
+    expect(ink.y0).toBeGreaterThanOrEqual(top - 1e-6)
+    expect(ink.y1).toBeLessThanOrEqual(pane.canvasHeight - bottom + 1e-6)
+    expect(pane.scale).toBe(scale)
+    view.horizontalScroll(-WIDTH_PX / 8)
+    await wait(0)
+  }
+  pane.setHeightMode('grow')
+  expect(pane.height).toBe(pane.growMaxHeight)
+  expect(pane.scale).toBeCloseTo(
+    referenceScale(profile, cut, span, width, pane.growMaxHeight, pads)!,
+    9,
+  )
+  const grown = windowReferenceInk(pane)
+  expect(grown.y0).toBeGreaterThanOrEqual(top - 1e-6)
+  expect(grown.y1).toBeLessThanOrEqual(pane.canvasHeight - bottom + 1e-6)
+})
+
+test("at grow the track is as tall as the whole cut drawn at the window's scale, up to growMaxHeight, and at fixed the slot's height", async () => {
+  const { pane } = await forceGraph({ loopInside: true, paths: true })
+  expect(pane.height).toBe(300)
+  pane.setHeightMode('grow')
+  const wanted = grownHeight(pane.heldBounds!, pane.scale, pane.followPads)
+  expect(wanted).toBeGreaterThan(pane.growMaxHeight)
+  expect(pane.height).toBe(pane.growMaxHeight)
+  expect(pane.canvasHeight).toBe(pane.growMaxHeight)
+  const flat = await forceGraph()
+  flat.pane.setHeightMode('grow')
+  expect(flat.pane.height).toBe(
+    Math.max(
+      flat.pane.canvasFloor,
+      grownHeight(flat.pane.heldBounds!, flat.pane.scale, flat.pane.followPads),
+    ),
+  )
+  expect(flat.pane.height).toBeLessThan(300)
+})
+
+test('while a morph slides a re-cut in, the labels wait and the key holds the frame before it', async () => {
+  const { pane } = await forceGraph()
+  expect(pane.labelFrameSettled).toBe(true)
+  expect(pane.graphKey.map(s => s.id)).not.toContain('too-small')
+  const node = pane.graph!.nodes.find(
+    n =>
+      n.stable?.rank === 0 &&
+      n.stable.start <= LOOP_BP &&
+      LOOP_BP < n.stable.start + n.length,
+  )!.id
+  pane.setMorphing(true)
+  expect(pane.labelFrameSettled).toBe(false)
+  const { batch, viewportBounds } = pane.buildDrawing(undefined, false)!
+  const site = {
+    nodes: [node],
+    edges: [],
+    refName: REF,
+    start: LOOP_BP,
+    end: LOOP_BP,
+    bp: 1,
+    x: (viewportBounds.minX + viewportBounds.maxX) / 2,
+    y: (viewportBounds.minY + viewportBounds.maxY) / 2,
+    count: 1,
+    total: 2,
+  }
+  pane.setGeometryMetrics(
+    0,
+    { ...batch, collapsed: { ...NO_FOLD, sites: [site] } },
+    { scale: pane.scale, bounds: viewportBounds },
+  )
+  expect(pane.graphKey.map(s => s.id)).not.toContain('too-small')
+  pane.setMorphing(false)
+  expect(pane.labelFrameSettled).toBe(true)
+  expect(pane.graphKey.map(s => s.id)).toContain('too-small')
 })

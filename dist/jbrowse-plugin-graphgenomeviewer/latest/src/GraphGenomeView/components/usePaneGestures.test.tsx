@@ -1,9 +1,12 @@
+import { NO_FOLD } from '@jbrowse/bandage-core/levelOfDetail'
+import { findHoveredEdge } from '@jbrowse/bandage-core/util/hitDetection'
 import { act, renderHook } from '@testing-library/react'
 
 import { PANS_WITH_DRAWING } from './PaneLayer'
 import { easeZoom, usePaneGestures, wheelAction } from './usePaneGestures'
 
 import type { GraphPaneModel } from '../model'
+import type { Graph } from '@jbrowse/bandage-core/types'
 
 vi.mock('@jbrowse/mobx-state-tree', async importOriginal => ({
   ...(await importOriginal<object>()),
@@ -57,12 +60,16 @@ test('the canvas reads out the gene chip under the pointer, since the chip leave
       end: 160_664_259,
     },
     covered: 1,
+    anchored: 1,
+    body: [],
   }
   const model = fakeModel({
     isPanning: false,
     draggingNode: null,
     walkRowBars: undefined,
-    overlayLabels: { genes: [{ item: pin, x: 100, y: 30, w: 40 }] },
+    overlayLabels: {
+      genes: [{ item: { pin, name: 'LPA' }, x: 100, y: 30, w: 40 }],
+    },
   })
   const { result } = renderHook(() =>
     usePaneGestures(model as unknown as GraphPaneModel),
@@ -80,6 +87,153 @@ test('the canvas reads out the gene chip under the pointer, since the chip leave
   })
   move(300, 25)
   expect(result.current.hoveredChip).toBeUndefined()
+  vi.unstubAllGlobals()
+})
+
+test('a pointer over a node or link the drawing folded finds neither, so neither is hovered or selected', () => {
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+    frames.push(cb),
+  )
+  const setHoveredNode = vi.fn()
+  const setHoveredEdge = vi.fn()
+  const model = fakeModel({
+    isPanning: false,
+    draggingNode: null,
+    overlayLabels: { genes: [] },
+    walkRowBars: undefined,
+    axisScale: { scaleX: 1, scaleY: 1 },
+    positionsVersion: 0,
+    nodeInk: undefined,
+    hoverLightsEverything: true,
+    effectiveDrawPaths: false,
+    nodePositions: {
+      r1: [
+        { x: 0, y: 100 },
+        { x: 100, y: 100 },
+      ],
+      f: [
+        { x: 140, y: 40 },
+        { x: 160, y: 40 },
+      ],
+    },
+    graph: {
+      nodes: [
+        { id: 'r1', name: 'r1', length: 100 },
+        { id: 'f', name: 'f', length: 2 },
+      ],
+      edges: [{ from: 'r1', to: 'f' }],
+    },
+    drawnFold: { ...NO_FOLD, nodes: new Set(['f']), edges: new Set([0]) },
+    setHoveredPanel: vi.fn(),
+    setHoveredNode,
+    setHoveredTube: vi.fn(),
+    setHoveredEdge,
+    tubeMapPanelAt: () => null,
+  })
+  const { result } = renderHook(() =>
+    usePaneGestures(model as unknown as GraphPaneModel),
+  )
+  const hover = (x: number, y: number) => {
+    act(() => {
+      result.current.handlers.onPointerMove(at(x, y))
+      frames.shift()?.(0)
+    })
+  }
+  result.current.handlers.onClick(at(150, 40))
+  expect(model.setSelectedNode).toHaveBeenLastCalledWith(null)
+  hover(150, 40)
+  expect(setHoveredNode).toHaveBeenLastCalledWith(null, {
+    x: 150,
+    y: 40,
+  })
+  hover(120, 70)
+  expect(setHoveredEdge).toHaveBeenLastCalledWith(null)
+  hover(50, 100)
+  expect(setHoveredNode).toHaveBeenLastCalledWith('r1', {
+    x: 50,
+    y: 100,
+  })
+  vi.unstubAllGlobals()
+})
+
+test('a link is hovered where the drawing draws it, joining the ends its strands name under a stranded layout', () => {
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+    frames.push(cb),
+  )
+  const nodePositions = {
+    r1: [
+      { x: 0, y: 100 },
+      { x: 100, y: 100 },
+    ],
+    f: [
+      { x: 200, y: 20 },
+      { x: 300, y: 20 },
+    ],
+  }
+  const graph: Graph = {
+    name: 'stranded',
+    nodes: [
+      { id: 'r1', name: 'r1', length: 100, depth: 1 },
+      { id: 'f', name: 'f', length: 100, depth: 1 },
+    ],
+    edges: [{ from: 'r1', to: 'f', fromStrand: '+', toStrand: '-' }],
+  }
+  const axis = { scaleX: 1, scaleY: 1 }
+  const edgeAt = (x: number, y: number, stranded: boolean) =>
+    findHoveredEdge(
+      nodePositions,
+      graph,
+      x,
+      y,
+      axis,
+      false,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      stranded,
+      undefined,
+    )
+  // clear of both nodes, so the pointer is on the link alone
+  const points = Array.from({ length: 31 * 5 }, (_, i) => ({
+    x: (i % 31) * 10,
+    y: 40 + Math.floor(i / 31) * 10,
+  }))
+  const onStranded = points.find(
+    p => edgeAt(p.x, p.y, true) === 0 && edgeAt(p.x, p.y, false) === null,
+  )!
+  expect(onStranded).toBeDefined()
+  const setHoveredEdge = vi.fn()
+  const model = fakeModel({
+    isPanning: false,
+    draggingNode: null,
+    overlayLabels: { genes: [] },
+    walkRowBars: undefined,
+    axisScale: axis,
+    positionsVersion: 0,
+    nodeInk: undefined,
+    hoverLightsEverything: true,
+    effectiveDrawPaths: false,
+    nodePositions,
+    graph,
+    layoutResult: { stranded: true },
+    drawnFold: undefined,
+    setHoveredPanel: vi.fn(),
+    setHoveredNode: vi.fn(),
+    setHoveredTube: vi.fn(),
+    setHoveredEdge,
+    tubeMapPanelAt: () => null,
+  })
+  const { result } = renderHook(() =>
+    usePaneGestures(model as unknown as GraphPaneModel),
+  )
+  act(() => {
+    result.current.handlers.onPointerMove(at(onStranded.x, onStranded.y))
+    frames.shift()?.(0)
+  })
+  expect(setHoveredEdge).toHaveBeenLastCalledWith(0)
   vi.unstubAllGlobals()
 })
 
@@ -230,6 +384,36 @@ describe('a drawing the linear view drives', () => {
   test('keeps a press on a node from the view', () => {
     const model = drivenModel('s1')
     model.setDraggingNode = vi.fn()
+    const { handlers } = renderGestures(model)
+    act(() => {
+      handlers.onPointerDown(finger(1, 100))
+    })
+    expect(canvas.hasAttribute('data-gesture-owner')).toBe(true)
+    expect(model.setDraggingNode).toHaveBeenCalledWith('s1')
+  })
+
+  test('placed by its window, leaves a press wholly to the view, so a drag moves the drawing only with the view', () => {
+    const model = drivenModel(null)
+    Object.assign(model, { followsWindow: true, overlayLabels: { genes: [] } })
+    const captures = canvas.setPointerCapture.mock.calls.length
+    const { handlers, flush } = renderGestures(model)
+    act(() => {
+      handlers.onPointerDown(finger(1, 100))
+      handlers.onPointerMove({
+        ...finger(1, 140),
+        clientY: 50,
+      })
+      flush()
+    })
+    expect(canvas.hasAttribute('data-gesture-owner')).toBe(false)
+    expect(canvas.setPointerCapture.mock.calls.length).toBe(captures)
+    expect(model.isPanning).toBe(false)
+    expect(model.setTransform).not.toHaveBeenCalled()
+  })
+
+  test('placed by its window, still drags a node', () => {
+    const model = drivenModel('s1')
+    Object.assign(model, { followsWindow: true, setDraggingNode: vi.fn() })
     const { handlers } = renderGestures(model)
     act(() => {
       handlers.onPointerDown(finger(1, 100))

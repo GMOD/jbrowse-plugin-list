@@ -1,5 +1,6 @@
 import { regionLabel } from '@jbrowse/bandage-core/hoverText'
 import { ContextMenu } from '@jbrowse/core/ui'
+import { abridgedText } from '@jbrowse/graph-walks'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import FilterListOffIcon from '@mui/icons-material/FilterListOff'
 import InfoIcon from '@mui/icons-material/Info'
@@ -47,10 +48,6 @@ function nodeMenuItems(model: GraphPaneModel, nodeId: string): MenuItem[] {
   ]
 }
 
-function formatSteps(steps: number) {
-  return steps >= 1000 ? `${Math.round(steps / 1000)} k` : `${steps}`
-}
-
 // A walk row's bar stands for a span of its haplotype's own contig, so the
 // question a right-click asks is answered by a linear view on that assembly,
 // with its genes
@@ -64,6 +61,7 @@ function walkRowMenuItems(
   const assembly = target?.assembly
   const walk = row > 0 ? rows?.rows[row - 1] : undefined
   const sample = walk?.sample
+  const abridged = model.abridged.find(a => a.name === walk?.name)
   // the strip's rows are not walk rows', and take no sample filter
   const filters = !bars && model.walkRowBars
   const shown = model.walkRowSamples
@@ -85,10 +83,11 @@ function walkRowMenuItems(
             : 'This walk states no contig coordinates',
           onClick: () => {},
         },
-    ...(walk?.abridgedSteps
+    ...(bars && walk && abridged
       ? [
           {
-            label: `Load the ${formatSteps(walk.abridgedSteps)} abridged steps`,
+            label: 'Load its steps',
+            subLabel: abridgedText(abridged, walk.label),
             onClick: () => {
               model.expandWalk(walk.name)
             },

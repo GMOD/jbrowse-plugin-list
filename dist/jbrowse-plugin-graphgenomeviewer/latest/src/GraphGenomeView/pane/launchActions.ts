@@ -33,6 +33,7 @@ import { downloadText } from '../download'
 import { GENE_ADAPTER_TYPES } from '../genes/geneFeatures'
 import { HOVER_HIGHLIGHT_VALUES } from '../hoverHighlight'
 import { TUBE_MAP_PANELS, tubeMapPanelGroups } from '../tubeMapPanels'
+import { routesNote } from '../unloadedWalks'
 
 import type { GraphLocation } from '../../launchFromGraph/contributors'
 import type { GraphLayer } from '../graphLayers'
@@ -154,16 +155,29 @@ export const withLaunchActions = withRenderingActions
     walkRowSampleMenuItems(): MenuItem[] {
       const { disagreeing } = self.walkRowSampleChoices
       const shown = self.walkRowSamples
+      const following = self.walkRowsFollowLift
       const same = (a: string[]) => a.join('\n') === shown?.join('\n')
       return [
         {
           type: 'radio',
           label: 'Every sample',
-          checked: shown === undefined,
+          checked: shown === undefined && !following,
           onClick: () => {
             self.setWalkRowSamples(undefined)
           },
         },
+        ...(following || self.drawnWalks.length > 0
+          ? [
+              {
+                type: 'radio' as const,
+                label: 'Haplotypes of the lifted walks',
+                checked: following,
+                onClick: () => {
+                  self.setWalkRowSamples('lifted')
+                },
+              },
+            ]
+          : []),
         ...(disagreeing.length > 0
           ? [
               {
@@ -301,13 +315,17 @@ export const withLaunchActions = withRenderingActions
               },
             ]
           : []),
+        ...((self.chosenLayoutMode === 'walkrows' && self.walkRowBars) ||
+        self.walkStripShown
+          ? [{ label: 'Samples', subMenu: this.walkRowSampleMenuItems() }]
+          : []),
         ...(self.chosenLayoutMode === 'walkrows' && self.walkRowBars
           ? [
-              { label: 'Samples', subMenu: this.walkRowSampleMenuItems() },
               {
                 type: 'checkbox' as const,
                 label: 'Ribbons between rows',
                 checked: self.walkRibbons,
+                helpText: routesNote(self.comparedRows),
                 onClick: () => {
                   self.setLayer('walkRibbons', !self.walkRibbons)
                 },
@@ -316,6 +334,7 @@ export const withLaunchActions = withRenderingActions
                 type: 'checkbox' as const,
                 label: 'Letter shared blocks',
                 checked: self.layerSet.has('walkBlocks'),
+                helpText: routesNote(self.comparedRows),
                 onClick: () => {
                   self.setLayer('walkBlocks', !self.layerSet.has('walkBlocks'))
                 },
@@ -324,6 +343,7 @@ export const withLaunchActions = withRenderingActions
                 type: 'checkbox' as const,
                 label: 'Order rows by shared sequence',
                 checked: self.walkRowOrder === 'shared',
+                helpText: routesNote(self.comparedRows),
                 onClick: () => {
                   self.setWalkRowOrder(
                     self.walkRowOrder === 'shared' ? undefined : 'shared',
@@ -350,7 +370,13 @@ export const withLaunchActions = withRenderingActions
       })
       return [
         layerItem('Show bubble halos', 'bubbles'),
-        layerItem('Show deletion edges', 'deletions'),
+        layerItem('Show links that skip reference', 'deletions'),
+        {
+          ...layerItem('Show small sites', 'smallSites'),
+          helpText:
+            'Draw every node and skip at any zoom. Off, a site too small to see at this zoom is left out and counted in the key, and drawn again as you zoom in',
+        },
+        layerItem('Show node lengths', 'lengths'),
         {
           label: 'Hover highlight',
           subMenu: radioItems(
@@ -442,6 +468,18 @@ export const withLaunchActions = withRenderingActions
                     HighlightColorDialog,
                     { model: self, onClose },
                   ])
+                },
+              },
+            ]
+          : []),
+        ...(self.drawnWalks.length > 1
+          ? [
+              {
+                type: 'checkbox' as const,
+                label: 'Shade each light to dark along itself',
+                checked: self.walksShadedAlong,
+                onClick: () => {
+                  self.shadeWalksAlong(!self.walksShadedAlong)
                 },
               },
             ]

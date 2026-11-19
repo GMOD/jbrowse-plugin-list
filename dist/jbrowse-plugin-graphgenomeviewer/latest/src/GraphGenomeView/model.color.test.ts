@@ -1,5 +1,16 @@
-import { applySnapshot, getSnapshot } from '@jbrowse/mobx-state-tree'
+import { createElement } from 'react'
 
+import { BUBBLE_HALO_COLOR } from '@jbrowse/bandage-core/bubbles/bubbleLabel'
+import { layoutEngine } from '@jbrowse/bandage-core/layoutEngines'
+import {
+  abgrToCssRgba,
+  hexAbgr,
+} from '@jbrowse/bandage-core/renderer/colorBits'
+import { applySnapshot, getSnapshot } from '@jbrowse/mobx-state-tree'
+import { renderToStaticMarkup } from 'react-dom/server'
+
+import PaneSvg from './components/PaneSvg'
+import { drawnLegendSections, legendSections } from './legendSections'
 import { mockRpcCall, mockSession } from './modelTestMocks'
 import {
   MOCK_LAYOUT,
@@ -13,6 +24,8 @@ import {
   rpcRespond,
 } from './modelTestSupport'
 import { SELECT_BRIGHTEN } from './pane/paneBase'
+
+import type { EngineRequest } from '@jbrowse/bandage-core/pipeline'
 
 vi.mock('@jbrowse/core/util', async () =>
   (await import('./modelTestMocks')).coreUtilMock(),
@@ -406,7 +419,19 @@ describe('opening a bubble', () => {
         h.path.startsWith('M'),
         h.tick,
       ]),
-    ).toEqual([['≤4 bp ins', 1, true, true]])
+    ).toEqual([['0–4 bp, 2 routes', 1, true, true]])
+    expect(
+      legendSections(model).find(s => s.testid === 'graph-halo-legend')?.rows,
+    ).toEqual([
+      {
+        key: 'halo',
+        label: 'bubble',
+        swatch: {
+          kind: 'halo',
+          color: abgrToCssRgba(hexAbgr(BUBBLE_HALO_COLOR)),
+        },
+      },
+    ])
     model.setLayer('bubbles', false)
     expect(model.bubbleHalos).toEqual([])
   })
@@ -464,4 +489,157 @@ describe('opening a bubble', () => {
       'info',
     )
   })
+})
+
+// amylase's "nodes not shown" loops lost their 75 kb and 116 kb with node
+// lengths turned off, the only cue to how much sequence each one holds
+test("the graph writes a placeholder's length with node lengths off, and every node's with them on", async () => {
+  rpcRespond()
+  const model = createModel()
+  await model.loadGFA(
+    `${SIMPLE_GFA}S\t3\t*\tLN:i:75000\tnl:i:1\nL\t2\t+\t3\t+\t0M\n`,
+    'g',
+  )
+  expect(model.layerSet.has('lengths')).toBe(false)
+  expect([...model.nodeLengths]).toEqual([['3+', 75000]])
+  model.setLayer('lengths', true)
+  expect([...model.nodeLengths]).toEqual([
+    ['1+', 4],
+    ['2+', 4],
+    ['3+', 75000],
+  ])
+})
+
+test("the key's nodes not shown entry counts the placeholders the labels left without a length", async () => {
+  mockRpcCall.mockImplementation(
+    (_session: unknown, method: string, request: EngineRequest) =>
+      method === 'GraphComputeLayout'
+        ? layoutEngine(request)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const placeholders = Array.from({ length: 100 }, (_, i) => [
+    `S\tp${i}\t*\tLN:i:${i + 1}\tnl:i:1`,
+    `L\t1\t+\tp${i}\t+\t0M`,
+    `L\tp${i}\t+\t2\t+\t0M`,
+  ])
+  const model = createModel()
+  model.setWidth(800)
+  await model.loadGFA(`${SIMPLE_GFA}${placeholders.flat().join('\n')}\n`, 'g')
+  model.startRenderingBackend(fakeRenderer())
+  const exported = () =>
+    renderToStaticMarkup(
+      createElement(
+        'svg',
+        null,
+        createElement(PaneSvg, { model, idPrefix: 'k' }),
+      ),
+    )
+  const keyWidth = (svg: string) =>
+    /data-testid="graph-svg-keys"><rect [^>]*width="([\d.]+)"/.exec(svg)?.[1]
+  // a key not yet measured holds the labels back, so the count is blank
+  model.setKeyShapeOf(() => 'unmeasured')
+  expect(model.overlayLabels.unlabelled).toBeUndefined()
+  const blank = exported()
+  model.setLegendSize(model.legendSize, 'unmeasured')
+  const { unlabelled } = model.overlayLabels
+  const keyed = model.graphKey
+    .flatMap(section => section.entries)
+    .find(entry => entry.key === 'not-shown')
+  const drawn = drawnLegendSections(model)
+    .flatMap(section => section.rows)
+    .find(row => row.key === 'not-shown')
+  expect(unlabelled).toEqual({ count: 19, smallest: 1, largest: 42 })
+  expect(keyed?.under).toBe('')
+  expect(drawn?.under).toBeUndefined()
+  expect(drawn?.count).toBe('19 unlabelled')
+  expect(drawn?.sizer).toBe('100 unlabelled')
+  expect(drawn?.title).toBe('19 unlabelled, 42 bp or less each')
+  const filled = exported()
+  expect(filled).toMatch(
+    /nodes not shown<tspan> · 19 unlabelled<\/tspan><\/text>/,
+  )
+  expect(filled).toContain('<title>19 unlabelled, 42 bp or less each</title>')
+  expect(blank).not.toContain('unlabelled')
+  expect(keyWidth(filled)).toBeDefined()
+  expect(keyWidth(filled)).toBe(keyWidth(blank))
+})
+
+test("a lifted walk's drawing labels no node length, so its key keeps no room for the count", async () => {
+  mockRpcCall.mockImplementation(
+    (_session: unknown, method: string, request: EngineRequest) =>
+      method === 'GraphComputeLayout'
+        ? layoutEngine(request)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const placeholders = Array.from({ length: 3 }, (_, i) => [
+    `S\tp${i}\t*\tLN:i:${i + 1}\tnl:i:1`,
+    `L\t1\t+\tp${i}\t+\t0M`,
+    `L\tp${i}\t+\t2\t+\t0M`,
+  ])
+  const model = createModel()
+  model.setWidth(800)
+  await model.loadGFA(
+    [
+      `${SIMPLE_GFA}${placeholders.flat().join('\n')}`,
+      'W\tGRCh38\t0\tchr1\t0\t8\t>1>2',
+      'W\tA\t1\tctg\t0\t9\t>1>p0>2',
+      '',
+    ].join('\n'),
+    'g',
+  )
+  model.startRenderingBackend(fakeRenderer())
+  const notShown = () =>
+    drawnLegendSections(model)
+      .flatMap(section => section.rows)
+      .find(row => row.key === 'not-shown')
+  expect(notShown()?.sizer).toBeDefined()
+  model.liftWalks(['A#1#ctg'])
+  expect(model.labelsNodeSizes).toBe(false)
+  expect(notShown()).toBeDefined()
+  expect(notShown()?.sizer).toBeUndefined()
+  expect(notShown()?.count).toBeUndefined()
+  expect(notShown()?.under).toBeUndefined()
+})
+
+// mean depth 2.2, which a middle bar keyed as "2 walks" though no node has it
+test('the node thickness key draws its two bars as wide as the thickest and thinnest nodes draw', async () => {
+  mockRpcCall.mockImplementation(
+    (_session: unknown, method: string, request: EngineRequest) =>
+      method === 'GraphComputeLayout'
+        ? layoutEngine(request)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const model = createModel()
+  model.setLayoutEngine('stress')
+  model.setNodeWidth('depth')
+  await model.loadGFA(
+    [
+      'H\tVN:Z:1.0',
+      'S\t1\tACGTACGTAC',
+      'S\t2\tGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+      'S\t3\tTTTTTTTTTT',
+      'L\t1\t+\t2\t+\t0M',
+      'L\t2\t+\t3\t+\t0M',
+      'L\t1\t+\t3\t+\t0M',
+      'W\tGRCh38\t0\tchr1\t0\t50\t>1>2>3',
+      'W\tA\t1\tchr1\t0\t20\t>1>3',
+      'W\tB\t1\tchr1\t0\t20\t>1>3',
+      'W\tC\t1\tchr1\t0\t20\t>1>3',
+      '',
+    ].join('\n'),
+    'g',
+  )
+  model.startRenderingBackend(fakeRenderer())
+  const { batch } = model.buildDrawing(undefined, false)!
+  const drawnPx = (id: string) =>
+    batch.nodeStrokes[batch.nodeStrokeRuns.get(id)!.start]!.thickness * 2
+  const rows = legendSections(model).find(
+    s => s.testid === 'graph-width-legend',
+  )?.rows
+  expect(
+    rows?.map(r => [r.label, r.swatch?.kind === 'fill' && r.swatch.height]),
+  ).toEqual([
+    ['4 walks', drawnPx('1+')],
+    ['1 walk', drawnPx('2+')],
+  ])
 })

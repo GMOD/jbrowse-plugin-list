@@ -30,6 +30,7 @@ import type { AxisScale } from '@jbrowse/bandage-core/util/geometry'
 import type { WalkLayer } from '@jbrowse/bandage-core/walkEncoding'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation } from '@jbrowse/core/util/types'
+import type { AbridgedWalk } from '@jbrowse/graph-walks'
 
 // Ceiling on the pane, and what it falls back to before there is a layout to
 // size against. A roughly square drawing (FMMM) hits this and keeps the
@@ -336,6 +337,8 @@ export const paneBase = types
     // a walk-rows cut's tables and runs, which draw the rows in place of the
     // graph's walks
     walkCut: undefined as WalkCut | undefined,
+    // the walks the cut left steps of unloaded, each with its counts
+    abridged: [] as AbridgedWalk[],
     // the reference window the graph on screen was cut for, set with it
     graphRegion: undefined as SubgraphRegion | undefined,
     cutKeyOnRecord: undefined as string | undefined,
@@ -351,6 +354,26 @@ export const paneBase = types
     // what the legends in the pane's corner measure, so no label
     // is placed under them
     legendSize: { width: 0, height: 0 },
+    // The key's size the pane is framed by: its height floors the pane and
+    // its width is the column the fit leaves it. It follows the key a layout
+    // or a setting leaves, and is held while a pan or zoom changes what the
+    // key lists (keyFrameHeld), so the pane never moves with the view.
+    keyFrame: undefined as { width: number; height: number } | undefined,
+    keyFrameHeld: false,
+    // How a host that measures its key says what the key draws, and what it
+    // drew when last measured. Its size sets the pane's height and the fit,
+    // so the labels wait for the two to agree.
+    keyShapeOf: undefined as (() => string) | undefined,
+    measuredKeyShape: undefined as string | undefined,
+    // the floor a host whose height follows its key last answered, so the
+    // labels wait for a height it is about to grow to
+    answeredKeyFloor: undefined as number | undefined,
+    // the feature reads over the cut not yet landed, whose genes, repeats
+    // and bubbles the labels wait for
+    featureReadsInFlight: 0,
+    // whether the cut's labels still wait for those reads, which they do only
+    // until first placed
+    labelsAwaitReads: true,
     // The bubble index rows over the cut window, when the source track has
     // one beside its segments. Undefined for a graph with no index, whose
     // bubbles are `derivedBubbles` instead.
@@ -413,6 +436,11 @@ export const paneBase = types
     morphEntering: undefined as MorphEntering | undefined,
     // The batch the canvas holds, which the hover layer lights over it
     drawnBatch: EMPTY_BATCH,
+    // whether a morph is sliding the drawing to a layout just landed
+    morphing: false,
+    // the batch of the last frame no morph was under way in, which the key
+    // reads so it never shows a morph's in-between folds
+    settledBatch: EMPTY_BATCH,
     // The zoom and the window the current batch was built for; a pan that
     // stays inside it needs no rebuild.
     builtViewport: undefined as BuiltViewport | undefined,

@@ -786,6 +786,7 @@ const WALK_TABLES: GraphTables = {
     reversed: new Uint8Array(9),
   },
   departures: departureTable(),
+  revisited: 0,
 }
 
 describe('a walk-file cut', () => {
@@ -820,13 +821,12 @@ describe('a walk-file cut', () => {
     },
   )
 
-  test("measures a lifted walk against the reference's", async () => {
+  test('measures a lifted walk by its own steps alone', async () => {
     const model = restoredView({ layoutMode: 'auto' })
     await model.load()
-    expect(walkHighlight(model.graph!, 'HG002#1#chr1')).toMatchObject({
-      bp: 3400,
-      referenceBp: 4000,
-    })
+    const walk = walkHighlight(model.graph!, 'HG002#1#chr1')
+    expect(walk).toMatchObject({ bp: 3400 })
+    expect(walk).not.toHaveProperty('referenceBp')
   })
 
   test('is asked for in walk rows, and draws the rows walkRows makes', async () => {

@@ -6,6 +6,7 @@ import { svgCanvas } from '@jbrowse/bandage-core/renderer/svgCanvas'
 import { PaintLayer } from '@jbrowse/core/util/paintLayer'
 
 import BubbleHalos from './BubbleHalos'
+import { paintEdgeMarks } from './EdgeMarksOverlay'
 import GenePins from './GenePins'
 import LabelLayer from './LabelLayer'
 import { SvgSwatch } from './LegendSwatch'
@@ -14,8 +15,9 @@ import { paintTubeMap } from './TubeMapOverlay'
 import WalkRowsOverlay from './WalkRowsOverlay'
 import { HEADING_GAP_PX, HEADING_INK } from './legendStyles'
 import {
+  countWords,
+  drawnLegendSections,
   facetKeyRows,
-  legendSections,
   rowPitch,
   swatchColumn,
   swatchWidth,
@@ -144,15 +146,17 @@ function svgRow(
   const sw = column ?? swatchWidth(swatch)
   const indent = column === undefined ? 0 : column + 5
   const words = (row.strong ?? '') + row.label
+  const reserved = row.sizer === undefined ? '' : ` ${countWords(row.sizer)}`
   return {
     key: row.key,
     width: Math.max(
-      sw + 5 + words.length * LABEL_CHAR_PX,
+      sw + 5 + (words.length + reserved.length) * LABEL_CHAR_PX,
       indent + (row.under?.length ?? 0) * LABEL_CHAR_PX,
     ),
     height: row.under ? pitch * 2 : pitch,
     draw: left => (
       <g key={row.key} {...FONT}>
+        {row.count && row.title ? <title>{row.title}</title> : null}
         <SvgSwatch
           swatch={swatch}
           x={left + (sw - swatchWidth(swatch)) / 2}
@@ -161,6 +165,7 @@ function svgRow(
         <text x={left + sw + 5} y={0}>
           {row.strong ? <tspan fontWeight="bold">{row.strong}</tspan> : null}
           {row.label}
+          {row.count ? <tspan>{` ${countWords(row.count)}`}</tspan> : null}
         </text>
         {row.under ? (
           <text x={left + indent} y={pitch}>
@@ -181,7 +186,7 @@ function Keys({
   model: GraphPaneModel
   idPrefix: string
 }) {
-  const sections = legendSections(model)
+  const sections = drawnLegendSections(model)
   if (sections.length === 0) {
     return null
   }
@@ -210,13 +215,8 @@ function Keys({
   const boxWidth =
     rows.reduce((max, r) => Math.max(max, r.width), -Infinity) + pad * 2
   const boxHeight = rows.reduce((sum, r) => sum + r.height, 0) + pad
-  const topRight = model.legendCorner === 'top-right'
-  const left = topRight
-    ? model.paneWidth - LEGEND_INSET_PX - boxWidth + pad
-    : LEGEND_INSET_PX + pad
-  const top = topRight
-    ? LEGEND_INSET_PX + model.referenceStripZonePx
-    : model.canvasHeight - LEGEND_INSET_PX - boxHeight
+  const left = model.paneWidth - LEGEND_INSET_PX - boxWidth + pad
+  const top = LEGEND_INSET_PX + model.referenceStripZonePx
   const placed: { row: KeyRow; y: number }[] = []
   let y = top + pad / 2 + pitch / 2 + 4
   for (const row of rows) {
@@ -250,14 +250,12 @@ function Chip({
   text,
   fontSize,
   anchor,
-  bold,
 }: {
   x: number
   y: number
   text: string
   fontSize: number
   anchor: 'start' | 'middle'
-  bold?: boolean
 }) {
   const w = text.length * fontSize * 0.56 + 6
   const left = anchor === 'middle' ? x - w / 2 : x - 3
@@ -277,7 +275,6 @@ function Chip({
         y={y + fontSize * 0.35}
         textAnchor={anchor}
         fontSize={fontSize}
-        fontWeight={bold ? 600 : undefined}
         fill="#18181c"
       >
         {text}
@@ -286,31 +283,13 @@ function Chip({
   )
 }
 
-// The node and deletion lengths written on the drawing, with their leaders
+// The node lengths written on the drawing
 // eslint-disable-next-line no-restricted-syntax -- drawn inside a frozen SVG figure
 function SizeLabels({ model }: { model: GraphPaneModel }) {
   return (
     <g fontFamily={FONT.fontFamily}>
-      {model.overlayLabels.sizes.map(({ key, text, x, y, kind, leader }) => (
-        <g key={key}>
-          {leader ? (
-            <line
-              x1={leader.arcX}
-              y1={leader.arcY}
-              x2={leader.labelX}
-              y2={leader.labelY}
-              stroke="#18181c"
-            />
-          ) : null}
-          <Chip
-            x={x}
-            y={y}
-            text={text}
-            fontSize={10}
-            anchor="middle"
-            bold={kind === 'deletion'}
-          />
-        </g>
+      {model.overlayLabels.sizes.map(({ key, text, x, y }) => (
+        <Chip key={key} x={x} y={y} text={text} fontSize={10} anchor="middle" />
       ))}
     </g>
   )
@@ -407,40 +386,51 @@ export default function PaneSvg({
   const height = model.canvasHeight
   const tubeMap = !!model.layoutResult?.tubeMap
   const opts = { rasterizeLayers: rasterize }
+  const clipId = `${idPrefix}-drawing-clip`
+  const clipped = model.drawingClip !== undefined
   return (
     <g data-testid="graph-pane-svg">
-      {model.facetPanels ? (
-        <Facets model={model} rasterize={rasterize} idPrefix={idPrefix} />
-      ) : tubeMap ? (
-        <PaintLayer
-          width={width}
-          height={height}
-          opts={opts}
-          paint={ctx => {
-            paintTubeMap(asCanvasCtx(ctx), model, { highlightNode: null })
-          }}
-        />
-      ) : (
-        <Body
-          model={model}
-          lift={model.drawnHighlight}
-          drawPaths={model.effectiveDrawPaths}
-          width={width}
-          height={height}
-          rasterize={rasterize}
-        />
-      )}
-      {/* in the screen's stacking order, bottom first */}
-      {model.facetPanels ? null : (
-        <>
-          <BubbleHalos model={model} />
-          <GenePins model={model} />
-          <SizeLabels model={model} />
-          <LabelLayer model={model} />
-          <WalkRowsOverlay model={model} vector />
-          <RowLabels model={model} />
-        </>
-      )}
+      {clipped ? (
+        <defs>
+          <clipPath id={clipId}>
+            <rect width={model.drawingWidth} height={height} />
+          </clipPath>
+        </defs>
+      ) : null}
+      <g clipPath={clipped ? `url(#${clipId})` : undefined}>
+        {model.facetPanels ? (
+          <Facets model={model} rasterize={rasterize} idPrefix={idPrefix} />
+        ) : tubeMap ? (
+          <PaintLayer
+            width={width}
+            height={height}
+            opts={opts}
+            paint={ctx => {
+              paintTubeMap(asCanvasCtx(ctx), model, { highlightNode: null })
+            }}
+          />
+        ) : (
+          <Body
+            model={model}
+            lift={model.drawnHighlight}
+            drawPaths={model.effectiveDrawPaths}
+            width={width}
+            height={height}
+            rasterize={rasterize}
+          />
+        )}
+        {/* in the screen's stacking order, bottom first */}
+        {model.facetPanels ? null : (
+          <>
+            <BubbleHalos model={model} />
+            <GenePins model={model} />
+            <SizeLabels model={model} />
+            <LabelLayer model={model} />
+            <WalkRowsOverlay model={model} vector />
+            <RowLabels model={model} />
+          </>
+        )}
+      </g>
       {model.referenceStripShown ? (
         <PaintLayer
           width={width}
@@ -451,6 +441,16 @@ export default function PaneSvg({
               lit: undefined,
               dpr: 1,
             })
+          }}
+        />
+      ) : null}
+      {model.runsPastEdge ? (
+        <PaintLayer
+          width={width}
+          height={height}
+          opts={opts}
+          paint={ctx => {
+            paintEdgeMarks(asCanvasCtx(ctx), model)
           }}
         />
       ) : null}

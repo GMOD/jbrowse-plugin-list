@@ -9,8 +9,8 @@ import {
   drawSqueezedLengths,
   graphOfPaths,
   memberAt,
+  panelWalksThrough,
   tubeMapPanelGroups,
-  walksThrough,
   withTubeMapPanels,
 } from './tubeMapPanels'
 
@@ -117,13 +117,37 @@ test('one group draws the whole map, unsplit', () => {
 test("a hovered node's box in each panel, and how many walks pass it", () => {
   const g = graph()
   const a = tubeMapReferenceLayout(graphOfPaths(g, ['A#1#c', 'A#2#c']))!
+  const node = (id: string) => g.nodes.find(n => n.id === id)!
   expect(boxOf(a.tubeMap!, '2+')).toBe('2+')
-  expect(walksThrough(a.tubeMap!.graph, '2+')).toEqual({ here: 1, of: 2 })
+  expect(panelWalksThrough(g, node('2+'), a.tubeMap!.graph)).toEqual({
+    here: 1,
+    of: 2,
+  })
   const b = tubeMapReferenceLayout(graphOfPaths(g, ['B#1#c']))!
   expect(boxOf(b.tubeMap!, '2+')).toBeUndefined()
-  const box = boxOf(b.tubeMap!, '3+')!
-  expect(box).toBeDefined()
-  expect(walksThrough(b.tubeMap!.graph, box)).toEqual({ here: 0, of: 1 })
+  expect(boxOf(b.tubeMap!, '3+')).toBeDefined()
+  expect(panelWalksThrough(g, node('3+'), b.tubeMap!.graph)).toEqual({
+    here: 0,
+    of: 1,
+  })
+})
+
+// A's second haplotype and C, which no panel shows, reach segment 2 only
+// through a departure's own steps
+test('a panel counts a walk that passes a node only through a departure', () => {
+  const g = graph()
+  const two = {
+    ...g.nodes.find(n => n.id === '2+')!,
+    departureVisits: [
+      { path: 'A#2#c', sample: 'A', start: 10, strand: '+' as const },
+      { path: 'C#1#c', sample: 'C', start: 10, strand: '+' as const },
+    ],
+  }
+  const a = tubeMapReferenceLayout(graphOfPaths(g, ['A#1#c', 'A#2#c']))!
+  expect(panelWalksThrough(g, two, a.tubeMap!.graph)).toEqual({
+    here: 2,
+    of: 2,
+  })
 })
 
 test("a merged run's member is the one under the pointer's share of its width", () => {

@@ -1097,9 +1097,11 @@ test('a cut read as tables is the GFA cut parsed', async () => {
     const query = await referencePathQuery(db, 'GRCh38', region.refName)
     const opts = { context: 1000, snarls: 'contained', limit: 100_000 } as const
     const { start, end } = region
-    expect(await cutWindowTables(db, query, start, end, opts)).toEqual(
-      gfaTables(await cutWindowGFA(db, query, start, end, opts)),
-    )
+    // a gbz-base cut states no count of the nodes the reference passes twice
+    expect(await cutWindowTables(db, query, start, end, opts)).toEqual({
+      ...gfaTables(await cutWindowGFA(db, query, start, end, opts)),
+      revisited: Number.NaN,
+    })
   }
 })
 

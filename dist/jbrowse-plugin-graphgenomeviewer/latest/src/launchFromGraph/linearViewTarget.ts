@@ -4,6 +4,7 @@ export interface NavigableLinearView {
   id: string
   assemblyNames: string[]
   navToLocString: (locString: string, assemblyName?: string) => unknown
+  showTrack?: (trackId: string) => unknown
 }
 
 // Reads `session.views` structurally, the same way graphViewHighlights does: the

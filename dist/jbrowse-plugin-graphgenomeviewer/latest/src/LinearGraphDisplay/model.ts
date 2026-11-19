@@ -3,6 +3,11 @@ import type { ReactNode } from 'react'
 
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
 import {
+  TRACK_FITS,
+  TRACK_FIT_LABELS,
+  grownHeight,
+} from '@jbrowse/bandage-core/trackFit'
+import {
   ConfigurationReference,
   getConf,
   setConf,
@@ -10,7 +15,7 @@ import {
 import { BaseDisplay } from '@jbrowse/core/pluggableElementTypes'
 import { computeSvgReady } from '@jbrowse/core/svg/svgReady'
 import { getSession } from '@jbrowse/core/util'
-import TrackHeightMixin from '@jbrowse/display-kit/TrackHeightMixin'
+import HeightModeMixin from '@jbrowse/display-kit/HeightModeMixin'
 import { editPlotMenuItems } from '@jbrowse/display-kit/plotMenu'
 import { addDisposer, isAlive, types } from '@jbrowse/mobx-state-tree'
 import {
@@ -18,13 +23,26 @@ import {
   computeDisplayPhase,
 } from '@jbrowse/render-core/displayPhase'
 import BubbleChartIcon from '@mui/icons-material/BubbleChart'
+import HeightIcon from '@mui/icons-material/Height'
 import RouteIcon from '@mui/icons-material/Route'
 import SettingsIcon from '@mui/icons-material/Settings'
-import { reaction } from 'mobx'
+import { reaction, when } from 'mobx'
 
-import { isNodeLimitError, isUnzoomableNodeLimitError } from '../nodeLimitError'
+import {
+  isDrawLimitError,
+  isNodeLimitError,
+  isUnzoomableNodeLimitError,
+} from '../nodeLimitError'
 import { denseCovers } from './denseWindow'
-import { cutHolds, hostCut, hostWindow } from '../GraphGenomeView/host'
+import {
+  cutHolds,
+  cutRuleOf,
+  hostCut,
+  hostWindow,
+  sameCut,
+  snapLevel,
+  snappedCut,
+} from '../GraphGenomeView/host'
 import { GraphPane, formatSpanBp } from '../GraphGenomeView/model'
 import { FACET_KEY_PX } from '../GraphGenomeView/pane/fitViews'
 import { paneBase } from '../GraphGenomeView/pane/paneBase'
@@ -85,6 +103,8 @@ export function coarseHandover(coarse: unknown) {
       : undefined
 }
 
+const OVER_LIMIT_KEPT = 64
+
 const GraphSettingsDialog = lazy(
   () => import('../GraphGenomeView/components/GraphSettingsDialog'),
 )
@@ -94,7 +114,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
     .compose(
       'LinearGraphDisplay',
       BaseDisplay,
-      TrackHeightMixin(),
+      HeightModeMixin(),
       GraphPane,
       types.model({
         type: types.literal('LinearGraphDisplay'),
@@ -115,6 +135,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       dense: undefined as SubgraphRegion | undefined,
       // the fold the latest cut asked for
       cutFoldBp: 0,
+      overLimit: new Set<string>(),
     }))
     .views(self => ({
       get grammar(): GraphGrammar {
@@ -142,6 +163,12 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       get canvasHeight() {
         return self.height
       },
+      get trackFit() {
+        return self.heightMode
+      },
+      get referenceRoom() {
+        return self.heightMode === 'grow' ? self.growMaxHeight : self.height
+      },
       get canRetryLoad() {
         return self.cutRegion !== undefined
       },
@@ -157,6 +184,18 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       // undefined for a track with none
       get coarseAboveBpPerPx() {
         return coarseHandover(self.sourceAdapter?.coarse)
+      },
+      // In grow, the height that holds the whole cut at the window's scale,
+      // and never less than the key needs
+      get growTargetHeight() {
+        const scale = self.followsWindow ? self.heldScale : undefined
+        const bounds = self.heldBounds
+        return scale !== undefined && bounds
+          ? Math.max(
+              self.canvasFloor,
+              grownHeight(bounds, scale, self.followPads),
+            )
+          : self.fitTargetHeight
       },
     }))
     .views(self => ({
@@ -183,6 +222,60 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         return self.coarseCut && self.coarseAboveBpPerPx !== undefined
           ? 'coarse'
           : 'fine'
+      },
+      foldFor(
+        region: SubgraphRegion | undefined,
+        seen: HostWindow | undefined,
+      ) {
+        const bpPerPx = seen?.bpPerPx ?? self.host?.bpPerPx ?? 0
+        return Math.round(
+          FOLD_PX *
+            (seen && self.snapsHostCut && sameCut(region, snappedCut(seen))
+              ? (bpPerPx * snapLevel(seen.span)) / seen.span
+              : bpPerPx),
+        )
+      },
+    }))
+    .views(self => ({
+      overLimitKey(region: SubgraphRegion, seen: HostWindow) {
+        return JSON.stringify([
+          region,
+          self.tierAt(seen.bpPerPx),
+          self.foldFor(region, seen),
+          self.cutKey,
+          self.maxGraphNodes,
+        ])
+      },
+    }))
+    .views(self => ({
+      cutFor(seen: HostWindow) {
+        const cap = self.capFor(self.tierAt(seen.bpPerPx))
+        const snapped = snappedCut(seen)
+        return self.snapsHostCut &&
+          snapped.end - snapped.start <= cap &&
+          !self.overLimit.has(self.overLimitKey(snapped, seen))
+          ? snapped
+          : hostCut(
+              seen,
+              cap,
+              layoutModeByValue(self.chosenLayoutMode).cutMargins,
+            )
+      },
+    }))
+    .views(self => ({
+      snapped(region: SubgraphRegion | undefined, seen: HostWindow) {
+        return self.snapsHostCut && sameCut(region, snappedCut(seen))
+      },
+      cutHoldsAt(seen: HostWindow) {
+        return self.snapsHostCut
+          ? sameCut(self.cutRegion, self.cutFor(seen)) &&
+              (!!self.graph?.paths?.length ||
+                self.cutFoldBp === self.foldFor(self.cutRegion, seen))
+          : cutHolds(
+              self.cutRegion,
+              seen,
+              layoutModeByValue(self.chosenLayoutMode).cutMargins,
+            ) && !self.foldDrifted(seen.bpPerPx)
       },
     }))
     .views(self => ({
@@ -307,15 +400,16 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           return
         }
         const coarse = self.cutTier === 'coarse'
-        self.cutFoldBp = Math.round(
-          FOLD_PX * (self.settledWindow?.bpPerPx ?? self.host?.bpPerPx ?? 0),
-        )
+        const seen =
+          self.settledWindow ?? (self.host ? hostWindow(self.host) : undefined)
+        self.cutFoldBp = self.foldFor(region, seen)
         self.markCut()
         return self.cutSubgraph(
           adapterConfig,
           region,
           { ...self.cutOptions, tier: coarse ? 'coarse' : undefined },
           self.cutFoldBp,
+          !!seen && self.snapped(region, seen),
         )
       },
     }))
@@ -323,11 +417,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       recutAt(seen: HostWindow) {
         const tier = self.tierAt(seen.bpPerPx)
         self.coarseCut = tier === 'coarse'
-        self.cutRegion = hostCut(
-          seen,
-          self.capFor(tier),
-          layoutModeByValue(self.chosenLayoutMode).cutMargins,
-        )
+        self.cutRegion = self.cutFor(seen)
         self.recuts++
         return self.cut()
       },
@@ -339,38 +429,52 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         // is this cut's only while no later one has started
         followCut(cut: ReturnType<typeof self.cut>, seen: HostWindow) {
           const latest = ++followed
-          void Promise.resolve(cut).then(() => {
+          const region = self.cutRegion
+          void Promise.resolve(cut).then(overNodeLimit => {
             if (
               isAlive(self) &&
               followed === latest &&
-              isNodeLimitError(self.error)
+              (overNodeLimit === true || isNodeLimitError(self.error))
             ) {
-              this.refuseDenseCut(seen)
+              if (self.snapped(region, seen)) {
+                this.refuseSnappedCut(seen)
+              } else {
+                this.refuseDenseCut(seen)
+              }
             }
           })
         },
         // The settle clock. A window the cut still holds fetches nothing;
-        // one past its edge re-cuts, on the tier the zoom asks for, with
-        // margins when the host places x and the window alone when the
-        // layout draws its own picture of it. A canceled cut is re-made by
+        // one past its edge re-cuts, on the tier the zoom asks for, as
+        // cutFor says. A canceled cut is re-made by
         // the next move, and a window a refused cut covers keeps its notice
         // without asking again. Returns whether it re-cut.
         settleOn(seen: HostWindow): boolean {
           self.settledWindow = seen
-          const margins = layoutModeByValue(self.chosenLayoutMode).cutMargins
           if (
             self.regionTooLarge ||
             denseCovers(self.dense, seen) ||
             (!self.loadCanceled &&
               self.tierAt(seen.bpPerPx) === self.cutTier &&
-              cutHolds(self.cutRegion, seen, margins) &&
-              !self.cutStale &&
-              !self.foldDrifted(seen.bpPerPx))
+              self.cutHoldsAt(seen) &&
+              !self.cutStale)
           ) {
             return false
           }
           this.followCut(self.recutAt(seen), seen)
           return true
+        },
+        // A snapped cut over a node limit holds nothing, so the window is
+        // cut alone wherever that snapped cut is the window's
+        refuseSnappedCut(seen: HostWindow) {
+          const { overLimit } = self
+          overLimit.add(self.overLimitKey(snappedCut(seen), seen))
+          for (const key of overLimit) {
+            if (overLimit.size > OVER_LIMIT_KEPT) {
+              overLimit.delete(key)
+            }
+          }
+          this.settleOn(self.settledWindow ?? seen)
         },
         // A cut refused for its node count holds nothing, so a window
         // narrower than this one cuts again
@@ -394,8 +498,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             seen &&
             !self.regionTooLarge &&
             (self.cutStale ||
-              layoutModeByValue(from).cutMargins !==
-                layoutModeByValue(self.chosenLayoutMode).cutMargins)
+              cutRuleOf(from) !== cutRuleOf(self.chosenLayoutMode))
           ) {
             const cut = self.recutAt(seen)
             this.followCut(cut, seen)
@@ -426,7 +529,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
         now: { bpPerPx: number; offsetPx: number },
       ) {
         const bounds = self.layoutBounds
-        if (!bounds || !self.followsHostView) {
+        if (!bounds || !self.followsHostView || self.snapsHostCut) {
           return
         }
         // no longer the fit, so the fit autorun cannot undo it before the
@@ -459,8 +562,20 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       // the linear view and fetches nothing; the settle clock wakes on its
       // debounced blocks.
       afterAttach() {
+        // a restored cut waits for the view's window, which its fold and
+        // snap are read against, unless the settle clock cuts first
         if (self.cutRegion && !self.graph) {
-          void self.cut()
+          addDisposer(
+            self,
+            when(
+              () => !self.host || hostWindow(self.host) !== undefined,
+              () => {
+                if (self.recuts === 0) {
+                  self.reload()
+                }
+              },
+            ),
+          )
         }
         addDisposer(
           self,
@@ -533,6 +648,54 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
               }
             },
             { name: 'GraphFacetHeight' },
+          ),
+        )
+        // Nor is the track shorter than its key and the drawing's floor, as a
+        // standalone pane is not: a key cut by the track's height loses its
+        // last rows. Only a change in that floor grows it, and the labels wait
+        // for the track to have answered it.
+        self.setAnsweredKeyFloor(self.canvasFloor)
+        addDisposer(
+          self,
+          reaction(
+            () => self.canvasFloor,
+            floor => {
+              if (floor > self.height) {
+                self.setHeight(Math.ceil(floor))
+              }
+              self.setAnsweredKeyFloor(floor)
+            },
+            { name: 'GraphKeyHeight' },
+          ),
+        )
+        addDisposer(
+          self,
+          reaction(
+            () => self.error,
+            error => {
+              const seen = self.settledWindow
+              if (
+                seen &&
+                isDrawLimitError(error) &&
+                self.snapped(self.cutRegion, seen)
+              ) {
+                self.refuseSnappedCut(seen)
+              }
+            },
+            { name: 'GraphSnapDrawLimit' },
+          ),
+        )
+        addDisposer(
+          self,
+          reaction(
+            () => self.maxGraphNodes,
+            () => {
+              const seen = self.settledWindow
+              if (seen && self.snapsHostCut) {
+                self.settleOn(seen)
+              }
+            },
+            { name: 'GraphSnapNodeLimit' },
           ),
         )
         addDisposer(
@@ -690,6 +853,18 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
             ? [{ label: 'Haplotypes', icon: RouteIcon, subMenu: haplotypes }]
             : []),
           ...self.graphMenuItems(),
+          {
+            label: 'Track sizing',
+            icon: HeightIcon,
+            subMenu: TRACK_FITS.map(fit => ({
+              type: 'radio' as const,
+              label: TRACK_FIT_LABELS[fit],
+              checked: self.heightMode === fit,
+              onClick: () => {
+                self.setHeightMode(fit)
+              },
+            })),
+          },
           {
             label: 'Graph settings...',
             icon: SettingsIcon,

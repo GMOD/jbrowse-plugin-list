@@ -1,5 +1,5 @@
 import { guessGraphAdapter } from './guessAdapter'
-import { walkIndexed } from '../graphTrackConfig'
+import { GRAPH_ADAPTERS, walkIndexed } from '../graphTrackConfig'
 import { isRecord } from '../isRecord'
 import { WALKS_SUFFIX, splitUri, walkFileSample } from '../locationName'
 import { LANE_ADAPTERS } from '../panSNAliases/trackAdapterConfig'
@@ -11,12 +11,6 @@ import type {
 } from '@jbrowse/core/util/tracks'
 
 type TrackConfigSnapshot = Record<string, unknown>
-
-const GRAPH_ADAPTERS = new Set([
-  'RgfaTabixAdapter',
-  'GbzBaseSyntenyAdapter',
-  'WalkTabixSyntenyAdapter',
-])
 
 // A lanes adapter cuts on the first assembly it names. A track added through
 // Open track names that assembly on the track alone.

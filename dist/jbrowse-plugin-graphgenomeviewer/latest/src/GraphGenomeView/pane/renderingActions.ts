@@ -1,7 +1,7 @@
 import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { contains } from '@jbrowse/bandage-core/viewport'
 import { getSession } from '@jbrowse/core/util'
-import { addDisposer } from '@jbrowse/mobx-state-tree'
+import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
 import { autorun, reaction, untracked } from 'mobx'
 
 import { withLoadActions } from './loadActions'
@@ -11,7 +11,6 @@ import {
   dependOn,
   paneViewportOf,
 } from './paneBase'
-import { EXPAND_NAMED_MAX } from '../../GetSubgraph'
 import {
   bubbleForLgvHover,
   hoverFromPair,
@@ -23,15 +22,86 @@ import {
 import { walksForRow } from '../../hoverSync/rowWalks'
 import { liveViewIds } from '../../launchFromGraph/linearViewTarget'
 import { trackedDpr } from '../trackedDpr'
+import { routesToLoad, tubeMapWalksToLoad } from '../unloadedWalks'
 
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
 
+// How long after a cut's layout lands its labels wait for reads still on
+// their way. The slowest ordinary read measured landed 0.92 s after the
+// layout; one that never lands must not leave the view unlabelled.
+export const READ_WAIT_MS = 1500
+
 export const withRenderingActions = withLoadActions
+  .views(self => ({
+    get keyShape() {
+      return self.keyShapeOf?.()
+    },
+  }))
+  // The frame the labels are placed in, settled: the layout is in and no
+  // morph is sliding to it, no read of genes, repeats or bubbles is on its
+  // way while the cut's labels await them, the key's size is measured for the
+  // key as it is now, and a track has grown to hold it. The key's height never waits on the labels, since
+  // it keeps its line for the unlabelled count whenever placeholders are
+  // drawn, so placing them settles nothing again.
+  .views(self => ({
+    get labelFrameSettled() {
+      const keyMeasured =
+        self.keyShape === undefined ||
+        !self.legendAtRest ||
+        self.measuredKeyShape === self.keyShape
+      const heightAnswered =
+        self.answeredKeyFloor === undefined ||
+        self.answeredKeyFloor === self.canvasFloor
+      return (
+        self.layoutResult !== undefined &&
+        !self.morphing &&
+        (self.featureReadsInFlight === 0 || !self.labelsAwaitReads) &&
+        keyMeasured &&
+        heightAnswered
+      )
+    },
+  }))
   .actions(self => ({
     startRenderingBackend(backend: Renderer) {
       if (!self.autorunsInstalled) {
+        // A cut's labels wait for its reads until first placed, and no
+        // longer than READ_WAIT_MS after its layout lands; a read landing
+        // after that lays them out again
+        let readWait: ReturnType<typeof setTimeout> | undefined
+        addDisposer(self, () => {
+          clearTimeout(readWait)
+        })
+        addDisposer(
+          self,
+          reaction(
+            () => (self.labelsAwaitReads ? self.layoutResult : undefined),
+            laid => {
+              clearTimeout(readWait)
+              readWait = laid
+                ? setTimeout(() => {
+                    if (isAlive(self)) {
+                      self.stopAwaitingReads()
+                    }
+                  }, READ_WAIT_MS)
+                : undefined
+            },
+            { fireImmediately: true },
+          ),
+        )
+        addDisposer(
+          self,
+          reaction(
+            () => self.labelFrameSettled,
+            settled => {
+              if (settled) {
+                self.stopAwaitingReads()
+              }
+            },
+            { fireImmediately: true },
+          ),
+        )
         // Autorun: keep the view fitted to the graph until the user moves it.
         // Reading fittedTransform tracks everything the fit depends on, so
         // it re-fits as the layout arrives, the canvas is measured and the
@@ -112,15 +182,17 @@ export const withRenderingActions = withLoadActions
           ),
         )
         // Walk rows and tube map panels read the source track's samples
-        // TSV, to group by its columns, again for a graph after a dropped one,
-        // and each new cut retries a read that failed
+        // TSV, to group by its columns, and lifted walks to take its colours,
+        // again for a graph after a dropped one, and each new cut retries a
+        // read that failed
         addDisposer(
           self,
           reaction(
             () =>
               self.graph &&
               (self.chosenLayoutMode === 'walkrows' ||
-                TUBE_MAP_MODES.has(self.chosenLayoutMode))
+                TUBE_MAP_MODES.has(self.chosenLayoutMode) ||
+                self.walkLayers.length > 0)
                 ? [self.graph, JSON.stringify(self.walkRowSamplesTsv ?? null)]
                 : undefined,
             wanted => {
@@ -496,32 +568,25 @@ export const withRenderingActions = withLoadActions
     expandWalk(name: string) {
       self.expandWalks([name])
     },
-    // A lifted walk's key states its length, and a picked sample's row is
-    // drawn whole, so the cut reads such a walk it abridged in full
+    // A lifted walk's key states its length, a tube map draws the nodes of
+    // the walks it shows while they are few enough, and ribbons, shared blocks
+    // and the shared order compare nodes, so the cut fetches the steps of such
+    // walks it left out. Walk rows draw a walk the same either way, so they
+    // fetch only what a comparison needs.
     afterAttach() {
       addDisposer(
         self,
         reaction(
           () => {
-            const lifted = new Set(self.walkLayers.map(l => l.walk))
-            const picked = new Set(
-              self.chosenLayoutMode === 'walkrows' &&
-                (self.walkRowSamples?.length ?? 0) <= EXPAND_NAMED_MAX
-                ? self.walkRowSamples
-                : [],
+            const lifted = self.abridged
+              .map(walk => walk.name)
+              .filter(name => self.walkLayers.some(l => l.walk === name))
+            const tubeMap = TUBE_MAP_MODES.has(self.chosenLayoutMode)
+              ? tubeMapWalksToLoad(self.graph, self.abridged)
+              : []
+            return Array.from(
+              new Set(lifted.concat(tubeMap, routesToLoad(self.comparedRows))),
             )
-            return [
-              ...new Set(
-                (self.graph?.paths ?? [])
-                  .filter(
-                    p =>
-                      p.abridged &&
-                      (lifted.has(p.name) ||
-                        (p.sample !== undefined && picked.has(p.sample))),
-                  )
-                  .map(p => p.name),
-              ),
-            ]
           },
           names => {
             self.expandWalks(names)

@@ -1,4 +1,12 @@
-import { cutHolds, hostCut, hostFrame } from './host'
+import {
+  cutHolds,
+  cutRuleOf,
+  hostCut,
+  hostFrame,
+  sameCut,
+  snapLevel,
+  snappedCut,
+} from './host'
 
 import type { HostWindow, LinearHost } from './host'
 
@@ -61,4 +69,71 @@ test('a reversed block runs bp right to left from the same screen edge', () => {
   }
   expect([at(false, 1000), at(false, 2000)]).toEqual([100, 600])
   expect([at(true, 2000), at(true, 1000)]).toEqual([100, 600])
+})
+
+const shifted = (bp: number) => ({
+  ...window,
+  start: window.start + bp,
+  end: window.end + bp,
+})
+
+test('a snapped cut is one cut for every window of its cell, and the next cell is half a level on', () => {
+  const cut = snappedCut(window)
+  expect(cut).toEqual({
+    refName: 'chr1',
+    assemblyName: 'hg38',
+    start: 966_656,
+    end: 1_064_960,
+  })
+  expect(sameCut(cut, snappedCut(shifted(2_000)))).toBe(true)
+  expect(sameCut(cut, snappedCut(shifted(-20_000)))).toBe(true)
+  expect(snappedCut(shifted(10_000))).toMatchObject({
+    start: 966_656 + 32_768,
+    end: 1_064_960 + 32_768,
+  })
+})
+
+test('a snapped cut depends on the window alone, whichever window came before', () => {
+  const there = snappedCut(shifted(500_000))
+  expect(snappedCut(window)).toEqual(snappedCut(shifted(0)))
+  expect(snappedCut(shifted(500_000))).toEqual(there)
+})
+
+test('every window lies inside its snapped cut, which is at most 2.2 windows wide', () => {
+  for (let k = 0; k < 400; k++) {
+    const span = 1_000 * 1.02 ** k
+    const start = 5_000_000 + ((k * 7919) % 100_000) * 3.7
+    const seen = { ...window, start, end: start + span, span }
+    const cut = snappedCut(seen)
+    expect(cut.start).toBeLessThanOrEqual(seen.start + 1)
+    expect(cut.end).toBeGreaterThanOrEqual(seen.end - 1)
+    expect(cut.end - cut.start).toBeLessThanOrEqual(2.2 * span + 2)
+  }
+})
+
+test('snap levels are a square root of two apart, the smallest holding the span', () => {
+  expect(snapLevel(65_536)).toBe(65_536)
+  expect(snapLevel(65_537)).toBeCloseTo(65_536 * Math.SQRT2, 6)
+  expect(snapLevel(60_000)).toBe(65_536)
+  expect(snapLevel(46_000)).toBeCloseTo(32_768 * Math.SQRT2, 6)
+})
+
+test('a span a rounding error past a level, as bp per px times the width can come out, stays on that level', () => {
+  expect(snapLevel(65_536 * (1 + 1e-12))).toBe(65_536)
+  expect(snapLevel(2 ** 15.5 * (1 + 1e-12))).toBe(2 ** 15.5)
+})
+
+test('a snapped cut stops at the ends of the displayed region', () => {
+  const cut = snappedCut({ ...window, start: 1_000, end: 61_000 })
+  expect(cut.start).toBe(0)
+  expect(cut.end).toBeGreaterThan(61_000)
+})
+
+test('only the force layout snaps its cut; the others cut with margins or the window alone', () => {
+  expect(cutRuleOf('force')).toBe('snapped')
+  expect(cutRuleOf('auto')).toBe('margins')
+  expect(cutRuleOf('tubemapref')).toBe('margins')
+  expect(cutRuleOf('ordered')).toBe('window')
+  expect(cutRuleOf('walkrows')).toBe('window')
+  expect(cutRuleOf('tubemap')).toBe('window')
 })

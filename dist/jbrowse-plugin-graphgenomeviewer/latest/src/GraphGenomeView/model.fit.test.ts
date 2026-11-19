@@ -1,3 +1,4 @@
+import { drawnMarks } from '@jbrowse/bandage-core/graphKey'
 import { rowLabelBox } from '@jbrowse/bandage-core/graphLabels'
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
 import { ROW_HEIGHT_PX } from '@jbrowse/bandage-core/layout/rowSpacing'
@@ -5,6 +6,7 @@ import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRendere
 import { buildGeometry } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { recordingCanvas } from '@jbrowse/bandage-core/renderer/recordingCanvas'
 import { applyPatch, types } from '@jbrowse/mobx-state-tree'
+import { autorun } from 'mobx'
 
 import { legendSections } from './legendSections'
 import { mockRpcCall, mockSession } from './modelTestMocks'
@@ -21,6 +23,7 @@ import {
   rpcRespond,
   toggleDeletionEdges,
 } from './modelTestSupport'
+import { forceLayouts } from './pane/paneBase'
 import stateModelFactory from './viewModel'
 
 import type { GraphLayers } from './graphLayers'
@@ -207,62 +210,114 @@ describe('canvas height follows the drawing', () => {
     expect(model.canvasHeight).toBe(600)
   })
 
-  // As a JBrowse track's legend does, the key floats over the drawing, which
-  // fits as though it were not there
-  test('the fit leaves the floating legend no room', async () => {
+  // The key once floated over the drawing, covering a full-width drawing's
+  // right end (HBB) and a gene's name pinned near it (AMY2A)
+  test('the key takes a column of its own, which the fit draws nothing in', async () => {
     rpcRespond()
     const model = createModel()
     await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
+    const right = () =>
+      maxOf(
+        Object.values(model.nodePositions!)
+          .flat()
+          .map(p => model.toScreen(p).x),
+      )
     model.zoomToFit()
-    const { scale, translateX, translateY, canvasHeight } = model
+    const column = 150 + 2 * LEGEND_INSET_PX
+    expect(right()).toBeGreaterThan(model.paneWidth - column)
 
     model.setLegendSize({ width: 150, height: 60 })
     model.zoomToFit()
-    expect(model.scale).toBeCloseTo(scale, 10)
-    expect(model.translateX).toBeCloseTo(translateX, 5)
-    expect(model.translateY).toBeCloseTo(translateY, 5)
-    expect(model.canvasHeight).toBe(canvasHeight)
+    expect(model.keyColumnPx).toBe(column)
+    expect(model.drawingWidth).toBe(model.paneWidth - column)
+    expect(right()).toBeLessThanOrEqual(model.paneWidth - column)
   })
 
-  test.each([
-    {
-      along: 'the top and right edges',
-      points: [
-        { x: 0, y: 0 },
-        { x: 100, y: 0 },
-        { x: 100, y: 100 },
-      ],
-      corner: 'bottom-left',
-    },
-    {
-      along: 'the left and bottom edges',
-      points: [
-        { x: 0, y: 0 },
-        { x: 0, y: 100 },
-        { x: 100, y: 100 },
-      ],
-      corner: 'top-right',
-    },
-  ])(
-    'a drawing along $along puts the key $corner',
-    async ({ points, corner }) => {
-      mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
-        method === 'GraphComputeLayout'
-          ? Promise.resolve({
-              result: { nodePositions: { '1+': points } },
-              duration: 5,
-            })
-          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
-      )
-      const model = createModel()
-      await model.loadGFA(SIMPLE_GFA, 'square')
-      model.zoomToFit()
-      // wide enough to reach the square drawing centred in the 800 px pane
-      model.setLegendSize({ width: 300, height: 200 })
+  test('a force layout is sized for the pane the fit maps it into: the width to the key column, and the pane ceiling', async () => {
+    rpcRespond()
+    const sized = vi.spyOn(forceLayouts, 'layout')
+    const model = createModel()
+    model.setWidth(900)
+    model.setLegendSize({ width: 150, height: 60 })
+    await model.loadGFA(SIMPLE_GFA, 'square')
+    expect(sized.mock.calls.map(c => c[3])).toEqual([
+      { width: 900 - (150 + 2 * LEGEND_INSET_PX), height: 600 },
+    ])
+    sized.mockRestore()
+  })
 
-      expect(model.legendCorner).toBe(corner)
-    },
-  )
+  test('the drawing fits beside the key where bandage-core fits it, as wide and as tall as before', async () => {
+    rpcRespond()
+    const placed = async (model: ReturnType<typeof createModel>) => {
+      model.setWidth(900)
+      model.setLegendSize({ width: 150, height: 60 })
+      await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
+      model.zoomToFit()
+      return {
+        drawingWidth: model.drawingWidth,
+        layoutFit: model.layoutFit,
+        canvasHeight: model.canvasHeight,
+        fit: model.fittedTransform,
+      }
+    }
+    expect(await placed(createModel())).toEqual({
+      drawingWidth: 738,
+      layoutFit: { width: 738, height: 600 },
+      canvasHeight: expect.closeTo(299.333, 3),
+      fit: {
+        scale: expect.closeTo(43.867, 3),
+        translateX: 40,
+        translateY: expect.closeTo(40, 9),
+      },
+    })
+    expect(await placed(createAnchoredModel())).toEqual({
+      drawingWidth: 738,
+      layoutFit: { width: 738, height: 600 },
+      canvasHeight: 160,
+      fit: {
+        scale: 0.1878,
+        translateX: expect.closeTo(134.6, 9),
+        translateY: 50,
+      },
+    })
+  })
+
+  test('a pane too narrow for the key and the drawing keeps the key whole and shrinks the drawing', async () => {
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
+    model.setLegendSize({ width: 150, height: 60 })
+    model.setWidth(800)
+    model.zoomToFit()
+    const wide = model.scale
+    model.setWidth(400)
+    model.zoomToFit()
+    const xs = Object.values(model.nodePositions!)
+      .flat()
+      .map(p => model.toScreen(p).x)
+    expect(model.keyColumnPx).toBe(150 + 2 * LEGEND_INSET_PX)
+    expect(model.scale).toBeLessThan(wide)
+    expect(minOf(xs)).toBeGreaterThanOrEqual(0)
+    expect(maxOf(xs)).toBeLessThanOrEqual(400 - model.keyColumnPx)
+  })
+
+  test('a key measured again at the size it has lays the labels out no second time', async () => {
+    rpcRespond()
+    const model = createModel()
+    await model.loadGFA(RGFA_FOUR_RANKS, 'four ranks')
+    model.setLegendSize({ width: 150, height: 60 })
+    const layouts: unknown[] = []
+    const stop = autorun(() => {
+      layouts.push(model.overlayLabels)
+    })
+    model.setLegendSize({ width: 150, height: 60 })
+    expect(layouts).toHaveLength(1)
+    model.setLegendSize({ width: 150, height: 80 })
+    expect(layouts).toHaveLength(2)
+    model.setLegendSize({ width: 170, height: 80 })
+    expect(layouts).toHaveLength(3)
+    stop()
+  })
 
   test('the hover tooltip moves beside a legend that reaches its corner', async () => {
     rpcRespond()
@@ -872,17 +927,34 @@ describe('what the row axis draws, in pixels', () => {
     expect(hidden.hiddenEdgeIndexes!.size).toBe(0)
   })
 
-  test('the legend keys the dashed links only while they draw', async () => {
+  // d719794 draws a skip too short on screen to hold three dashes as one
+  // plain stroke, which the key left out
+  test('the legend keys the dashed links and the plain stroke of a short skip only where the drawing holds them', async () => {
     const deletionRows = (model: Awaited<ReturnType<typeof fitted>>) =>
       legendSections(model)
         .filter(s => s.testid === 'graph-deletion-legend')
         .flatMap(s => s.rows)
     const shown = await fitted()
+    shown.startRenderingBackend(fakeRenderer())
+    const drawn = drawnMarks([shown.drawnBatch])
+    expect(drawn.dashedSkip || drawn.shortSkip).toBe(true)
     expect(deletionRows(shown)).toMatchObject([
-      {
-        label: expect.stringMatching(/^skips .* sequence/),
-        swatch: { kind: 'line', dashed: true },
-      },
+      ...(drawn.dashedSkip
+        ? [
+            {
+              label: expect.stringMatching(/^skips .* sequence/),
+              swatch: { kind: 'line', dashed: true },
+            },
+          ]
+        : []),
+      ...(drawn.shortSkip
+        ? [
+            {
+              label: 'short skip',
+              swatch: { kind: 'line', short: true },
+            },
+          ]
+        : []),
     ])
     expect(
       deletionRows(await fitted({ layers: { deletions: false } })),

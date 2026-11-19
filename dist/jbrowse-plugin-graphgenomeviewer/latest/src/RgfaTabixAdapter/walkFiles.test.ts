@@ -6,31 +6,30 @@ import {
 } from '@jbrowse/bandage-core/gfa/graphTables'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { readConfObject } from '@jbrowse/core/configuration'
-import { WalkFile, WalkReader } from '@jbrowse/graph-walks'
+import { CUT_PRESETS, WalkFile, WalkReader } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
 import Adapter from './RgfaTabixAdapter.ts'
 import configSchema from './configSchema.ts'
-import { EXPAND_NAMED_MAX } from '../GetSubgraph.ts'
 import { isUnzoomableNodeLimitError } from '../nodeLimitError.ts'
 
 import type { WalkCut } from './walkCut.ts'
 import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
 
 // chr22 of HPRC v2.1 at base level, one walk file per reference in walk
-// format 7, built under ~/work/scratch/walks7. Skipped where the files are
+// format 8, built under ~/work/scratch/walks8. Skipped where the files are
 // absent.
-const chr22 = '/home/cdiesh/work/scratch/walks7/chr22'
+const chr22 = '/home/cdiesh/work/scratch/walks8/chr22'
 const present = ['GRCh38', 'CHM13'].every(sample =>
   existsSync(`${chr22}.${sample}.walks.gz`),
 )
 
-// The walk files under test_data/walks7, which its build.sh writes from the
+// The walk files under test_data/walks8, which its build.sh writes from the
 // GFAs beside them
 const fixture = (name: string) =>
   require
-    .resolve(`./test_data/walks7/${name}.GRCh38.walks.gz`)
+    .resolve(`./test_data/walks8/${name}.GRCh38.walks.gz`)
     .replace(/\.walks\.gz$/, '')
 
 // Four walks over a 3.6 kb reference in 1 kb tiles:
@@ -232,46 +231,27 @@ test('a cut asked to expand walks hands the reader their names', async () => {
   cut.mockRestore()
 })
 
-test('walk rows read the haplotypes they name in full', async () => {
+test("a cut takes graph-walks' browser preset, the cut rules every reader shares", async () => {
   const cut = vi.spyOn(WalkReader.prototype, 'cut')
-  await makeAdapter(headerPrefix).getSubgraph(chr1(1000, 2600), {
+  const tables = await makeAdapter(headerPrefix).getSubgraph(chr1(1000, 2600))
+  expect(cut.mock.calls[0]?.[2]).toMatchObject(CUT_PRESETS.browser)
+  expect(tables).toMatchObject({ abridged: [] })
+  cut.mockRestore()
+})
+
+test('walk rows fetch every node of no walk unless asked', async () => {
+  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  const adapter = makeAdapter(headerPrefix)
+  await adapter.getSubgraph(chr1(1000, 2600), { haplotypes: ['HG002#1'] })
+  await adapter.getSubgraph(chr1(1000, 2600), {
     haplotypes: ['HG002#1'],
     walkRows: true,
   })
-  const expand = cut.mock.calls[0]?.[2]?.expand
-  expect(expand?.('HG002#1#chr1')).toBe(true)
-  expect(expand?.('HG002#2#chr1')).toBe(false)
-  cut.mockRestore()
-})
-
-test('walk rows read the samples they show in full under every haplotype', async () => {
-  const cut = vi.spyOn(WalkReader.prototype, 'cut')
-  await makeAdapter(headerPrefix).getSubgraph(chr1(1000, 2600), {
-    haplotypes: [],
-    walkRows: true,
-    expandSamples: ['HG002'],
-  })
-  const expand = cut.mock.calls[0]?.[2]?.expand
-  expect(expand?.('HG002#1#chr1')).toBe(true)
-  expect(expand?.('HG002#2#chr1')).toBe(true)
-  expect(expand?.('HG00097#1#chr1')).toBe(false)
-  cut.mockRestore()
-})
-
-test('a graph layout, every haplotype, or a long list keeps abridged walks', async () => {
-  const cut = vi.spyOn(WalkReader.prototype, 'cut')
-  const adapter = makeAdapter(headerPrefix)
-  const many = Array.from({ length: EXPAND_NAMED_MAX + 1 }, (_, i) => `S${i}#1`)
-  await adapter.getSubgraph(chr1(1000, 2600), { haplotypes: ['HG002#1'] })
   await adapter.getSubgraph(chr1(1000, 2600), {
     haplotypes: [],
     walkRows: true,
   })
   await adapter.getSubgraph(chr1(1000, 2600), { walkRows: true })
-  await adapter.getSubgraph(chr1(1000, 2600), {
-    haplotypes: [...many, 'HG002#1'],
-    walkRows: true,
-  })
   expect(cut.mock.calls.map(c => c[2]?.expand)).toEqual([
     undefined,
     undefined,

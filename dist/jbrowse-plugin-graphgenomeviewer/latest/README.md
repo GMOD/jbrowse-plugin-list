@@ -146,6 +146,11 @@ Standalone R packages
   layers
 - [ggtubemap](https://github.com/GMOD/ggtubemap) (R): tube map as ggplot2 layers
 
+Technical note: the plugin runs the same JavaScript as BandageJS and ggbandage.
+graph-fmmm-layout holds Bandage's own force-directed layout (FMMM), compiled
+from C++ to wasm. bandage-core bundles it next to the reference-anchored layouts
+from bandage-core and graph-stress-layout.
+
 ## License
 
 GPL-3.0-or-later, based on work from Bandage and OGDF, both GPL.

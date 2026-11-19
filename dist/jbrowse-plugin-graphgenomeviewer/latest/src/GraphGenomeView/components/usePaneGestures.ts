@@ -233,6 +233,7 @@ export function usePaneGestures(model: GraphPaneModel) {
       model.axisScale,
       model.positionsVersion,
       model.nodeInk,
+      model.drawnFold,
     )
   }
 
@@ -256,6 +257,7 @@ export function usePaneGestures(model: GraphPaneModel) {
       model.hiddenEdgeIndexes,
       model.deletionRoutes,
       model.layoutResult?.stranded,
+      model.drawnFold,
     )
   }
 
@@ -290,8 +292,21 @@ export function usePaneGestures(model: GraphPaneModel) {
     downRef.current = { x: e.clientX, y: e.clientY }
     e.currentTarget.removeAttribute(GESTURE_OWNER)
     const follows = model.followsHostView
-    // shift-drag is the view's range select
-    if (model.hostPlacesX || (follows && e.shiftKey)) {
+    const { x, y } = pointerAt(e)
+    const onStrip = y < model.referenceStripZonePx
+    // a tube map's boxes are the layout's, and the strip's are bp, not
+    // positions to drag
+    const node =
+      model.hostPlacesX || model.layoutResult?.tubeMap || onStrip
+        ? null
+        : nodeAt(x, y)
+    // shift-drag is the view's range select, and a drawing placed by the
+    // window leaves every press but a node's to the view
+    if (
+      model.hostPlacesX ||
+      (follows && e.shiftKey) ||
+      (model.followsWindow && !node)
+    ) {
       return
     }
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -299,11 +314,6 @@ export function usePaneGestures(model: GraphPaneModel) {
     dragCanvasRef.current = e.currentTarget
     points.clear()
     points.set(e.pointerId, pointOf(e))
-    const { x, y } = pointerAt(e)
-    const onStrip = y < model.referenceStripZonePx
-    // a tube map's boxes are the layout's, and the strip's are bp, not
-    // positions to drag
-    const node = model.layoutResult?.tubeMap || onStrip ? null : nodeAt(x, y)
     // A drawing the view drives leaves the press to the view's own pan,
     // which carries the drawing sideways, and takes only the vertical. A
     // press on a node is the node's: the marker keeps the view's pan off it,

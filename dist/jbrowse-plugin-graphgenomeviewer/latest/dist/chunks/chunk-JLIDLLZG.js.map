@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/RgfaTabixAdapter/walkCut.ts"],
+  "sourcesContent": ["import { walkRowRuns } from '@jbrowse/bandage-core/layout/walkRowRuns'\nimport { abridgedWalks } from '@jbrowse/graph-walks'\n\nimport type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'\nimport type { WalkRowRuns } from '@jbrowse/bandage-core/layout/walkRowRuns'\nimport type { AbridgedWalk } from '@jbrowse/graph-walks'\n\n/**\n * A cut: the tables, the walks it abridged, and for walk rows the rows' runs\n * over the window, which the main thread draws without a Graph of the walks'\n * steps\n */\nexport type WalkCut = GraphTables & {\n  walkRowRuns?: WalkRowRuns\n  abridged?: AbridgedWalk[]\n}\n\nexport function walkCutFor(\n  tables: GraphTables,\n  region: { start: number; end: number },\n  walkRows: boolean | undefined,\n): WalkCut {\n  const abridged = abridgedWalks(tables)\n  return walkRows\n    ? { ...tables, abridged, walkRowRuns: walkRowRuns(tables, region) }\n    : { ...tables, abridged }\n}\n"],
+  "mappings": "gFAiBO,SAASA,EACdC,EACAC,EACAC,EACS,CACT,IAAMC,EAAWC,EAAcJ,CAAM,EACrC,OAAOE,EACH,CAAE,GAAGF,EAAQ,SAAAG,EAAU,YAAaE,EAAYL,EAAQC,CAAM,CAAE,EAChE,CAAE,GAAGD,EAAQ,SAAAG,CAAS,CAC5B",
+  "names": ["walkCutFor", "tables", "region", "walkRows", "abridged", "abridgedWalks", "walkRowRuns"]
+}

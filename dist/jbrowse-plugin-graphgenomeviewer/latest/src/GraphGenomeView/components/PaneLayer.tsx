@@ -42,13 +42,14 @@ export const PaneSvgLayer = observer(function PaneSvgLayer({
   overflow?: 'hidden' | 'visible'
   testId?: string
   pansWithDrawing?: boolean
-  children: ReactNode
+  children?: ReactNode
 }) {
   return (
     <svg
       style={{
         ...paneLayerStyle(zIndex, overflow),
         userSelect: pansWithDrawing ? 'none' : undefined,
+        clipPath: model.drawingClip,
       }}
       width={model.paneWidth}
       height={model.canvasHeight}

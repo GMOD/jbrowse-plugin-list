@@ -7,6 +7,7 @@ import { useRenderingBackend } from '@jbrowse/render-core/useRenderingBackend'
 import { observer } from 'mobx-react'
 
 import BubbleHalos from './BubbleHalos'
+import EdgeMarksOverlay from './EdgeMarksOverlay'
 import FacetPanels from './FacetPanels'
 import GenePins from './GenePins'
 import GraphToolbar from './GraphToolbar'
@@ -15,13 +16,14 @@ import HoverTooltip from './HoverTooltip'
 import LabelLayer from './LabelLayer'
 import { LegendPanel } from './Legend'
 import PaneContextMenu from './PaneContextMenu'
-import { PaneSvgLayer } from './PaneLayer'
+import PassBars from './PassBars'
 import ReferenceStripOverlay from './ReferenceStripOverlay'
 import TubeMapOverlay from './TubeMapOverlay'
 import WalkRowsOverlay from './WalkRowsOverlay'
 import WalkStrip from './WalkStrip'
 import WalkStripLocator from './WalkStripLocator'
 import { usePaneGestures, useWheelZoom } from './usePaneGestures'
+import { drawnLegendSections, legendSections } from '../legendSections'
 import { PAPER_CSS } from '../pane/paneBase'
 import { createGraphRenderer } from '../renderer/GraphRenderer'
 
@@ -115,8 +117,8 @@ const RowLabels = observer(function RowLabels({
   )
 })
 
-// In the corner model.legendCorner picks. Every key stretches to the widest,
-// so together they read as one panel. It takes the pointer, for its rows'
+// Top right, in the column the fit leaves it (keyColumnPx). Every key
+// stretches to the widest, so together they read as one panel. It takes the pointer, for its rows'
 // titles and its close button.
 const legendStackStyle = {
   position: 'absolute' as const,
@@ -141,13 +143,6 @@ const nodeLabelStyle = {
   zIndex: 3,
 }
 
-// Matches EDGE_DELETION_COLOR, so the words and the arc they name are one thing.
-const deletionLabelStyle = {
-  ...nodeLabelStyle,
-  color: '#18181c',
-  fontWeight: 600,
-}
-
 // Measures itself for the model, so no label is placed under a legend and
 // none gives way to one that is not drawn.
 //
@@ -160,6 +155,13 @@ export const Legends = observer(function Legends({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const atRest = model.legendAtRest
+  // what the key draws, which the model derives as the drawing changes, so
+  // the labels wait for its measure; the panel draws in the same render, so
+  // the measure after it is of that key
+  const shape = model.keyShape
+  useEffect(() => {
+    model.setKeyShapeOf(() => JSON.stringify(legendSections(model)))
+  }, [model])
   useEffect(() => {
     const el = ref.current
     if (!el || !atRest) {
@@ -177,7 +179,10 @@ export const Legends = observer(function Legends({
         resizes.observe(el.firstElementChild)
       }
       if (isAlive(model) && model.legendAtRest) {
-        model.setLegendSize({ width: el.offsetWidth, height: el.scrollHeight })
+        model.setLegendSize(
+          { width: el.offsetWidth, height: el.scrollHeight },
+          shape,
+        )
       }
     }
     resizes.observe(el)
@@ -185,75 +190,40 @@ export const Legends = observer(function Legends({
     return () => {
       resizes.disconnect()
     }
-  }, [model, atRest])
+  }, [model, atRest, shape])
   return (
     <div
       ref={ref}
-      data-legend-corner={model.legendCorner}
       style={{
         ...legendStackStyle,
-        ...(model.legendCorner === 'top-right'
-          ? {
-              top: LEGEND_INSET_PX + model.referenceStripZonePx,
-              right: LEGEND_INSET_PX,
-            }
-          : { bottom: LEGEND_INSET_PX, left: LEGEND_INSET_PX }),
+        top: LEGEND_INSET_PX + model.referenceStripZonePx,
+        right: LEGEND_INSET_PX,
         maxHeight:
           model.canvasHeight - 2 * LEGEND_INSET_PX - model.referenceStripZonePx,
       }}
     >
-      <LegendPanel model={model} />
+      <LegendPanel model={model} sections={drawnLegendSections(model)} />
     </div>
   )
 })
 
-// Writes each drawn thing's size onto it, which is what Bandage's Length label
-// does and what the tooltip alone could not: a graph you have to hover to read
-// is a graph nobody reads. graphLabels applies the same transform the canvas
-// draws with — so a label tracks its node across pan and zoom — and decides
-// which labels fit; this only paints them, mounted in the canvas's own
-// positioning context for the reason RowLabels is.
+// Writes each node's length onto it, which is what Bandage's Length label does.
+// graphLabels applies the same transform the canvas draws with, so a label
+// tracks its node across pan and zoom, and decides which labels fit; this only
+// paints them, mounted in the canvas's own positioning context for the reason
+// RowLabels is.
 const GraphSizeLabels = observer(function GraphSizeLabels({
   model,
 }: {
   model: GraphPaneModel
 }) {
-  const labels = model.overlayLabels.sizes
-  // A label too wide for the arc it names is placed clear of it and tethered
-  // back; nothing else in the drawing carries one.
-  const leaders = labels.flatMap(({ key, leader }) =>
-    leader ? [{ key, ...leader }] : [],
-  )
   return (
     <>
-      {/* under the labels (z 3), so a leader runs beneath the text it points
-          from; the placement culls a label past the canvas edge, so the
-          layer leaves overflow visible */}
-      {leaders.length > 0 ? (
-        <PaneSvgLayer model={model} zIndex={2} overflow="visible">
-          {leaders.map(({ key, arcX, arcY, labelX, labelY }) => (
-            <line
-              key={key}
-              data-testid="graph-label-leader"
-              x1={arcX}
-              y1={arcY}
-              x2={labelX}
-              y2={labelY}
-              stroke="#18181c"
-              strokeWidth={1}
-            />
-          ))}
-        </PaneSvgLayer>
-      ) : null}
-      {labels.map(({ key, text, x, y, kind }) => (
+      {model.overlayLabels.sizes.map(({ key, text, x, y }) => (
         <div
           key={key}
           data-testid="graph-size-label"
-          style={{
-            ...(kind === 'deletion' ? deletionLabelStyle : nodeLabelStyle),
-            left: x,
-            top: y,
-          }}
+          style={{ ...nodeLabelStyle, left: x, top: y }}
         >
           {text}
         </div>
@@ -329,6 +299,7 @@ const GraphCanvasBody = observer(function GraphCanvasBody({
             ...canvasStyle,
             width: model.paneWidth,
             height: model.canvasHeight,
+            clipPath: model.drawingClip,
             display: 'block',
             position: 'relative',
             zIndex: 1,
@@ -347,6 +318,7 @@ const GraphCanvasBody = observer(function GraphCanvasBody({
             <TubeMapOverlay model={model} />
             <HoverLayer model={model} />
             <ReferenceStripOverlay model={model} />
+            <EdgeMarksOverlay model={model} />
             <RowLabels model={model} />
             <GraphSizeLabels model={model} />
             <BubbleHalos model={model} />
@@ -377,6 +349,8 @@ const GraphCanvasBody = observer(function GraphCanvasBody({
 
         <HoverTooltip model={model} chip={hoveredChip} />
       </div>
+
+      <PassBars model={model} />
 
       {model.walkStripShown ? <WalkStrip model={model} /> : null}
 

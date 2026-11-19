@@ -1,9 +1,14 @@
 import { gfaTables } from '@jbrowse/bandage-core/gfa/gfaTables'
+import { layoutEngine } from '@jbrowse/bandage-core/layoutEngines'
 import { types } from '@jbrowse/mobx-state-tree'
 
+import { fakeRenderer } from './modelTestSupport'
 import stateModelFactory from './viewModel'
+import { walkCutFor } from '../RgfaTabixAdapter/walkCut.ts'
 import { hoverInRegion } from '../hoverSync/lgvHover'
 
+import type { GraphTables } from '@jbrowse/bandage-core/gfa/graphTables'
+import type { EngineRequest } from '@jbrowse/bandage-core/pipeline'
 import type { readConfObject } from '@jbrowse/core/configuration'
 
 interface MockAssembly {
@@ -126,6 +131,16 @@ function attachedView(snapshot: Record<string, unknown> = {}) {
     } as never,
   }).view
 }
+
+// whether the key names the charcoal the ramp paints off the reference
+const keysOff = (model: ReturnType<typeof createView>) =>
+  model.graphKey.some(section =>
+    section.entries.some(entry => entry.key === 'off'),
+  )
+
+// the cut as the adapter hands it over, with the walks it abridged
+const cutOf = (tables: GraphTables) =>
+  walkCutFor(tables, { start: 32000000, end: 32001900 }, false)
 
 function answerCutsWith(cut: unknown) {
   mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
@@ -347,7 +362,7 @@ describe('canceling and retrying', () => {
     })
   })
 
-  test('lifting an abridged walk cuts again with its name', async () => {
+  test('lifting a walk through a run not fetched cuts again with its name', async () => {
     const tables = gfaTables(
       [
         GFA,
@@ -355,11 +370,12 @@ describe('canceling and retrying', () => {
         'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
       ].join('\n'),
     )!
-    tables.walks.abridgedSteps = Float64Array.from([Number.NaN, 40])
-    tables.walks.abridgedBp = Float64Array.from([Number.NaN, 9000])
+    tables.nodes.placeholders = Uint8Array.from(tables.nodes.names, name =>
+      name === 'h1' ? 1 : 0,
+    )
     mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
       method === 'GetSubgraph'
-        ? Promise.resolve(tables)
+        ? Promise.resolve(cutOf(tables))
         : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
     )
     const model = attachedView()
@@ -379,7 +395,7 @@ describe('canceling and retrying', () => {
     })
   })
 
-  test("picking a sample in walk rows cuts again with its abridged walk's name", async () => {
+  test('lifting a walk whose steps not fetched lie past the window cuts nothing again, since the cut draws it exactly', async () => {
     const tables = gfaTables(
       [
         GFA,
@@ -388,7 +404,30 @@ describe('canceling and retrying', () => {
       ].join('\n'),
     )!
     tables.walks.abridgedSteps = Float64Array.from([Number.NaN, 40])
-    tables.walks.abridgedBp = Float64Array.from([Number.NaN, 9000])
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(cutOf(tables))
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const model = attachedView()
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+    })
+    mockRpcCall.mockClear()
+    model.liftWalks(['GRCh38#0#chr6', 'NA20809#2#CM094351.1'])
+    expect(model.expandedWalks).toEqual([])
+    expect(mockRpcCall).not.toHaveBeenCalled()
+  })
+
+  test('picking a sample in walk rows fetches nothing, since its bar is drawn the same', async () => {
+    const tables = gfaTables(
+      [
+        GFA,
+        'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+        'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+      ].join('\n'),
+    )!
+    tables.walks.abridgedSteps = Float64Array.from([Number.NaN, 40])
     mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
       method === 'GetSubgraph'
         ? Promise.resolve(tables)
@@ -400,13 +439,56 @@ describe('canceling and retrying', () => {
     })
     mockRpcCall.mockClear()
     model.setWalkRowSamples(['NA20809'])
-    expect(model.expandedWalks).toEqual(['NA20809#2#CM094351.1'])
+    expect(model.expandedWalks).toEqual([])
+    expect(mockRpcCall).not.toHaveBeenCalled()
+  })
+
+  test('a tube map of few haplotypes fetches the nodes of the walks it shows', async () => {
+    const tables = gfaTables(
+      [
+        GFA,
+        'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+        'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+      ].join('\n'),
+    )!
+    tables.nodes.placeholders = Uint8Array.from(tables.nodes.names, name =>
+      name === 'h1' ? 1 : 0,
+    )
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(cutOf(tables))
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const model = attachedView({ layoutMode: 'tubemap' })
     await vi.waitFor(() => {
-      expect(mockRpcCall).toHaveBeenCalledTimes(1)
+      expect(model.expandedWalks).toEqual(['NA20809#2#CM094351.1'])
     })
-    expect(mockRpcCall.mock.calls[0]?.[2]).toMatchObject({
-      opts: { expand: ['NA20809#2#CM094351.1'] },
+  })
+
+  test('turning on ribbons in walk rows reads the routes of the rows they would leave out', async () => {
+    const tables = gfaTables(
+      [
+        GFA,
+        'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+        'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+      ].join('\n'),
+    )!
+    tables.nodes.placeholders = Uint8Array.from(tables.nodes.names, name =>
+      name === 'h1' ? 1 : 0,
+    )
+    tables.walks.abridgedSteps = Float64Array.from([Number.NaN, 40])
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(tables)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const model = attachedView({ layoutMode: 'walkrows' })
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
     })
+    expect(model.expandedWalks).toEqual([])
+    model.setLayer('walkRibbons', true)
+    expect(model.expandedWalks).toEqual(['NA20809#2#CM094351.1'])
   })
 
   test('a cut option changed on a drawn view cuts again with it', async () => {
@@ -440,7 +522,6 @@ describe('canceling and retrying', () => {
     })
     mockRpcCall.mockClear()
     model.setWalkRowSamples(['NA20809'])
-    expect(model.cutOptions.expandSamples).toEqual(['NA20809'])
     expect(mockRpcCall).not.toHaveBeenCalled()
   })
 
@@ -658,7 +739,7 @@ describe('reads', () => {
     const drawn = model.tubeMapPicture!.nodes.map(n => n.name)
     const h0 = model.graph!.nodes.find(n => n.name === 'h0')!
     expect(drawn).not.toContain(h0.id)
-    expect(model.referenceRampDrawsOffReference).toBe(false)
+    expect(keysOff(model)).toBe(false)
   })
 
   // a chain of six alleles runs past the flanking walk's reach, which once
@@ -680,14 +761,18 @@ describe('reads', () => {
 
   test.each([
     ['force', true],
-    ['walkrows', false],
+    // a cut with no walks draws no rows, and walk rows fall back to force
+    ['walkrows', true],
   ])(
     'a %s layout keys deep alleles as off the reference: %s',
     async (layoutMode, keyed) => {
-      mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
-        method === 'GetSubgraph'
-          ? Promise.resolve(DEEP)
-          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+      mockRpcCall.mockImplementation(
+        (_sid: unknown, method: string, request: EngineRequest) =>
+          method === 'GetSubgraph'
+            ? Promise.resolve(DEEP)
+            : method === 'GraphComputeLayout'
+              ? layoutEngine(request)
+              : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
       )
       const model = createView({
         layoutMode,
@@ -696,8 +781,10 @@ describe('reads', () => {
         loadedRegion: ON_HG38,
       })
       await model.load()
+      model.startRenderingBackend(fakeRenderer())
+      model.setWidth(800)
 
-      expect(model.referenceRampDrawsOffReference).toBe(keyed)
+      expect(keysOff(model)).toBe(keyed)
     },
   )
 
@@ -886,5 +973,85 @@ describe('reads', () => {
     expect(mockRpcCall.mock.calls.map(([, m]) => m)).not.toContain(
       'GetGraphReads',
     )
+  })
+})
+
+describe("a lifted walk's samples sheet colour", () => {
+  const SHEET_TRACK = {
+    trackId: 'walks',
+    assemblyNames: ['hg38'],
+    adapter: {
+      type: 'WalkTabixSyntenyAdapter',
+      assemblyNames: ['hg38'],
+      assemblyNameToPanSN: { hg38: 'GRCh38' },
+      samplesTsvLocation: { uri: 'samples.tsv', locationType: 'UriLocation' },
+    },
+  }
+  const WALKS = [
+    'H\tVN:Z:1.0',
+    'S\t1\tACGT',
+    'S\t2\tA',
+    'S\t3\tG',
+    'S\t4\tTTGCA',
+    'L\t1\t+\t2\t+\t0M',
+    'L\t1\t+\t3\t+\t0M',
+    'L\t2\t+\t4\t+\t0M',
+    'L\t3\t+\t4\t+\t0M',
+    'P\tGRCh38#0#chr6\t1+,2+,4+\t*',
+    'P\tHG002#1#c\t1+,3+,4+\t*',
+    'P\tHG002#2#c\t1+,2+,4+\t*',
+    'P\tHG00097#1#c\t1+,3+,4+\t*',
+  ].join('\n')
+
+  async function liftedWith(layers: { walk: string; color?: object }[]) {
+    mockSession.tracks = [SHEET_TRACK]
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(WALKS)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    mockReadFile.mockResolvedValue(
+      [
+        'name\tcolor\tassembly',
+        'HG002#1\t#2a9fd0\t',
+        'HG002\t#d0302a\t',
+        'reference\t#555555\thg38',
+      ].join('\n'),
+    )
+    const model = createView({
+      layoutMode: 'force',
+      loadedTrackId: SHEET_TRACK.trackId,
+      loadedRegion: ON_HG38,
+    })
+    await model.load()
+    await model.loadWalkRowSampleTable()
+    model.setWalkLayers(layers)
+    return new Map(
+      model.walkLift?.walks.map(w => [w.name, w.encoding.value]) ?? [],
+    )
+  }
+
+  test('a walk whose layer states no colour takes its haplotype, sample or assembly row colour', async () => {
+    const values = await liftedWith([
+      { walk: 'GRCh38#0#chr6' },
+      { walk: 'HG002#1#c' },
+      { walk: 'HG002#2#c' },
+      { walk: 'HG00097#1#c' },
+    ])
+    expect(Object.fromEntries(values)).toEqual({
+      'GRCh38#0#chr6': '#555555',
+      'HG002#1#c': '#2a9fd0',
+      'HG002#2#c': '#d0302a',
+      'HG00097#1#c': undefined,
+    })
+  })
+
+  test("a layer's stated colour beats its sheet colour", async () => {
+    const values = await liftedWith([
+      { walk: 'HG002#1#c', color: { scheme: 'purple' } },
+      { walk: 'HG002#2#c', color: { value: '#00ff00' } },
+    ])
+    expect(values.get('HG002#1#c')).toBeUndefined()
+    expect(values.get('HG002#2#c')).toBe('#00ff00')
   })
 })

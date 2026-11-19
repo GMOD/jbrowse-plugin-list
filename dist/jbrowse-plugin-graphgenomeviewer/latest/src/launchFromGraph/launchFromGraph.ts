@@ -192,6 +192,38 @@ export function showInLinearView({
   return viewId
 }
 
+// A track at a typed location, in the linear view on its assembly when there
+// is one to move, else in a new one
+export function showTrackInLinearView({
+  session,
+  trackId,
+  assembly,
+  loc,
+}: {
+  session: GraphLaunchSession
+  trackId: string
+  assembly: string
+  loc: string
+}) {
+  const existing = linearViewTarget({
+    views: session.views,
+    connectedViewId: undefined,
+    assemblyName: assembly,
+  })
+  if (existing?.showTrack) {
+    reportFailure(
+      session,
+      `Could not show ${assembly} ${loc}`,
+      Promise.resolve(existing.navToLocString(loc, assembly)),
+    )
+    existing.showTrack(trackId)
+  } else {
+    session.addView('LinearGenomeView', {
+      init: { assembly, loc, tracks: [trackId] },
+    })
+  }
+}
+
 // Mark where a node sits on the reference, in the linear view already on
 // screen, instead of scrolling that view to it. Review: "need to be able to
 // just highlight lineargenomeview coords".

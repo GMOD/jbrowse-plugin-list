@@ -5,6 +5,7 @@ import {
   highlightInLinearView,
   launchSyntenyView,
   showInLinearView,
+  showTrackInLinearView,
 } from './launchFromGraph'
 
 import type { Contributor } from './contributors'
@@ -463,5 +464,35 @@ test('a synteny launch ignores a graph track the session does not hold', () => {
   expect((added[0]?.[1]?.init as { views: unknown[] }).views).toEqual([
     { assembly: 'K12', loc: 'chr:1001-6000' },
     { assembly: 'Sakai', loc: 'chr:90001-95000' },
+  ])
+})
+
+test('a graph track shown from the form moves the linear view on its assembly and turns the track on there', () => {
+  const view = { ...linearView('lgv1', ['hg38']), showTrack: vi.fn() }
+  const { session, added } = testSession([view])
+  showTrackInLinearView({
+    session,
+    trackId: 'graph',
+    assembly: 'hg38',
+    loc: 'chr1:1-20,000',
+  })
+  expect(view.navToLocString).toHaveBeenCalledWith('chr1:1-20,000', 'hg38')
+  expect(view.showTrack).toHaveBeenCalledWith('graph')
+  expect(added).toEqual([])
+})
+
+test('a graph track shown from the form with no linear view on its assembly opens one with the track', () => {
+  const { session, added } = testSession([linearView('lgv1', ['other'])])
+  showTrackInLinearView({
+    session,
+    trackId: 'graph',
+    assembly: 'hg38',
+    loc: 'chr1',
+  })
+  expect(added).toEqual([
+    [
+      'LinearGenomeView',
+      { init: { assembly: 'hg38', loc: 'chr1', tracks: ['graph'] } },
+    ],
   ])
 })

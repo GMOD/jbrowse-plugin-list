@@ -1,10 +1,10 @@
 import { panSNSample } from '@jbrowse/bandage-core/pansn'
 import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 
-// A per-sample lane names its rows its own way: a phased callset `HG00097 HP0`,
-// counting haplotypes from 0, a MAF `HG00097.1`, counting from 1 as PanSN does,
-// and anything else by the bare sample
-const PHASED_ROW = /^(.+) HP(\d+)$/
+// A per-sample lane names its rows its own way: a phased callset `HG00097 HP1`
+// and a MAF `HG00097.1`, both counting haplotypes from 1 as PanSN does, and
+// anything else by the bare sample
+const PHASED_ROW = /^(.+) HP([1-9]\d*)$/
 const DOTTED_ROW = /^(.+)\.(\d+)$/
 
 // A bare sample can end in `.2` too, an accession for one, so each reading is
@@ -13,9 +13,7 @@ function readings(row: string) {
   const phased = PHASED_ROW.exec(row)
   const dotted = DOTTED_ROW.exec(row)
   return [
-    ...(phased
-      ? [{ sample: phased[1]!, haplotype: String(Number(phased[2]) + 1) }]
-      : []),
+    ...(phased ? [{ sample: phased[1]!, haplotype: phased[2]! }] : []),
     ...(dotted ? [{ sample: dotted[1]!, haplotype: dotted[2] }] : []),
     { sample: row, haplotype: undefined },
   ]

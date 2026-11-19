@@ -1,3 +1,5 @@
+import { NOT_LOADED_RIM_PX } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
+import { THREAD_PX } from '@jbrowse/bandage-core/renderer/walkLanes'
 import { rulerInk } from '@jbrowse/bandage-core/tubeMap/axis'
 import { observer } from 'mobx-react'
 
@@ -18,6 +20,7 @@ function Gradient({
   height,
   square,
   edged,
+  rim,
 }: {
   id: string
   x: number
@@ -27,9 +30,11 @@ function Gradient({
   height: number
   square?: boolean
   edged?: boolean
+  rim?: string
 }) {
-  // an edge's stroke sits half inside, so the chip keeps its size
-  const inset = edged ? 0.5 : 0
+  // an edge's or a rim's stroke sits half inside, so the chip keeps its size
+  const strokePx = rim ? NOT_LOADED_RIM_PX : edged ? 1 : 0
+  const inset = strokePx / 2
   const rect = (fill: string) => (
     <rect
       x={x + inset}
@@ -38,7 +43,8 @@ function Gradient({
       height={height - inset * 2}
       rx={square ? 0 : 2}
       fill={fill}
-      stroke={edged ? EDGE_INK : undefined}
+      stroke={rim ?? (edged ? EDGE_INK : undefined)}
+      strokeWidth={rim ? strokePx : undefined}
     />
   )
   return stops.length > 1 ? (
@@ -82,6 +88,7 @@ export function SvgSwatch({
           height={height}
           square={swatch.square}
           edged={swatch.edged}
+          rim={swatch.rim}
         />
       )
     }
@@ -106,7 +113,16 @@ export function SvgSwatch({
       )
     }
     case 'line':
-      return swatch.dashed ? (
+      return swatch.short ? (
+        <line
+          x1={x + 5}
+          x2={x + SWATCH_PX - 5}
+          y1={mid}
+          y2={mid}
+          stroke={swatch.color}
+          strokeWidth={1.5}
+        />
+      ) : swatch.dashed ? (
         <line
           x1={x + 1}
           x2={x + SWATCH_PX}
@@ -209,6 +225,42 @@ export function SvgSwatch({
       )
     case 'blank':
       return null
+    case 'threads':
+      return (
+        <>
+          {[-3, 0, 3].map(dy => (
+            <line
+              key={dy}
+              x1={x}
+              x2={x + SWATCH_PX}
+              y1={mid + dy}
+              y2={mid + dy}
+              stroke="#444"
+              strokeWidth={THREAD_PX}
+            />
+          ))}
+        </>
+      )
+    case 'heads':
+      return (
+        <g transform={`translate(${x} ${mid})`}>
+          <line
+            x2={SWATCH_PX}
+            stroke={swatch.lane}
+            strokeWidth={swatch.lanePx}
+          />
+          {swatch.haloPx === undefined ? null : (
+            <path
+              d={swatch.heads}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={swatch.haloPx}
+              strokeLinejoin="round"
+            />
+          )}
+          <path d={swatch.heads} fill={swatch.fill} />
+        </g>
+      )
   }
 }
 

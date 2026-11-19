@@ -38,7 +38,7 @@ export default observer(function HoverLayer({
     <canvas
       ref={setCanvas}
       data-testid="graph-hover-layer"
-      style={hoverLayerStyle}
+      style={{ ...hoverLayerStyle, clipPath: model.drawingClip }}
     />
   )
 })

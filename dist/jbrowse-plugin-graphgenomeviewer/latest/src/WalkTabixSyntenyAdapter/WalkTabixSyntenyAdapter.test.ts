@@ -29,7 +29,7 @@ import type { SyntenyMate } from '@jbrowse/synteny-core'
 //   W HG00097 1 chr1 >1>2>3>4>5>6
 const fixture = (name: string) =>
   require.resolve(
-    `../RgfaTabixAdapter/test_data/walks7/${name}.GRCh38.walks.gz`,
+    `../RgfaTabixAdapter/test_data/walks8/${name}.GRCh38.walks.gz`,
   )
 
 function makeAdapter(slots: Record<string, unknown> = {}, name = 'header') {
@@ -384,6 +384,40 @@ test('the header declares every haplotype but the anchor as a lane', async () =>
     { name: 'HG002.1', label: 'HG002#1', group: 'HG002' },
     { name: 'HG002#2', label: 'HG002#2', group: 'HG002' },
   ])
+})
+
+test('a header from no samples sheet states no lane or anchor colour', async () => {
+  const header = await makeAdapter().getHeader()
+  expect(header).not.toHaveProperty('anchorColor')
+  expect(header.lanes.some(lane => 'color' in lane)).toBe(false)
+})
+
+test("each lane's colour and the anchor's are their rows' in the samples sheet", async () => {
+  const header = await makeAdapter({
+    assemblyNameToPanSN: { hg38: 'GRCh38', 'HG002.1': 'HG002#1' },
+    samplesTsvLocation: {
+      localPath: require.resolve('./test_data/lane_colors.tsv'),
+      locationType: 'LocalPathLocation',
+    },
+  }).getHeader()
+  expect(header.anchorColor).toBe('#555555')
+  expect(header.lanes).toEqual([
+    { name: 'HG00097#1', label: 'HG00097#1', group: 'HG00097' },
+    { name: 'HG002.1', label: 'HG002#1', group: 'HG002', color: '#2a9fd0' },
+    { name: 'HG002#2', label: 'HG002#2', group: 'HG002', color: '#d0302a' },
+  ])
+})
+
+test('a samples sheet that fails to read leaves the lanes uncoloured', async () => {
+  const header = await makeAdapter({
+    samplesTsvLocation: {
+      localPath: '/no/such/samples.tsv',
+      locationType: 'LocalPathLocation',
+    },
+  }).getHeader()
+  expect(header).not.toHaveProperty('anchorColor')
+  expect(header.lanes.length).toBeGreaterThan(0)
+  expect(header.lanes.some(lane => 'color' in lane)).toBe(false)
 })
 
 test("the anchor's contigs are its refNames, and a lane lists none", async () => {

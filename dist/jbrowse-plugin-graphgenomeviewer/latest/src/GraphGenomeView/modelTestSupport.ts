@@ -134,4 +134,5 @@ export interface MenuItem {
   label?: string
   checked?: boolean
   subMenu?: MenuItem[]
+  onClick?: () => void
 }

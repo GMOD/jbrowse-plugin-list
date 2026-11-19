@@ -1,10 +1,4 @@
-import { useMemo } from 'react'
-
-import {
-  exonOutlineTree,
-  exonStretches,
-} from '@jbrowse/bandage-core/genes/exonOutline'
-import { computed } from 'mobx'
+import { exonOutlineTree } from '@jbrowse/bandage-core/genes/exonOutline'
 import { observer } from 'mobx-react'
 
 import ElTree, { PANE_TRANSFORM, useSvgId } from './ElTree'
@@ -22,26 +16,7 @@ const GenePins = observer(function GenePins({
   model: GraphPaneModel
 }) {
   const id = `exon-outline-${useSvgId()}`
-  // in layout units, so neither a pan nor a zoom rebuilds them
-  const stretches = useMemo(
-    () =>
-      computed(() => {
-        const { genePins, walkLift } = model
-        // an open bubble rings only its own exons
-        const focus = walkLift ? undefined : model.openBubbleFocus
-        const pins = focus
-          ? genePins.map(pin => ({
-              ...pin,
-              exonsByNode: pin.exonsByNode.filter(e =>
-                focus.nodeIds.has(e.nodeId),
-              ),
-            }))
-          : genePins
-        return exonStretches(pins, model.nodeInk.halfWidthPx, walkLift)
-      }),
-    [model],
-  )
-  const tree = exonOutlineTree(stretches.get(), {
+  const tree = exonOutlineTree(model.exonOutlines, {
     id,
     width: model.paneWidth,
     height: model.canvasHeight,

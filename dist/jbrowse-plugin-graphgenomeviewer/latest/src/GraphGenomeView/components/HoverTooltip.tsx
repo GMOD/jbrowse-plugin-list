@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react'
 
 import { isBackbone } from '@jbrowse/bandage-core/anchoredNodes'
-import { edgeHoverText, regionLabel } from '@jbrowse/bandage-core/hoverText'
+import { genesOverNode } from '@jbrowse/bandage-core/genes/geneNames'
+import {
+  edgeHoverText,
+  placeholderHoverText,
+  regionLabel,
+} from '@jbrowse/bandage-core/hoverText'
+import { referenceLabel } from '@jbrowse/bandage-core/reference'
 import { observer } from 'mobx-react'
 
 import { nodeOwnLocation } from '../../launchFromGraph/contributors'
@@ -49,6 +55,7 @@ function hoverTip(
     ? model.hoverNodeById?.get(model.hoveredNode)
     : undefined
   if (node) {
+    const placeholder = placeholderHoverText(node)
     const merged = model.hoverDrawing?.members.get(node.id)
     const own = nodeOwnLocation(node)
     const region = model.graphRegion
@@ -57,36 +64,54 @@ function hoverTip(
       region && span && !isBackbone(node)
         ? `${region.assemblyName} ${regionLabel({ refName: region.refName, ...span })}`
         : undefined
-    return {
-      body: (
+    const genes = genesOverNode(model.genePins, node.id)
+    const genesLine =
+      genes.length > 0 ? (
         <>
-          <strong>{node.name}</strong>
-          {merged ? ` and ${merged.length - 1} more` : ''} —{' '}
-          {node.length.toLocaleString()} bp, depth {node.depth.toFixed(1)}
-          {/* the assembly that contributed the segment, and where on it */}
-          {own ? (
-            <>
-              <br />
-              {own.sample} {regionLabel(own)} (rank {node.stable?.rank})
-            </>
-          ) : null}
-          {onReference ? (
-            <>
-              <br />
-              Reference {onReference}
-            </>
-          ) : null}
-          {/* gfa-to-tabix --max-component left its component off the
-              reference, so the cut holds only its ends */}
-          {node.moved ? (
-            <>
-              <br />
-              End of a component too large to draw here
-            </>
-          ) : null}
+          <br />
+          <em>{genes.join(', ')}</em>
         </>
-      ),
-    }
+      ) : null
+    return placeholder
+      ? {
+          body: (
+            <>
+              {placeholder}
+              {genesLine}
+            </>
+          ),
+        }
+      : {
+          body: (
+            <>
+              <strong>{node.name}</strong>
+              {merged ? ` and ${merged.length - 1} more` : ''} —{' '}
+              {node.length.toLocaleString()} bp, depth {node.depth.toFixed(1)}
+              {/* the assembly that contributed the segment, and where on it */}
+              {own ? (
+                <>
+                  <br />
+                  {own.sample} {regionLabel(own)} (rank {node.stable?.rank})
+                </>
+              ) : null}
+              {onReference ? (
+                <>
+                  <br />
+                  Reference {onReference}
+                </>
+              ) : null}
+              {genesLine}
+              {/* gfa-to-tabix --max-component left its component off the
+              reference, so the cut holds only its ends */}
+              {node.moved ? (
+                <>
+                  <br />
+                  End of a component too large to draw here
+                </>
+              ) : null}
+            </>
+          ),
+        }
   }
   const edge =
     model.hoveredEdge === null
@@ -98,12 +123,13 @@ function hoverTip(
       model.deletions.find(d => d.edgeIndex === model.hoveredEdge),
       id => model.nodeById?.get(id)?.name ?? id,
     )
-    // a deletion edge skips backbone that some haplotype lacks, so its
-    // readout gives the bp skipped
+    // a link that skips reference sequence says how much, naming the
+    // reference as the key does, and no event
+    const reference = model.graph ? referenceLabel(model.graph) : undefined
     return {
       body: text.deletion ? (
         <>
-          <strong>Deletion</strong> {text.deletion.bp}
+          {`skips ${text.deletion.bp} of ${reference ?? 'the reference'} sequence`}
           <br />
           {text.deletion.where}
         </>

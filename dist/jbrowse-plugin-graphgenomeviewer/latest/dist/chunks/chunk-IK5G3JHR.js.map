@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["jbrowse-host:@jbrowse/core/util/samplesTsv"],
+  "sourcesContent": ["const host = JBrowseExports[\"@jbrowse/core/util/samplesTsv\"]\nconst read = name =>\n  host != null && name in Object(host)\n    ? host[name]\n    : Object.assign(\n        function () {\n          throw new Error(\"This JBrowse does not provide '\" + name + \"' from '\" + \"@jbrowse/core/util/samplesTsv\" + \"' to plugins: \" + \"GraphGenomeView was built for a different JBrowse version, so update the plugin or JBrowse\")\n        },\n        { jbrowseHostMissing: name },\n      )\nexport const getSamplesTsvSources = /* @__PURE__ */ read(\"getSamplesTsvSources\")\nexport const parseSamplesTsv = /* @__PURE__ */ read(\"parseSamplesTsv\")\nexport const samplesTsvAdapterConfigSchemaFields = /* @__PURE__ */ read(\"samplesTsvAdapterConfigSchemaFields\")\nexport default host && host.__esModule ? host.default : host"],
+  "mappings": "AAAA,IAAMA,EAAO,eAAe,+BAA+B,EACrDC,EAAOC,GACXF,GAAQ,MAAQE,KAAQ,OAAOF,CAAI,EAC/BA,EAAKE,CAAI,EACT,OAAO,OACL,UAAY,CACV,MAAM,IAAI,MAAM,kCAAoCA,EAAO,+IAA8J,CAC3N,EACA,CAAE,mBAAoBA,CAAK,CAC7B,EACOC,EAAuCF,EAAK,sBAAsB,EAClEG,EAAkCH,EAAK,iBAAiB,EAErE,IAAOI,EAAQC,GAAQA,EAAK,WAAaA,EAAK,QAAUA",
+  "names": ["host", "read", "name", "getSamplesTsvSources", "parseSamplesTsv", "samplesTsv_default", "host"]
+}

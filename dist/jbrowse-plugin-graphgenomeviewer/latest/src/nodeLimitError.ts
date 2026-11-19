@@ -23,3 +23,11 @@ export function isUnzoomableNodeLimitError(
     typeof error.bytes === 'number'
   )
 }
+
+export class DrawLimitError extends Error {
+  override name = 'DrawLimitError'
+}
+
+export function isDrawLimitError(error: unknown) {
+  return error instanceof DrawLimitError
+}

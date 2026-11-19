@@ -1,7 +1,6 @@
 import {
   barEnd,
-  readoutPlacement,
-  walkRowReadout,
+  walkRowReadoutAt,
   walkRowsTree,
 } from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { groupKeyComparator } from '@jbrowse/core/util/groupKeys'
@@ -227,32 +226,27 @@ export function walkRowTrees(
 }
 
 // What walkRowTrees decides from where the frame sits rather than from its
-// scale: which rows it culls past the pane's top and bottom, and which side of
-// its bar's end each readout goes. While this holds, a pan only moves the
-// trees.
+// scale: which rows it culls past the pane's top and bottom, and each
+// readout as walkRowsTree places it: its offset from its bar's end and its
+// text as cut to the room there, a row to a tab. While this holds, a pan only
+// moves the trees.
 export function walkRowTreesPanKey(
   bars: WalkRowsWithCalls,
   rowY: (i: number) => number,
   frame: WalkRowsFrame & { barPx: number },
+  o: { comparing?: boolean } = {},
 ) {
-  const { scaleX, scaleY, translateX, translateY, width, height, barPx } = frame
+  const { scaleX, scaleY, translateX, translateY, height, barPx } = frame
   return [bars.reference, ...bars.rows]
     .map((row, i) => {
       const y = rowY(i) * scaleY + translateY
-      return y < -barPx || y > height + barPx
-        ? '-'
-        : (frame.readouts ?? true)
-          ? readoutPlacement(
-              walkRowReadout(
-                row,
-                i === 0 ? undefined : bars.reference,
-                bars.unit,
-                row.call,
-              ),
-              (bars.origin + barEnd(row)) * scaleX + translateX,
-              width,
-            ).anchor
-          : '+'
+      const culled = y < -barPx || y > height + barPx
+      const at =
+        culled || !(frame.readouts ?? true)
+          ? undefined
+          : walkRowReadoutAt(bars, i, frame, o)
+      const endX = (bars.origin + barEnd(row)) * scaleX + translateX
+      return culled ? '-' : at ? `${Math.round(at.x - endX)} ${at.shown}` : '+'
     })
-    .join(' ')
+    .join('\t')
 }

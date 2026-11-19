@@ -1,7 +1,6 @@
 import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
-import { checkRange, walksKept } from '@jbrowse/graph-walks'
+import { CUT_PRESETS, checkRange, walksKept } from '@jbrowse/graph-walks'
 
-import { EXPAND_NAMED_MAX } from '../GetSubgraph.ts'
 import { walkCutFor } from './walkCut.ts'
 
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
@@ -53,8 +52,9 @@ export class WalkIndex {
     return haplotypes.length > 0 ? haplotypes : undefined
   }
 
-  budgets() {
+  cutOptions() {
     return {
+      ...CUT_PRESETS.browser,
       stepBudget: this.adapter.getConf('walkStepBudget') as number,
       byteBudget: this.adapter.getConf('walkByteBudget') as number,
       budgetNames: BUDGET_SLOTS,
@@ -65,8 +65,8 @@ export class WalkIndex {
    * The graph display's cut of a window: the reference walk, the walks of
    * `haplotypes` (every walk when unset), the nodes and links they visit, and
    * every departure from the reference over the window, which walk rows draw.
-   * Walk rows draw runs, so the step budget spares them, and read a short
-   * list of named walks in full where the file abridged them.
+   * Walk rows draw runs, so the step budget spares them. Only the walks named
+   * in `expand` come back with every node.
    */
   async subgraph(
     refName: string,
@@ -76,28 +76,14 @@ export class WalkIndex {
       haplotypes,
       walkRows,
       expand,
-      expandSamples,
       forcedByteBudget = 0,
     }: SubgraphAdapterOptions,
   ) {
-    const budgets = this.budgets()
+    const options = this.cutOptions()
     const keep = walksKept(
       haplotypes?.map(lane => resolvePanSNPrefix(this.adapter, lane)),
       refName,
     )
-    const named =
-      walkRows && keep && (haplotypes?.length ?? 0) <= EXPAND_NAMED_MAX
-        ? keep
-        : undefined
-    const shown =
-      walkRows &&
-      expandSamples?.length &&
-      expandSamples.length <= EXPAND_NAMED_MAX
-        ? walksKept(
-            expandSamples.map(s => resolvePanSNPrefix(this.adapter, s)),
-            refName,
-          )
-        : undefined
     const asked = expand?.length
       ? (name: string) => expand.includes(name)
       : undefined
@@ -105,17 +91,12 @@ export class WalkIndex {
       refName,
       region,
       {
-        ...budgets,
-        byteBudget: Math.max(budgets.byteBudget, forcedByteBudget),
-        stepBudget: walkRows ? Infinity : budgets.stepBudget,
+        ...options,
+        byteBudget: Math.max(options.byteBudget, forcedByteBudget),
+        stepBudget: walkRows ? Infinity : options.stepBudget,
         signal,
         keep,
-        ...(named || shown || asked
-          ? {
-              expand: (name: string) =>
-                !!named?.(name) || !!shown?.(name) || !!asked?.(name),
-            }
-          : {}),
+        ...(asked ? { expand: asked } : {}),
       },
     )
     return walkCutFor(

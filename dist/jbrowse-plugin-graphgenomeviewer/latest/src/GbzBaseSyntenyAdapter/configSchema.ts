@@ -87,7 +87,8 @@ const GbzBaseSyntenyAdapter = ConfigurationSchema(
      * walk rows group by ("Group by..."). Its header row names the columns
      * (`population`, `superpopulation`, ...), and its first column is the
      * walk's sample (`HG00097`) or haplotype (`HG00097#1`). Empty means no
-     * grouping.
+     * grouping. A `color` column (`#rgb` or `#rrggbb`) colours that
+     * haplotype's lifted walk in the graph display.
      */
     samplesTsvLocation: fileLocationSlot(''),
     /**

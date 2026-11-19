@@ -6,6 +6,10 @@ import { Legends } from './GraphCanvas'
 import type { GraphPaneModel } from '../model'
 
 vi.mock('./Legend', () => ({ LegendPanel: () => null }))
+vi.mock('../legendSections', () => ({
+  legendSections: () => [],
+  drawnLegendSections: () => [],
+}))
 
 const Pane = types
   .model({
@@ -13,6 +17,9 @@ const Pane = types
     hoveredRowWalks: types.array(types.string),
     legendSize: types.frozen({ width: 0, height: 0 }),
   })
+  .volatile(() => ({
+    keyShape: undefined as string | undefined,
+  }))
   .views(self => ({
     get legendAtRest() {
       return self.hoveredNode === null && self.hoveredRowWalks.length === 0
@@ -22,6 +29,9 @@ const Pane = types
     },
   }))
   .actions(self => ({
+    setKeyShapeOf(shapeOf: () => string) {
+      self.keyShape = shapeOf()
+    },
     setLegendSize(size: { width: number; height: number }) {
       self.legendSize = size
     },

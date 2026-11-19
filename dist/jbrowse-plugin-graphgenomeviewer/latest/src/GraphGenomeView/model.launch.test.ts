@@ -12,6 +12,7 @@ import { TEST_TRACK } from './modelTestSupport'
 import stateModelFactory from './viewModel'
 
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
+import type { Graph } from '@jbrowse/bandage-core/types'
 
 vi.mock('@jbrowse/core/util', async () =>
   (await import('./modelTestMocks')).coreUtilMock(),
@@ -265,7 +266,7 @@ describe('launching out of the graph', () => {
     await model.loadOwnGenes()
     expect(model.ownGeneFeatures).toEqual([
       expect.objectContaining({
-        name: 'stx2A · Sakai#1',
+        name: 'stx2A',
         refName: 'Sakai#1#chr',
         start: 90001,
         end: 90003,
@@ -726,6 +727,43 @@ describe('genes on a backbone of another assembly', () => {
       expect(pinned(model)).toEqual(['HLA-A'])
     },
   )
+
+  test('a force layout pins a gene at the end of its node the reference reads it from, where the reference steps the node against its id', async () => {
+    gfa = gfaOf(
+      'W\tGRCh38\t0\tchr6\t1000\t1030\t<4<2<1',
+      'W\tCHM13\t0\tchr6\t1005\t1035\t<4<3<1',
+    )
+    geneAt = { refName: 'chr6', start: 1000, end: 1003 }
+    const respond = mockRpcCall.getMockImplementation()!
+    mockRpcCall.mockImplementation(
+      (sid: unknown, method: string, args: { graph: Graph }) =>
+        method === 'GraphComputeLayout'
+          ? Promise.resolve({
+              result: {
+                nodePositions: Object.fromEntries(
+                  args.graph.nodes.map(({ id }, i) => [
+                    id,
+                    [
+                      { x: i * 100, y: 0 },
+                      { x: i * 100 + 60, y: 0 },
+                    ],
+                  ]),
+                ),
+              },
+              duration: 5,
+            })
+          : respond(sid, method, args),
+    )
+    const model = await cutFor('hg38', 'force')
+    const node = model.graph!.nodes.find(n => n.name === '4')!
+    expect([node.id, node.stable?.strand]).toEqual(['4+', '-'])
+    expect(model.layoutResult?.stranded).toBe(true)
+    const line = model.layoutResult!.nodePositions[node.id]!
+    const [pin] = model.genePins
+    const gap = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      Math.hypot(a.x - b.x, a.y - b.y)
+    expect(gap(pin!.at, line.at(-1)!)).toBeLessThan(gap(pin!.at, line[0]!))
+  })
 
   test('a re-cut keeps the genes off a walk the user drew x along', async () => {
     gfa = gfaOf(CHM13, GRCH38)

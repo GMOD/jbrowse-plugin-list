@@ -7,6 +7,13 @@ import { snapshotNamesFile } from './locationName.ts'
 
 import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 
+// the adapters a graph is cut from
+export const GRAPH_ADAPTERS = new Set([
+  'RgfaTabixAdapter',
+  'GbzBaseSyntenyAdapter',
+  'WalkTabixSyntenyAdapter',
+])
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string')
 }

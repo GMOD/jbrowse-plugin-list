@@ -1,3 +1,4 @@
+import { liftedRowInks } from '@jbrowse/bandage-core/layout/rowInks'
 import {
   placeRowGenes,
   rowSpan,
@@ -10,11 +11,13 @@ import {
   walkStripFrame,
 } from '@jbrowse/bandage-core/layout/walkStrip'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
+import { passBars } from '@jbrowse/bandage-core/passBar'
 import { nodeAnchor } from '@jbrowse/bandage-core/referenceStrip'
 
 import { withLaunchViews } from './launchViews'
 import { WALK_GENE_ROWS } from './paneBase'
 import { resolveLocationAssembly } from '../../launchFromGraph/contributors'
+import { measureReadout } from '../readoutMeasure'
 
 import type { WalkAxis, WalkRow } from '@jbrowse/bandage-core/layout/walkRows'
 
@@ -36,15 +39,23 @@ export const withWalkRowViews = withLaunchViews
     get walkStripRows() {
       const bars = this.walkStripShown ? self.cutWalkRows : undefined
       return bars
-        ? { ...bars, rows: filterSamples(bars.rows, self.walkRowSamples) }
+        ? { ...bars, rows: filterSamples(bars.rows, self.keptRowSamples) }
         : undefined
     },
+    // The lifted walks' colours, which the strip's rows they name take
+    get walkStripInks() {
+      return liftedRowInks(self.drawnWalks)
+    },
+    // measured as the pane draws a readout, so the strip cuts one only where
+    // it does not fit
     get walkStripFrame() {
       const bars = this.walkStripRows
-      if (!bars) {
-        return undefined
-      }
-      return walkStripFrame(bars, { width: self.paneWidth })
+      return bars
+        ? {
+            ...walkStripFrame(bars, { width: self.paneWidth }),
+            measure: measureReadout,
+          }
+        : undefined
     },
     // Whether a cut must follow every snarl a walk leaves the window by, so
     // walks come back whole: walk rows measure them, and so does the strip
@@ -86,11 +97,25 @@ export const withWalkRowViews = withLaunchViews
         span: { refName: axis.contig, ...rowSpan(axis, row.bp) },
       }
     },
+    // The rows ribbons, shared blocks or the shared order compare, while one
+    // of them is on
+    get comparedRows() {
+      return self.rowVisitsNeeded ? (self.walkRowBars?.rows ?? []) : []
+    },
+    // Each walk lifted by pass along its own length, under a drawing of
+    // nodes in a view of its own, as bandage-core's figure stacks them, but
+    // for a walk whose row the strip draws in its passes' colours; a faceted
+    // pane names no pass
+    get passBars() {
+      return !self.host && self.drawsNodes && !self.facetPanels
+        ? passBars(self.walkLift, this.walkStripRows)
+        : []
+    },
     // Where the drawing has the node a strip point lights, for the ring
-    // that finds it in a hairball
+    // that finds it in a hairball, unless the drawing folded it
     get walkStripLocator() {
       const id = self.stripHover ? self.hoveredNode : null
-      return id === null
+      return id === null || self.folded.has(id)
         ? undefined
         : nodeAnchor(self.nodePositions?.[id], self.toScreen)
     },

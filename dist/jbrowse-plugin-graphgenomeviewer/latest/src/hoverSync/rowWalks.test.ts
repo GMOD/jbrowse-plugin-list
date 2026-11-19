@@ -7,13 +7,17 @@ const HPRC = [
   { name: 'HG00133#1#CM090050.1' },
 ]
 
-test('a phased callset row counts haplotypes from 0', () => {
-  expect(walksForRow('HG00097 HP0', HPRC)).toEqual([
+test('a phased callset row counts haplotypes from 1', () => {
+  expect(walksForRow('HG00097 HP1', HPRC)).toEqual([
     'HG00097#1#JBIRDD010000043.1',
   ])
-  expect(walksForRow('HG00097 HP1', HPRC)).toEqual([
+  expect(walksForRow('HG00097 HP2', HPRC)).toEqual([
     'HG00097#2#JBIRDE010000011.1',
   ])
+})
+
+test('a row naming haplotype 0 names no haplotype', () => {
+  expect(walksForRow('HG00097 HP0', HPRC)).toEqual([])
 })
 
 test('a MAF row counts haplotypes as PanSN does', () => {
@@ -30,9 +34,9 @@ test('a bare sample stands for every walk of it', () => {
   expect(walksForRow('GRCh38', HPRC)).toEqual(['GRCh38#0#chr6'])
 })
 
-test('a haploid row counts from 0 like any other', () => {
+test('a haploid row counts from 1 like any other', () => {
   expect(
-    walksForRow('CFT073 HP0', [
+    walksForRow('CFT073 HP1', [
       { name: 'K12#1#chr:1004500-1004961' },
       { name: 'CFT073#1#chr:1048100-1048700' },
     ]),
@@ -40,7 +44,7 @@ test('a haploid row counts from 0 like any other', () => {
 })
 
 test('a haplotype the cut does not hold names no walk', () => {
-  expect(walksForRow('HG00133 HP1', HPRC)).toEqual([])
+  expect(walksForRow('HG00133 HP2', HPRC)).toEqual([])
 })
 
 test('a bare sample ending in a version reads as the sample', () => {

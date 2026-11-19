@@ -30,6 +30,7 @@ export function walkRowsGraph(
       reversed: w.reversed.subarray(0, first),
     },
     departures: cut.departures,
+    revisited: cut.revisited,
   }
   const graph = loadGraph(light, name, { referencePath })
   const depth = new Int32Array(cut.nodes.names.length)

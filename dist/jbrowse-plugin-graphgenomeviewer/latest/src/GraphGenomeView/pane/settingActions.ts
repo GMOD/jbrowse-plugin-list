@@ -122,6 +122,15 @@ export const withSettingActions = withTubeMapViews
       self.lastGeometryStrokeCount = batch.nodeStrokes.length
       self.builtViewport = { ...built, viewportDirty: self.viewportDirty }
       self.drawnBatch = batch
+      if (!self.morphing) {
+        self.settledBatch = batch
+      }
+    },
+    setMorphing(morphing: boolean) {
+      self.morphing = morphing
+      if (!morphing) {
+        self.settledBatch = self.drawnBatch
+      }
     },
     markPainted() {
       self.paintedViewport = self.builtViewport
@@ -254,7 +263,14 @@ export const withSettingActions = withTubeMapViews
         l.walk === walk ? { ...l, color: { ...l.color, ...color } } : l,
       )
     },
-    setWalkRowSamples(samples: string[] | undefined) {
+    // Each lifted walk shaded along its own length, or each one flat colour
+    shadeWalksAlong(along: boolean) {
+      self.walkLayers = self.walkLayers.map(l => ({
+        ...l,
+        color: { ...l.color, field: along ? 'progress' : 'walk' },
+      }))
+    },
+    setWalkRowSamples(samples: string[] | 'lifted' | undefined) {
       const order = self.walkRowOrder
       self.writeGrammar({
         rows: {
@@ -264,7 +280,7 @@ export const withSettingActions = withTubeMapViews
       })
     },
     setWalkRowOrder(order: 'shared' | undefined) {
-      const kept = self.walkRowSamples
+      const kept = self.grammar.rows?.kept
       self.writeGrammar({
         rows: { ...(kept ? { kept } : {}), ...(order ? { order } : {}) },
       })
@@ -338,8 +354,33 @@ export const withSettingActions = withTubeMapViews
           : undefined
       self.hoveredNode = node ?? null
     },
-    setLegendSize(size: { width: number; height: number }) {
-      self.legendSize = size
+    setAnsweredKeyFloor(floor: number) {
+      self.answeredKeyFloor = floor
+    },
+    setKeyShapeOf(shapeOf: () => string) {
+      self.keyShapeOf = shapeOf
+    },
+    setLegendSize(size: { width: number; height: number }, shape?: string) {
+      if (shape !== undefined) {
+        self.measuredKeyShape = shape
+      }
+      if (
+        size.width !== self.legendSize.width ||
+        size.height !== self.legendSize.height
+      ) {
+        self.legendSize = size
+      }
+      const frame = self.keyFrame
+      if (
+        !frame ||
+        (!self.keyFrameHeld &&
+          (size.width !== frame.width || size.height !== frame.height))
+      ) {
+        self.keyFrame = size
+      }
+    },
+    setKeyFrameHeld(held: boolean) {
+      self.keyFrameHeld = held
     },
     setHoveredEdge(edgeIdx: number | null) {
       self.hoveredEdge = self.hoverLightsEverything ? edgeIdx : null
@@ -550,6 +591,9 @@ export const withSettingActions = withTubeMapViews
     // into the pane once its width is known.
     followNewLayout(previous: LayoutResult | undefined) {
       const bounds = self.layoutBounds
+      if (self.followsWindow && self.viewportOwner === 'user') {
+        self.viewportOwner = 'fit'
+      }
       if (
         self.viewportOwner !== 'user' ||
         !bounds ||
@@ -629,6 +673,9 @@ export const withSettingActions = withTubeMapViews
         cancelAnimationFrame(morph.frame)
         morph = undefined
       }
+      if (isAlive(self) && self.morphing) {
+        self.setMorphing(false)
+      }
     }
 
     function finishMorph() {
@@ -699,12 +746,16 @@ export const withSettingActions = withTubeMapViews
             )
           }
         }
+        self.setMorphing(true)
         blend(0)
         morph = runMorph(
           blend,
           () => isAlive(self) && self.layoutResult === next,
           () => {
             morph = undefined
+            if (isAlive(self)) {
+              self.setMorphing(false)
+            }
           },
         )
       },

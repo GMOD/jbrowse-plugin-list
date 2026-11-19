@@ -11,9 +11,9 @@ import {
   legendNoteStyle,
   legendRowStyle,
 } from './legendStyles'
-import { legendSections, rowPitch, swatchColumn } from '../legendSections'
+import { countWords, rowPitch, swatchColumn } from '../legendSections'
 
-import type { LegendRow } from '../legendSections'
+import type { LegendRow, drawnLegendSections } from '../legendSections'
 import type { GraphPaneModel } from '../model'
 
 // One row: its swatch then its words, or a note with neither.
@@ -51,6 +51,16 @@ export const LegendRowView = observer(function LegendRowView({
           {row.strong ? <strong>{row.strong}</strong> : null}
           {row.label}
         </span>
+        {row.sizer === undefined ? null : (
+          <span style={countCellStyle}>
+            <span style={sizerStyle} aria-hidden data-testid="graph-key-sizer">
+              {countWords(row.sizer)}
+            </span>
+            <span style={countStyle} data-testid="graph-key-count">
+              {countWords(row.count)}
+            </span>
+          </span>
+        )}
         {after}
       </div>
       {at ? (
@@ -66,6 +76,19 @@ export const LegendRowView = observer(function LegendRowView({
   )
 })
 
+// The count and its sizer share one cell, which the sizer's words make as
+// wide as the count can come to, so the count widens the key as much with
+// no label placed as with every one; it clips past that, and no wider
+const countCellStyle = { display: 'grid' }
+const sizerStyle = { gridArea: '1 / 1', visibility: 'hidden' as const }
+const countStyle = {
+  gridArea: '1 / 1',
+  width: 0,
+  minWidth: '100%',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
 const closeStyle = {
   pointerEvents: 'auto' as const,
   cursor: 'pointer',
@@ -77,13 +100,14 @@ const closeStyle = {
 }
 
 // Every key the drawing needs in one box, a section each, every line at one
-// pitch
+// pitch: the sections the pane measures it for
 export const LegendPanel = observer(function LegendPanel({
   model,
+  sections,
 }: {
   model: GraphPaneModel
+  sections: ReturnType<typeof drawnLegendSections>
 }) {
-  const sections = legendSections(model)
   if (sections.length === 0) {
     return null
   }
