@@ -92,7 +92,7 @@ test("a faceted pane's key row holds the controls its host hands it, after its k
   const model = stateModelFactory().create({
     type: 'GraphGenomeView',
     layoutMode: 'ordered',
-    walkLayers: [{ walk: 'GRCh38#0#chr1' }, { walk: 'B#1#ctg' }],
+    walks: [{ walk: 'GRCh38#0#chr1' }, { walk: 'B#1#ctg' }],
     facet: 'walk',
   })
   await model.loadGFA(WALKS_GFA, 'graph')

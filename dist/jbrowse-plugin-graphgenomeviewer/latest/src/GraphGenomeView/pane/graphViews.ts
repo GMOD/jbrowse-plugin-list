@@ -227,6 +227,7 @@ export interface GraphGrammar {
   rows?: GraphRows
   hover?: HoverHighlight
   links?: LinksDrawn
+  walks?: WalkLayer[]
 }
 
 type TubeColorKind = 'value' | 'tinted' | 'role' | 'path'
@@ -286,7 +287,14 @@ export const withGraphViews = paneBase
       const g = groupByOf(self.grammar.facet)
       return g && g.field !== 'walk' && g.field !== 'sample' ? g : undefined
     })
+    const walkLayers = byValue(() => self.grammar.walks ?? [])
     return {
+      // Walks lifted out of the drawing, each a layer with a lane of its own
+      // and the rest fading, coloured by the encoding it states or by the
+      // default one. See walkEncoding.ts. Empty lifts none.
+      get walkLayers() {
+        return walkLayers.get()
+      },
       get chosenLayoutMode(): LayoutModeValue {
         return self.grammar.layoutMode ?? 'force'
       },
@@ -751,6 +759,10 @@ export const withGraphViews = paneBase
         : !!focus &&
             !this.bubbleIsOpen(bubble) &&
             !nodeIds.every(id => focus.nodeIds.has(id))
+    },
+    nodeFaded(nodeId: string) {
+      const highlight = this.drawnHighlight
+      return !!highlight && !highlight.nodeIds.has(nodeId)
     },
   }))
   .views(self => ({

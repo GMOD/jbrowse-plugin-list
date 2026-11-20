@@ -106,6 +106,22 @@ export function configSchemaFactory() {
       },
       /**
        * #slot
+       * the walks highlighted, as the track's Haplotypes list sets them: each
+       * is lifted out of the drawing as a lane of its own and the rest fade.
+       * A walk's `color` takes a `field` (`progress`, `walk`, `reference` or
+       * `pass`) and a `scheme` (`grey`, `blue`, `red`, `purple`, `green`,
+       * `orange` or `rainbow`)
+       * ```js
+       * { walks: [{ walk: 'GRCh38#0#chr6' }, { walk: 'HG00133#1#CM090045.1' }] }
+       * ```
+       */
+      walks: {
+        type: 'frozen',
+        defaultValue: [],
+        plot: true,
+      },
+      /**
+       * #slot
        * what the pointer lights: `nodes` lightens a hovered node and bands its
        * span on the view; `everything` also lights edges, and the node at the
        * view's pointer bp
@@ -140,6 +156,7 @@ export function configSchemaFactory() {
     {
       explicitlyTyped: true,
       explicitIdentifier: 'displayId',
+      misnamed: { walkLayers: 'walks' },
     },
   )
 }

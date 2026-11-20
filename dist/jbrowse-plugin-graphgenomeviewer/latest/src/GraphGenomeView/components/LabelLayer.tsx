@@ -11,7 +11,7 @@ import { abgrToCssRgba } from '@jbrowse/bandage-core/renderer/colorBits'
 import { isAlive } from '@jbrowse/mobx-state-tree'
 import { observer } from 'mobx-react'
 
-import LabelChip, { inChip } from './LabelChip'
+import LabelChip, { DIMMED_OPACITY, inChip } from './LabelChip'
 import { PaneSvgLayer } from './PaneLayer'
 
 import type { GraphPaneModel } from '../model'
@@ -52,7 +52,9 @@ const LabelLayer = observer(function LabelLayer({
   const { bubbles, genes, ticks, passes, sizes } = model.overlayLabels
   const leaders = sizes.flatMap(label => {
     const leader = sizeLeader(label)
-    return leader ? [{ key: label.key, ...leader }] : []
+    return leader
+      ? [{ key: label.key, faded: model.nodeFaded(label.node), ...leader }]
+      : []
   })
   if (
     bubbles.length +
@@ -142,12 +144,12 @@ const LabelLayer = observer(function LabelLayer({
             height={TICK_PX}
             rx={TICK_WIDTH / 2}
             fill={BUBBLE_HALO_COLOR}
-            opacity={dimmedBubble(h) ? 0.35 : 1}
+            opacity={dimmedBubble(h) ? DIMMED_OPACITY : 1}
             style={{ pointerEvents: 'all', cursor: 'pointer' }}
           />
         ))}
       </g>
-      {leaders.map(({ key, x1, y1, x2, y2 }) => (
+      {leaders.map(({ key, faded, x1, y1, x2, y2 }) => (
         <line
           key={key}
           data-testid="graph-size-leader"
@@ -158,6 +160,7 @@ const LabelLayer = observer(function LabelLayer({
           stroke={GENE_INK}
           strokeWidth={0.8}
           strokeOpacity={0.6}
+          opacity={faded ? DIMMED_OPACITY : undefined}
         />
       ))}
       {genes.map(({ item: { pin, name }, x, y, w, text }) => {

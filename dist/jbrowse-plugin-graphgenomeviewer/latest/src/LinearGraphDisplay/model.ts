@@ -155,6 +155,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           rows: getConf(self, 'rows'),
           hover: getConf(self, 'hover'),
           links: getConf(self, 'links'),
+          walks: getConf(self, 'walks'),
         }
         /* eslint-enable @typescript-eslint/no-unsafe-assignment */
       },

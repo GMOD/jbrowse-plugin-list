@@ -1764,7 +1764,7 @@ test('a track config naming a layout mode, engine or hover this build lacks open
   ).toEqual([LAYOUT_MODE_VALUES, LAYOUT_ENGINE_VALUES, HOVER_HIGHLIGHT_VALUES])
 })
 
-test('each grammar setter writes the track config, and the pane reads it back', async () => {
+test('each grammar setter writes the track config, highlighted walks too, and the pane reads it back', async () => {
   const { display } = await shownGraph()
   display.setLayoutMode('ordered')
   display.setLayoutEngine('fmmm')
@@ -1777,6 +1777,9 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setWalkRowOrder('shared')
   display.setHover('off')
   display.setLinks('between')
+  display.liftWalks(['HG1#1', 'HG2#1'])
+  display.setWalkColor('HG2#1', { scheme: 'red' })
+  display.toggleWalk('HG1#1')
   const slots = [
     'layoutMode',
     'layoutEngine',
@@ -1787,10 +1790,9 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   ] as const
   expect(
     Object.fromEntries(
-      [...slots, 'hover' as const, 'links' as const].map(s => [
-        s,
-        readConfObject(display.configuration, s),
-      ]),
+      [...slots, 'hover' as const, 'links' as const, 'walks' as const].map(
+        s => [s, readConfObject(display.configuration, s)],
+      ),
     ),
   ).toEqual({
     layoutMode: 'ordered',
@@ -1801,6 +1803,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     rows: { kept: ['HG1'], order: 'shared' },
     hover: 'off',
     links: 'between',
+    walks: [{ walk: 'HG2#1', color: { scheme: 'red' } }],
   })
   expect(readConfObject(display.configuration, ['facet', 'field'])).toBe('walk')
   expect([
@@ -1814,6 +1817,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     display.walkRowSamples,
     display.chosenHover,
     display.chosenLinks,
+    display.walkLayers,
   ]).toEqual([
     'ordered',
     'fmmm',
@@ -1825,6 +1829,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     ['HG1'],
     'off',
     'between',
+    [{ walk: 'HG2#1', color: { scheme: 'red' } }],
   ])
 })
 
@@ -1846,6 +1851,12 @@ test('the graph view a track opens takes its hover too', async () => {
   const { display } = await shownGraph()
   display.setHover('everything')
   expect(display.graphViewSpec?.hover).toBe('everything')
+})
+
+test('the graph view a track opens highlights the walks the track does', async () => {
+  const { display } = await shownGraph()
+  display.liftWalks(['HG1#1'])
+  expect(display.graphViewSpec?.walks).toEqual([{ walk: 'HG1#1' }])
 })
 
 test('closing a drawn track reads nothing of the dead display', async () => {

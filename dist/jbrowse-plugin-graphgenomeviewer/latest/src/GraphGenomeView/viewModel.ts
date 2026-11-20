@@ -21,6 +21,7 @@ import type { SubgraphRegion } from '../GetSubgraph'
 import type { GraphGrammar, GraphRows } from './pane/graphViews'
 import type { FacetInput } from '@jbrowse/bandage-core/facetGrid'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
+import type { WalkLayer } from '@jbrowse/bandage-core/walkEncoding'
 import type { AnyTrackConfig } from '@jbrowse/core/configuration'
 import type { FileLocation } from '@jbrowse/core/util/types'
 import type { Instance } from '@jbrowse/mobx-state-tree'
@@ -55,6 +56,7 @@ export default function stateModelFactory() {
         // unset is nodes
         hover: lenientMaybeEnum(HOVER_HIGHLIGHT_VALUES),
         links: lenientMaybeEnum(LINKS_DRAWN_VALUES),
+        walks: types.maybe(types.frozen<WalkLayer[]>()),
       }),
     )
     .views(self => ({
@@ -69,6 +71,7 @@ export default function stateModelFactory() {
           rows: self.rows,
           hover: self.hover,
           links: self.links,
+          walks: self.walks,
         }
       },
     }))

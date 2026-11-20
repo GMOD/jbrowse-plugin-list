@@ -224,14 +224,14 @@ export const withSettingActions = withTubeMapViews
     setRepeatKey(key: string) {
       self.repeatKey = key
     },
-    setWalkLayers(layers: WalkLayer[]) {
-      self.walkLayers = layers
+    setWalkLayers(walks: WalkLayer[]) {
+      self.writeGrammar({ walks })
     },
     // Lift the walks named, in that order, keeping the colour any of them
     // already had
     liftWalks(names: string[]) {
       const had = new Map(self.walkLayers.map(l => [l.walk, l]))
-      self.walkLayers = names.map(walk => had.get(walk) ?? { walk })
+      this.setWalkLayers(names.map(walk => had.get(walk) ?? { walk }))
     },
     // A picker's set, which lists only this cut's walks: the lifted walks it
     // cannot show keep their layers for when a cut has them again
@@ -264,21 +264,27 @@ export const withSettingActions = withTubeMapViews
     },
     toggleWalk(walk: string) {
       const layers = self.walkLayers
-      self.walkLayers = layers.some(l => l.walk === walk)
-        ? layers.filter(l => l.walk !== walk)
-        : [...layers, { walk }]
+      this.setWalkLayers(
+        layers.some(l => l.walk === walk)
+          ? layers.filter(l => l.walk !== walk)
+          : [...layers, { walk }],
+      )
     },
     setWalkColor(walk: string, color: Partial<WalkEncoding>) {
-      self.walkLayers = self.walkLayers.map(l =>
-        l.walk === walk ? { ...l, color: { ...l.color, ...color } } : l,
+      this.setWalkLayers(
+        self.walkLayers.map(l =>
+          l.walk === walk ? { ...l, color: { ...l.color, ...color } } : l,
+        ),
       )
     },
     // Each lifted walk shaded along its own length, or each one flat colour
     shadeWalksAlong(along: boolean) {
-      self.walkLayers = self.walkLayers.map(l => ({
-        ...l,
-        color: { ...l.color, field: along ? 'progress' : 'walk' },
-      }))
+      this.setWalkLayers(
+        self.walkLayers.map(l => ({
+          ...l,
+          color: { ...l.color, field: along ? 'progress' : 'walk' },
+        })),
+      )
     },
     setWalkRowSamples(samples: string[] | 'lifted' | undefined) {
       const order = self.walkRowOrder

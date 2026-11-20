@@ -1,6 +1,8 @@
 import { LABEL_PAD, LABEL_PX } from '@jbrowse/bandage-core/overlayLabels'
 import { observer } from 'mobx-react'
 
+export const DIMMED_OPACITY = 0.35
+
 // A chip's box, its text's baseline at y and centred on x
 function chipBox(x: number, y: number, w: number) {
   return {
@@ -64,7 +66,7 @@ export default observer(function LabelChip({
       style={{
         pointerEvents: onClick || onHover ? 'auto' : 'none',
         cursor: onClick ? 'pointer' : undefined,
-        opacity: dimmed ? 0.35 : 1,
+        opacity: dimmed ? DIMMED_OPACITY : 1,
       }}
       data-testid={testId}
       onClick={onClick}

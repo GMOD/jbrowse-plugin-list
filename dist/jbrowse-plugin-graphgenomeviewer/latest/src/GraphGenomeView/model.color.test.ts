@@ -10,6 +10,7 @@ import {
 import { applySnapshot, getSnapshot } from '@jbrowse/mobx-state-tree'
 import { renderToStaticMarkup } from 'react-dom/server'
 
+import { GraphSizeLabels } from './components/GraphCanvas'
 import PaneSvg from './components/PaneSvg'
 import { drawnLegendSections, legendSections } from './legendSections'
 import { mockRpcCall, mockSession } from './modelTestMocks'
@@ -564,6 +565,75 @@ test("the key's nodes not shown entry counts the placeholders the labels left wi
   expect(blank).not.toContain('unlabelled')
   expect(keyWidth(filled)).toBeDefined()
   expect(keyWidth(filled)).toBe(keyWidth(blank))
+})
+
+test('an open bubble fades the lengths on the nodes it greys, on screen and in the SVG export', async () => {
+  mockRpcCall.mockImplementation(
+    (_session: unknown, method: string, request: EngineRequest) =>
+      method === 'GraphComputeLayout'
+        ? layoutEngine(request)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const model = createModel()
+  model.setWidth(800)
+  await model.loadGFA(
+    [
+      'H\tVN:Z:1.0',
+      'S\t0\t*\tLN:i:1000\tSN:Z:chr\tSO:i:0\tSR:i:0',
+      'S\t1\t*\tLN:i:40\tSN:Z:chr\tSO:i:1000\tSR:i:0',
+      'S\t2\t*\tLN:i:50\tSN:Z:chr\tSO:i:1040\tSR:i:0',
+      'S\t3\t*\tLN:i:60\tSN:Z:alt\tSO:i:0\tSR:i:1',
+      'S\t4\t*\tLN:i:2000\tSN:Z:chr\tSO:i:1090\tSR:i:0',
+      ...['0 1', '1 2', '2 4', '1 3', '3 2'].map(
+        l => `L\t${l.replace(' ', '\t+\t')}\t+\t0M`,
+      ),
+      '',
+    ].join('\n'),
+    'rgfa',
+  )
+  model.startRenderingBackend(fakeRenderer())
+  const onScreen = () =>
+    Object.fromEntries(
+      [
+        ...renderToStaticMarkup(
+          createElement(GraphSizeLabels, { model }),
+        ).matchAll(
+          /<div data-testid="graph-size-label" style="([^"]*)">([^<]*)<\/div>/g,
+        ),
+      ].map(([, style, text]) => [text, !!style?.includes('opacity:0.35')]),
+    )
+  const exported = () =>
+    Object.fromEntries(
+      [
+        ...renderToStaticMarkup(
+          createElement(
+            'svg',
+            null,
+            createElement(PaneSvg, { model, idPrefix: 'k' }),
+          ),
+        ).matchAll(
+          /<g( opacity="0.35")?><rect [^>]*><\/rect><text [^>]*>([^<]*)<\/text><\/g>/g,
+        ),
+      ].map(([, faded, text]) => [text, faded !== undefined]),
+    )
+  const allFull = {
+    '1 kb': false,
+    '40 bp': false,
+    '50 bp': false,
+    '60 bp': false,
+    '2 kb': false,
+  }
+  expect(onScreen()).toEqual(allFull)
+  expect(exported()).toEqual(allFull)
+
+  const bubble = model.bubbles.find(b => b.segments === '1,3,2')!
+  model.toggleBubble(bubble)
+  const outsideFaded = { ...allFull, '1 kb': true, '2 kb': true }
+  expect(onScreen()).toEqual(outsideFaded)
+  expect(exported()).toEqual(outsideFaded)
+
+  model.toggleBubble(bubble)
+  expect(onScreen()).toEqual(allFull)
 })
 
 test("a lifted walk's drawing labels no node length, so its key keeps no room for the count", async () => {

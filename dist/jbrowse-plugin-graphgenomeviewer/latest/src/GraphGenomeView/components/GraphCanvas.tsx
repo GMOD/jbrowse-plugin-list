@@ -15,6 +15,7 @@ import GraphToolbar from './GraphToolbar'
 import HaplotypeSwitch from './HaplotypeSwitch'
 import HoverLayer from './HoverLayer'
 import HoverTooltip from './HoverTooltip'
+import { DIMMED_OPACITY } from './LabelChip'
 import LabelLayer from './LabelLayer'
 import LayoutSwitch from './LayoutSwitch'
 import { LegendPanel } from './Legend'
@@ -221,18 +222,23 @@ export const Legends = observer(function Legends({
 // tracks its node across pan and zoom, and decides which labels fit; this only
 // paints them, mounted in the canvas's own positioning context for the reason
 // RowLabels is.
-const GraphSizeLabels = observer(function GraphSizeLabels({
+export const GraphSizeLabels = observer(function GraphSizeLabels({
   model,
 }: {
   model: GraphPaneModel
 }) {
   return (
     <>
-      {model.overlayLabels.sizes.map(({ key, text, x, y }) => (
+      {model.overlayLabels.sizes.map(({ key, node, text, x, y }) => (
         <div
           key={key}
           data-testid="graph-size-label"
-          style={{ ...nodeLabelStyle, left: x, top: y }}
+          style={{
+            ...nodeLabelStyle,
+            left: x,
+            top: y,
+            opacity: model.nodeFaded(node) ? DIMMED_OPACITY : undefined,
+          }}
         >
           {text}
         </div>

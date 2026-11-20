@@ -27,7 +27,6 @@ import type { RenderBatch } from '@jbrowse/bandage-core/renderer/types'
 import type { TubeMapMismatch } from '@jbrowse/bandage-core/tubeMap/mismatches'
 import type { Graph } from '@jbrowse/bandage-core/types'
 import type { AxisScale } from '@jbrowse/bandage-core/util/geometry'
-import type { WalkLayer } from '@jbrowse/bandage-core/walkEncoding'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation } from '@jbrowse/core/util/types'
 import type { AbridgedWalk } from '@jbrowse/graph-walks'
@@ -286,10 +285,6 @@ export const paneBase = types
       // The array the walk rows measure between and tile by, as
       // RepeatArray.key; empty measures the whole window untiled.
       repeatKey: types.optional(types.string, ''),
-      // Walks lifted out of the drawing, each a layer with a lane of its own
-      // and the rest fading, coloured by the encoding it states or by the
-      // default one. See walkEncoding.ts. Empty lifts none.
-      walkLayers: types.optional(types.frozen<WalkLayer[]>(), []),
       // Which of a general GFA's paths the anchored layouts put on x. A path
       // GFA's names are arbitrary and none of them is marked as the
       // reference, so this is a choice; empty means "infer", which is the

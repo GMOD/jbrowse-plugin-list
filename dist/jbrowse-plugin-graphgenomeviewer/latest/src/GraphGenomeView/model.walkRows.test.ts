@@ -705,7 +705,7 @@ describe('walk rows', () => {
     const model = stateModelFactory().create({
       type: 'GraphGenomeView',
       layoutMode: 'tubemap',
-      walkLayers: [{ walk: 'GRCh38#0#chr1' }, { walk: 'B#1#ctg' }],
+      walks: [{ walk: 'GRCh38#0#chr1' }, { walk: 'B#1#ctg' }],
       facet: 'walk',
     })
     await model.loadGFA(WALKS_GFA, 'walks')

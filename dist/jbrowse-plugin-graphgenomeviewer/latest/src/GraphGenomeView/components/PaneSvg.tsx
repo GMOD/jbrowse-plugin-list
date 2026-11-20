@@ -8,6 +8,7 @@ import { PaintLayer } from '@jbrowse/core/util/paintLayer'
 import BubbleHalos from './BubbleHalos'
 import { paintEdgeMarks } from './EdgeMarksOverlay'
 import GenePins from './GenePins'
+import { DIMMED_OPACITY } from './LabelChip'
 import LabelLayer from './LabelLayer'
 import { SvgSwatch } from './LegendSwatch'
 import { paintReferenceStrip } from './ReferenceStripOverlay'
@@ -289,8 +290,13 @@ function Chip({
 function SizeLabels({ model }: { model: GraphPaneModel }) {
   return (
     <g fontFamily={FONT.fontFamily}>
-      {model.overlayLabels.sizes.map(({ key, text, x, y }) => (
-        <Chip key={key} x={x} y={y} text={text} fontSize={10} anchor="middle" />
+      {model.overlayLabels.sizes.map(({ key, node, text, x, y }) => (
+        <g
+          key={key}
+          opacity={model.nodeFaded(node) ? DIMMED_OPACITY : undefined}
+        >
+          <Chip x={x} y={y} text={text} fontSize={10} anchor="middle" />
+        </g>
       ))}
     </g>
   )
