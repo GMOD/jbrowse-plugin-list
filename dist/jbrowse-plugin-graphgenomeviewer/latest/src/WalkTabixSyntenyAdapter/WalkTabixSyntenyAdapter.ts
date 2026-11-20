@@ -159,7 +159,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
           signal: opts.signal,
           keep,
           expand: keep,
-          links: false,
+          links: 'none',
         })
         .catch((error: unknown) => {
           throw laneZoomNotice(error, region.end - region.start)
