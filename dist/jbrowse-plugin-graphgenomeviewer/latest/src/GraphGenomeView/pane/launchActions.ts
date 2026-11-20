@@ -1,5 +1,6 @@
 import { COLOR_SCHEMES } from '@jbrowse/bandage-core/colorSchemes'
 import { FACET_FIELDS } from '@jbrowse/bandage-core/facetGrid'
+import { LAYOUT_ENGINES } from '@jbrowse/bandage-core/layoutEngines'
 import {
   LAYOUT_MODES,
   layoutModeByValue,
@@ -40,6 +41,7 @@ import type { GraphLayer } from '../graphLayers'
 import type { TubeMapPanelSplit } from '../tubeMapPanels'
 import type { ColorScheme } from '@jbrowse/bandage-core/colorSchemes'
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
+import type { Graph } from '@jbrowse/bandage-core/types'
 import type { MenuItem } from '@jbrowse/core/ui'
 
 const ENGINE_NAMES: readonly (readonly [LayoutEngineKind, string])[] = [
@@ -49,6 +51,15 @@ const ENGINE_NAMES: readonly (readonly [LayoutEngineKind, string])[] = [
 
 const layoutMenuLabel = (mode: { label: string }) =>
   mode.label.replace(/ layout$/, '')
+
+const layoutRow = (
+  mode: (typeof LAYOUT_MODES)[number],
+  graph: Graph | undefined,
+) => ({
+  type: 'radio' as const,
+  disabled: graph ? !mode.available(graph) : false,
+  disabledHelpText: mode.description,
+})
 
 function radioItems<T>(
   options: readonly { value: T; label: string; disabled?: boolean }[],
@@ -505,60 +516,69 @@ export const withLaunchActions = withRenderingActions
         ? `${label} (${this.colorSchemeLabel(self.effectiveColorScheme)})`
         : label
     },
-    graphMenuItems(): MenuItem[] {
-      const options = this.layoutOptionMenuItems()
+    layoutLabel() {
       const mode = layoutModeByValue(self.chosenLayoutMode)
       const engine = ENGINE_NAMES.find(
         ([e]) => e === self.chosenLayoutEngine,
       )![1]
+      return `${layoutMenuLabel(mode)}${mode.value === 'force' ? ` (${engine})` : ''}`
+    },
+    forceEngineRows() {
+      const mode = layoutModeByValue('force')
+      return ENGINE_NAMES.map(([engine, name]) => ({
+        name,
+        about: LAYOUT_ENGINES.find(e => e.value === engine)!.description,
+        row: {
+          ...layoutRow(mode, self.graph),
+          label: `${layoutMenuLabel(mode)} (${name})`,
+          checked:
+            self.chosenLayoutMode === mode.value &&
+            self.chosenLayoutEngine === engine,
+          onClick: () => {
+            void self.switchForceEngine(engine)
+          },
+        },
+      }))
+    },
+    layoutMenuItems(): MenuItem[] {
+      const options = this.layoutOptionMenuItems()
+      return [
+        ...LAYOUT_MODES.flatMap(mode =>
+          mode.value === 'force'
+            ? this.forceEngineRows().map(engine => engine.row)
+            : [
+                {
+                  ...layoutRow(mode, self.graph),
+                  label: layoutMenuLabel(mode),
+                  checked: self.chosenLayoutMode === mode.value,
+                  onClick: () => {
+                    void self.switchLayout(mode.value)
+                  },
+                },
+              ],
+        ),
+        ...(options.length > 0
+          ? [{ type: 'divider' as const }, ...options]
+          : []),
+        ...(self.hostPlacesX
+          ? []
+          : [
+              { type: 'divider' as const },
+              {
+                label: 'Zoom to fit',
+                onClick: () => {
+                  self.refitView()
+                },
+              },
+            ]),
+      ]
+    },
+    graphMenuItems(): MenuItem[] {
       return [
         {
-          label: `Layout: ${layoutMenuLabel(mode)}${mode.value === 'force' ? ` (${engine})` : ''}`,
+          label: `Layout: ${this.layoutLabel()}`,
           icon: HubIcon,
-          subMenu: [
-            ...LAYOUT_MODES.flatMap(mode => {
-              const item = {
-                type: 'radio' as const,
-                disabled: self.graph ? !mode.available(self.graph) : false,
-                disabledHelpText: mode.description,
-              }
-              return mode.value === 'force'
-                ? ENGINE_NAMES.map(([engine, name]) => ({
-                    ...item,
-                    label: `${layoutMenuLabel(mode)} (${name})`,
-                    checked:
-                      self.chosenLayoutMode === mode.value &&
-                      self.chosenLayoutEngine === engine,
-                    onClick: () => {
-                      void self.switchForceEngine(engine)
-                    },
-                  }))
-                : [
-                    {
-                      ...item,
-                      label: layoutMenuLabel(mode),
-                      checked: self.chosenLayoutMode === mode.value,
-                      onClick: () => {
-                        void self.switchLayout(mode.value)
-                      },
-                    },
-                  ]
-            }),
-            ...(options.length > 0
-              ? [{ type: 'divider' as const }, ...options]
-              : []),
-            ...(self.hostPlacesX
-              ? []
-              : [
-                  { type: 'divider' as const },
-                  {
-                    label: 'Zoom to fit',
-                    onClick: () => {
-                      self.refitView()
-                    },
-                  },
-                ]),
-          ],
+          subMenu: this.layoutMenuItems(),
         },
         {
           label: `Color: ${self.colorSchemeLock?.value ?? this.colorSchemeLabel(self.chosenColorScheme)}`,

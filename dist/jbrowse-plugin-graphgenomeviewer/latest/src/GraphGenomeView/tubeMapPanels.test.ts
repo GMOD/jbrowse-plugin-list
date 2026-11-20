@@ -6,6 +6,7 @@ import { anchorGraph } from '@jbrowse/bandage-core/pathAnchoring'
 import {
   PANEL_GAP,
   boxOf,
+  columnKeyOf,
   drawSqueezedLengths,
   graphOfPaths,
   memberAt,
@@ -66,6 +67,17 @@ test('a column groups samples by their value, named with how many', () => {
     { key: 'EUR', paths: ['A#1#c'], label: 'EUR · 1 sample' },
     { key: '', paths: ['B#1#c'], label: 'pop: none · 1 sample' },
   ])
+})
+
+test("a walk's value in a column is its haplotype's row as the table spells it, else its sample's", () => {
+  const table = [
+    { name: 'HG00097#01', pop: 'GBR' },
+    { name: 'HG00097', pop: 'EUR' },
+  ]
+  const valueOf = columnKeyOf('pop', table)
+  expect(valueOf('HG00097#01#CM1')).toBe('GBR')
+  expect(valueOf('HG00097#2#CM2')).toBe('EUR')
+  expect(valueOf('HG00097')).toBe('EUR')
 })
 
 test("a panel's graph is the reference and its walks, and what they visit", () => {

@@ -13,6 +13,7 @@ import { walksKept } from '@jbrowse/graph-walks'
 
 import {
   anchorAligner,
+  cached,
   chainFeature,
   departureFeature,
   departureSpans,
@@ -208,10 +209,12 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     )
     // lanes come back in the order the fetch names them, which is the order
     // the display stacks lanes of equal weight in
-    const rank = ({ name }: { name: string }) =>
+    const rankOf = cached((name: string) =>
       prefixes === undefined
         ? 0
-        : prefixes.findIndex(prefix => panSNMatchesPrefix(name, prefix))
+        : prefixes.findIndex(prefix => panSNMatchesPrefix(name, prefix)),
+    )
+    const rank = ({ name }: { name: string }) => rankOf(name)
     const align = anchorAligner(graph.nodes)
     const asmByPrefix = assemblyByPanSNPrefix(this)
     const laneOf = (walk: { name: string }) =>

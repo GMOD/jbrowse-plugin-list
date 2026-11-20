@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/labelLayout'
 import { ErrorBanner, LoadingOverlay } from '@jbrowse/core/ui'
@@ -14,6 +15,7 @@ import GraphToolbar from './GraphToolbar'
 import HoverLayer from './HoverLayer'
 import HoverTooltip from './HoverTooltip'
 import LabelLayer from './LabelLayer'
+import LayoutSwitch from './LayoutSwitch'
 import { LegendPanel } from './Legend'
 import PaneContextMenu from './PaneContextMenu'
 import PassBars from './PassBars'
@@ -148,10 +150,14 @@ const nodeLabelStyle = {
 //
 // At rest only, and again on returning to rest: a hover's walk keys would
 // otherwise refit the view, and the refit clears the hover that grew them
+//
+// `children` head the column, over the key, and are measured with it
 export const Legends = observer(function Legends({
   model,
+  children,
 }: {
   model: GraphPaneModel
+  children?: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const atRest = model.legendAtRest
@@ -170,13 +176,14 @@ export const Legends = observer(function Legends({
     // the last callback can land after the track is closed. scrollHeight is
     // the whole key, even where the pane caps it to scroll, so the pane
     // still grows to show it all when it can. The key mounts once it has
-    // sections, which can be after this, so each measure observes it.
+    // sections, which can be after this, so each measure observes what the
+    // column holds.
     const resizes = new ResizeObserver(() => {
       measure()
     })
     const measure = () => {
-      if (el.firstElementChild) {
-        resizes.observe(el.firstElementChild)
+      for (const child of el.children) {
+        resizes.observe(child)
       }
       if (isAlive(model) && model.legendAtRest) {
         model.setLegendSize(
@@ -202,6 +209,7 @@ export const Legends = observer(function Legends({
           model.canvasHeight - 2 * LEGEND_INSET_PX - model.referenceStripZonePx,
       }}
     >
+      {children}
       <LegendPanel model={model} sections={drawnLegendSections(model)} />
     </div>
   )
@@ -326,7 +334,9 @@ const GraphCanvasBody = observer(function GraphCanvasBody({
             <LabelLayer model={model} />
             <WalkRowsOverlay model={model} />
             <WalkStripLocator model={model} />
-            <Legends model={model} />
+            <Legends model={model}>
+              {ownChrome ? null : <LayoutSwitch model={model} />}
+            </Legends>
           </>
         )}
 

@@ -25,12 +25,12 @@ const pin: GenePin = {
   walks: 1,
 }
 
-test("a chip's readout names the gene as the chip does, a copy with its haplotype", () => {
+test("a chip's readout names the gene as the chip does, a copy with its haplotype, and gives its span 1-based on its contig", () => {
   const name = 'CFHR3 · HG00097#1'
   const genes = [{ item: { pin, name }, x: 100, y: 50, w: 90, text: name }]
   expect(chipReadoutAt({ genes }, 100, 50)).toEqual({
     label: name,
-    readout: 'HG00097#1#CM1:5,011-5,019',
+    readout: 'CM1:5,012-5,019',
   })
   expect(chipReadoutAt({ genes }, 400, 50)).toBeUndefined()
 })

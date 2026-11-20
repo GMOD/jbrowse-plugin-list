@@ -83,7 +83,7 @@ test('the canvas reads out the gene chip under the pointer, since the chip leave
   move(100, 25)
   expect(result.current.hoveredChip).toEqual({
     label: 'LPA',
-    readout: 'chr6:160,531,482-160,664,259',
+    readout: 'chr6:160,531,483-160,664,259',
   })
   move(300, 25)
   expect(result.current.hoveredChip).toBeUndefined()

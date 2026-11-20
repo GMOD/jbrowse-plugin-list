@@ -1,5 +1,6 @@
 import { parsePanSN } from '@jbrowse/bandage-core/alleleProjection/projectAlleles'
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
+import { panSNHaplotype, panSNSample } from '@jbrowse/bandage-core/pansn'
 import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 import { drawTubeMapHighlight } from '@jbrowse/bandage-core/tubeMap/draw'
 import { walksThrough } from '@jbrowse/bandage-core/walksThrough'
@@ -126,8 +127,8 @@ export function valueTubeColors(
 export function columnKeyOf(field: string, table: SampleRow[]) {
   const valueOf = columnValueOf(field, table)
   return (walk: string) => {
-    const { sample, haplotype } = parsePanSN(walk)
-    return valueOf(`${sample}#${haplotype}`, sample)
+    const sample = panSNSample(walk)
+    return valueOf(panSNHaplotype(walk) ?? sample, sample)
   }
 }
 

@@ -31,9 +31,10 @@ import {
 } from '@jbrowse/core/pluggableElementTypes/models'
 import { LAUNCH_LABEL } from '@jbrowse/core/ui'
 import SimpleFeature from '@jbrowse/core/util/simpleFeature'
-import { applyPatch, getType, types } from '@jbrowse/mobx-state-tree'
+import { applyPatch, getType, onAction, types } from '@jbrowse/mobx-state-tree'
 import { linearGenomeViewStateModelFactory } from '@jbrowse/plugin-linear-genome-view'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { reaction, runInAction } from 'mobx'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -41,6 +42,7 @@ import LinearGraphDisplayF from './index'
 import { FOLD_PX, coarseHandover } from './model'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
 import GraphCanvas from '../GraphGenomeView/components/GraphCanvas'
+import LayoutSwitch from '../GraphGenomeView/components/LayoutSwitch'
 import { PaneSvgLayer } from '../GraphGenomeView/components/PaneLayer'
 import { hostWindow, snappedCut } from '../GraphGenomeView/host'
 import {
@@ -2229,6 +2231,176 @@ test('the track menu offers the layouts, colours and the settings dialog', async
       'Graph settings...',
     ]),
   )
+})
+
+const isLayoutRow = (
+  item: MenuItem,
+): item is Extract<MenuItem, { subMenu: unknown }> & { label: string } =>
+  'subMenu' in item &&
+  typeof item.label === 'string' &&
+  item.label.startsWith('Layout: ')
+
+function menuLayout(pane: LinearGraphDisplayModel) {
+  const row = pane.trackMenuItems().find(isLayoutRow)!
+  const rows = Array.isArray(row.subMenu) ? row.subMenu : row.subMenu()
+  return {
+    label: row.label,
+    rows: rows.flatMap(item =>
+      'onClick' in item
+        ? [
+            {
+              label: String(item.label),
+              checked: 'checked' in item && item.checked,
+              disabled: item.disabled ?? false,
+              why: item.disabled ? item.disabledHelpText : undefined,
+              pick: () => {
+                item.onClick()
+              },
+            },
+          ]
+        : [],
+    ),
+  }
+}
+
+// the switch's list as it is drawn, opened by a click on its last button
+function switchLayout() {
+  fireEvent.click(screen.getByTitle('Every layout'))
+  return [
+    ...screen.getByRole('menu').querySelectorAll('[role^="menuitem"]'),
+  ].map(row => {
+    const disabled = row.getAttribute('aria-disabled') === 'true'
+    return {
+      label: row.textContent,
+      checked: row.getAttribute('aria-checked') === 'true',
+      disabled,
+      why: disabled
+        ? (row.closest('[aria-label]')?.getAttribute('aria-label') ?? undefined)
+        : undefined,
+      pick: () => {
+        fireEvent.click(row)
+      },
+    }
+  })
+}
+
+const told = ({ pick: _pick, ...row }: ReturnType<typeof switchLayout>[0]) =>
+  row
+
+// the switch's two engine buttons, by the name each shows
+function switchEngines() {
+  return screen
+    .getAllByRole('button')
+    .filter(button => button.hasAttribute('aria-pressed'))
+    .map(button => ({
+      name: button.textContent,
+      drawn: button.getAttribute('aria-pressed') === 'true',
+      pick: () => {
+        fireEvent.click(button)
+      },
+    }))
+}
+
+const drawnEngines = () =>
+  switchEngines()
+    .filter(engine => engine.drawn)
+    .map(engine => engine.name)
+
+test("the track's layout switch names its two buttons as the menu names the force engines, the one drawn pressed, and lists the menu's Layout list, the layouts the graph cannot draw disabled with the same words", async () => {
+  const { pane } = await forceGraph()
+  const menu = menuLayout(pane)
+  render(createElement(LayoutSwitch, { model: pane }))
+  expect(menu.label).toBe('Layout: Force-directed (FMMM)')
+  expect(
+    switchEngines().map(engine => `Force-directed (${engine.name})`),
+  ).toEqual(
+    menu.rows
+      .map(row => row.label)
+      .filter(label => label.startsWith('Force-directed')),
+  )
+  expect(drawnEngines()).toEqual(['FMMM'])
+  expect(screen.getByTitle('Every layout').textContent).toBe('more▾')
+  const listed = switchLayout().map(told)
+  expect(listed).toEqual(menu.rows.map(told))
+  expect(listed.filter(row => row.checked).map(row => row.label)).toEqual([
+    'Force-directed (FMMM)',
+  ])
+  expect(listed.find(row => row.label === 'Tube map')).toMatchObject({
+    disabled: true,
+    why: expect.stringContaining('Needs P or W lines'),
+  })
+})
+
+test("a button or a row of the track's layout switch runs the action the menu's row runs, and the menu follows", async () => {
+  const { pane } = await forceGraph()
+  const ran: { name: string; args?: unknown[] }[] = []
+  onAction(pane, ({ name, args }) => {
+    ran.push({ name, args })
+  })
+  const pickInMenu = (label: string) => {
+    menuLayout(pane)
+      .rows.find(row => row.label === label)!
+      .pick()
+    return ran.splice(0)[0]
+  }
+  render(createElement(LayoutSwitch, { model: pane }))
+  const pickEngine = (name: string) => {
+    switchEngines()
+      .find(engine => engine.name === name)!
+      .pick()
+    return ran.splice(0)[0]
+  }
+  const pickInList = (label: string) => {
+    switchLayout()
+      .find(row => row.label === label)!
+      .pick()
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    return ran.splice(0)[0]
+  }
+
+  const stressByMenu = pickInMenu('Force-directed (stress)')
+  const fmmmByMenu = pickInMenu('Force-directed (FMMM)')
+  expect(pickEngine('stress')).toEqual(stressByMenu)
+  expect(stressByMenu).toEqual({ name: 'switchForceEngine', args: ['stress'] })
+  expect(pane.chosenLayoutEngine).toBe('stress')
+  expect(menuLayout(pane).label).toBe('Layout: Force-directed (stress)')
+  await waitFor(() => {
+    expect(drawnEngines()).toEqual(['stress'])
+  })
+  expect(pickInList('Force-directed (FMMM)')).toEqual(fmmmByMenu)
+  await waitFor(() => {
+    expect(drawnEngines()).toEqual(['FMMM'])
+  })
+
+  expect(pickInList('Anchored')).toEqual({
+    name: 'switchLayout',
+    args: ['auto'],
+  })
+  expect(menuLayout(pane).label).toBe('Layout: Anchored')
+  await waitFor(() => {
+    expect(drawnEngines()).toEqual([])
+  })
+  expect(screen.getByTitle('Every layout').textContent).toBe('Anchored▾')
+})
+
+test("the layout switch heads the track's key column, and neither the graph genome view's pane nor the track's SVG export draws it", async () => {
+  const { pane } = await forceGraph()
+  const onTrack = renderToStaticMarkup(
+    createElement(GraphCanvas, {
+      model: pane,
+      handle: { canvasRef: () => {}, canvas: null },
+    }),
+  )
+  const at = onTrack.indexOf('data-testid="graph-layout-switch"')
+  expect(at).toBeGreaterThan(-1)
+  expect(at).toBeLessThan(onTrack.indexOf('-legend"'))
+  expect(
+    renderToStaticMarkup(createElement(GraphCanvas, { model: pane })),
+  ).not.toContain('graph-layout-switch')
+  const exported = renderToStaticMarkup(await pane.renderSvg())
+  expect(exported).toContain('data-testid="graph-svg-keys"')
+  expect(exported).not.toContain('graph-layout-switch')
+  expect(exported).not.toContain('aria-pressed')
 })
 
 test('the track menu marks its launch submenu with a rocket', async () => {

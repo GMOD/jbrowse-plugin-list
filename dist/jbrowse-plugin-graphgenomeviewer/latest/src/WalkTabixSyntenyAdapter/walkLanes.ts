@@ -41,8 +41,24 @@ export function bubblesAsMismatches(edits: PairEdit[]) {
 }
 
 // A walk's steps as the handles gbz-base reads, 2 * id + reversed
-function handlesOf(fragment: WalkFragment) {
-  return Array.from(fragment.ids, (id, i) => 2 * id + fragment.rev[i]!)
+function handlesOf({ ids, rev }: WalkFragment) {
+  const handles = new Array<number>(ids.length)
+  for (let i = 0; i < ids.length; i++) {
+    handles[i] = 2 * ids[i]! + rev[i]!
+  }
+  return handles
+}
+
+export function cached<K, V>(compute: (key: K) => V) {
+  const held = new Map<K, { value: V }>()
+  return (key: K) => {
+    let found = held.get(key)
+    if (found === undefined) {
+      found = { value: compute(key) }
+      held.set(key, found)
+    }
+    return found.value
+  }
 }
 
 function nodeLength(nodes: Map<number, WalkNode>, id: number) {
@@ -66,15 +82,7 @@ export function walkAligner(nodes: Map<number, WalkNode>) {
     }
     return sequence
   }
-  const handles = new Map<WalkFragment, number[]>()
-  const cachedHandles = (fragment: WalkFragment) => {
-    let steps = handles.get(fragment)
-    if (steps === undefined) {
-      steps = handlesOf(fragment)
-      handles.set(fragment, steps)
-    }
-    return steps
-  }
+  const cachedHandles = cached(handlesOf)
   return (query: WalkFragment, target: WalkFragment) =>
     pairAlignments({
       query: cachedHandles(query),
@@ -108,56 +116,89 @@ function appendEdit(edits: PairEdit[], op: PairEdit[0], len: number) {
  * matches one pass over it, and the other copies are insertions.
  */
 export function referenceAligner(nodes: Map<number, WalkNode>) {
+  const align = referenceAlignment(nodes)
+  return (query: WalkFragment, target: WalkFragment) =>
+    align(query, target).records
+}
+
+// `turnedBases` is the most the walk read the other way could share with the
+// reference: every step on a node the reference passes in the other direction
+function referenceAlignment(nodes: Map<number, WalkNode>) {
   const lengthOf = (handle: number) => nodeLength(nodes, handle >> 1)
   const offsets = (handles: number[]) => {
     const out = new Float64Array(handles.length + 1)
-    handles.forEach((handle, i) => {
-      out[i + 1] = out[i]! + lengthOf(handle)
-    })
+    for (let i = 0; i < handles.length; i++) {
+      out[i + 1] = out[i]! + lengthOf(handles[i]!)
+    }
     return out
   }
+  const referenceOf = cached((target: WalkFragment) => {
+    const handles = handlesOf(target)
+    return { handles, at: offsets(handles), passed: new Set(handles) }
+  })
+  const basesTurned = (hap: number[], passed: Set<number>) => {
+    let bases = 0
+    for (const handle of hap) {
+      if (passed.has(handle ^ 1)) {
+        bases += lengthOf(handle)
+      }
+    }
+    return bases
+  }
 
-  return (query: WalkFragment, target: WalkFragment): PairChain[] => {
-    const ref = handlesOf(target)
+  return (
+    query: WalkFragment,
+    target: WalkFragment,
+  ): { records: PairChain[]; turnedBases: number } => {
+    const { handles: ref, at: refAt, passed } = referenceOf(target)
     const hap = handlesOf(query)
+    const turnedBases = basesTurned(hap, passed)
     const [same, sameWeight] = weightedLcs(hap, ref, lengthOf)
-    const [turned, turnedWeight] = weightedLcs(
-      hap.map(handle => handle ^ 1).reverse(),
-      ref,
-      lengthOf,
-    )
+    const [turned, turnedWeight] =
+      turnedBases > sameWeight
+        ? weightedLcs(hap.map(handle => handle ^ 1).reverse(), ref, lengthOf)
+        : [[], 0]
     const reverse = turnedWeight > sameWeight
     const pairs = reverse ? turned : same
     const sharedBases = Math.max(sameWeight, turnedWeight)
     if (sharedBases < MIN_MATCH_BP) {
-      return []
+      return { records: [], turnedBases }
     }
-    const refAt = offsets(ref)
     const hapAt = offsets(hap)
     // a pair's haplotype step, counted along the haplotype
     const stepOf = (k: number) =>
       reverse ? hap.length - 1 - pairs[k]![0] : pairs[k]![0]
     const edits: PairEdit[] = []
-    pairs.forEach(([, r], k) => {
+    for (let k = 0; k < pairs.length; k++) {
+      const r = pairs[k]![1]
       if (k > 0) {
-        const [lo, hi] = [stepOf(k - 1), stepOf(k)].sort((x, y) => x - y)
-        appendEdit(edits, 'I', hapAt[hi!]! - hapAt[lo! + 1]!)
+        const from = stepOf(k - 1)
+        const to = stepOf(k)
+        appendEdit(
+          edits,
+          'I',
+          hapAt[Math.max(from, to)]! - hapAt[Math.min(from, to) + 1]!,
+        )
         appendEdit(edits, 'D', refAt[r]! - refAt[pairs[k - 1]![1] + 1]!)
       }
       appendEdit(edits, '=', lengthOf(ref[r]!))
-    })
-    const [lo, hi] = [stepOf(0), stepOf(pairs.length - 1)].sort((x, y) => x - y)
-    return [
-      {
-        queryStart: hapAt[lo!]!,
-        queryEnd: hapAt[hi! + 1]!,
-        targetStart: refAt[pairs[0]![1]]!,
-        targetEnd: refAt[pairs.at(-1)![1] + 1]!,
-        strand: reverse ? '-' : '+',
-        edits,
-        sharedBases,
-      },
-    ]
+    }
+    const first = stepOf(0)
+    const last = stepOf(pairs.length - 1)
+    return {
+      turnedBases,
+      records: [
+        {
+          queryStart: hapAt[Math.min(first, last)]!,
+          queryEnd: hapAt[Math.max(first, last) + 1]!,
+          targetStart: refAt[pairs[0]![1]]!,
+          targetEnd: refAt[pairs.at(-1)![1] + 1]!,
+          strand: reverse ? '-' : '+',
+          edits,
+          sharedBases,
+        },
+      ],
+    }
   }
 }
 
@@ -181,15 +222,7 @@ function singleVisits(fragment: WalkFragment) {
 // The bases on singly visited nodes two walks pass the same way and the
 // opposite way
 function directionShares(nodes: Map<number, WalkNode>) {
-  const visits = new Map<WalkFragment, Map<number, number>>()
-  const visitsOf = (fragment: WalkFragment) => {
-    let found = visits.get(fragment)
-    if (found === undefined) {
-      found = singleVisits(fragment)
-      visits.set(fragment, found)
-    }
-    return found
-  }
+  const visitsOf = cached(singleVisits)
   return (query: WalkFragment, target: WalkFragment) => {
     const theirs = visitsOf(target)
     let same = 0
@@ -242,14 +275,19 @@ const TURNED_MIN_BP = 10_000
  * which chaining leaves out, still matches one pass alike in every lane.
  */
 export function anchorAligner(nodes: Map<number, WalkNode>) {
-  const subsequence = referenceAligner(nodes)
+  const subsequence = referenceAlignment(nodes)
   const chained = walkAligner(nodes)
   const shares = directionShares(nodes)
-  return (query: WalkFragment, target: WalkFragment) => {
-    const records = subsequence(query, target)
-    const taken = records[0]?.strand
+  const turnsEnough = (query: WalkFragment, target: WalkFragment) => {
     const { same, opposite } = shares(query, target)
-    return taken === undefined || Math.min(same, opposite) < TURNED_MIN_BP
+    return Math.min(same, opposite) >= TURNED_MIN_BP
+  }
+  return (query: WalkFragment, target: WalkFragment) => {
+    const { records, turnedBases } = subsequence(query, target)
+    const taken = records[0]?.strand
+    return taken === undefined ||
+      turnedBases < TURNED_MIN_BP ||
+      !turnsEnough(query, target)
       ? records
       : [
           ...records,
@@ -310,7 +348,7 @@ export function stepsInWindow(
   refName: string,
   window: { start: number; end: number },
 ) {
-  return Array.from(fragment.ids).some(id => {
+  return fragment.ids.some(id => {
     const node = nodes.get(id)
     return (
       node?.rank === 0 &&

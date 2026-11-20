@@ -2,8 +2,10 @@ import { BUBBLE_HALO_COLOR } from '@jbrowse/bandage-core/bubbles/bubbleLabel'
 import { bubbleKey, sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { EXON_COLOR } from '@jbrowse/bandage-core/genes/exonOutline'
 import { sizeLeader } from '@jbrowse/bandage-core/graphLabels'
+import { regionLabel } from '@jbrowse/bandage-core/hoverText'
 import { geneCoverageNote, geneLeader } from '@jbrowse/bandage-core/labelLayout'
 import { labelWidth } from '@jbrowse/bandage-core/overlayLabels'
+import { panSNContig } from '@jbrowse/bandage-core/pansn'
 import { passLeader } from '@jbrowse/bandage-core/passLabels'
 import { abgrToCssRgba } from '@jbrowse/bandage-core/renderer/colorBits'
 import { isAlive } from '@jbrowse/mobx-state-tree'
@@ -37,7 +39,7 @@ export function chipReadoutAt(
   return named
     ? {
         label: named.name,
-        readout: `${named.pin.gene.refName}:${named.pin.gene.start.toLocaleString()}-${named.pin.gene.end.toLocaleString()}${note ? `, ${note} in the cut` : ''}`,
+        readout: `${regionLabel({ ...named.pin.gene, refName: panSNContig(named.pin.gene.refName) })}${note ? `, ${note} in the cut` : ''}`,
       }
     : undefined
 }
