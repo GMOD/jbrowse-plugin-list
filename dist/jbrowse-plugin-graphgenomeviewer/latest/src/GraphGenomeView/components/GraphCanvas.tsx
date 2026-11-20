@@ -12,6 +12,7 @@ import EdgeMarksOverlay from './EdgeMarksOverlay'
 import FacetPanels from './FacetPanels'
 import GenePins from './GenePins'
 import GraphToolbar from './GraphToolbar'
+import HaplotypeSwitch from './HaplotypeSwitch'
 import HoverLayer from './HoverLayer'
 import HoverTooltip from './HoverTooltip'
 import LabelLayer from './LabelLayer'
@@ -335,7 +336,12 @@ const GraphCanvasBody = observer(function GraphCanvasBody({
             <WalkRowsOverlay model={model} />
             <WalkStripLocator model={model} />
             <Legends model={model}>
-              {ownChrome ? null : <LayoutSwitch model={model} />}
+              {ownChrome ? null : (
+                <>
+                  <LayoutSwitch model={model} />
+                  <HaplotypeSwitch model={model} />
+                </>
+              )}
             </Legends>
           </>
         )}

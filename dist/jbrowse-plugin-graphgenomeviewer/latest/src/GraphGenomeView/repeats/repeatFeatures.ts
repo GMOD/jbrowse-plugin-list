@@ -258,6 +258,7 @@ function spanOf(f: FeatureLike, tandem: boolean) {
 
 export function repeatArraysFrom(features: FeatureLike[]): RepeatArray[] {
   const arrays: RepeatArray[] = []
+  const onSpan = new Map<string, number>()
   for (const f of features) {
     const alleleBp = tandemAlleleBp(f)
     const { start, end } = spanOf(f, alleleBp !== undefined)
@@ -268,8 +269,11 @@ export function repeatArraysFrom(features: FeatureLike[]): RepeatArray[] {
     const refName = field(f, 'refName') as string
     const motif = first(f, MOTIF_FIELDS)
     const stated = first(f, NAME_FIELDS)
+    const span = `${refName}:${start}-${end}`
+    const nth = (onSpan.get(span) ?? 0) + 1
+    onSpan.set(span, nth)
     arrays.push({
-      key: `${refName}:${start}-${end}`,
+      key: nth === 1 ? span : `${span} #${nth}`,
       name:
         (stated && !PACKED_NAME.test(stated) ? stated : undefined) ??
         (motif && motif.length <= 12

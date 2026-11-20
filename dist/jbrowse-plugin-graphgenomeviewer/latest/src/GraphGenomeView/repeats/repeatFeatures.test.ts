@@ -80,6 +80,19 @@ test("an unnamed array's locus name reads the same in every locale", () => {
   expect(array!.name).toBe('chr6:160,616,003-160,646,753')
 })
 
+// TRF reports two periods over one interval, and `bcftools norm -m-` splits
+// a multi-allelic <CNV:TR> into records of one span
+test('two arrays over one span take keys of their own, the first the span alone', () => {
+  const keys = repeatArraysFrom([
+    { ...base, period: 5548, name: 'long' },
+    { ...base, period: 2, name: 'short' },
+  ]).map(a => a.key)
+  expect(keys).toEqual([
+    'chr6:160616002-160646753',
+    'chr6:160616002-160646753 #2',
+  ])
+})
+
 test('a feature stating no unit is left out, and rows sort by start', () => {
   const arrays = repeatArraysFrom([
     { ...base, start: 5000, end: 6000, period: 2 },

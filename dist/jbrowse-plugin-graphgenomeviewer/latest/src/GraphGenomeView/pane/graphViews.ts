@@ -940,14 +940,18 @@ export const withGraphViews = paneBase
     // config puts its reference on the cut's assembly, whatever the walk's
     // name. After "Draw x along" another walk, the backbone takes the genes
     // only where its PanSN prefix names their assembly.
-    get backboneGenes() {
-      const { backbone } = self
-      const { geneAssembly, geneFeatures } = this
-      const binds =
+    get genesBindBackbone() {
+      const { geneAssembly } = this
+      return (
         self.drawsLoadedReference ||
         (geneAssembly !== undefined &&
-          backboneAssembly(backbone, [geneAssembly]) !== undefined)
-      return backbone && geneFeatures && binds
+          backboneAssembly(self.backbone, [geneAssembly]) !== undefined)
+      )
+    },
+    get backboneGenes() {
+      const { backbone } = self
+      const { geneFeatures } = this
+      return backbone && geneFeatures && this.genesBindBackbone
         ? featuresOnBackbone(geneFeatures, backbone)
         : undefined
     },

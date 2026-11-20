@@ -369,3 +369,33 @@ test("a pan or zoom never moves the pane's height, which follows the key a setti
   model.setLegendSize({ width: 180, height: 250 })
   expect(model.canvasFloor).toBe(floorOf(250))
 })
+
+// HG00097's contig here shares GRCh38's coordinates, as a T2T assembly's
+// chr1 does, so hg38's genes would land on its bar by offset alone
+test("the reference walk row takes the gene track's genes only while x lies along that track's assembly", async () => {
+  mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+    method === 'GetSubgraph'
+      ? Promise.resolve(GFA.replaceAll('CM1\t5000\t5030', 'CM1\t1000\t1030'))
+      : method === 'CoreGetFeatures'
+        ? Promise.resolve(REFERENCE_GENES)
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const model = stateModelFactory().create({
+    type: 'GraphGenomeView',
+    layoutMode: 'walkrows',
+    loadedTrackId: 'graph',
+    layers: { genes: true },
+  })
+  model.setWidth(1600)
+  await model.cutSubgraph(
+    {},
+    { refName: 'chr1', assemblyName: 'hg38', start: 1000, end: 1030 },
+  )
+  const referenceGenes = () =>
+    model.walkRowGenes?.get(model.walkRowBars!.reference.name)
+  expect(referenceGenes()?.length).toBeGreaterThan(0)
+  model.setReferencePath('HG00097#1#CM1')
+  await model.recomputeLayout()
+  expect(model.walkRowBars!.reference.name).toContain('HG00097')
+  expect(referenceGenes()).toBeUndefined()
+})

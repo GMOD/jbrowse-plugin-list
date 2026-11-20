@@ -180,14 +180,15 @@ export const withWalkRowViews = withLaunchViews
       }
     },
     // Each row's genes as offsets along its bar: the reference row's from
-    // the backbone's gene track, every other row's from its own assembly
+    // the backbone's gene track while the backbone lies on that track's
+    // assembly, every other row's from its own assembly
     get walkRowGenes() {
       const bars = self.walkRowBars ?? self.walkStripRows
       if (!bars || !self.showGenes) {
         return undefined
       }
       const byRow = new Map(self.walkGeneFeatures ?? [])
-      if (self.geneFeatures) {
+      if (self.geneFeatures && self.genesBindBackbone) {
         byRow.set(bars.reference.name, self.geneFeatures)
       }
       return byRow.size
