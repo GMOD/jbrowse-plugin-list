@@ -3,16 +3,14 @@ import { LABEL_DEFAULTS } from '@jbrowse/bandage-core/graphLabels'
 import { layersOf, withLayer } from './graphLayers'
 
 test('unset draws the default layers, and a stated one overrides its own', () => {
-  expect([...layersOf(undefined)]).toEqual([
+  expect([...layersOf({ lengths: false })]).toEqual([
     'deletions',
     'genes',
     'referenceStrip',
   ])
-  expect([...layersOf({ bubbles: true, genes: false })]).toEqual([
-    'bubbles',
-    'deletions',
-    'referenceStrip',
-  ])
+  expect([...layersOf({ bubbles: true, genes: false, lengths: true })]).toEqual(
+    ['bubbles', 'deletions', 'lengths', 'referenceStrip'],
+  )
 })
 
 test('a toggle states only what differs from the defaults', () => {
@@ -21,9 +19,12 @@ test('a toggle states only what differs from the defaults', () => {
   expect(withLayer({}, 'genes', false)).toEqual({ genes: false })
 })
 
-test("node lengths are off unless turned on, as core's label defaults have them", () => {
-  expect(LABEL_DEFAULTS.nodeLengths).toBe(false)
-  expect(layersOf(undefined).has('lengths')).toBe(false)
-  expect(layersOf({ lengths: true }).has('lengths')).toBe(true)
-  expect(withLayer(undefined, 'lengths', true)).toEqual({ lengths: true })
+test("node lengths follow core's label default unless stated", () => {
+  const byDefault = LABEL_DEFAULTS.nodeLengths
+  expect(layersOf(undefined).has('lengths')).toBe(byDefault)
+  expect(layersOf({ lengths: !byDefault }).has('lengths')).toBe(!byDefault)
+  expect(withLayer(undefined, 'lengths', byDefault)).toEqual({})
+  expect(withLayer(undefined, 'lengths', !byDefault)).toEqual({
+    lengths: !byDefault,
+  })
 })

@@ -191,7 +191,7 @@ async function settledView(layers?: GraphLayers) {
 }
 
 test('a settled view lays its labels out once on the laid-out graph', async () => {
-  const { model, runs, labels } = await settledView()
+  const { model, runs, labels } = await settledView({ lengths: true })
   expect(runs).toBe(1)
   // the picture the labels laid out again until nothing moved settled on
   expect(picture(model, labels)).toEqual({
@@ -200,9 +200,13 @@ test('a settled view lays its labels out once on the laid-out graph', async () =
     transform: [26.446666666666665, -26312.066666666666, 70],
     chips: [
       ['CFH', 531.2999999999993, 56],
-      ['CFHR3', 531.2999999999993, 114],
+      ['CFHR3', 491.2999999999993, 52],
     ],
-    sizes: [['10 bp', 531.2999999999993, 90]],
+    sizes: [
+      ['10 bp', 531.2999999999993, 106],
+      ['10 bp', 233.77500000000146, 70],
+      ['10 bp', 828.8250000000007, 70],
+    ],
     bubbles: [],
   })
 })

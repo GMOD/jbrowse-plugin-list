@@ -330,6 +330,19 @@ describe('walk rows', () => {
     expect(model.drawsNodes).toBe(true)
   })
 
+  test('walk rows write no node lengths under their rows, and the force layout replacing them does', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    expect(model.layerSet.has('lengths')).toBe(true)
+    expect(model.labelsNodeSizes).toBe(false)
+    await model.switchLayout('force')
+    expect(model.labelsNodeSizes).toBe(true)
+  })
+
   test('a cohort of walks packs into the pane, its names and readouts on hover', async () => {
     rpcRespond()
     const cohort = [

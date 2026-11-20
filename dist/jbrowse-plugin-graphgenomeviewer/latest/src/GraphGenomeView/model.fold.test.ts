@@ -96,9 +96,12 @@ async function drawnPlaceholders() {
 
 test('the labels are laid out without the nodes the drawing on the canvas folds', async () => {
   const model = await drawnPlaceholders()
+  model.setLayer('lengths', true)
   expect([...model.folded]).toEqual(['small+'])
   expect(model.overlayLabels.sizes.map(l => [l.node, l.text])).toEqual([
     ['large+', '400 bp'],
+    ['r1+', '5 kb'],
+    ['r2+', '5 kb'],
   ])
 })
 

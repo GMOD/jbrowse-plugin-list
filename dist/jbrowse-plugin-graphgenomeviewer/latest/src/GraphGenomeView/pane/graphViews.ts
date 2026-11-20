@@ -656,10 +656,6 @@ export const withGraphViews = paneBase
     get nodePositions() {
       return self.layoutResult?.nodePositions
     },
-    // a length label would sit on the lanes of lifted walks
-    get labelsNodeSizes() {
-      return !self.layoutResult?.tubeMap && !this.walkLift
-    },
     // Deletions the layout found inside an allele, empty rather than
     // undefined: a layout drawn at sequence scale states none, because there
     // a node's drawn extent already IS its length. `deletions` beside
@@ -1197,6 +1193,11 @@ export const withGraphViews = paneBase
     get drawsNodes() {
       return layoutModeByValue(self.drawnLayoutMode ?? self.chosenLayoutMode)
         .drawsNodes
+    },
+    // a length label would sit on the lanes of lifted walks, and walk rows
+    // draw no node for it to name
+    get labelsNodeSizes() {
+      return this.drawsNodes && !self.layoutResult?.tubeMap && !self.walkLift
     },
     // The bubbles as halos along their drawn nodes, and none for a bubble
     // the drawing folds whole. Reads positionsVersion so a dragged node
