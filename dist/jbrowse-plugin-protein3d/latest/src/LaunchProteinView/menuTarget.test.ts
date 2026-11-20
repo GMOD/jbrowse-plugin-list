@@ -1,7 +1,10 @@
+import { LAUNCH_LABEL, resolveSubMenu } from '@jbrowse/core/ui'
 import { SimpleFeature } from '@jbrowse/core/util'
 import { expect, test, vi } from 'vitest'
 
 import { resolveTarget, withProteinMenuItems } from '.'
+
+import type { MenuItem } from '@jbrowse/core/ui'
 
 const cds = (id: string) => ({
   uniqueId: id,
@@ -62,23 +65,40 @@ test('a click on the gene itself names no isoform', () => {
 
 const hostItems = [{ label: 'Host row', onClick: () => {} }]
 
-test('a gene gets the protein rows after the host rows', () => {
-  const items = withProteinMenuItems(
+const geneDisplay = {
+  contextMenuItems: () => [],
+  contextMenuInfo: {
+    item: { featureId: 'gene', type: 'gene' },
+    displayedRegionIndex: 0,
+  },
+  fetchFullFeature: () => Promise.resolve(gene),
+}
+
+function labels(items: MenuItem[]) {
+  return items.map(i => ('label' in i ? i.label : undefined))
+}
+
+function launchRows(items: MenuItem[]) {
+  const launch = items.find(i => 'subMenu' in i && i.label === LAUNCH_LABEL)
+  return launch && 'subMenu' in launch ? resolveSubMenu(launch) : []
+}
+
+test('a gene gets the protein row in a Launch submenu after the host rows', () => {
+  const items = withProteinMenuItems(geneDisplay, hostItems)
+  expect(labels(items)).toEqual(['Host row', LAUNCH_LABEL])
+  expect(labels(launchRows(items))).toEqual(['Protein view...'])
+})
+
+test('the protein row joins a Launch submenu another plugin built', () => {
+  const items = withProteinMenuItems(geneDisplay, [
+    ...hostItems,
     {
-      contextMenuItems: () => [],
-      contextMenuInfo: {
-        item: { featureId: 'gene', type: 'gene' },
-        displayedRegionIndex: 0,
-      },
-      fetchFullFeature: () => Promise.resolve(gene),
+      label: LAUNCH_LABEL,
+      subMenu: [{ label: 'MSA view...', onClick: () => {} }],
     },
-    hostItems,
-  )
-  expect(items.map(i => ('label' in i ? i.label : undefined))).toEqual([
-    'Host row',
-    'Open AlphaFold structure',
-    'Launch protein view',
   ])
+  expect(labels(items)).toEqual(['Host row', LAUNCH_LABEL])
+  expect(labels(launchRows(items))).toEqual(['MSA view...', 'Protein view...'])
 })
 
 test('a host shape this plugin cannot read leaves the host rows standing', () => {

@@ -30,16 +30,25 @@ function hostReadingThis(clickedType) {
         },
     }));
 }
-const labels = (stateModel) => stateModel
-    .create()
-    .contextMenuItems()
-    .map((i) => i.label);
+const rows = (stateModel) => stateModel.create().contextMenuItems();
+const labels = (stateModel) => rows(stateModel).map(i => i.label);
+const launchLabels = (stateModel) => rows(stateModel)
+    .find(i => i.label === 'Launch')
+    ?.subMenu?.map(i => i.label);
 describe('extendStateModel', () => {
     test('calls the host contextMenuItems with a receiver', () => {
-        expect(labels(extendStateModel(hostReadingThis('mRNA')))).toEqual([
-            'host item true',
-            'Launch MSA view',
-        ]);
+        const model = extendStateModel(hostReadingThis('mRNA'));
+        expect(labels(model)).toEqual(['host item true', 'Launch']);
+        expect(launchLabels(model)).toEqual(['MSA view...']);
+    });
+    test('joins a Launch submenu another plugin built', () => {
+        const model = extendStateModel(hostReadingThis('mRNA').views(() => ({
+            contextMenuItems() {
+                return [{ label: 'Launch', subMenu: [{ label: 'Protein view...' }] }];
+            },
+        })));
+        expect(labels(model)).toEqual(['Launch']);
+        expect(launchLabels(model)).toEqual(['Protein view...', 'MSA view...']);
     });
     test('leaves the host menu alone when the click is not on a gene', () => {
         expect(labels(extendStateModel(hostReadingThis('CDS')))).toEqual([
@@ -62,7 +71,7 @@ describe('extendStateModel', () => {
         });
         expect(labels(withOther)).toEqual([
             'host item true',
-            'Launch MSA view',
+            'Launch',
             'other plugin',
         ]);
     });

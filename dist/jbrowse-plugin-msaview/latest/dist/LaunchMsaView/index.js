@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { pushLaunchViewMenuItem } from '@jbrowse/core/ui';
 import { getContainingTrack, getSession } from '@jbrowse/core/util';
 import AddIcon from '@mui/icons-material/Add';
 import { isCodingFeature } from './codingFeature';
@@ -50,22 +51,19 @@ export function extendStateModel(stateModel) {
         return {
             contextMenuItems() {
                 const target = launchTarget(self);
-                return [
-                    // a detached call leaves `this` undefined for a host method that
-                    // reads it, and the throw takes the host's own rows with it
-                    ...superContextMenuItems.call(self),
-                    ...(target
-                        ? [
-                            {
-                                label: 'Launch MSA view',
-                                icon: AddIcon,
-                                onClick: () => {
-                                    openDialog(self, target);
-                                },
-                            },
-                        ]
-                        : []),
-                ];
+                // a detached call leaves `this` undefined for a host method that
+                // reads it, and the throw takes the host's own rows with it
+                const items = [...superContextMenuItems.call(self)];
+                if (target) {
+                    pushLaunchViewMenuItem(items, {
+                        label: 'MSA view...',
+                        icon: AddIcon,
+                        onClick: () => {
+                            openDialog(self, target);
+                        },
+                    });
+                }
+                return items;
             },
         };
     });

@@ -11,17 +11,16 @@ selected in magenta on the structure, and its codon is marked on the gene.
 CI re-renders the figure from `main` every hour
 ([scripts/readme-figure.mjs](scripts/readme-figure.mjs)).
 
-Right-click a gene and choose **Open AlphaFold structure** for its predicted
-model in one click, or **Launch protein view** for the dialog that offers every
-choice. The dialog looks the gene up in UniProt and lists every structure found
-for it in one list: the AlphaFold model, the experimental PDB entries RCSB maps
-to that UniProt entry with their partner proteins and ligands, and the complexes
-AlphaFold DB predicted, grouped by what each shows, led by any structures the
-site lists for the gene in a dataset of its own. Check several to open them
-superposed in one view. It can also search Foldseek for related structures, or
-open your own file. The plugin aligns each structure to the transcript's
-translation, so hovering a residue highlights its codon and hovering a codon
-highlights its residue.
+Right-click a gene and choose **Launch › Protein view...** for the dialog that
+offers every choice. The dialog looks the gene up in UniProt and lists every
+structure found for it in one list: the AlphaFold model, the experimental PDB
+entries RCSB maps to that UniProt entry with their partner proteins and ligands,
+and the complexes AlphaFold DB predicted, grouped by what each shows, led by any
+structures the site lists for the gene in a dataset of its own. Check several to
+open them superposed in one view. It can also search Foldseek for related
+structures, or open your own file. The plugin aligns each structure to the
+transcript's translation, so hovering a residue highlights its codon and
+hovering a codon highlights its residue.
 
 ## Try it
 

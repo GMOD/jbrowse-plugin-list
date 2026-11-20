@@ -1,5 +1,6 @@
 import { lazy } from 'react'
 
+import { pushLaunchViewMenuItem } from '@jbrowse/core/ui'
 import {
   getContainingTrack,
   getContainingView,
@@ -10,7 +11,6 @@ import AddIcon from '@mui/icons-material/Add'
 
 import { isCodingFeature } from './codingFeature'
 import { isLaunchingGenomeView } from './utils/genomeView'
-import { getGeneDisplayName } from './utils/util'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { PluggableElementType } from '@jbrowse/core/pluggableElementTypes'
@@ -72,34 +72,6 @@ export function resolveTarget(self: DisplayModel): MenuTarget | undefined {
       }
 }
 
-function withCodingFeature(
-  self: DisplayModel,
-  target: MenuTarget,
-  then: (feature: Feature) => Promise<void> | void,
-) {
-  const session = getSession(self)
-  target
-    .fetchFeature()
-    .then(feature => {
-      if (!feature) {
-        session.notify('Could not load feature for protein view', 'warning')
-        return undefined
-      } else if (!isCodingFeature(feature)) {
-        session.notify(
-          `${feature.get('name') ?? feature.get('id') ?? 'This feature'} has no coding sequence, so there is no protein to show`,
-          'info',
-        )
-        return undefined
-      } else {
-        return then(feature)
-      }
-    })
-    .catch((e: unknown) => {
-      console.error(e)
-      session.notifyError(`${e}`, e)
-    })
-}
-
 function openDialog(self: DisplayModel, target: MenuTarget, feature: Feature) {
   const session = getSession(self)
   const view = getContainingView(self)
@@ -123,73 +95,25 @@ function openDialog(self: DisplayModel, target: MenuTarget, feature: Feature) {
 }
 
 function launchProteinView(self: DisplayModel, target: MenuTarget) {
-  withCodingFeature(self, target, feature => {
-    openDialog(self, target, feature)
-  })
-}
-
-const lookingUp = new Set<string>()
-
-// The dialog's defaults without the dialog. Where they name no single
-// structure, a gene two UniProt entries answer to or one AlphaFold has not
-// folded, the dialog opens for the choice only a person can make.
-function openAlphaFoldStructure(self: DisplayModel, target: MenuTarget) {
   const session = getSession(self)
-  const view = getContainingView(self)
-  withCodingFeature(self, target, async feature => {
-    const name = getGeneDisplayName(feature)
-    const genomeView = isLaunchingGenomeView(view) ? view : undefined
-    const assemblyName = genomeView?.assemblyNames[0]
-    if (!genomeView || !assemblyName) {
-      openDialog(self, target, feature)
-      return
-    }
-    const key = `${genomeView.id}:${feature.id()}:${target.preferredTranscriptId}`
-    if (lookingUp.has(key)) {
-      session.notify(
-        `Still looking up the AlphaFold structure of ${name}`,
-        'info',
-      )
-      return
-    }
-    lookingUp.add(key)
-    try {
-      session.notify(`Looking up the AlphaFold structure of ${name}`, 'info')
-      const [
-        { describeMissingStructure, resolveGeneLaunch, sessionGeneLaunchHost },
-        { launch3DProteinView },
-      ] = await Promise.all([
-        import('./resolveGeneLaunch'),
-        import('./utils/launchViewUtils'),
-      ])
-      const launch = await resolveGeneLaunch({
-        host: sessionGeneLaunchHost(session, assemblyName),
-        feature,
-        preferredTranscriptId: target.preferredTranscriptId,
-      })
-      const { transcript, userProvidedTranscriptSequence, uniprotId, url } =
-        launch
-      if (url) {
-        await launch3DProteinView({
-          session,
-          view: genomeView,
-          feature,
-          selectedTranscript: transcript,
-          uniprotId,
-          sources: [{ url }],
-          userProvidedTranscriptSequence,
-        })
+  target
+    .fetchFeature()
+    .then(feature => {
+      if (!feature) {
+        session.notify('Could not load feature for protein view', 'warning')
+      } else if (isCodingFeature(feature)) {
+        openDialog(self, target, feature)
       } else {
         session.notify(
-          describeMissingStructure(name, launch),
-          launch.lookupError === undefined ? 'info' : 'warning',
+          `${feature.get('name') ?? feature.get('id') ?? 'This feature'} has no coding sequence, so there is no protein to show`,
+          'info',
         )
-        openDialog(self, target, feature)
       }
-    } finally {
-      lookingUp.delete(key)
-    }
-  })
+    })
+    .catch((e: unknown) => {
+      console.error(e)
+      session.notifyError(`${e}`, e)
+    })
 }
 
 function proteinMenuItems(self: DisplayModel): MenuItem[] {
@@ -197,14 +121,7 @@ function proteinMenuItems(self: DisplayModel): MenuItem[] {
   return target && isGeneLikeType(target.type)
     ? [
         {
-          label: 'Open AlphaFold structure',
-          icon: AddIcon,
-          onClick: () => {
-            openAlphaFoldStructure(self, target)
-          },
-        },
-        {
-          label: 'Launch protein view',
+          label: 'Protein view...',
           icon: AddIcon,
           onClick: () => {
             launchProteinView(self, target)
@@ -221,7 +138,11 @@ export function withProteinMenuItems(
   hostItems: MenuItem[],
 ) {
   try {
-    return [...hostItems, ...proteinMenuItems(self)]
+    const items = [...hostItems]
+    for (const item of proteinMenuItems(self)) {
+      pushLaunchViewMenuItem(items, item)
+    }
+    return items
   } catch (e) {
     console.error('Protein view menu items failed', e)
     return hostItems
