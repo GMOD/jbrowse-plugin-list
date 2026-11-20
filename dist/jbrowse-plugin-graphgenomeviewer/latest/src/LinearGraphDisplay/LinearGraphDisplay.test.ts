@@ -1,6 +1,8 @@
 import { createElement } from 'react'
 
 import { LEGEND_INSET_PX } from '@jbrowse/bandage-core/keyColumn'
+import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
+import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { NO_FOLD } from '@jbrowse/bandage-core/levelOfDetail'
 import {
   cutScale,
@@ -18,7 +20,9 @@ import PluginManager from '@jbrowse/core/PluginManager'
 import {
   ConfigurationReference,
   ConfigurationSchema,
+  getSlotDefinition,
   readConfObject,
+  slotChoices,
 } from '@jbrowse/core/configuration'
 import AdapterType from '@jbrowse/core/pluggableElementTypes/AdapterType'
 import DisplayType from '@jbrowse/core/pluggableElementTypes/DisplayType'
@@ -38,6 +42,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { reaction, runInAction } from 'mobx'
 import { renderToStaticMarkup } from 'react-dom/server'
 
+import { configSchemaFactory } from './configSchema'
 import LinearGraphDisplayF from './index'
 import { FOLD_PX, coarseHandover } from './model'
 import GbzBaseSyntenyAdapterF from '../GbzBaseSyntenyAdapter/index'
@@ -45,6 +50,7 @@ import GraphCanvas from '../GraphGenomeView/components/GraphCanvas'
 import LayoutSwitch from '../GraphGenomeView/components/LayoutSwitch'
 import { PaneSvgLayer } from '../GraphGenomeView/components/PaneLayer'
 import { hostWindow, snappedCut } from '../GraphGenomeView/host'
+import { HOVER_HIGHLIGHT_VALUES } from '../GraphGenomeView/hoverHighlight'
 import {
   MIN_CANVAS_HEIGHT,
   forceLayouts,
@@ -481,6 +487,8 @@ function createEnvironment({
           snarls?: string
           hops?: number
           forcedByteBudget?: number
+          links?: string
+          walkRows?: boolean
         }
         options?: { engine: string }
         graph?: EngineRequest['graph']
@@ -1519,6 +1527,21 @@ test('an rGFA force track folds by its snap level, so a zoom inside one cut fold
   expect(fresh.pane.cutFoldBp).toBe(pane.cutFoldBp)
 })
 
+test('a layout switched to force right after a zoom, before the window settles, folds its one cut as a fresh force view of the new window does', async () => {
+  const { view, pane, cuts } = await shownGraph()
+  view.zoomTo(30_000 / WIDTH_PX, WIDTH_PX / 2)
+  await pane.switchLayout('force')
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(2)
+  const centre = view.offsetPx * view.bpPerPx + 15_000
+  const fresh = await forceGraph({
+    windowStart: centre - 15_000,
+    windowBp: 30_000,
+  })
+  expect(pane.cutRegion).toEqual(fresh.pane.cutRegion)
+  expect(pane.cutFoldBp).toBe(fresh.pane.cutFoldBp)
+})
+
 test('a 20-step pan at GSTM1 and at the amylase locus lays the graph out at most three times', async () => {
   for (const [start, end] of [
     [109_670_011, 109_705_011],
@@ -1722,6 +1745,25 @@ test('a launch that states one choice takes the rest from the config', async () 
 // Config, not the display instance, so a share link, Edit plot and Reset
 // track settings all see the choice. Every setter, so a setting wired into
 // the view's props alone fails here.
+test('a track config naming a layout mode, engine or hover this build lacks opens on the defaults, and the config editor still offers every choice', () => {
+  const config = configSchemaFactory().create({
+    type: 'LinearGraphDisplay',
+    displayId: 'from-another-build',
+    layoutMode: 'sideways',
+    layoutEngine: 'neato',
+    hover: 'glow',
+  })
+  const slots = ['layoutMode', 'layoutEngine', 'hover'] as const
+  expect(slots.map(slot => readConfObject(config, slot))).toEqual([
+    'force',
+    'fmmm',
+    'nodes',
+  ])
+  expect(
+    slots.map(slot => slotChoices(getSlotDefinition(config, slot))),
+  ).toEqual([LAYOUT_MODE_VALUES, LAYOUT_ENGINE_VALUES, HOVER_HIGHLIGHT_VALUES])
+})
+
 test('each grammar setter writes the track config, and the pane reads it back', async () => {
   const { display } = await shownGraph()
   display.setLayoutMode('ordered')
@@ -1734,6 +1776,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   display.setWalkRowSamples(['HG1'])
   display.setWalkRowOrder('shared')
   display.setHover('off')
+  display.setLinks('between')
   const slots = [
     'layoutMode',
     'layoutEngine',
@@ -1744,7 +1787,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
   ] as const
   expect(
     Object.fromEntries(
-      [...slots, 'hover' as const].map(s => [
+      [...slots, 'hover' as const, 'links' as const].map(s => [
         s,
         readConfObject(display.configuration, s),
       ]),
@@ -1757,6 +1800,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     layers: { bubbles: true },
     rows: { kept: ['HG1'], order: 'shared' },
     hover: 'off',
+    links: 'between',
   })
   expect(readConfObject(display.configuration, ['facet', 'field'])).toBe('walk')
   expect([
@@ -1769,6 +1813,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     display.facetSetting.field,
     display.walkRowSamples,
     display.chosenHover,
+    display.chosenLinks,
   ]).toEqual([
     'ordered',
     'fmmm',
@@ -1779,6 +1824,7 @@ test('each grammar setter writes the track config, and the pane reads it back', 
     'walk',
     ['HG1'],
     'off',
+    'between',
   ])
 })
 
@@ -1948,6 +1994,137 @@ test("a walk-indexed track's cut and the graph view it opens carry the default s
     (cut?.[2] as { opts?: { haplotypes?: string[] } }).opts?.haplotypes,
   ).toEqual(['HG1', 'HG2#1'])
   expect(display.graphViewSpec?.subgraphHaplotypes).toEqual(['HG1', 'HG2#1'])
+})
+
+const isLinksRow = (
+  item: MenuItem,
+): item is Extract<MenuItem, { subMenu: unknown }> =>
+  'subMenu' in item && item.label === 'Links drawn'
+
+function linksMenu(display: LinearGraphDisplayModel) {
+  const row = display.trackMenuItems().find(isLinksRow)
+  const rows = Array.isArray(row?.subMenu) ? row.subMenu : []
+  return row
+    ? {
+        disabled: row.disabled ?? false,
+        rows: rows.flatMap(item =>
+          'onClick' in item
+            ? [
+                {
+                  label: String(item.label),
+                  checked: 'checked' in item && item.checked,
+                  pick: () => {
+                    item.onClick()
+                  },
+                },
+              ]
+            : [],
+        ),
+      }
+    : undefined
+}
+
+function linksAsked(rpcCall: Env['rpcCall']) {
+  return rpcCall.mock.calls
+    .filter(([, method]) => method === 'GetSubgraph')
+    .map(([, , args]) => args.opts?.links)
+}
+
+async function shownWalkIndexed() {
+  const env = walkIndexedDisplay()
+  env.display.startRenderingBackend(fakeRenderer())
+  await wait(SETTLE_MS)
+  return env
+}
+
+test('a walk-indexed track told nothing cuts for the links its haplotypes walk, and Links drawn offers both', async () => {
+  const { display, rpcCall } = await shownWalkIndexed()
+  expect(linksAsked(rpcCall)).toEqual(['walked'])
+  expect(
+    linksMenu(display)?.rows.map(({ label, checked }) => [label, checked]),
+  ).toEqual([
+    ['walked by the haplotypes shown', true],
+    ['taken by any haplotype between the nodes shown', false],
+  ])
+})
+
+test('picking the links any haplotype takes cuts the window again for them, and the graph view the track opens keeps the choice', async () => {
+  const { display, rpcCall } = await shownWalkIndexed()
+  const drawn = display.graph
+  linksMenu(display)?.rows[1]?.pick()
+  await wait(SETTLE_MS)
+  expect(linksAsked(rpcCall)).toEqual(['walked', 'between'])
+  expect(display.graph).not.toBe(drawn)
+  expect(readConfObject(display.configuration, 'links')).toBe('between')
+  expect(linksMenu(display)?.rows.map(item => item.checked)).toEqual([
+    false,
+    true,
+  ])
+  expect(display.graphViewSpec?.links).toBe('between')
+})
+
+test("links written by the config editor cuts again, and going back shows the cut kept for the walked links, never the other's", async () => {
+  const { display, rpcCall } = await shownWalkIndexed()
+  const walked = display.graph
+  display.configuration.setSlot('links', 'between')
+  await wait(SETTLE_MS)
+  expect(linksAsked(rpcCall)).toEqual(['walked', 'between'])
+  expect(display.graph).not.toBe(walked)
+  display.configuration.setSlot('links', 'walked')
+  await wait(SETTLE_MS)
+  expect(display.graph).toBe(walked)
+  expect(linksAsked(rpcCall)).toEqual(['walked', 'between'])
+})
+
+test('walk rows cut with no links setting, and Links drawn is greyed out under them', async () => {
+  const { display, rpcCall } = await shownWalkIndexed()
+  display.setLinks('between')
+  await wait(SETTLE_MS)
+  await display.switchLayout('walkrows')
+  await wait(SETTLE_MS)
+  const last = rpcCall.mock.calls.findLast(([, m]) => m === 'GetSubgraph')
+  expect(last?.[2].opts).toMatchObject({ walkRows: true })
+  expect(last?.[2].opts).not.toHaveProperty('links')
+  expect(linksMenu(display)?.disabled).toBe(true)
+  const cuts = linksAsked(rpcCall).length
+  display.setLinks('walked')
+  await wait(SETTLE_MS)
+  expect(linksAsked(rpcCall)).toHaveLength(cuts)
+})
+
+test.each([
+  ['force', 'between'],
+  ['ordered', 'between'],
+  ['auto', 'between'],
+  ['samplerows', 'between'],
+  ['walkrows', undefined],
+  ['tubemap', undefined],
+  ['tubemapref', undefined],
+] as const)(
+  'told between, a cut under %s carries links %s: only a layout that draws links asks for them',
+  (layoutMode, links) => {
+    const { display } = walkIndexedDisplay()
+    display.setLinks('between')
+    display.setLayoutMode(layoutMode)
+    expect(display.cutOptions.links).toBe(links)
+    expect(linksMenu(display)?.disabled).toBe(links === undefined)
+  },
+)
+
+test('a track with no walk file offers no Links drawn', async () => {
+  const { display } = await shownGraph()
+  expect(linksMenu(display)).toBeUndefined()
+})
+
+test('a change of links forgets a refused cut, since the next cut reads other links', async () => {
+  const { display } = await shownWalks(1_000_000, env => {
+    env.setDenseAbove(1_500_000)
+  })
+  await vi.waitFor(() => {
+    expect(display.dense).toBeDefined()
+  })
+  display.setLinks('between')
+  expect(display.dense).toBeUndefined()
 })
 
 test('haplotype names from a read since aborted are dropped', async () => {

@@ -4,6 +4,7 @@ import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 import PluginManager from '@jbrowse/core/PluginManager'
 import { readConfObject } from '@jbrowse/core/configuration'
+import { WalkReader } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -435,6 +436,21 @@ test('getSubgraph cuts the window with the reference walk first', async () => {
     .filter(line => line.startsWith('W\t'))
     .map(line => line.split('\t').slice(1, 4).join('#'))
   expect(walks).toEqual(['GRCh38#0#chr1', 'HG002#1#chr1'])
+})
+
+test('the lanes read no link, and the graph cut takes the links it is handed', async () => {
+  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  const adapter = makeAdapter()
+  await feats(adapter)
+  expect(cut.mock.calls.map(c => c[2]?.links)).toEqual(['none'])
+  await adapter.getSubgraph(window)
+  await adapter.getSubgraph(window, { links: 'between' })
+  expect(cut.mock.calls.map(c => c[2]?.links)).toEqual([
+    'none',
+    'walked',
+    'between',
+  ])
+  cut.mockRestore()
 })
 
 test('a window past the step budget fails as a zoom-in notice for lanes naming how far to zoom', async () => {

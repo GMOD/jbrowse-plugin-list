@@ -27,6 +27,7 @@ import type { GraphGrammar } from './graphViews'
 import type { ScreenTransform } from './keepInView'
 import type { MorphEntering } from './morph'
 import type { BuildView, HoveredTube, TubeMapRoutes } from './paneBase'
+import type { LinksDrawn } from '../../linksDrawn'
 import type { GraphLayer } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
 import type { WalkRowGroupBy } from '../walkRowGroups'
@@ -143,24 +144,37 @@ export const withSettingActions = withTubeMapViews
     setLayoutMode(mode: LayoutModeValue) {
       self.writeGrammar({ layoutMode: mode })
     },
+    setLinks(links: LinksDrawn) {
+      self.writeGrammar({ links })
+    },
     setHover(hover: HoverHighlight) {
       self.writeGrammar({ hover })
       if (!self.hoverLightsEverything) {
         self.hoveredEdge = null
       }
     },
-    // Re-anchor in place rather than re-parsing: the coordinate walk is
-    // already recorded on the graph, and only which path counts as rank 0
-    // changes. The caller recomputes the layout, the same way it does after
-    // setLayoutMode. An rGFA is left alone — its coordinates are not derived.
     setReferencePath(name: string) {
       self.referencePath = name
+    },
+    // Re-anchor in place rather than re-parsing: the coordinate walk is
+    // already recorded on the graph, and only which path counts as rank 0
+    // changes. An rGFA is left alone — its coordinates are not derived.
+    anchorOnReferencePath() {
       const graph = self.graph
-      if (graph?.anchoredBy === 'paths') {
-        const reanchored = anchorFromPaths(graph, name)
-        forceLayouts.inherit(graph, reanchored)
-        self.graph = reanchored
+      const anchored =
+        graph?.anchoredBy === 'paths'
+          ? anchorFromPaths(
+              graph,
+              self.referencePath ||
+                self.loadedReferencePath ||
+                self.graphRegion?.assemblyName,
+            )
+          : graph
+      if (graph && anchored && anchored.referencePath !== graph.referencePath) {
+        forceLayouts.inherit(graph, anchored)
+        self.graph = anchored
       }
+      return self.graph !== graph
     },
     setLayer(layer: GraphLayer, on: boolean) {
       self.writeGrammar({ layers: withLayer(self.grammar.layers, layer, on) })

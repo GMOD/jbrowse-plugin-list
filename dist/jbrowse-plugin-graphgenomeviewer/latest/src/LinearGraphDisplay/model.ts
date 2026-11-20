@@ -58,6 +58,7 @@ import type { SubgraphRegion, SubgraphTier } from '../GetSubgraph'
 import type { HostWindow } from '../GraphGenomeView/host'
 import type { GraphGrammar } from '../GraphGenomeView/pane/graphViews'
 import type { LaunchGraphGenomeViewArgs } from '../LaunchGraphGenomeView'
+import type { LinksDrawn } from '../linksDrawn'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { MenuItem } from '@jbrowse/core/ui'
 import type { ExportSvgDisplayOptions } from '@jbrowse/display-kit/types'
@@ -153,6 +154,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           },
           rows: getConf(self, 'rows'),
           hover: getConf(self, 'hover'),
+          links: getConf(self, 'links'),
         }
         /* eslint-enable @typescript-eslint/no-unsafe-assignment */
       },
@@ -358,11 +360,15 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
     }))
     .actions(self => {
-      const { setSubgraphContext, setSubgraphHaplotypes } = self
+      const { setSubgraphContext, setSubgraphHaplotypes, setLinks } = self
       return {
         // a refused cut may fit under other options
         setSubgraphContext(hops: number) {
           setSubgraphContext(hops)
+          self.dense = undefined
+        },
+        setLinks(links: LinksDrawn) {
+          setLinks(links)
           self.dense = undefined
         },
         setSubgraphHaplotypes(haplotypes: string[] | undefined) {
@@ -415,6 +421,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
     }))
     .actions(self => ({
       recutAt(seen: HostWindow) {
+        self.settledWindow = seen
         const tier = self.tierAt(seen.bpPerPx)
         self.coarseCut = tier === 'coarse'
         self.cutRegion = self.cutFor(seen)

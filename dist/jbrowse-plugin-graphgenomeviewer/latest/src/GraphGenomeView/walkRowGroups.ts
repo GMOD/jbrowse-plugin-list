@@ -51,14 +51,12 @@ export function groupByOf(value: unknown): WalkRowGroupBy | undefined {
   if (typeof value === 'string') {
     return value ? { field: value } : undefined
   }
-  // `domain` is the facet's order through 7.x
-  const { field, sort, domain } = (value ?? {}) as Record<string, unknown>
+  const { field, sort } = (value ?? {}) as Record<string, unknown>
   if (typeof field !== 'string' || !field) {
     return undefined
   }
-  const order = sort ?? domain
-  return Array.isArray(order)
-    ? { field, sort: order.filter(d => typeof d === 'string') }
+  return Array.isArray(sort)
+    ? { field, sort: sort.filter(d => typeof d === 'string') }
     : { field }
 }
 

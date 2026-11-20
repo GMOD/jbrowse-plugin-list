@@ -15,6 +15,7 @@ export const useKeyControlStyles = makeStyles()({
     gap: 6,
     color: INK,
   },
+  inline: { padding: 0, background: 'none' },
   heading: legendHeadingStyle,
   joined: {
     display: 'flex',

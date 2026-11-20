@@ -7,7 +7,9 @@ import type { MenuItem } from '@jbrowse/core/ui'
 
 const HaplotypeSwitch = observer(function HaplotypeSwitch({
   model,
+  inline = false,
 }: {
+  inline?: boolean
   model: {
     walkChoices: readonly { name: string }[]
     walkLayers: readonly { walk: string }[]
@@ -21,7 +23,7 @@ const HaplotypeSwitch = observer(function HaplotypeSwitch({
   ).length
   return model.highlightMenuItems().length > 0 ? (
     <div
-      className={classes.row}
+      className={cx(classes.row, inline && classes.inline)}
       role="group"
       aria-label="Haplotypes"
       data-testid="graph-haplotype-switch"

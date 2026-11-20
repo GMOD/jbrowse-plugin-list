@@ -15,6 +15,7 @@ test('Graph settings opens its dialog through the session', () => {
   const model = {
     highlightMenuItems: () => [],
     layoutOptionMenuItems: () => [],
+    linksMenuItems: () => [],
     showMenuItems: () => [],
     modeDrawsNodes: false,
     walkChoices: [],

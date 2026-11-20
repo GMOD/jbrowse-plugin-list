@@ -6,7 +6,7 @@ import {
   layoutScaling,
 } from '@jbrowse/bandage-core/layout/drawnScale'
 import { abgrAlpha } from '@jbrowse/bandage-core/renderer/colorBits'
-import { destroy, getSnapshot } from '@jbrowse/mobx-state-tree'
+import { applyPatch, destroy, getSnapshot } from '@jbrowse/mobx-state-tree'
 
 import { mockRpcCall, mockSession } from './modelTestMocks'
 import {
@@ -797,6 +797,30 @@ describe('reference path', () => {
     // re-anchored from the recorded walk, not re-parsed and not re-laid-out
     // by the engine
     expect(layoutCalls()).toHaveLength(0)
+  })
+
+  test('a reference path that undo or a session delta writes moves the backbone and draws it again, and undoing to unset goes back to the path the graph loaded on', async () => {
+    rpcRespond()
+    const model = attachedModel({ layoutMode: 'auto' })
+    await model.loadGFA(PGGB_GFA, 'pggb')
+    const loaded = model.layoutResult
+
+    applyPatch(model, {
+      op: 'replace',
+      path: '/referencePath',
+      value: 'Sakai#1#chr',
+    })
+    await layoutsSettled(model)
+    expect(model.activeReferencePath).toBe('Sakai#1#chr')
+    expect(backboneStarts(model)).toEqual(['1@200', '3@205', '4@206'])
+    expect(model.layoutResult).not.toBe(loaded)
+    const moved = model.layoutResult
+
+    applyPatch(model, { op: 'replace', path: '/referencePath', value: '' })
+    await layoutsSettled(model)
+    expect(model.activeReferencePath).toBe('K12#1#chr')
+    expect(backboneStarts(model)).toEqual(['1@100', '2@105', '4@106'])
+    expect(model.layoutResult).not.toBe(moved)
   })
 
   // A subgraph cut from a track was cut against one assembly, and that is the

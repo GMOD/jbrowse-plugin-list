@@ -12,6 +12,7 @@ import {
   canonicalRegion,
   showTrackInLinearView,
 } from '../launchFromGraph/launchFromGraph'
+import { LINKS_DRAWN_VALUES } from '../linksDrawn'
 
 import type { GraphLayers } from './graphLayers'
 import type { NodeColor } from './nodeColor'
@@ -53,6 +54,7 @@ export default function stateModelFactory() {
         rows: types.maybe(types.frozen<GraphRows>()),
         // unset is nodes
         hover: lenientMaybeEnum(HOVER_HIGHLIGHT_VALUES),
+        links: lenientMaybeEnum(LINKS_DRAWN_VALUES),
       }),
     )
     .views(self => ({
@@ -66,6 +68,7 @@ export default function stateModelFactory() {
           facet: self.facet,
           rows: self.rows,
           hover: self.hover,
+          links: self.links,
         }
       },
     }))

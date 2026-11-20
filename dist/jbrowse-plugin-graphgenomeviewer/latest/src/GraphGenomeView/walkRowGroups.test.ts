@@ -53,7 +53,6 @@ test('the persisted setting reads a bare field or the object, anything else as u
   })
   expect(groupByOf({ field: 'sex', domain: ['female'] })).toEqual({
     field: 'sex',
-    sort: ['female'],
   })
   expect(groupByOf('')).toBeUndefined()
   expect(groupByOf({ field: 3 })).toBeUndefined()

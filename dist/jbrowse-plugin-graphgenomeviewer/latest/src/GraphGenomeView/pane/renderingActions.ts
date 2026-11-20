@@ -423,6 +423,19 @@ export const withRenderingActions = withLoadActions
     },
     // loads the source again, for a host that has one
     retryLoad() {},
+    afterCreate() {
+      addDisposer(
+        self,
+        reaction(
+          () => self.referencePath,
+          () => {
+            if (self.anchorOnReferencePath()) {
+              void self.recomputeLayout()
+            }
+          },
+        ),
+      )
+    },
     afterAttach() {
       // A restored session that already carries a non-default transform is
       // the user's own view — mark it so the fit autorun leaves it alone.

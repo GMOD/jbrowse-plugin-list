@@ -10,7 +10,9 @@ import type { MenuItem } from '@jbrowse/core/ui'
 // names the layout drawn when it is neither engine's
 const LayoutSwitch = observer(function LayoutSwitch({
   model,
+  inline = false,
 }: {
+  inline?: boolean
   model: {
     layoutLabel: () => string
     layoutMenuItems: () => MenuItem[]
@@ -32,7 +34,7 @@ const LayoutSwitch = observer(function LayoutSwitch({
   const other = !engines.some(engine => engine.row.checked)
   return (
     <div
-      className={classes.row}
+      className={cx(classes.row, inline && classes.inline)}
       role="group"
       aria-label="Layout"
       data-testid="graph-layout-switch"

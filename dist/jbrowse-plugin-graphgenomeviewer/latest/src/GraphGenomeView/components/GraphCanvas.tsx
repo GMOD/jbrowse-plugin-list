@@ -321,6 +321,14 @@ const GraphCanvasBody = observer(function GraphCanvasBody({
             model={model}
             handlers={handlers}
             canvasStyle={canvasStyle}
+            controls={
+              ownChrome ? null : (
+                <>
+                  <LayoutSwitch model={model} inline />
+                  <HaplotypeSwitch model={model} inline />
+                </>
+              )
+            }
           />
         ) : (
           <>

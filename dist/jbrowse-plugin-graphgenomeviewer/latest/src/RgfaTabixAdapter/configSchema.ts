@@ -245,6 +245,16 @@ const RgfaTabixAdapter = ConfigurationSchema(
     },
     /**
      * #slot
+     * A tab-separated table of per-sample metadata, which the graph view's
+     * walk rows group by ("Group by..."). Its header row names the columns
+     * (`population`, `superpopulation`, ...), and its first column is the
+     * walk's sample (`HG00097`) or haplotype (`HG00097#1`). Empty means no
+     * grouping. A `color` column (`#rgb` or `#rrggbb`) colours that
+     * haplotype's lifted walk in the graph display.
+     */
+    samplesTsvLocation: fileLocationSlot(''),
+    /**
+     * #slot
      * Maps a JBrowse assembly name to its PanSN sample prefix in the graph, for
      * when they differ. Defaults to identity: the assembly name is assumed to be
      * the PanSN sample name, and a graph whose stable names are bare (minigraph

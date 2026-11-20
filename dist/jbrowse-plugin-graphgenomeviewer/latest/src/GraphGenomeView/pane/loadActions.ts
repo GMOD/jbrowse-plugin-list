@@ -414,6 +414,36 @@ export const withLoadActions = withEngineSettings.actions(self => {
   // layout, since the tube map lays them out with the paths. `foldBelowBp`
   // is what a host's zoom cannot show: variants under it fold into the
   // reference, and the drawing is clipped to the region it was cut for.
+  function deriveGraph(
+    source: string | WalkCut,
+    name: string,
+    region: SubgraphRegion | undefined,
+    foldBelowBp: number,
+    withReads: boolean,
+    whole = false,
+  ) {
+    const parsed = parseCut(source, name, region, whole)
+    const loaded = region ? loadedReference(parsed, region) : undefined
+    const anchored =
+      !self.referencePath &&
+      loaded !== undefined &&
+      loaded !== parsed.referencePath
+        ? anchorFromPaths(parsed, loaded)
+        : parsed
+    const folded =
+      foldBelowBp > 0 && !withReads
+        ? foldVariants(anchored, foldBelowBp, { cut: true })
+        : anchored
+    return {
+      graph:
+        region && folded !== anchored
+          ? clipToWindow(folded, region, foldBelowBp)
+          : folded,
+      loadedReferencePath: loaded,
+      foldedBelowBp: folded === anchored ? undefined : foldBelowBp,
+    }
+  }
+
   function* parsedCut(
     source: string | WalkCut,
     name: string,
@@ -424,22 +454,13 @@ export const withLoadActions = withEngineSettings.actions(self => {
     const { signal } = loadController
     const walkCut =
       typeof source !== 'string' && source.walkRowRuns ? source : undefined
-    const parsed = parseCut(source, name, region)
-    const loaded = region ? loadedReference(parsed, region) : undefined
-    const anchored =
-      !self.referencePath &&
-      loaded !== undefined &&
-      loaded !== parsed.referencePath
-        ? anchorFromPaths(parsed, loaded)
-        : parsed
-    const folded =
-      foldBelowBp > 0 && !readsOf
-        ? foldVariants(anchored, foldBelowBp, { cut: true })
-        : anchored
-    const graph =
-      region && folded !== anchored
-        ? clipToWindow(folded, region, foldBelowBp)
-        : folded
+    const { graph, loadedReferencePath, foldedBelowBp } = deriveGraph(
+      source,
+      name,
+      region,
+      foldBelowBp,
+      !!readsOf,
+    )
     let readsShown: { shown: number; total: number } | undefined
     if (readsOf) {
       self.setStatusMessage('Reading alignments')
@@ -462,8 +483,8 @@ export const withLoadActions = withEngineSettings.actions(self => {
       walkCut,
       abridged: typeof source === 'string' ? [] : (source.abridged ?? []),
       region,
-      loadedReferencePath: loaded,
-      foldedBelowBp: folded === anchored ? undefined : foldBelowBp,
+      loadedReferencePath,
+      foldedBelowBp,
       readsShown,
     } satisfies ParsedCut
   }
@@ -852,10 +873,22 @@ export const withLoadActions = withEngineSettings.actions(self => {
     if (!cut || !graph || self.chosenLayoutMode === 'walkrows') {
       return graph
     }
-    const whole = parseCut(cut, graph.name, self.graphRegion, true)
-    self.graph = whole
+    const whole = deriveGraph(
+      cut,
+      graph.name,
+      self.graphRegion,
+      self.foldedBelowBp ?? 0,
+      graph.reads !== undefined,
+      true,
+    )
+    if (graph.reads) {
+      whole.graph.reads = graph.reads
+    }
+    self.graph = whole.graph
     self.walkCut = undefined
-    return whole
+    self.loadedReferencePath = whole.loadedReferencePath
+    self.foldedBelowBp = whole.foldedBelowBp
+    return whole.graph
   }
 
   // Drops the graph and all it derived, and ends any load in flight, which

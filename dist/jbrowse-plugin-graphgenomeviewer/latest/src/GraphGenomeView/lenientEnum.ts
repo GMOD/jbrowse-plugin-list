@@ -23,3 +23,13 @@ export function lenientOptionalEnum<T extends string>(
     { preProcessor: knownOrUnset(values) },
   )
 }
+
+// A `stringEnum` config slot's model, whose choices the config editor still
+// lists. Core types the slot's value from a model that takes what it gives, so
+// the processor is typed as taking `T` though a config from another build
+// hands it any string.
+export function lenientSlotEnum<T extends string>(values: T[], fallback: T) {
+  return types.snapshotProcessor(types.enumeration(values), {
+    preProcessor: (value: T) => (values.includes(value) ? value : fallback),
+  })
+}

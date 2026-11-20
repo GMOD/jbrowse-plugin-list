@@ -5,6 +5,7 @@ import { rpcResultWithArrayBuffers } from '@jbrowse/core/util/librpc'
 import { adapterImplementing } from './adapterImplementing'
 
 import type { WalkCut } from './RgfaTabixAdapter/walkCut.ts'
+import type { LinksDrawn } from './linksDrawn.ts'
 import type { RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry'
 import type { Region } from '@jbrowse/core/util'
 
@@ -31,6 +32,7 @@ export interface SubgraphCutOptions {
   // a cut for walk rows: its runs come with the tables, and the
   // step budget, which guards a Graph of every step, does not apply
   walkRows?: boolean
+  links?: LinksDrawn
   // walks, `sample#haplotype#contig`, a walk-file cut fetches every node of
   expand?: string[]
   forcedByteBudget?: number

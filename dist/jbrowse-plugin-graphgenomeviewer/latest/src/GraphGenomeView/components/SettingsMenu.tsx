@@ -28,6 +28,7 @@ const SettingsMenu = observer(function SettingsMenu({
           ? [{ label: 'Haplotypes', icon: RouteIcon, subMenu: haplotypes }]
           : []),
         ...model.layoutOptionMenuItems({ repeat: false }),
+        ...model.linksMenuItems(),
         {
           label: 'Show',
           icon: VisibilityIcon,

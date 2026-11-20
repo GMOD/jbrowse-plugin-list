@@ -7,6 +7,7 @@ import {
 } from '@jbrowse/bandage-core/layoutModes'
 import { getEnv, getSession } from '@jbrowse/core/util'
 import HubIcon from '@mui/icons-material/Hub'
+import LinkIcon from '@mui/icons-material/Link'
 import PaletteIcon from '@mui/icons-material/Palette'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import VisibilityIcon from '@mui/icons-material/Visibility'
@@ -21,6 +22,7 @@ import {
   WALK_MENU_ITEMS,
 } from './paneBase'
 import { withRenderingActions } from './renderingActions'
+import { walkIndexed } from '../../graphTrackConfig'
 import { graphLaunchMenuItems } from '../../launchFromGraph/graphMenuItems'
 import {
   canonicalAssemblyName,
@@ -30,6 +32,7 @@ import {
 } from '../../launchFromGraph/launchFromGraph'
 import { pushLaunchItem } from '../../launchFromGraph/pushLaunchItem'
 import { launchableSyntenyTracks } from '../../launchFromGraph/syntenyTracks'
+import { LINKS_DRAWN, LINKS_DRAWN_LABEL } from '../../linksDrawn'
 import { downloadText } from '../download'
 import { GENE_ADAPTER_TYPES } from '../genes/geneFeatures'
 import { HOVER_HIGHLIGHT_VALUES } from '../hoverHighlight'
@@ -573,6 +576,21 @@ export const withLaunchActions = withRenderingActions
             ]),
       ]
     },
+    linksMenuItems(): MenuItem[] {
+      const adapter = self.sourceAdapter
+      return adapter && walkIndexed(adapter)
+        ? [
+            {
+              label: LINKS_DRAWN_LABEL,
+              icon: LinkIcon,
+              disabled: !self.modeDrawsNodes,
+              disabledHelpText:
+                'This layout draws each haplotype as its own path',
+              subMenu: radioItems(LINKS_DRAWN, self.chosenLinks, self.setLinks),
+            },
+          ]
+        : []
+    },
     graphMenuItems(): MenuItem[] {
       return [
         {
@@ -580,6 +598,7 @@ export const withLaunchActions = withRenderingActions
           icon: HubIcon,
           subMenu: this.layoutMenuItems(),
         },
+        ...this.linksMenuItems(),
         {
           label: `Color: ${self.colorSchemeLock?.value ?? this.colorSchemeLabel(self.chosenColorScheme)}`,
           icon: PaletteIcon,

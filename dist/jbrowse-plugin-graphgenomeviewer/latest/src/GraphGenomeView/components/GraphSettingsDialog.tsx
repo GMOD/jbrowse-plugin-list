@@ -213,7 +213,6 @@ const GraphSettingsDialog = observer(function GraphSettingsDialog(props: {
               testId="graph-reference-path-select"
               onChange={name => {
                 model.setReferencePath(name)
-                void model.recomputeLayout()
               }}
             >
               <Caption>The path the anchored layouts place x along</Caption>

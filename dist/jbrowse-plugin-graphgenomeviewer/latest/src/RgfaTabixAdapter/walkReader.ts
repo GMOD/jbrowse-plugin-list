@@ -2,6 +2,7 @@ import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { CUT_PRESETS, checkRange, walksKept } from '@jbrowse/graph-walks'
 
 import { walkCutFor } from './walkCut.ts'
+import { DEFAULT_LINKS_DRAWN } from '../linksDrawn.ts'
 
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
 import type { RefNameSource } from '../panSNTabix.ts'
@@ -63,9 +64,10 @@ export class WalkIndex {
 
   /**
    * The graph display's cut of a window: the reference walk, the walks of
-   * `haplotypes` (every walk when unset), the nodes they visit, the links any
-   * walk takes between those nodes, and every departure from the reference
-   * over the window, which walk rows draw.
+   * `haplotypes` (every walk when unset), the nodes they visit, the links
+   * those walks take, with `links: 'between'` also the links any other walk
+   * takes between those nodes, and every departure from the reference over
+   * the window, which walk rows draw.
    * Walk rows draw runs, so the step budget spares them. Only the walks named
    * in `expand` come back with every node.
    */
@@ -76,6 +78,7 @@ export class WalkIndex {
       signal,
       haplotypes,
       walkRows,
+      links = DEFAULT_LINKS_DRAWN,
       expand,
       forcedByteBudget = 0,
     }: SubgraphAdapterOptions,
@@ -95,7 +98,7 @@ export class WalkIndex {
         ...options,
         byteBudget: Math.max(options.byteBudget, forcedByteBudget),
         stepBudget: walkRows ? Infinity : options.stepBudget,
-        links: walkRows ? 'walked' : 'between',
+        links: walkRows ? 'walked' : links,
         signal,
         keep,
         ...(asked ? { expand: asked } : {}),

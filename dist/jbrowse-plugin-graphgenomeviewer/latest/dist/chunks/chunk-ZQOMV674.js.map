@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/linksDrawn.ts"],
+  "sourcesContent": ["export type LinksDrawn = 'walked' | 'between'\n\nexport const DEFAULT_LINKS_DRAWN: LinksDrawn = 'walked'\n\nexport const LINKS_DRAWN_LABEL = 'Links drawn'\n\nexport const LINKS_DRAWN: { value: LinksDrawn; label: string }[] = [\n  { value: 'walked', label: 'walked by the haplotypes shown' },\n  {\n    value: 'between',\n    label: 'taken by any haplotype between the nodes shown',\n  },\n]\n\nexport const LINKS_DRAWN_VALUES = LINKS_DRAWN.map(option => option.value)\n"],
+  "mappings": "AAEO,IAAMA,EAAkC,SAElCC,EAAoB,cAEpBC,EAAsD,CACjE,CAAE,MAAO,SAAU,MAAO,gCAAiC,EAC3D,CACE,MAAO,UACP,MAAO,gDACT,CACF,EAEaC,EAAqBD,EAAY,IAAIE,GAAUA,EAAO,KAAK",
+  "names": ["DEFAULT_LINKS_DRAWN", "LINKS_DRAWN_LABEL", "LINKS_DRAWN", "LINKS_DRAWN_VALUES", "option"]
+}

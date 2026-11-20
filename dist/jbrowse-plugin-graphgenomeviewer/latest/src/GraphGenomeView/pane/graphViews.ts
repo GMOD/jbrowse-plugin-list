@@ -76,6 +76,7 @@ import {
   canonicalAssemblyName,
   trackAssemblies,
 } from '../../launchFromGraph/launchFromGraph'
+import { DEFAULT_LINKS_DRAWN } from '../../linksDrawn'
 import { locationIsSet } from '../../locationName.ts'
 import { trackAdapterConfig } from '../../panSNAliases/trackAdapterConfig'
 import { sheetColorOf } from '../../synteny/sheetColors.ts'
@@ -110,6 +111,7 @@ import {
 
 import type { ScreenTransform } from './keepInView'
 import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
+import type { LinksDrawn } from '../../linksDrawn'
 import type { GraphLayers } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
 import type { GraphEncoding } from '../nodeColor'
@@ -224,6 +226,7 @@ export interface GraphGrammar {
   facet?: FacetInput
   rows?: GraphRows
   hover?: HoverHighlight
+  links?: LinksDrawn
 }
 
 type TubeColorKind = 'value' | 'tinted' | 'role' | 'path'
@@ -300,6 +303,9 @@ export const withGraphViews = paneBase
       },
       get chosenHover(): HoverHighlight {
         return self.grammar.hover ?? 'nodes'
+      },
+      get chosenLinks(): LinksDrawn {
+        return self.grammar.links ?? DEFAULT_LINKS_DRAWN
       },
       // Node thickness by depth, Bandage's own device; see NODE_WIDTHS
       get nodeWidth(): NodeWidth {

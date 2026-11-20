@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 
 import { FACET_GAP_PX, FACET_TITLE_PX } from '@jbrowse/bandage-core/facetGrid'
 import { Canvas2DRenderer } from '@jbrowse/bandage-core/renderer/Canvas2DRenderer'
@@ -52,10 +53,13 @@ const keyStyle = {
   padding: '2px 6px',
   boxSizing: 'border-box' as const,
   display: 'flex',
+  alignItems: 'center',
   gap: 14,
   fontSize: 11,
   lineHeight: '15px',
 }
+
+const controlsStyle = { display: 'flex', gap: 14, marginLeft: 'auto' }
 
 const FacetPanel = observer(function FacetPanel({
   model,
@@ -160,10 +164,12 @@ const FacetPanels = observer(function FacetPanels({
   model,
   handlers,
   canvasStyle,
+  controls,
 }: {
   model: GraphPaneModel
   handlers: PaneHandlers
   canvasStyle: React.CSSProperties
+  controls?: ReactNode
 }) {
   const panels = model.facetPanels
   const grid = model.facetGrid
@@ -212,6 +218,7 @@ const FacetPanels = observer(function FacetPanels({
         {facetKeyRows(model).map(row => (
           <LegendRowView key={row.key} row={row} />
         ))}
+        {controls ? <span style={controlsStyle}>{controls}</span> : null}
       </div>
     </div>
   )
