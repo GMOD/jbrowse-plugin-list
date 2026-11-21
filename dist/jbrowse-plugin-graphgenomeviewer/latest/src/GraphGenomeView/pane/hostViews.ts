@@ -5,6 +5,7 @@ import {
   nodeAnchor,
   referenceStripBlocks,
   stripBlockAt,
+  stripFadedShown,
   stripOverhang,
 } from '@jbrowse/bandage-core/referenceStrip'
 import { LIFT_BACKDROP_CSS } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
@@ -154,18 +155,12 @@ export const withHostViews = withWalkRowViews
       )
       return left > 0 || right > 0
     },
-    // Grey the window shows, a boolean for the reason the overhang is one
+    // Whether grey shows in the window, so the key names it only then
     get referenceStripFaded() {
       const frame = self.hostBpFrame
       return (
         frame !== undefined &&
-        self.referenceStripBlocks.some(b => {
-          const x0 = b.bp0 * frame.scale + frame.translateX
-          const x1 = b.bp1 * frame.scale + frame.translateX
-          return (
-            b.faded && Math.max(x0, x1) > 0 && Math.min(x0, x1) < self.paneWidth
-          )
-        })
+        stripFadedShown(self.referenceStripBlocks, frame, self.paneWidth)
       )
     },
   }))

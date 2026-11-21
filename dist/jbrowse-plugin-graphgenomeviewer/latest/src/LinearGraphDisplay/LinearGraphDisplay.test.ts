@@ -1453,6 +1453,9 @@ test('a pan inside the held cut keeps the reference strip whole and true to the 
   expect(over.left).toBeGreaterThan(0)
   expect(over.right).toBeGreaterThan(0)
   expect(pane.referenceStripOverhangs).toBe(true)
+  expect(pane.graphKey.flatMap(s => s.entries.map(e => e.text))).toContain(
+    "graph's reference continues past the pane edge",
+  )
 })
 
 test('the reference strip draws no line to a selected node the drawing folds', async () => {
@@ -1637,8 +1640,8 @@ test('the drawing is the track height, and resizing the track resizes it', async
   expect(display.canvasHeight).toBe(200)
 })
 
-// KIV-2 and AMY2A lost the key's last row, "graph runs past this edge", to
-// the track's 300 px
+// KIV-2 and AMY2A lost the key's last row, the strip's edge tab, to the
+// track's 300 px
 test('a key taller than the track grows the track to show its last row, and a shrink after stays', async () => {
   const { display } = await shownGraph()
   expect(display.height).toBe(300)
@@ -3243,7 +3246,10 @@ test("a drawing taller than a fixed track keeps the window's reference between t
   const marks = pane.edgeMarks!
   expect(marks.top.length + marks.bottom.length).toBeGreaterThan(0)
   expect(pane.runsPastEdge).toBe(true)
-  expect(pane.graphKey.map(s => s.id)).toContain('overhang')
+  const runsPast = pane.graphKey
+    .flatMap(s => s.entries)
+    .find(e => e.text === 'drawing continues above or below the pane')
+  expect(runsPast?.swatch).toEqual({ kind: 'overrun' })
   pane.setHeightMode('fit')
   expect(pane.edgeMarks).toEqual({ top: [], bottom: [] })
 })

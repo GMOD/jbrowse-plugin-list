@@ -88,6 +88,7 @@ export type LegendSwatch =
       height: number
     }
   | { kind: 'overhang' }
+  | { kind: 'overrun' }
   | { kind: 'glyph'; char: string }
   | { kind: 'tick'; color: string; height: number; backing?: string }
   | { kind: 'bracket' }
@@ -149,6 +150,7 @@ export function swatchHeight(swatch: LegendSwatch) {
       return 3
     case 'halo':
     case 'overhang':
+    case 'overrun':
       return 10
     case 'outline':
     case 'tick':
@@ -286,6 +288,8 @@ function legendSwatch(swatch: GraphKeySwatch): LegendSwatch {
       return { kind: 'threads' }
     case 'overhang':
       return { kind: 'overhang' }
+    case 'overrun':
+      return { kind: 'overrun' }
     case 'heads':
       return headsSwatch(swatch.ink, swatch.haloed)
   }

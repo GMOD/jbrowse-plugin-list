@@ -178,6 +178,14 @@ export function SvgSwatch({
           fill="#18181c"
         />
       )
+    case 'overrun':
+      return (
+        <path
+          transform={`translate(${x} ${mid - 5})`}
+          d="M4,0 L0,9 L8,9 Z M14,10 L10,1 L18,1 Z"
+          fill="#18181c"
+        />
+      )
     case 'glyph':
       return (
         <text
