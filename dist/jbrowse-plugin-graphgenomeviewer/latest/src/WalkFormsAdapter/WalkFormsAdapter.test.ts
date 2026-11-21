@@ -75,7 +75,7 @@ test('one source per form, labelled by share and change', async () => {
         haplotypes: 1,
         forms: 1,
       },
-      { name: 'F3', label: '33% · del 580bp', haplotypes: 1, forms: 1 },
+      { name: 'F3', label: '33% · repl 600bp->20bp', haplotypes: 1, forms: 1 },
     ],
     warnings: [],
   })
@@ -105,8 +105,8 @@ test('features are the pinned window changes, with a genotype per form', async (
       start: 2400,
       end: 3000,
       consequence: 'loss',
-      svType: 'DEL',
-      type: 'deletion',
+      svType: 'CPX',
+      type: 'complex_substitution',
       genotypes: { F1: '0', F2: '0', F3: '1' },
     },
   ])

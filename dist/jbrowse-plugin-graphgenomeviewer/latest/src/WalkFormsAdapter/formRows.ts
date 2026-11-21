@@ -11,7 +11,7 @@ import { DEFAULT_MAX_FORMS } from '../slotDefaults.ts'
 
 import type { Mark, MarkKind, StructuralForms } from '@jbrowse/graph-walks'
 
-export const CONSEQUENCES = ['loss', 'gain', 'shift', 'inversion'] as const
+export const CONSEQUENCES = ['loss', 'gain', 'inversion'] as const
 
 export type Consequence = (typeof CONSEQUENCES)[number]
 
@@ -35,21 +35,10 @@ const KINDS: Record<
     alt: '<INV>',
     consequence: 'inversion',
   },
-  shift: {
-    svType: 'CPX',
-    type: 'complex_structural_alteration',
-    alt: '<CPX>',
-    consequence: 'shift',
-  },
 }
 
-// A lopsided replacement colours by the side graph-walks names, which its net
-// sign agrees with; any other change by its net sign
-const sideOf = (m: Mark) =>
-  m.lopsided ?? (m.delta < 0 ? 'deletion' : 'insertion')
-
 const consequenceOf = (m: Mark): Consequence =>
-  KINDS[m.kind].consequence ?? (sideOf(m) === 'deletion' ? 'loss' : 'gain')
+  KINDS[m.kind].consequence ?? (m.delta < 0 ? 'loss' : 'gain')
 
 export const formName = (i: number) => `F${i + 1}`
 

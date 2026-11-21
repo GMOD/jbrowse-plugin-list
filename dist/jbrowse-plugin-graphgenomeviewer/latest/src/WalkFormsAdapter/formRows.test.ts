@@ -94,7 +94,8 @@ test('each mark kind names its consequence, svType and SO type', () => {
     [10_000, 11_000, 'inversion', 'INV', 'inversion', '<INV>'],
     [13_000, 13_600, 'gain', 'CPX', 'complex_substitution', '<CPX>'],
     [15_000, 17_000, 'loss', 'CPX', 'complex_substitution', '<CPX>'],
-    [18_000, 19_600, 'shift', 'CPX', 'complex_structural_alteration', '<CPX>'],
+    [18_000, 19_500, 'loss', 'DEL', 'deletion', '<DEL>'],
+    [19_600, 19_601, 'gain', 'INS', 'insertion', '<INS>'],
     [21_000, 21_001, 'gain', 'INS', 'insertion', '<INS>'],
   ])
 })
@@ -111,7 +112,7 @@ test('a replacement is one variant over its REF span', () => {
   expect(v.name).toBe('repl 600bp->2kb')
 })
 
-test('a lopsided replacement colours as the side it nearly is', () => {
+test('a replacement is one at any ratio of its sides, and colours by its net change', () => {
   const forms = structuralForms(
     [
       haplotype('A#1', [departure(2000, 8460, 94)]),
@@ -122,16 +123,11 @@ test('a lopsided replacement colours as the side it nearly is', () => {
     { window },
   )
   expect(
-    formVariants(forms).map(v => [
-      v.name,
-      v.mark.kind,
-      v.mark.lopsided,
-      v.consequence,
-    ]),
+    formVariants(forms).map(v => [v.name, v.mark.kind, v.alt, v.consequence]),
   ).toEqual([
-    ['del 6.46kb->94bp', 'replacement', 'deletion', 'loss'],
-    ['ins 178bp->13.9kb', 'replacement', 'insertion', 'gain'],
-    ['repl 600bp->500bp', 'replacement', undefined, 'loss'],
+    ['repl 6.46kb->94bp', 'replacement', '<CPX>', 'loss'],
+    ['repl 178bp->13.9kb', 'replacement', '<CPX>', 'gain'],
+    ['repl 600bp->500bp', 'replacement', '<CPX>', 'loss'],
   ])
 })
 
@@ -153,16 +149,19 @@ test('a form whose walks do not span a site has no call there', () => {
   expect(variantAt(13_000).genotypes[formOf('E#1')]).toBe('1')
 })
 
-test('sources are the forms, labelled by share and largest change', () => {
+test('sources are the forms, labelled by share and largest change, and by what tells apart two that would read alike', () => {
   const sources = formSources(result, Infinity)
   expect(sources).toHaveLength(result.forms.length)
   expect(sources[0]).toEqual({
     name: 'F1',
-    label: '14% · del 2kb +1',
+    label: '14% · del 2kb, ins 800bp',
     haplotypes: 2,
     forms: 1,
   })
   expect(sources.find(s => s.name === formOf('G#1'))?.label).toBe('7% · ref')
+  expect(sources.find(s => s.name === formOf('B#1'))?.label).toBe(
+    '7% · del 2kb, inv 1kb',
+  )
 })
 
 test('past maxForms the smaller forms share one empty row', () => {

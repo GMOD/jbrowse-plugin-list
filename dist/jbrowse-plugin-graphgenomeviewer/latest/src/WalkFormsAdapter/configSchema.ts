@@ -20,7 +20,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  *   it the rows stay and draw empty
  * - The largest `maxForms` forms get a row each, labelled by share and largest
  *   change ("66% · del 18.4kb"); the rest share one empty "other forms" row
- * - A variant's `consequence` is `loss`, `gain`, `shift` or `inversion`, for
+ * - A variant's `consequence` is `loss`, `gain` or `inversion`, for
  *   colouring the cells; `svType` and `type` follow core's names
  * - `walksUri` takes the prefix of one reference's walk file and resolves
  *   `<walksUri>.walks.gz` and its directory `<walksUri>.walks.gz.idx`, as
