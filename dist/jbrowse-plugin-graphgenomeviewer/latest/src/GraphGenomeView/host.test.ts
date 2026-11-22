@@ -58,6 +58,7 @@ test('a reversed block runs bp right to left from the same screen edge', () => {
   }
   const view = (reversed: boolean) =>
     ({
+      initialized: true,
       bpPerPx: 2,
       offsetPx: 400,
       dynamicBlocks: { contentBlocks: [{ ...block, reversed }] },

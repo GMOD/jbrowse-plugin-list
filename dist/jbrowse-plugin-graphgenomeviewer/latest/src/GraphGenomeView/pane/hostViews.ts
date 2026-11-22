@@ -14,7 +14,7 @@ import { deviationMarks } from '@jbrowse/bandage-core/tubeMap/deviations'
 import { tubeMapPicture } from '@jbrowse/bandage-core/tubeMap/draw'
 import { tubeMapGenes } from '@jbrowse/bandage-core/tubeMap/genes'
 
-import { hostFrame } from '../host'
+import { hostBlocks, hostFrame } from '../host'
 import { withWalkRowViews } from './walkRowViews'
 
 export const withHostViews = withWalkRowViews
@@ -41,9 +41,7 @@ export const withHostViews = withWalkRowViews
         host.initialized &&
         region !== undefined &&
         self.xIsReferenceBp &&
-        !host.dynamicBlocks.contentBlocks.some(
-          b => b.refName === region.refName && b.reversed,
-        )
+        !hostBlocks(host).some(b => b.refName === region.refName && b.reversed)
       )
     },
   }))

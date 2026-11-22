@@ -52,6 +52,7 @@ const FakeView = types
     end: types.number,
   })
   .volatile(() => ({
+    initialized: true,
     width: 1000,
     bpPerPx: 1,
     offsetPx: 0,

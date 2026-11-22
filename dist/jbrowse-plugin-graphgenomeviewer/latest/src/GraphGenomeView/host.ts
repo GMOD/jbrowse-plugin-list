@@ -67,6 +67,12 @@ export interface HostWindow {
   regionEnd: number
 }
 
+// A view lays out no blocks until it has measured its width, which it throws on
+// reading until then
+export function hostBlocks(view: LinearHost) {
+  return view.initialized ? view.dynamicBlocks.contentBlocks : []
+}
+
 // x is reference bp on an anchored layout, so the graph shows what the linear
 // view shows when one bp is as many px in both and the cut's refName sits at
 // the same screen x. Undefined when the linear view shows no block of that
@@ -74,7 +80,7 @@ export interface HostWindow {
 // runs bp right to left, which only the tube map's connectors can draw.
 export function hostFrame(view: LinearHost, region: SubgraphRegion) {
   const block = widest(
-    view.dynamicBlocks.contentBlocks.filter(
+    hostBlocks(view).filter(
       b =>
         b.refName === region.refName && b.assemblyName === region.assemblyName,
     ),
@@ -92,7 +98,7 @@ export function hostFrame(view: LinearHost, region: SubgraphRegion) {
 // Read off the LIVE blocks even when the coarse ones woke the caller: those
 // name where the window was half a second ago (SyntenyFollow/CLAUDE.md).
 export function hostWindow(view: LinearHost): HostWindow | undefined {
-  const block = widest(view.dynamicBlocks.contentBlocks)
+  const block = widest(hostBlocks(view))
   const displayed =
     block?.displayedRegionIndex === undefined
       ? undefined
@@ -114,7 +120,7 @@ export function hostWindow(view: LinearHost): HostWindow | undefined {
 // The bp the view's width spans on the window's sequence, running past the
 // sequence's ends where the view does, where hostWindow stops at them
 export function paneWindow(view: LinearHost) {
-  const block = widest(view.dynamicBlocks.contentBlocks)
+  const block = widest(hostBlocks(view))
   const start =
     block && block.start - (block.offsetPx - view.offsetPx) * view.bpPerPx
   return start === undefined
