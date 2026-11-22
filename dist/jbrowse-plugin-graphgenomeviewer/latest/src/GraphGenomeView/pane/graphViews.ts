@@ -88,6 +88,7 @@ import {
   pickGeneTrack,
 } from '../genes/geneFeatures'
 import { layersOf } from '../graphLayers'
+import { isLinearHost } from '../host'
 import { domainOfColor, schemeOfColor } from '../nodeColor'
 import { nodeSizeOf } from '../nodeSize'
 import {
@@ -386,12 +387,14 @@ export const withGraphViews = paneBase
     }
   })
   .views(self => ({
-    get paneWidth() {
-      return getContainingView(self).width
-    },
-    // a linear view knows its width before its tracks draw
+    // a restored session attaches its tracks before the linear view measures
+    // its width, which the view throws on reading until then
     get paneMeasured() {
-      return true
+      const view = getContainingView(self)
+      return !isLinearHost(view) || view.initialized
+    },
+    get paneWidth(): number {
+      return this.paneMeasured ? getContainingView(self).width : 0
     },
     // The graph the drawing's node ids address: a tube map's, which is the
     // window it drew with each merged run one node, the cut otherwise. Hover,

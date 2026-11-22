@@ -48,7 +48,7 @@ import {
 import { contains, padded } from '@jbrowse/bandage-core/viewport'
 import { walkPosition } from '@jbrowse/bandage-core/walkKey'
 
-import { cutRuleOf, hostWindow, paneWindow } from '../host'
+import { cutRuleOf, hostBlocks, hostWindow, paneWindow } from '../host'
 import { measureReadout } from '../readoutMeasure'
 import { sectionHeadersPx, sectionPlacement } from '../walkRowGroups'
 import { withHostViews } from './hostViews'
@@ -475,7 +475,7 @@ export const withFitViews = withHostViews
       return (
         !!host &&
         cutRuleOf(self.chosenLayoutMode) === 'snapped' &&
-        !host.dynamicBlocks.contentBlocks.some(
+        !hostBlocks(host).some(
           b =>
             b.reversed &&
             (b.refName === graphRegion?.refName || b.refName === seen?.refName),
