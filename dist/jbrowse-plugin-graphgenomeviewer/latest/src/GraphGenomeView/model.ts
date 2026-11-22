@@ -1,6 +1,7 @@
 import { sameInkOnPane } from '@jbrowse/bandage-core/drawnInk'
 import { drawnMarks, graphKey } from '@jbrowse/bandage-core/graphKey'
 import { layoutLabels } from '@jbrowse/bandage-core/labelLayout'
+import { FIT_PADDING } from '@jbrowse/bandage-core/layout/fitAssumptions'
 import { passLabelCandidates } from '@jbrowse/bandage-core/passLabels'
 import { keyedView } from '@jbrowse/bandage-core/viewport'
 import { getRpcSessionId, getSession } from '@jbrowse/core/util'
@@ -33,6 +34,8 @@ const NO_LABELS: LabelLayout = {
   passes: [],
   sizes: [],
 }
+
+const NO_LEGEND = { width: 0, height: 0 }
 
 const sameEntry = (a: GraphKeyEntry, b: GraphKeyEntry | undefined) =>
   !!b &&
@@ -169,10 +172,26 @@ export const GraphPane = withLaunchActions
       },
     }
   })
-  // The labels, placed once the frame is settled (labelFrameSettled)
+  // The labels, placed once the frame is settled (labelFrameSettled). Under
+  // a key in a band above the drawing they keep out of that band, where
+  // bandage-core would keep them out of a column the key does not take.
   .views(self => ({
     get overlayLabels() {
-      return self.labelFrameSettled ? layoutLabels(self) : NO_LABELS
+      const band = self.keyBandTop
+      return self.labelFrameSettled
+        ? layoutLabels(
+            band === undefined
+              ? self
+              : new Proxy(self, {
+                  get: (model, key): unknown =>
+                    key === 'legendSize'
+                      ? NO_LEGEND
+                      : key === 'referenceStripZonePx'
+                        ? band - FIT_PADDING
+                        : Reflect.get(model, key),
+                }),
+          )
+        : NO_LABELS
     },
   }))
   .views(self => ({

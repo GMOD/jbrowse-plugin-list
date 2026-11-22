@@ -121,8 +121,9 @@ const RowLabels = observer(function RowLabels({
   )
 })
 
-// Top right, in the column the fit leaves it (keyColumnPx). Every key
-// stretches to the widest, so together they read as one panel. It takes the pointer, for its rows'
+// Top right, in the column the fit leaves it (keyColumnPx), or over the
+// drawing where the key takes no column. Every key stretches to the widest,
+// so together they read as one panel. It takes the pointer, for its rows'
 // titles and its close button.
 const legendStackStyle = {
   position: 'absolute' as const,
@@ -212,7 +213,9 @@ export const Legends = observer(function Legends({
       }}
     >
       {children}
-      <LegendPanel model={model} sections={drawnLegendSections(model)} />
+      {model.keyPlacement === 'hidden' ? null : (
+        <LegendPanel model={model} sections={drawnLegendSections(model)} />
+      )}
     </div>
   )
 })

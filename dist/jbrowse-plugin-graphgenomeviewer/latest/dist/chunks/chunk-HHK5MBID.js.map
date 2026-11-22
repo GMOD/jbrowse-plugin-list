@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../node_modules/.pnpm/@jbrowse+bandage-core@14.3.3/node_modules/@jbrowse/bandage-core/dist/chunks/chunk-J5U3HYBK.js"],
-  "sourcesContent": ["// src/gfa/linkKey.ts\nvar flip = (strand) => strand === \"-\" ? \"+\" : \"-\";\nvar side = (strand) => strand === \"-\" ? \"-\" : \"+\";\nfunction linkKey(source, strand1, target, strand2) {\n  const stated = `${source}\t${side(strand1)}\t${target}\t${side(strand2)}`;\n  const turned = `${target}\t${flip(strand2)}\t${source}\t${flip(strand1)}`;\n  return stated < turned ? stated : turned;\n}\n\nexport {\n  linkKey\n};\n"],
-  "mappings": "AACA,IAAIA,EAAQC,GAAWA,IAAW,IAAM,IAAM,IAC1CC,EAAQD,GAAWA,IAAW,IAAM,IAAM,IAC9C,SAASE,EAAQC,EAAQC,EAASC,EAAQC,EAAS,CACjD,IAAMC,EAAS,GAAGJ,CAAM,IAAIF,EAAKG,CAAO,CAAC,IAAIC,CAAM,IAAIJ,EAAKK,CAAO,CAAC,GAC9DE,EAAS,GAAGH,CAAM,IAAIN,EAAKO,CAAO,CAAC,IAAIH,CAAM,IAAIJ,EAAKK,CAAO,CAAC,GACpE,OAAOG,EAASC,EAASD,EAASC,CACpC",
-  "names": ["flip", "strand", "side", "linkKey", "source", "strand1", "target", "strand2", "stated", "turned"]
-}

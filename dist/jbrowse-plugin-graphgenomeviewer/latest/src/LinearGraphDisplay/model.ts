@@ -56,6 +56,7 @@ import { pushLaunchItem } from '../launchFromGraph/pushLaunchItem'
 import type { LinearGraphDisplayConfigModel } from './configSchema'
 import type { SubgraphRegion, SubgraphTier } from '../GetSubgraph'
 import type { HostWindow } from '../GraphGenomeView/host'
+import type { KeyPlacement } from '../GraphGenomeView/keyPlacement'
 import type { GraphGrammar } from '../GraphGenomeView/pane/graphViews'
 import type { LaunchGraphGenomeViewArgs } from '../LaunchGraphGenomeView'
 import type { LinksDrawn } from '../linksDrawn'
@@ -158,6 +159,21 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
           walks: getConf(self, 'walks'),
         }
         /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+      },
+      get keyPlacement(): KeyPlacement {
+        return getConf(self, 'key')
+      },
+      // the window last settled on, so a pan redraws what it leaves out only
+      // once it ends
+      get viewWindow() {
+        const seen = self.settledWindow
+        const region = self.graphRegion
+        return getConf(self, 'extent') === 'view' &&
+          self.followsWindow &&
+          seen?.refName === region?.refName &&
+          seen?.assemblyName === region?.assemblyName
+          ? seen && { start: seen.start, end: seen.end }
+          : undefined
       },
       // The linear view leaves its highlight bands off this track while false
       get drawsGenomicCoordinates() {

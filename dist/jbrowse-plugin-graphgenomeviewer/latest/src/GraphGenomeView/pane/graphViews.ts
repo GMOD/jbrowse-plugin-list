@@ -89,6 +89,7 @@ import {
 } from '../genes/geneFeatures'
 import { layersOf } from '../graphLayers'
 import { isLinearHost } from '../host'
+import { DEFAULT_KEY_PLACEMENT } from '../keyPlacement'
 import { domainOfColor, schemeOfColor } from '../nodeColor'
 import { nodeSizeOf } from '../nodeSize'
 import {
@@ -104,6 +105,13 @@ import {
   valueTubePalette,
 } from '../tubeMapPanels'
 import {
+  NO_NODES,
+  genesInWindow,
+  lengthsInWindow,
+  nodesOutsideWindow,
+  ownPinsInWindow,
+} from '../viewWindow'
+import {
   groupByOf,
   groupWalkRows,
   metadataColumns,
@@ -115,9 +123,11 @@ import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
 import type { LinksDrawn } from '../../linksDrawn'
 import type { GraphLayers } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
+import type { KeyPlacement } from '../keyPlacement'
 import type { GraphEncoding } from '../nodeColor'
 import type { NodeSize } from '../nodeSize'
 import type { TubeMapPanelSplit } from '../tubeMapPanels'
+import type { ViewWindow } from '../viewWindow'
 import type { WalkRowGroupBy } from '../walkRowGroups'
 import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import type {
@@ -252,6 +262,14 @@ export const withGraphViews = paneBase
     },
     get grammar(): GraphGrammar {
       return {}
+    },
+    get keyPlacement(): KeyPlacement {
+      return DEFAULT_KEY_PLACEMENT
+    },
+    // The bp the linear view shows, while the drawing follows its window and
+    // draws only the view (`extent: 'view'`)
+    get viewWindow(): ViewWindow | undefined {
+      return undefined
     },
     // a source declared but not yet loaded
     get hasPendingSource() {
@@ -403,6 +421,22 @@ export const withGraphViews = paneBase
       return self.layoutResult?.tubeMap?.graph ?? self.graph
     },
   }))
+  .views(self => {
+    const outside = computed(
+      () => {
+        const graph = self.drawnGraph
+        const window = self.viewWindow
+        return graph && window ? nodesOutsideWindow(graph, window) : NO_NODES
+      },
+      { equals: sameKeys },
+    )
+    return {
+      // the nodes the drawing leaves out for branching only outside the view
+      get outsideView() {
+        return outside.get()
+      },
+    }
+  })
   .views(self => ({
     get nodeById() {
       return self.drawnGraph && nodeMapOf(self.drawnGraph)
@@ -411,10 +445,14 @@ export const withGraphViews = paneBase
     // rebuilt in the component: that render runs on every pan, and the map is
     // a fact about the graph (measured 6.9 ms an allocation on a 30k-node cut).
     get nodeLengths() {
-      return labelledNodeLengths(
-        self.drawnGraph?.nodes ?? [],
+      const graph = self.drawnGraph
+      const lengths = labelledNodeLengths(
+        graph?.nodes ?? [],
         self.layerSet.has('lengths'),
       )
+      return graph
+        ? lengthsInWindow(lengths, graph, self.outsideView, self.viewWindow)
+        : lengths
     },
     get nodeCount() {
       return self.graph?.nodes.length ?? 0
@@ -482,13 +520,16 @@ export const withGraphViews = paneBase
       return self.graph?.referencePath
     },
     // An open bubble on the reference spans the ramp, so its own nodes take
-    // every hue while the rest is grey. Undefined for a graph with neither,
-    // where the ramp spans the drawn extent (computeReferenceRamp)
+    // every hue while the rest is grey. A drawing that follows the linear
+    // view's window and draws only the view ramps over the view, so the hues
+    // and the key's range describe what it draws. Undefined for a
+    // graph with none of these, where the ramp spans the drawn extent
+    // (computeReferenceRamp)
     get rampDomain() {
       const open = self.openBubbles.at(-1)
       return open && !open.offReference && open.end > open.start
         ? { start: open.start, end: open.end }
-        : (self.statedColorDomain ?? self.graphRegion)
+        : (self.statedColorDomain ?? self.viewWindow ?? self.graphRegion)
     },
     // Every node's midpoint on the reference plus the interval the hue ramps
     // over, on the drawn graph, whose ids a folded tube map's boxes carry.
@@ -1299,16 +1340,26 @@ export const withGraphViews = paneBase
         dependOn(self.positionsVersion)
         const positions = self.layoutResult?.nodePositions
         // each haplotype's own genes ride its nodes off the reference
+        const own = self.ownGeneFeatures ?? []
         const genes = [
-          ...(self.backboneGenes ?? []),
-          ...(self.ownGeneFeatures ?? []),
+          ...genesInWindow(self.backboneGenes ?? [], self.viewWindow),
+          ...own,
         ]
         return self.showGenes &&
           self.drawsNodes &&
           self.graph &&
           genes.length > 0 &&
           positions
-          ? genePins(self.graph, genes, positions, self.layoutResult?.stranded)
+          ? ownPinsInWindow(
+              genePins(
+                self.graph,
+                genes,
+                positions,
+                self.layoutResult?.stranded,
+              ),
+              new Set(own),
+              self.outsideView,
+            )
           : NO_PINS
       },
       { equals: samePins },

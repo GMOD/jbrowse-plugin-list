@@ -6,7 +6,12 @@ import { heightModeConfigSchemaFields } from '@jbrowse/display-kit/heightModeCon
 import { trackHeightConfigSchemaFields } from '@jbrowse/display-kit/trackHeightConfigSchemaFields'
 
 import { graphFacetConfigSchema } from './graphFacetConfigSchema'
+import { DEFAULT_EXTENT, EXTENT_VALUES } from '../GraphGenomeView/extent'
 import { HOVER_HIGHLIGHT_VALUES } from '../GraphGenomeView/hoverHighlight'
+import {
+  DEFAULT_KEY_PLACEMENT,
+  KEY_PLACEMENT_VALUES,
+} from '../GraphGenomeView/keyPlacement'
 import { lenientSlotEnum } from '../GraphGenomeView/lenientEnum'
 import { DEFAULT_LINKS_DRAWN, LINKS_DRAWN_VALUES } from '../linksDrawn'
 
@@ -141,6 +146,34 @@ export function configSchemaFactory() {
         type: 'stringEnum',
         model: lenientSlotEnum(LINKS_DRAWN_VALUES, DEFAULT_LINKS_DRAWN),
         defaultValue: DEFAULT_LINKS_DRAWN,
+      },
+      /**
+       * #slot
+       * where the key goes: `column`, a column of its own at the track's
+       * right edge, the drawing fitted beside it; `overlay`, at the track's
+       * top right with no column, so a drawing that follows the view's
+       * window spans the track edge to edge under the tracks above it, and
+       * sits below the key where the track is tall enough for both; or
+       * `hidden`
+       */
+      key: {
+        type: 'stringEnum',
+        model: lenientSlotEnum(KEY_PLACEMENT_VALUES, DEFAULT_KEY_PLACEMENT),
+        defaultValue: DEFAULT_KEY_PLACEMENT,
+      },
+      /**
+       * #slot
+       * how much of the graph a drawing that follows the view's window draws:
+       * `fetched`, the whole stretch fetched around the view, as wide as the
+       * layout needs, its colour ramp and key over that stretch; or `view`,
+       * only what branches inside the view, with lengths, gene pins, the
+       * colour ramp and the key's range over the view. `view` suits a still
+       * picture: during a pan it redraws in steps as the view settles
+       */
+      extent: {
+        type: 'stringEnum',
+        model: lenientSlotEnum(EXTENT_VALUES, DEFAULT_EXTENT),
+        defaultValue: DEFAULT_EXTENT,
       },
       ...trackHeightConfigSchemaFields({
         defaultHeight: 300,

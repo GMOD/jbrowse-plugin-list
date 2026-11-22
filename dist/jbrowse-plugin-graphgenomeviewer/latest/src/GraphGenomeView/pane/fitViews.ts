@@ -37,6 +37,7 @@ import { layoutGeometryInputs } from '@jbrowse/bandage-core/renderer/geometryInp
 import {
   drawnSegments,
   edgeOverruns,
+  reachOver,
   referenceSegments,
   scalesByWindow,
   windowTranslateY,
@@ -66,6 +67,7 @@ import {
   sameAxis,
 } from './paneBase'
 import { trackedDpr } from '../trackedDpr'
+import { positionsWithout } from '../viewWindow'
 
 import type { BuildView } from './paneBase'
 import type { SubgraphRegion } from '../../GetSubgraph'
@@ -232,7 +234,9 @@ export const withFitViews = withHostViews
     // marks that come and go with the fit's scale, so a column for them would
     // refit the drawing it is measured from.
     get keyColumnPx() {
-      return self.facetPanels || self.tubeMapReads
+      return self.facetPanels ||
+        self.tubeMapReads ||
+        self.keyPlacement !== 'column'
         ? 0
         : keyColumnPx({ legendSize: this.framedLegendSize })
     },
@@ -519,12 +523,14 @@ export const withFitViews = withHostViews
     },
     // fitPads where no facet grid tiles the pane, which a followed window
     // never has, read without the grid so a track grown to the drawing does
-    // not read its own height
+    // not read its own height. Without a key column the window spans the
+    // pane edge to edge, as the ruler does.
     get followPads() {
+      const ruled = self.keyPlacement !== 'column'
       return {
-        padLeft: this.fitPadLeft,
+        padLeft: ruled ? 0 : this.fitPadLeft,
         padTop: this.fitPadTop,
-        padRight: FIT_PADDING,
+        padRight: ruled ? 0 : FIT_PADDING,
         padBottom: FIT_PADDING,
       }
     },
@@ -563,26 +569,59 @@ export const withFitViews = withHostViews
     },
     // a window on another sequence puts the held cut past the pane's edge,
     // and a view past its sequence's end lays its bp there as the ruler does
-    get windowTransform() {
-      const { graphRegion, layoutResult, host } = self
+    get followedTransform() {
+      const { host } = self
       const seen = this.heldWindow
       const ruler = seen && host ? paneWindow(host) : undefined
       const pieces = this.heldReference
       const scale = this.heldScale
       const bounds = this.heldBounds
+      return seen && ruler && pieces && scale !== undefined && bounds
+        ? followTransform(
+            pieces,
+            ruler,
+            scale,
+            bounds,
+            this.drawingWidth,
+            this.canvasHeight,
+            this.followPads,
+          )
+        : undefined
+    },
+    // A key over a drawing the window places sits in a band above what the
+    // pane's width shows, where the track is tall enough for both, so it
+    // covers none of it. Undefined where it is not.
+    get keyBandTop() {
+      const followed = this.followedTransform
       const held = this.heldLayout
-      const followed =
-        seen && ruler && pieces && scale !== undefined && bounds
-          ? followTransform(
-              pieces,
-              ruler,
-              scale,
-              bounds,
-              this.drawingWidth,
-              this.canvasHeight,
-              this.followPads,
+      const band =
+        self.keyPlacement === 'overlay' && !self.facetPanels
+          ? keyHeightPx({
+              legendSize: this.framedLegendSize,
+              referenceStripZonePx: self.referenceStripZonePx,
+            })
+          : 0
+      const reach =
+        followed && held && band > 0 && scalesByWindow(this.trackFit)
+          ? reachOver(
+              held.segments,
+              -followed.translateX / followed.scale,
+              (this.drawingWidth - followed.translateX) / followed.scale,
             )
           : undefined
+      return followed &&
+        reach &&
+        band + 2 * FIT_PADDING + (reach.maxY - reach.minY) * followed.scale <=
+          this.canvasHeight
+        ? band + FIT_PADDING
+        : undefined
+    },
+    get windowTransform() {
+      const { graphRegion, layoutResult } = self
+      const seen = this.heldWindow
+      const bounds = this.heldBounds
+      const held = this.heldLayout
+      const followed = this.followedTransform
       const placed =
         seen && followed && held && bounds && scalesByWindow(this.trackFit)
           ? {
@@ -596,7 +635,10 @@ export const withFitViews = withHostViews
                 bounds,
                 paneWidth: this.drawingWidth,
                 paneHeight: this.canvasHeight,
-                pads: this.followPads,
+                pads: {
+                  ...this.followPads,
+                  padTop: this.keyBandTop ?? this.followPads.padTop,
+                },
               }),
             }
           : followed
@@ -782,12 +824,18 @@ export const withFitViews = withHostViews
         return undefined
       }
       dependOn(self.positionsVersion)
+      // walk rows' overlay draws every bar, the reference's among them;
+      // its nodes stay in the hit index, so hovering the bar finds them
+      const inputs = layoutGeometryInputs(layoutResult, deletionDrawing, {
+        drawsRows: !!self.walkRowBars,
+      })
       const batch = buildGeometry({
-        // walk rows' overlay draws every bar, the reference's among them;
-        // its nodes stay in the hit index, so hovering the bar finds them
-        ...layoutGeometryInputs(layoutResult, deletionDrawing, {
-          drawsRows: !!self.walkRowBars,
-        }),
+        ...inputs,
+        nodePositions: positionsWithout(
+          inputs.nodePositions,
+          self.outsideView,
+          self.positionsVersion,
+        ),
         graph,
         nodeById,
         colorScheme: self.effectiveColorScheme,
