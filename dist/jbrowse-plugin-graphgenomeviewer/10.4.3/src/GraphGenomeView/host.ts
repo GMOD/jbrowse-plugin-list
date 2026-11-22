@@ -1,0 +1,215 @@
+import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
+
+import type { SubgraphRegion } from '../GetSubgraph'
+import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
+
+// The members of a LinearGenomeView a hosted pane reads and drives.
+// Structural, because this plugin takes no runtime dependency on the LGV
+// plugin (see hoverSync/index.tsx).
+interface HostBlock {
+  refName: string
+  assemblyName: string
+  start: number
+  end: number
+  offsetPx: number
+  reversed?: boolean
+  displayedRegionIndex?: number
+}
+
+export interface LinearHost {
+  id: string
+  initialized: boolean
+  bpPerPx: number
+  offsetPx: number
+  width: number
+  displayedRegions: readonly { start: number; end: number }[]
+  dynamicBlocks: { contentBlocks: readonly HostBlock[] }
+  coarseDynamicBlocks: readonly HostBlock[]
+  horizontalScroll: (distance: number) => number
+  zoomTo: (bpPerPx: number, offset?: number) => number
+  // the session's scroll-to-zoom preference, which the view's header toggles
+  scrollZoom?: boolean
+  // whether the view's body is mounted, which an off-screen view's is not
+  effectiveBodyMounted?: boolean
+  hasVisibleContent?: boolean
+}
+
+export function isLinearHost(view: unknown): view is LinearHost {
+  if (typeof view !== 'object' || view === null) {
+    return false
+  }
+  const v = view as Record<string, unknown>
+  return (
+    typeof v.horizontalScroll === 'function' &&
+    typeof v.zoomTo === 'function' &&
+    'coarseDynamicBlocks' in v &&
+    'dynamicBlocks' in v
+  )
+}
+
+function widest(blocks: readonly HostBlock[]) {
+  return blocks.reduce<HostBlock | undefined>(
+    (best, b) => (best && best.end - best.start >= b.end - b.start ? best : b),
+    undefined,
+  )
+}
+
+export interface HostWindow {
+  refName: string
+  assemblyName: string
+  start: number
+  end: number
+  bpPerPx: number
+  // the view's width in bp, which the margin is sized by: a block at a contig
+  // end is clipped, the zoom is not
+  span: number
+  regionStart: number
+  regionEnd: number
+}
+
+// A view lays out no blocks until it has measured its width, which it throws on
+// reading until then
+export function hostBlocks(view: LinearHost) {
+  return view.initialized ? view.dynamicBlocks.contentBlocks : []
+}
+
+// x is reference bp on an anchored layout, so the graph shows what the linear
+// view shows when one bp is as many px in both and the cut's refName sits at
+// the same screen x. Undefined when the linear view shows no block of that
+// refName, which is a re-cut's job rather than the frame's. A reversed block
+// runs bp right to left, which only the tube map's connectors can draw.
+export function hostFrame(view: LinearHost, region: SubgraphRegion) {
+  const block = widest(
+    hostBlocks(view).filter(
+      b =>
+        b.refName === region.refName && b.assemblyName === region.assemblyName,
+    ),
+  )
+  const { bpPerPx } = view
+  if (!block || !(bpPerPx > 0)) {
+    return undefined
+  }
+  const left = block.offsetPx - view.offsetPx
+  return block.reversed
+    ? { scale: -1 / bpPerPx, translateX: left + block.end / bpPerPx }
+    : { scale: 1 / bpPerPx, translateX: left - block.start / bpPerPx }
+}
+
+// Read off the LIVE blocks even when the coarse ones woke the caller: those
+// name where the window was half a second ago (SyntenyFollow/CLAUDE.md).
+export function hostWindow(view: LinearHost): HostWindow | undefined {
+  const block = widest(hostBlocks(view))
+  const displayed =
+    block?.displayedRegionIndex === undefined
+      ? undefined
+      : view.displayedRegions[block.displayedRegionIndex]
+  return block && view.bpPerPx > 0
+    ? {
+        refName: block.refName,
+        assemblyName: block.assemblyName,
+        start: block.start,
+        end: block.end,
+        bpPerPx: view.bpPerPx,
+        span: view.bpPerPx * view.width,
+        regionStart: displayed?.start ?? block.start,
+        regionEnd: displayed?.end ?? block.end,
+      }
+    : undefined
+}
+
+// The bp the view's width spans on the window's sequence, running past the
+// sequence's ends where the view does, where hostWindow stops at them
+export function paneWindow(view: LinearHost) {
+  const block = widest(hostBlocks(view))
+  const start =
+    block && block.start - (block.offsetPx - view.offsetPx) * view.bpPerPx
+  return start === undefined
+    ? undefined
+    : { start, end: start + view.bpPerPx * view.width }
+}
+
+// The window plus one window-width each side, clamped to the displayed
+// region, with the margins narrowed until the whole cut fits under `capBp`.
+export function hostCut(
+  window: HostWindow,
+  capBp: number,
+  margins = true,
+): SubgraphRegion {
+  const visible = window.end - window.start
+  const margin = margins
+    ? Math.max(0, Math.min(window.span, (capBp - visible) / 2))
+    : 0
+  let start = Math.max(window.regionStart, Math.floor(window.start - margin))
+  let end = Math.min(window.regionEnd, Math.ceil(window.end + margin))
+  // Rounding outward can put a cut a base or two past the cap, which the load
+  // refuses whole; trim it back rather than lose the cut.
+  const over = end - start - capBp
+  if (over > 0) {
+    start += Math.floor(over / 2)
+    end -= Math.ceil(over / 2)
+  }
+  return {
+    refName: window.refName,
+    assemblyName: window.assemblyName,
+    start,
+    end,
+  }
+}
+
+export function cutRuleOf(mode: LayoutModeValue) {
+  return mode === 'force'
+    ? 'snapped'
+    : layoutModeByValue(mode).cutMargins
+      ? 'margins'
+      : 'window'
+}
+
+export function snapLevel(span: number) {
+  return 2 ** (Math.ceil(Math.log2(span) * 2 - 1e-9) / 2)
+}
+
+export function snappedCut(window: HostWindow): SubgraphRegion {
+  const level = snapLevel(window.span)
+  const centre = Math.round((window.start + window.end) / level) * (level / 2)
+  return {
+    refName: window.refName,
+    assemblyName: window.assemblyName,
+    start: Math.max(window.regionStart, Math.round(centre - 0.75 * level)),
+    end: Math.min(window.regionEnd, Math.round(centre + 0.75 * level)),
+  }
+}
+
+export function sameCut(
+  cut: SubgraphRegion | undefined,
+  other: SubgraphRegion,
+) {
+  return (
+    cut?.refName === other.refName &&
+    cut.assemblyName === other.assemblyName &&
+    cut.start === other.start &&
+    cut.end === other.end
+  )
+}
+
+// With margins, a cut holds while the window is inside it; without, only the
+// window itself does, since the drawing is the window.
+export function cutHolds(
+  cut: SubgraphRegion | undefined,
+  window: HostWindow,
+  margins = true,
+) {
+  if (
+    cut?.refName !== window.refName ||
+    cut.assemblyName !== window.assemblyName
+  ) {
+    return false
+  }
+  // to the base, since a cut trimmed to its cap can end a base inside the window
+  if (margins) {
+    return cut.start <= window.start + 1 && window.end <= cut.end + 1
+  }
+  const exact = hostCut(window, Infinity, false)
+  return (
+    Math.abs(cut.start - exact.start) < 1 && Math.abs(cut.end - exact.end) < 1
+  )
+}
