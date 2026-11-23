@@ -1,6 +1,7 @@
 import { gfaTables } from '@jbrowse/bandage-core/gfa/gfaTables'
 import { layoutEngine } from '@jbrowse/bandage-core/layoutEngines'
 import { types } from '@jbrowse/mobx-state-tree'
+import { reaction } from 'mobx'
 
 import { fakeRenderer } from './modelTestSupport'
 import stateModelFactory from './viewModel'
@@ -463,6 +464,43 @@ describe('canceling and retrying', () => {
     await vi.waitFor(() => {
       expect(model.expandedWalks).toEqual(['NA20809#2#CM094351.1'])
     })
+  })
+
+  test('a tube map lays out only the cut that fetched the nodes of its walks', async () => {
+    const tables = gfaTables(
+      [
+        GFA,
+        'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+        'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+      ].join('\n'),
+    )!
+    tables.nodes.placeholders = Uint8Array.from(tables.nodes.names, name =>
+      name === 'h1' ? 1 : 0,
+    )
+    mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(cutOf(tables))
+        : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+    )
+    const model = attachedView({ layoutMode: 'tubemap' })
+    const layouts: unknown[] = []
+    reaction(
+      () => model.layoutResult,
+      result => {
+        if (result) {
+          layouts.push(result)
+        }
+      },
+    )
+    await vi.waitFor(() => {
+      expect(model.hasGraph).toBe(true)
+      expect(model.isLoading).toBe(false)
+    })
+    expect(model.expandedWalks).toEqual(['NA20809#2#CM094351.1'])
+    expect(mockRpcCall.mock.calls.at(-1)?.[2]).toMatchObject({
+      opts: { expand: ['NA20809#2#CM094351.1'] },
+    })
+    expect(layouts).toHaveLength(1)
   })
 
   test('turning on ribbons in walk rows reads the routes of the rows they would leave out', async () => {

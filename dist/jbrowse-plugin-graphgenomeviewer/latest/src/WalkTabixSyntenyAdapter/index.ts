@@ -13,7 +13,8 @@ export default function WalkTabixSyntenyAdapterF(pluginManager: PluginManager) {
         configSchema,
         // the capabilities GbzBaseSyntenyAdapter declares, for the same
         // reasons: the header lists every haplotype as a lane, and one read
-        // of an anchor window answers any pair of lanes, or several
+        // of an anchor window answers any pair of lanes, or several. The
+        // header's lanesReadAgainstAnchor sets which the display reads
         adapterCapabilities: [
           'getSubgraph',
           'headerLanes',

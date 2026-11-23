@@ -61,7 +61,6 @@ import {
   PAPER,
   SELECT_BRIGHTEN,
   VIEWPORT_PANES_BUILT,
-  dependOn,
   geometryPainted,
   paneViewportOf,
   sameAxis,
@@ -811,6 +810,52 @@ export const withFitViews = withHostViews
     },
   }))
   .views(self => ({
+    // What the drawing is built from, `highlight`'s walks lifted, for `view`
+    drawingOptions(
+      highlight: WalkLift | undefined,
+      drawPaths: boolean,
+      view: BuildView,
+    ) {
+      const { graph, nodeById, layoutResult, deletionDrawing } = self
+      // walk rows' overlay draws every bar, the reference's among them;
+      // its nodes stay in the hit index, so hovering the bar finds them
+      const inputs =
+        layoutResult &&
+        deletionDrawing &&
+        layoutGeometryInputs(layoutResult, deletionDrawing, {
+          drawsRows: !!self.walkRowBars,
+        })
+      return graph && nodeById && inputs
+        ? {
+            ...inputs,
+            nodePositions: positionsWithout(
+              inputs.nodePositions,
+              self.outsideView,
+              self.positionsVersion,
+            ),
+            graph,
+            nodeById,
+            colorScheme: self.effectiveColorScheme,
+            contigThickness: self.contigThickness,
+            connectorThickness: self.connectorThickness,
+            drawPaths,
+            nodeWidth: self.nodeWidth,
+            edgeWidth: self.linkWidth,
+            highlight,
+            axis: view.axis,
+            linearLayout: self.linearLayout,
+            viewportBounds: view.bounds,
+            // Held against the graph rather than derived here, the same way the
+            // deletion drawing is and for the same reason — see `drawnReferenceRamp`.
+            referenceRamp: self.referenceRamp,
+            // passed so the shared edge-curve cache can tell a drag from a pan
+            version: self.positionsVersion,
+            smallSites: self.smallSites,
+          }
+        : undefined
+    },
+  }))
+  .views(self => ({
     // The drawing's batch with `highlight`'s walks lifted, for `view`. A
     // caller's autorun rebuilds it when that window moves, when a drag moves
     // the positions, and when any display option read here changes.
@@ -819,47 +864,18 @@ export const withFitViews = withHostViews
       drawPaths: boolean,
       view = self.buildView,
     ) {
-      const { graph, nodeById, layoutResult, deletionDrawing } = self
-      if (!graph || !nodeById || !layoutResult || !deletionDrawing) {
-        return undefined
-      }
-      dependOn(self.positionsVersion)
-      // walk rows' overlay draws every bar, the reference's among them;
-      // its nodes stay in the hit index, so hovering the bar finds them
-      const inputs = layoutGeometryInputs(layoutResult, deletionDrawing, {
-        drawsRows: !!self.walkRowBars,
-      })
-      const batch = buildGeometry({
-        ...inputs,
-        nodePositions: positionsWithout(
-          inputs.nodePositions,
-          self.outsideView,
-          self.positionsVersion,
-        ),
-        graph,
-        nodeById,
-        colorScheme: self.effectiveColorScheme,
-        contigThickness: self.contigThickness,
-        connectorThickness: self.connectorThickness,
-        drawPaths,
-        nodeWidth: self.nodeWidth,
-        edgeWidth: self.linkWidth,
-        highlight,
-        axis: view.axis,
-        linearLayout: self.linearLayout,
-        viewportBounds: view.bounds,
-        // Held against the graph rather than derived here, the same way the
-        // deletion drawing is and for the same reason — see `drawnReferenceRamp`.
-        referenceRamp: self.referenceRamp,
-        // passed so the shared edge-curve cache can tell a drag from a pan
-        version: self.positionsVersion,
-        smallSites: self.smallSites,
-      })
+      const options = self.drawingOptions(highlight, drawPaths, view)
+      const batch = options && buildGeometry(options)
       const entering = self.morphEntering
-      if (entering?.layout === layoutResult) {
-        fadeEntering(batch, graph.edges, entering)
+      if (
+        options &&
+        batch &&
+        entering &&
+        entering.layout === self.layoutResult
+      ) {
+        fadeEntering(batch, options.graph.edges, entering)
       }
-      return { batch, view }
+      return batch && { batch, view }
     },
     // Each facet panel's drawing, which the panel paints and the key reads
     get facetDrawings() {

@@ -3,6 +3,7 @@ import { drawnMarks, graphKey } from '@jbrowse/bandage-core/graphKey'
 import { layoutLabels } from '@jbrowse/bandage-core/labelLayout'
 import { FIT_PADDING } from '@jbrowse/bandage-core/layout/fitAssumptions'
 import { passLabelCandidates } from '@jbrowse/bandage-core/passLabels'
+import { geometryFold } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { keyedView } from '@jbrowse/bandage-core/viewport'
 import { getRpcSessionId, getSession } from '@jbrowse/core/util'
 import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
@@ -92,6 +93,26 @@ export const GraphPane = withLaunchActions
         : this.liveKeyView
     },
   }))
+  // The batch the key reads: the drawing settled on this layout, or ahead of
+  // its first build what that build will fold, which can be the key's widest
+  // row, so the key is measured and the fit made beside it before the build
+  .views(self => ({
+    get keyBatch() {
+      const options =
+        self.settledLayout === self.layoutResult ||
+        self.morphing ||
+        self.layoutResult?.tubeMap
+          ? undefined
+          : self.drawingOptions(
+              self.drawnHighlight,
+              self.effectiveDrawPaths,
+              self.buildView,
+            )
+      return options
+        ? { edgeCurves: [], nodeStrokes: [], collapsed: geometryFold(options) }
+        : self.settledBatch
+    },
+  }))
   // bandage-core's key for the graph on screen, which the legend and the
   // facet key draw: of the drawing the pane shows beside the key, or of
   // every facet panel's whole. A view that brings no mark in or out leaves it
@@ -119,7 +140,7 @@ export const GraphPane = withLaunchActions
                       drawing ? [drawing.batch] : [],
                     ),
                   )
-                : drawnMarks([self.settledBatch], self.keyView),
+                : drawnMarks([self.keyBatch], self.keyView),
               genePins: self.genePins,
               halos: self.bubbleHalos,
               stripOverhangs: self.referenceStripOverhangs,

@@ -453,6 +453,8 @@ export const paneBase = types
     // the batch of the last frame no morph was under way in, which the key
     // reads so it never shows a morph's in-between folds
     settledBatch: EMPTY_BATCH,
+    // the layout settledBatch was built for
+    settledLayout: undefined as PaneLayout | undefined,
     // The view the current batch was built for
     builtViewport: undefined as BuiltViewport | undefined,
     // The builtViewport whose batch is on the canvas

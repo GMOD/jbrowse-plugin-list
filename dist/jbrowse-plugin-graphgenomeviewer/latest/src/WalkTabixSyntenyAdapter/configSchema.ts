@@ -1,5 +1,7 @@
 import { ConfigurationSchema } from '@jbrowse/core/configuration'
 
+import { lenientSlotEnum } from '../GraphGenomeView/lenientEnum.ts'
+import { DEFAULT_LANE_RIBBONS, LANE_RIBBONS_VALUES } from '../laneRibbons.ts'
 import { WALK_BUDGETS } from '../slotDefaults.ts'
 import { fileLocationSlot, walksLocations } from '../tabixSlots.ts'
 
@@ -105,6 +107,19 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      * `assembly` column names a lane's assembly counts for it too.
      */
     samplesTsvLocation: fileLocationSlot(''),
+    /**
+     * #slot
+     * what each lane's ribbons join it to: `reference`, the reference, read
+     * from where the walk file places each step, or `neighbours`, the lane
+     * above, each pair aligned on the nodes both walk. A multi-way display
+     * that does not say it reads lanes against the reference, as JBrowse
+     * releases before it did not, gets `neighbours` whatever this says
+     */
+    laneRibbons: {
+      type: 'stringEnum',
+      model: lenientSlotEnum(LANE_RIBBONS_VALUES, DEFAULT_LANE_RIBBONS),
+      defaultValue: DEFAULT_LANE_RIBBONS,
+    },
     /**
      * #slot
      * Maps a JBrowse assembly name to its PanSN prefix in the graph, sample or

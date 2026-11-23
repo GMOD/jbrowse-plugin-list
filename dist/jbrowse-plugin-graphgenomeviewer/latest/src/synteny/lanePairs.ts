@@ -23,6 +23,7 @@ export interface LaneFeatureOptions extends ComparativeOptions {
   haplotypes?: string[]
   queryAssemblyName?: string
   lanePairs?: LanePair[]
+  readsLanesAgainstAnchor?: true
 }
 
 export class PairTargetError extends Error {

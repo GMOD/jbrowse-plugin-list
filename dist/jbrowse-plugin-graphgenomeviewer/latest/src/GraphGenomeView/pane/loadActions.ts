@@ -47,6 +47,7 @@ import {
   tubeMapPanelGroups,
   withTubeMapPanels,
 } from '../tubeMapPanels'
+import { tubeMapWalksToLoad } from '../unloadedWalks'
 import { walkRowsGraph } from '../walkRowsCut.ts'
 
 import type { SubgraphCutOptions, SubgraphRegion } from '../../GetSubgraph'
@@ -1071,7 +1072,18 @@ export const withLoadActions = withEngineSettings.actions(self => {
           !!cut &&
           self.modeDrawsNodes &&
           cut.graph.nodes.length > self.maxGraphNodes
-        if (cut && !overNodeLimit) {
+        // A tube map draws the nodes of the walks this cut abridges, so the
+        // cut is made again with them, through the cut options, rather than
+        // laid out without them first
+        const unfetched =
+          cut && TUBE_MAP_MODES.has(self.chosenLayoutMode)
+            ? tubeMapWalksToLoad(cut.graph, cut.abridged).filter(
+                name => !self.expandedWalks.includes(name),
+              )
+            : []
+        if (unfetched.length > 0) {
+          self.expandedWalks = self.expandedWalks.concat(unfetched)
+        } else if (cut && !overNodeLimit) {
           yield* showCut(
             keep && !readsOf ? keepCut(key, cut) : cut,
             true,

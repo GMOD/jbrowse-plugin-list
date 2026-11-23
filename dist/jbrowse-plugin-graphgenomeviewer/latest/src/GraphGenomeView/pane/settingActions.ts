@@ -121,12 +121,14 @@ export const withSettingActions = withTubeMapViews
       self.drawnBatch = batch
       if (!self.morphing) {
         self.settledBatch = batch
+        self.settledLayout = self.layoutResult
       }
     },
     setMorphing(morphing: boolean) {
       self.morphing = morphing
       if (!morphing) {
         self.settledBatch = self.drawnBatch
+        self.settledLayout = self.layoutResult
       }
     },
     markPainted() {

@@ -1,5 +1,6 @@
 import { MAX_PATH_COLORS } from '@jbrowse/bandage-core/pathColors'
 import { types } from '@jbrowse/mobx-state-tree'
+import { reaction } from 'mobx'
 
 import stateModelFactory from './viewModel'
 
@@ -10,6 +11,7 @@ import type {
 
 const mockRpcCall = vi.fn()
 const mockSession = {
+  assemblyManager: { has: () => false, get: () => undefined },
   tracks: [] as { trackId: string; [key: string]: unknown }[],
   rpcManager: { call: mockRpcCall },
   assemblyNames: [] as string[],
@@ -262,4 +264,104 @@ test('past it the whole of drawPaths resolves off, key included', async () => {
   expect(model.drawPaths).toBe(true)
   expect(model.effectiveDrawPaths).toBe(false)
   expect(model.pathLegend).toEqual([])
+})
+
+// The fit settles the build window in its own action, so the upload never
+// builds the window the fit left; and the canvas is sized by the paint, so a
+// key measured after the build grows the pane without building again
+const WALKED_GFA = `${GFA}W\tGRCh38\t0\tchr1\t0\t8\t>1>2\nW\tA\t1\tctg\t0\t8\t>1>2\n`
+
+async function countedModel() {
+  mockRpcCall.mockImplementation((_id: string, method: string) =>
+    method === 'GraphComputeLayout'
+      ? Promise.resolve({ result: WIDE_LAYOUT, duration: 5 })
+      : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const uploads: RenderBatch[] = []
+  const model = types
+    .model({ view: stateModelFactory() })
+    .create({ view: { type: 'GraphGenomeView' } }).view
+  model.setWidth(1000)
+  await model.loadGFA(WALKED_GFA, 'wide')
+  model.startRenderingBackend(fakeRenderer(uploads))
+  await sleep(400)
+  return { model, uploads }
+}
+
+test('a first draw builds the drawing once', async () => {
+  const { uploads } = await countedModel()
+  expect(uploads).toHaveLength(1)
+})
+
+test('a key that grows the pane after the build builds nothing again', async () => {
+  const { model, uploads } = await countedModel()
+  model.setLegendSize({ width: 150, height: 40 })
+  await sleep(400)
+  const built = uploads.length
+  const height = model.canvasHeight
+  model.setLegendSize({ width: 150, height: 900 })
+  await sleep(400)
+  expect(model.canvasHeight).toBeGreaterThan(height)
+  expect(uploads).toHaveLength(built)
+})
+
+test('a layout switch builds the drawing once', async () => {
+  const { model, uploads } = await countedModel()
+  await model.switchLayout('ordered')
+  await sleep(400)
+  expect(model.drawnLayoutMode).toBe('ordered')
+  expect(uploads).toHaveLength(2)
+})
+
+// 3 bp between 1 and 2, laid a hair's width long, so the fit folds it and
+// the key gains a row saying so
+const FOLDED_GFA = `${GFA}S\t3\tACG\nL\t1\t+\t3\t+\t0M\nL\t3\t+\t2\t+\t0M\nW\tGRCh38\t0\tchr1\t0\t8\t>1>2\nW\tA\t1\tctg\t0\t11\t>1>3>2\n`
+const at = (x0: number, x1: number, y: number) => [
+  { x: x0, y },
+  { x: x1, y },
+]
+const FOLDED_LAYOUT = {
+  nodePositions: {
+    '1+': at(0, 40000, 0),
+    '1-': at(0, 40000, 30000),
+    '3+': at(40000, 40001, 0),
+    '3-': at(40000, 40001, 30000),
+    '2+': at(40001, 80000, 0),
+    '2-': at(40001, 80000, 30000),
+  },
+}
+
+test('a key widened by what the build folds is measured, and the fit made beside it, before the build', async () => {
+  mockRpcCall.mockImplementation((_id: string, method: string) =>
+    method === 'GraphComputeLayout'
+      ? Promise.resolve({ result: FOLDED_LAYOUT, duration: 5 })
+      : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const uploads: RenderBatch[] = []
+  const model = types
+    .model({ view: stateModelFactory() })
+    .create({ view: { type: 'GraphGenomeView' } }).view
+  model.setWidth(1000)
+  // the legend as GraphCanvas measures it, a frame after its key changes,
+  // a row wider for what is folded
+  model.setKeyShapeOf(() => JSON.stringify(model.graphKey))
+  reaction(
+    () => model.keyShape,
+    () => {
+      setTimeout(() => {
+        const shape = model.keyShape
+        model.setLegendSize(
+          { width: shape?.includes('not drawn') ? 240 : 200, height: 40 },
+          shape,
+        )
+      }, 10)
+    },
+    { fireImmediately: true },
+  )
+  await model.loadGFA(FOLDED_GFA, 'folded')
+  model.startRenderingBackend(fakeRenderer(uploads))
+  await sleep(400)
+  expect(model.keyShape).toContain('not drawn')
+  expect(model.legendSize.width).toBe(240)
+  expect(uploads).toHaveLength(1)
 })

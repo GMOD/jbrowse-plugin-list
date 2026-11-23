@@ -1,0 +1,4825 @@
+{
+  "chain header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG002#2", "label": "HG002#2", "group": "HG002" }
+    ]
+  },
+  "chain 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-300000|HG002#1#chr1:0-353410",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 300000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=610I6000=630I6000=650I6000=670I6000=690I6000=710I6000=730I6000=750I6000=770I6000=790I6000=810I6000=830I6000=850I6000=870I6000=890I6000=910I6000=930I6000=950I6000=970I6000=990I6000=1010I6000=1030I6000=1050I6000=1070I6000=1090I6000=1110I6000=1130I6000=1150I6000=1170I6000=1190I6000=1210I6000=1230I6000=1250I6000=1270I6000=1290I6000=1310I6000=1330I6000=1350I6000=1370I6000=1390I6000=1410I6000=1430I6000=1450I6000=1470I6000=1490I6000=1510I6000=1530I6000=1550I6000=1570I6000=",
+      "syntenyId": "GRCh38#0#chr1:0-300000|HG002#1#chr1:0-353410",
+      "identity": 0.8488724144761043,
+      "numMatches": 300000,
+      "blockLen": 353410,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 353410,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-300000|HG002#2#chr1:0-354500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 300000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=600I6000=620I6000=640I6000=660I6000=680I6000=700I6000=720I6000=740I6000=760I6000=780I6000=800I6000=820I6000=840I6000=860I6000=880I6000=900I6000=920I6000=940I6000=960I6000=980I6000=1000I6000=1020I6000=1040I6000=1060I6000=1080I6000=1100I6000=1120I6000=1140I6000=1160I6000=1180I6000=1200I6000=1220I6000=1240I6000=1260I6000=1280I6000=1300I6000=1320I6000=1340I6000=1360I6000=1380I6000=1400I6000=1420I6000=1440I6000=1460I6000=1480I6000=1500I6000=1520I6000=1540I6000=1560I6000=1580I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-300000|HG002#2#chr1:0-354500",
+      "identity": 0.846262341325811,
+      "numMatches": 300000,
+      "blockLen": 354500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 354500,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-300000|HG002#1#chr1:0-353410",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 300000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=610I6000=630I6000=650I6000=670I6000=690I6000=710I6000=730I6000=750I6000=770I6000=790I6000=810I6000=830I6000=850I6000=870I6000=890I6000=910I6000=930I6000=950I6000=970I6000=990I6000=1010I6000=1030I6000=1050I6000=1070I6000=1090I6000=1110I6000=1130I6000=1150I6000=1170I6000=1190I6000=1210I6000=1230I6000=1250I6000=1270I6000=1290I6000=1310I6000=1330I6000=1350I6000=1370I6000=1390I6000=1410I6000=1430I6000=1450I6000=1470I6000=1490I6000=1510I6000=1530I6000=1550I6000=1570I6000=",
+      "syntenyId": "GRCh38#0#chr1:0-300000|HG002#1#chr1:0-353410",
+      "identity": 0.8488724144761043,
+      "numMatches": 300000,
+      "blockLen": 353410,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 353410,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "chain 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=600I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6600",
+      "identity": 0.9090909090909091,
+      "numMatches": 6000,
+      "blockLen": 6600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6600,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "chain 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3000|HG002#1#chr1:0-3000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:0-3000|HG002#1#chr1:0-3000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3000|HG002#2#chr1:0-3000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:0-3000|HG002#2#chr1:0-3000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3000,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3000|HG002#1#chr1:0-3000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:0-3000|HG002#1#chr1:0-3000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "chain 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=600I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6600",
+      "identity": 0.9090909090909091,
+      "numMatches": 6000,
+      "blockLen": 6600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6600,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "chain 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=600I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6600",
+      "identity": 0.9090909090909091,
+      "numMatches": 6000,
+      "blockLen": 6600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6600,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "chain 10000-50000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-51000|HG002#1#chr1:9610-56440",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 51000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=630I6000=650I6000=670I6000=690I6000=710I6000=730I6000=750I3000=",
+      "syntenyId": "GRCh38#0#chr1:9000-51000|HG002#1#chr1:9610-56440",
+      "identity": 0.8968609865470852,
+      "numMatches": 42000,
+      "blockLen": 46830,
+      "mate": {
+        "refName": "chr1",
+        "start": 9610,
+        "end": 56440,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-51000|HG002#2#chr1:10220-56360",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 51000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=640I6000=660I6000=680I6000=700I6000=720I6000=740I6000=",
+      "syntenyId": "GRCh38#0#chr1:9000-51000|HG002#2#chr1:10220-56360",
+      "identity": 0.9102730819245773,
+      "numMatches": 42000,
+      "blockLen": 46140,
+      "mate": {
+        "refName": "chr1",
+        "start": 10220,
+        "end": 56360,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-51000|HG002#1#chr1:9610-56440",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 51000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=630I6000=650I6000=670I6000=690I6000=710I6000=730I6000=750I3000=",
+      "syntenyId": "GRCh38#0#chr1:9000-51000|HG002#1#chr1:9610-56440",
+      "identity": 0.8968609865470852,
+      "numMatches": 42000,
+      "blockLen": 46830,
+      "mate": {
+        "refName": "chr1",
+        "start": 9610,
+        "end": 56440,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "chain 20000-35000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:18000-36000|HG002#1#chr1:19890-39250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 18000,
+      "end": 36000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=670I6000=690I6000=",
+      "syntenyId": "GRCh38#0#chr1:18000-36000|HG002#1#chr1:19890-39250",
+      "identity": 0.9297520661157025,
+      "numMatches": 18000,
+      "blockLen": 19360,
+      "mate": {
+        "refName": "chr1",
+        "start": 19890,
+        "end": 39250,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:18000-36000|HG002#2#chr1:19860-39900",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 18000,
+      "end": 36000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=660I6000=680I6000=700I3000=",
+      "syntenyId": "GRCh38#0#chr1:18000-36000|HG002#2#chr1:19860-39900",
+      "identity": 0.8982035928143712,
+      "numMatches": 18000,
+      "blockLen": 20040,
+      "mate": {
+        "refName": "chr1",
+        "start": 19860,
+        "end": 39900,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "chain 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:18000-36000|HG002#1#chr1:19890-39250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 18000,
+      "end": 36000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=670I6000=690I6000=",
+      "syntenyId": "GRCh38#0#chr1:18000-36000|HG002#1#chr1:19890-39250",
+      "identity": 0.9297520661157025,
+      "numMatches": 18000,
+      "blockLen": 19360,
+      "mate": {
+        "refName": "chr1",
+        "start": 19890,
+        "end": 39250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG002#2", "label": "HG002#2", "group": "HG002" },
+      { "name": "HG003#1", "label": "HG003#1", "group": "HG003" }
+    ]
+  },
+  "follow 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "identity": 0.35,
+      "numMatches": 3500,
+      "blockLen": 10000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 7500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "follow 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "identity": 0.35,
+      "numMatches": 3500,
+      "blockLen": 10000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 7500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D1000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "identity": 0.2777777777777778,
+      "numMatches": 2500,
+      "blockLen": 9000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG002#2#chr1:0-5000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG002#2#chr1:0-5000",
+      "identity": 1,
+      "numMatches": 5000,
+      "blockLen": 5000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "follow 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D1000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "identity": 0.2777777777777778,
+      "numMatches": 2500,
+      "blockLen": 9000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2500|HG002#2#chr1:0-2500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=",
+      "syntenyId": "GRCh38#0#chr1:0-2500|HG002#2#chr1:0-2500",
+      "identity": 1,
+      "numMatches": 2500,
+      "blockLen": 2500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2500,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "follow 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3500|HG002#2#chr1:0-3500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3500=",
+      "syntenyId": "GRCh38#0#chr1:0-3500|HG002#2#chr1:0-3500",
+      "identity": 1,
+      "numMatches": 3500,
+      "blockLen": 3500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3500,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "follow 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-4000|HG002#2#chr1:1000-4000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 4000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:1000-4000|HG002#2#chr1:1000-4000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 4000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-1500|HG003#1#chr1:1000-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:1000-1500|HG003#1#chr1:1000-1500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "HG002#1#chr1:1500:1500:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1500,
+      "end": 4000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG002#1#chr1:1500:1500:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "chr1",
+        "start": 1500,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "HG002#1#chr1:1500:1500:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1500,
+      "end": 4000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG002#1#chr1:1500:1500:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "chr1",
+        "start": 1500,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "follow 10000-50000 {}": [],
+  "follow 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "follow 20000-35000 {}": [],
+  "follow 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "header header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG00097#1", "label": "HG00097#1", "group": "HG00097" },
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG002#2", "label": "HG002#2", "group": "HG002" }
+    ]
+  },
+  "header 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3600=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "identity": 1,
+      "numMatches": 3600,
+      "blockLen": 3600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#2#chr1:0-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=20I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#2#chr1:0-3020",
+      "identity": 0.8287292817679558,
+      "numMatches": 3000,
+      "blockLen": 3620,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "header 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "header 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3600=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "identity": 1,
+      "numMatches": 3600,
+      "blockLen": 3600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#2#chr1:0-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=20I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#2#chr1:0-3020",
+      "identity": 0.8287292817679558,
+      "numMatches": 3000,
+      "blockLen": 3620,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "header 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "header 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2400|HG00097#1#chr1:0-2400",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=",
+      "syntenyId": "GRCh38#0#chr1:0-2400|HG00097#1#chr1:0-2400",
+      "identity": 1,
+      "numMatches": 2400,
+      "blockLen": 2400,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2400,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2400|HG002#1#chr1:0-2350",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-2400|HG002#1#chr1:0-2350",
+      "identity": 0.6101694915254238,
+      "numMatches": 1800,
+      "blockLen": 2950,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2350,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2400|HG002#2#chr1:0-2400",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=",
+      "syntenyId": "GRCh38#0#chr1:0-2400|HG002#2#chr1:0-2400",
+      "identity": 1,
+      "numMatches": 2400,
+      "blockLen": 2400,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2400,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "header 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2400|HG002#1#chr1:0-2350",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-2400|HG002#1#chr1:0-2350",
+      "identity": 0.6101694915254238,
+      "numMatches": 1800,
+      "blockLen": 2950,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2350,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "header 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3600=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "identity": 1,
+      "numMatches": 3600,
+      "blockLen": 3600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#2#chr1:0-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=20I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#2#chr1:0-3020",
+      "identity": 0.8287292817679558,
+      "numMatches": 3000,
+      "blockLen": 3620,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "header 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "header 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:600-3600|HG00097#1#chr1:600-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:600-3600|HG00097#1#chr1:600-3600",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:600-3600|HG002#1#chr1:600-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "600=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:600-3600|HG002#1#chr1:600-3550",
+      "identity": 0.676056338028169,
+      "numMatches": 2400,
+      "blockLen": 3550,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:600-3600|HG002#2#chr1:600-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1800=20I600D600=",
+      "syntenyId": "GRCh38#0#chr1:600-3600|HG002#2#chr1:600-3020",
+      "identity": 0.7947019867549668,
+      "numMatches": 2400,
+      "blockLen": 3020,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "header 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:600-3600|HG002#1#chr1:600-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "600=550I600D1800=",
+      "syntenyId": "GRCh38#0#chr1:600-3600|HG002#1#chr1:600-3550",
+      "identity": 0.676056338028169,
+      "numMatches": 2400,
+      "blockLen": 3550,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "header 10000-50000 {}": [],
+  "header 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "header 20000-35000 {}": [],
+  "header 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "inversion header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG00097#1", "label": "HG00097#1", "group": "HG00097" },
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" }
+    ]
+  },
+  "inversion 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG00097#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "55000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG00097#1#chr1:0-55000",
+      "identity": 1,
+      "numMatches": 55000,
+      "blockLen": 55000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=15000I15000D20000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "identity": 0.5714285714285714,
+      "numMatches": 40000,
+      "blockLen": 70000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 20000,
+      "end": 35000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "15000=",
+      "syntenyId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "identity": 1,
+      "numMatches": 15000,
+      "blockLen": 15000,
+      "mate": {
+        "refName": "chr1",
+        "start": 20000,
+        "end": 35000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=15000I15000D20000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "identity": 0.5714285714285714,
+      "numMatches": 40000,
+      "blockLen": 70000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 20000,
+      "end": 35000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "15000=",
+      "syntenyId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "identity": 1,
+      "numMatches": 15000,
+      "blockLen": 15000,
+      "mate": {
+        "refName": "chr1",
+        "start": 20000,
+        "end": 35000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG00097#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#chr1:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 10000-50000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG00097#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "55000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG00097#1#chr1:0-55000",
+      "identity": 1,
+      "numMatches": 55000,
+      "blockLen": 55000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=15000I15000D20000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "identity": 0.5714285714285714,
+      "numMatches": 40000,
+      "blockLen": 70000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 20000,
+      "end": 35000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "15000=",
+      "syntenyId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "identity": 1,
+      "numMatches": 15000,
+      "blockLen": 15000,
+      "mate": {
+        "refName": "chr1",
+        "start": 20000,
+        "end": 35000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=15000I15000D20000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "identity": 0.5714285714285714,
+      "numMatches": 40000,
+      "blockLen": 70000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 20000,
+      "end": 35000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "15000=",
+      "syntenyId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "identity": 1,
+      "numMatches": 15000,
+      "blockLen": 15000,
+      "mate": {
+        "refName": "chr1",
+        "start": 20000,
+        "end": 35000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 20000-35000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG00097#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "55000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG00097#1#chr1:0-55000",
+      "identity": 1,
+      "numMatches": 55000,
+      "blockLen": 55000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=15000I15000D20000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "identity": 0.5714285714285714,
+      "numMatches": 40000,
+      "blockLen": 70000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 20000,
+      "end": 35000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "15000=",
+      "syntenyId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "identity": 1,
+      "numMatches": 15000,
+      "blockLen": 15000,
+      "mate": {
+        "refName": "chr1",
+        "start": 20000,
+        "end": 35000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "inversion 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 55000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=15000I15000D20000=",
+      "syntenyId": "GRCh38#0#chr1:0-55000|HG002#1#chr1:0-55000",
+      "identity": 0.5714285714285714,
+      "numMatches": 40000,
+      "blockLen": 70000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 55000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 20000,
+      "end": 35000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "15000=",
+      "syntenyId": "GRCh38#0#chr1:20000-35000|HG002#1#chr1:20000-35000",
+      "identity": 1,
+      "numMatches": 15000,
+      "blockLen": 15000,
+      "mate": {
+        "refName": "chr1",
+        "start": 20000,
+        "end": 35000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "lanepairs header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG00097#1", "label": "HG00097#1", "group": "HG00097" },
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG002#2", "label": "HG002#2", "group": "HG002" }
+    ]
+  },
+  "lanepairs 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG00097#1#chr1:0-6560",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=1060I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG00097#1#chr1:0-6560",
+      "identity": 0.8384146341463414,
+      "numMatches": 5500,
+      "blockLen": 6560,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6560,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5500=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "identity": 1,
+      "numMatches": 5500,
+      "blockLen": 5500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#2#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=1500I1500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#2#chr1:0-5500",
+      "identity": 0.5714285714285714,
+      "numMatches": 4000,
+      "blockLen": 7000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "lanepairs 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5500=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "identity": 1,
+      "numMatches": 5500,
+      "blockLen": 5500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "lanepairs 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG00097#1#chr1:0-6560",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=1060I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG00097#1#chr1:0-6560",
+      "identity": 0.8384146341463414,
+      "numMatches": 5500,
+      "blockLen": 6560,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6560,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5500=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "identity": 1,
+      "numMatches": 5500,
+      "blockLen": 5500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#2#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=1500I1500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#2#chr1:0-5500",
+      "identity": 0.5714285714285714,
+      "numMatches": 4000,
+      "blockLen": 7000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "lanepairs 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5500=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "identity": 1,
+      "numMatches": 5500,
+      "blockLen": 5500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "lanepairs 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2500|HG00097#1#chr1:0-2500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=",
+      "syntenyId": "GRCh38#0#chr1:0-2500|HG00097#1#chr1:0-2500",
+      "identity": 1,
+      "numMatches": 2500,
+      "blockLen": 2500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2500,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2500|HG002#1#chr1:0-2500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=",
+      "syntenyId": "GRCh38#0#chr1:0-2500|HG002#1#chr1:0-2500",
+      "identity": 1,
+      "numMatches": 2500,
+      "blockLen": 2500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#2#chr1:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#2#chr1:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:2000-2500|HG002#2#chr1:3000-3500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 2000,
+      "end": 2500,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:2000-2500|HG002#2#chr1:3000-3500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 3000,
+        "end": 3500,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "lanepairs 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2500|HG002#1#chr1:0-2500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=",
+      "syntenyId": "GRCh38#0#chr1:0-2500|HG002#1#chr1:0-2500",
+      "identity": 1,
+      "numMatches": 2500,
+      "blockLen": 2500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "lanepairs 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3500|HG00097#1#chr1:0-4560",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=1060I1000=",
+      "syntenyId": "GRCh38#0#chr1:0-3500|HG00097#1#chr1:0-4560",
+      "identity": 0.7675438596491229,
+      "numMatches": 3500,
+      "blockLen": 4560,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 4560,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3500|HG002#1#chr1:0-3500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3500=",
+      "syntenyId": "GRCh38#0#chr1:0-3500|HG002#1#chr1:0-3500",
+      "identity": 1,
+      "numMatches": 3500,
+      "blockLen": 3500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#2#chr1:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#2#chr1:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "lanepairs 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3500|HG002#1#chr1:0-3500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3500=",
+      "syntenyId": "GRCh38#0#chr1:0-3500|HG002#1#chr1:0-3500",
+      "identity": 1,
+      "numMatches": 3500,
+      "blockLen": 3500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "lanepairs 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG00097#1#chr1:0-6560",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=1060I3000=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG00097#1#chr1:0-6560",
+      "identity": 0.8384146341463414,
+      "numMatches": 5500,
+      "blockLen": 6560,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6560,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5500=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "identity": 1,
+      "numMatches": 5500,
+      "blockLen": 5500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#2#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=1500I1500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#2#chr1:0-5500",
+      "identity": 0.5714285714285714,
+      "numMatches": 4000,
+      "blockLen": 7000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "lanepairs 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5500=",
+      "syntenyId": "GRCh38#0#chr1:0-5500|HG002#1#chr1:0-5500",
+      "identity": 1,
+      "numMatches": 5500,
+      "blockLen": 5500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "lanepairs 10000-50000 {}": [],
+  "lanepairs 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "lanepairs 20000-35000 {}": [],
+  "lanepairs 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "maxnode header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [{ "name": "HG002#1", "label": "HG002#1", "group": "HG002" }]
+  },
+  "maxnode 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2600|HG002#1#chr1:0-2600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=",
+      "syntenyId": "GRCh38#0#chr1:0-2600|HG002#1#chr1:0-2600",
+      "identity": 1,
+      "numMatches": 2600,
+      "blockLen": 2600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2600,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2600|HG002#1#chr1:0-2600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=",
+      "syntenyId": "GRCh38#0#chr1:0-2600|HG002#1#chr1:0-2600",
+      "identity": 1,
+      "numMatches": 2600,
+      "blockLen": 2600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2600,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3800,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2600=50I600D600=",
+      "syntenyId": "GRCh38#0#chr1:0-3800|HG002#1#chr1:0-3250",
+      "identity": 0.8311688311688312,
+      "numMatches": 3200,
+      "blockLen": 3850,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3250,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "maxnode 10000-50000 {}": [],
+  "maxnode 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "maxnode 20000-35000 {}": [],
+  "maxnode 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "rejoin header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG002#2", "label": "HG002#2", "group": "HG002" },
+      { "name": "HG003#1", "label": "HG003#1", "group": "HG003" }
+    ]
+  },
+  "rejoin 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "identity": 0.35,
+      "numMatches": 3500,
+      "blockLen": 10000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 7500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "6000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#2#chr1:0-6000",
+      "identity": 1,
+      "numMatches": 6000,
+      "blockLen": 6000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "rejoin 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 6000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D2000=",
+      "syntenyId": "GRCh38#0#chr1:0-6000|HG002#1#chr1:0-7500",
+      "identity": 0.35,
+      "numMatches": 3500,
+      "blockLen": 10000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 7500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "rejoin 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D1000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "identity": 0.2777777777777778,
+      "numMatches": 2500,
+      "blockLen": 9000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG002#2#chr1:0-5000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG002#2#chr1:0-5000",
+      "identity": 1,
+      "numMatches": 5000,
+      "blockLen": 5000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 5000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "rejoin 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=4000I2500D1000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG002#1#chr1:0-6500",
+      "identity": 0.2777777777777778,
+      "numMatches": 2500,
+      "blockLen": 9000,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 6500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "rejoin 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2500|HG002#2#chr1:0-2500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2500=",
+      "syntenyId": "GRCh38#0#chr1:0-2500|HG002#2#chr1:0-2500",
+      "identity": 1,
+      "numMatches": 2500,
+      "blockLen": 2500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2500,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "rejoin 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "rejoin 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3500|HG002#2#chr1:0-3500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3500=",
+      "syntenyId": "GRCh38#0#chr1:0-3500|HG002#2#chr1:0-3500",
+      "identity": 1,
+      "numMatches": 3500,
+      "blockLen": 3500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3500,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG003#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    }
+  ],
+  "rejoin 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1500=",
+      "syntenyId": "GRCh38#0#chr1:0-1500|HG002#1#chr1:0-1500",
+      "identity": 1,
+      "numMatches": 1500,
+      "blockLen": 1500,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "rejoin 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-4000|HG002#2#chr1:1000-4000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 4000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:1000-4000|HG002#2#chr1:1000-4000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 4000,
+        "assemblyName": "HG002#2"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-1500|HG003#1#chr1:1000-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:1000-1500|HG003#1#chr1:1000-1500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 1500,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "HG002#1#chr1:1500:1500:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1500,
+      "end": 4000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG002#1#chr1:1500:1500:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "chr1",
+        "start": 1500,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "rejoin 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 1500,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "500=",
+      "syntenyId": "GRCh38#0#chr1:1000-1500|HG002#1#chr1:1000-1500",
+      "identity": 1,
+      "numMatches": 500,
+      "blockLen": 500,
+      "mate": {
+        "refName": "chr1",
+        "start": 1000,
+        "end": 1500,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "HG002#1#chr1:1500:1500:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1500,
+      "end": 4000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG002#1#chr1:1500:1500:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "chr1",
+        "start": 1500,
+        "end": 5500,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "rejoin 10000-50000 {}": [],
+  "rejoin 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "rejoin 20000-35000 {}": [],
+  "rejoin 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [{ "name": "HG002#1", "label": "HG002#1", "group": "HG002" }]
+  },
+  "skip 0-1000000 {}": [],
+  "skip 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip 0-3600 {}": [],
+  "skip 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip 700-1100 {}": [],
+  "skip 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip 1200-2400 {}": [],
+  "skip 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip 2000-3000 {}": [],
+  "skip 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip 10000-50000 {}": [],
+  "skip 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skip 20000-35000 {}": [],
+  "skip 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipfollow header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG003#1", "label": "HG003#1", "group": "HG003" },
+      { "name": "HG004#1", "label": "HG004#1", "group": "HG004" },
+      { "name": "HG005#1", "label": "HG005#1", "group": "HG005" },
+      { "name": "HG007#1", "label": "HG007#1", "group": "HG007" }
+    ]
+  },
+  "skipfollow 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#ctg:0-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=3000D15000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#ctg:0-17000",
+      "identity": 0.85,
+      "numMatches": 17000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 17000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG003#1#ctg:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG003#1#ctg:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG004#1#ctg:0-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "2000=3000D15000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG004#1#ctg:0-17000",
+      "identity": 0.85,
+      "numMatches": 17000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 17000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG005#1#ctg:0-17500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=500I3000D15000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG005#1#ctg:0-17500",
+      "identity": 0.8292682926829268,
+      "numMatches": 17000,
+      "blockLen": 20500,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 17500,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG007#1#ctg:100000-117000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=3000D15000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG007#1#ctg:100000-117000",
+      "identity": 0.85,
+      "numMatches": 17000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "ctg",
+        "start": 100000,
+        "end": 117000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG002#1#ctg:0-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=3000D15000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG002#1#ctg:0-17000",
+      "identity": 0.85,
+      "numMatches": 17000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 17000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipfollow 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG003#1#ctg:0-5000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG003#1#ctg:0-5000",
+      "identity": 1,
+      "numMatches": 5000,
+      "blockLen": 5000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 5000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG004#1#ctg:15000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG004#1#ctg:15000-17000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 15000,
+        "end": 17000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG005#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG005#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG007#1#ctg:100000-102000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG007#1#ctg:100000-102000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 100000,
+        "end": 102000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipfollow 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3000|HG003#1#ctg:0-3000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:0-3000|HG003#1#ctg:0-3000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 3000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG004#1#ctg:15000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG004#1#ctg:15000-17000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 15000,
+        "end": 17000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG005#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG005#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG007#1#ctg:100000-102000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG007#1#ctg:100000-102000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 100000,
+        "end": 102000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipfollow 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-4000|HG003#1#ctg:0-4000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 4000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "4000=",
+      "syntenyId": "GRCh38#0#chr1:0-4000|HG003#1#ctg:0-4000",
+      "identity": 1,
+      "numMatches": 4000,
+      "blockLen": 4000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 4000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG004#1#ctg:15000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG004#1#ctg:15000-17000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 15000,
+        "end": 17000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG005#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG005#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG007#1#ctg:100000-102000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG007#1#ctg:100000-102000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 100000,
+        "end": 102000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2000=",
+      "syntenyId": "GRCh38#0#chr1:0-2000|HG002#1#ctg:0-2000",
+      "identity": 1,
+      "numMatches": 2000,
+      "blockLen": 2000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipfollow 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-2000|HG002#1#ctg:1000-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:1000-2000|HG002#1#ctg:1000-2000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 1000,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-4000|HG003#1#ctg:1000-4000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 4000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:1000-4000|HG003#1#ctg:1000-4000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "ctg",
+        "start": 1000,
+        "end": 4000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-2000|HG004#1#ctg:15000-16000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 2000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:1000-2000|HG004#1#ctg:15000-16000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 15000,
+        "end": 16000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-2000|HG005#1#ctg:1000-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:1000-2000|HG005#1#ctg:1000-2000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 1000,
+        "end": 2000,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-2000|HG007#1#ctg:101000-102000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:1000-2000|HG007#1#ctg:101000-102000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 101000,
+        "end": 102000,
+        "assemblyName": "HG007#1"
+      }
+    },
+    {
+      "uniqueId": "HG002#1#ctg:2000:2000:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 2000,
+      "end": 5000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG002#1#ctg:2000:2000:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "ctg",
+        "start": 2000,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "HG004#1#ctg:15000:5000:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 2000,
+      "end": 5000,
+      "type": "departure",
+      "strand": -1,
+      "syntenyId": "HG004#1#ctg:15000:5000:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "ctg",
+        "start": 15000,
+        "end": 15000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "HG005#1#ctg:2000:2000:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 2000,
+      "end": 5000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG005#1#ctg:2000:2000:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "ctg",
+        "start": 2000,
+        "end": 2500,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "HG007#1#ctg:102000:2000:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 2000,
+      "end": 5000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG007#1#ctg:102000:2000:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "ctg",
+        "start": 102000,
+        "end": 102000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-2000|HG002#1#ctg:1000-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 2000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:1000-2000|HG002#1#ctg:1000-2000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 1000,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "HG002#1#ctg:2000:2000:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 2000,
+      "end": 5000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG002#1#ctg:2000:2000:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "ctg",
+        "start": 2000,
+        "end": 2000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipfollow 10000-50000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG002#1#ctg:6000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG002#1#ctg:6000-17000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 6000,
+        "end": 17000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG003#1#ctg:9000-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG003#1#ctg:9000-20000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 9000,
+        "end": 20000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG004#1#ctg:0-11000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG004#1#ctg:0-11000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 11000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG005#1#ctg:6500-17500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG005#1#ctg:6500-17500",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 6500,
+        "end": 17500,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG007#1#ctg:106000-117000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG007#1#ctg:106000-117000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 106000,
+        "end": 117000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG002#1#ctg:6000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG002#1#ctg:6000-17000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 6000,
+        "end": 17000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipfollow 20000-35000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG002#1#ctg:16000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG002#1#ctg:16000-17000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 16000,
+        "end": 17000,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG003#1#ctg:19000-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG003#1#ctg:19000-20000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 19000,
+        "end": 20000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG004#1#ctg:0-1000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG004#1#ctg:0-1000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 1000,
+        "assemblyName": "HG004#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG005#1#ctg:16500-17500",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG005#1#ctg:16500-17500",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 16500,
+        "end": 17500,
+        "assemblyName": "HG005#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG007#1#ctg:116000-117000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG007#1#ctg:116000-117000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 116000,
+        "end": 117000,
+        "assemblyName": "HG007#1"
+      }
+    }
+  ],
+  "skipfollow 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG002#1#ctg:16000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG002#1#ctg:16000-17000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 16000,
+        "end": 17000,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "skipinv header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG003#1", "label": "HG003#1", "group": "HG003" },
+      { "name": "HG008#1", "label": "HG008#1", "group": "HG008" }
+    ]
+  },
+  "skipinv 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG003#1#ctg:0-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "20000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG003#1#ctg:0-20000",
+      "identity": 1,
+      "numMatches": 20000,
+      "blockLen": 20000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 20000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-20000|HG008#1#ctg:0-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=1000I4000D15000=",
+      "syntenyId": "GRCh38#0#chr1:0-20000|HG008#1#ctg:0-17000",
+      "identity": 0.7619047619047619,
+      "numMatches": 16000,
+      "blockLen": 21000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 17000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipinv 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-5000|HG003#1#ctg:0-5000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 5000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "5000=",
+      "syntenyId": "GRCh38#0#chr1:0-5000|HG003#1#ctg:0-5000",
+      "identity": 1,
+      "numMatches": 5000,
+      "blockLen": 5000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 5000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1000|HG008#1#ctg:0-1000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:0-1000|HG008#1#ctg:0-1000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 1000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipinv 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-3000|HG003#1#ctg:0-3000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:0-3000|HG003#1#ctg:0-3000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 3000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1000|HG008#1#ctg:0-1000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:0-1000|HG008#1#ctg:0-1000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 1000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipinv 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:0-4000|HG003#1#ctg:0-4000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 4000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "4000=",
+      "syntenyId": "GRCh38#0#chr1:0-4000|HG003#1#ctg:0-4000",
+      "identity": 1,
+      "numMatches": 4000,
+      "blockLen": 4000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 4000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:0-1000|HG008#1#ctg:0-1000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 1000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:0-1000|HG008#1#ctg:0-1000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 0,
+        "end": 1000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipinv 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-4000|HG003#1#ctg:1000-4000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 4000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#0#chr1:1000-4000|HG003#1#ctg:1000-4000",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "ctg",
+        "start": 1000,
+        "end": 4000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:1000-2000|HG008#1#ctg:1000-2000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 2000,
+      "type": "match",
+      "strand": -1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:1000-2000|HG008#1#ctg:1000-2000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 1000,
+        "end": 2000,
+        "assemblyName": "HG008#1"
+      }
+    },
+    {
+      "uniqueId": "HG008#1#ctg:2000:1000:departure",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 1000,
+      "end": 5000,
+      "type": "departure",
+      "strand": 1,
+      "syntenyId": "HG008#1#ctg:2000:1000:departure",
+      "spansWindow": true,
+      "mate": {
+        "refName": "ctg",
+        "start": 2000,
+        "end": 2000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipinv 10000-50000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG003#1#ctg:9000-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG003#1#ctg:9000-20000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 9000,
+        "end": 20000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:9000-20000|HG008#1#ctg:6000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 9000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "11000=",
+      "syntenyId": "GRCh38#0#chr1:9000-20000|HG008#1#ctg:6000-17000",
+      "identity": 1,
+      "numMatches": 11000,
+      "blockLen": 11000,
+      "mate": {
+        "refName": "ctg",
+        "start": 6000,
+        "end": 17000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "skipinv 20000-35000 {}": [
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG003#1#ctg:19000-20000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG003#1#ctg:19000-20000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 19000,
+        "end": 20000,
+        "assemblyName": "HG003#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#0#chr1:19000-20000|HG008#1#ctg:16000-17000",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 19000,
+      "end": 20000,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1000=",
+      "syntenyId": "GRCh38#0#chr1:19000-20000|HG008#1#ctg:16000-17000",
+      "identity": 1,
+      "numMatches": 1000,
+      "blockLen": 1000,
+      "mate": {
+        "refName": "ctg",
+        "start": 16000,
+        "end": 17000,
+        "assemblyName": "HG008#1"
+      }
+    }
+  ],
+  "skipinv 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "twopart header": {
+    "hasCoarseTier": false,
+    "anchorAssemblyName": "hg38",
+    "lanes": [
+      { "name": "HG00097#1", "label": "HG00097#1", "group": "HG00097" },
+      { "name": "HG002#1", "label": "HG002#1", "group": "HG002" },
+      { "name": "HG002#2", "label": "HG002#2", "group": "HG002" }
+    ]
+  },
+  "twopart 0-1000000 {}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3600=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "identity": 1,
+      "numMatches": 3600,
+      "blockLen": 3600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#2#chr1:0-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=20I600D600=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#2#chr1:0-3020",
+      "identity": 0.8287292817679558,
+      "numMatches": 3000,
+      "blockLen": 3620,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "twopart 0-1000000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "twopart 0-3600 {}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3600=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "identity": 1,
+      "numMatches": 3600,
+      "blockLen": 3600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#2#chr1:0-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=20I600D600=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#2#chr1:0-3020",
+      "identity": 0.8287292817679558,
+      "numMatches": 3000,
+      "blockLen": 3620,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "twopart 0-3600 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "twopart 700-1100 {}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-2400|HG00097#1#chr1:0-2400",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=",
+      "syntenyId": "GRCh38#chr1:0-2400|HG00097#1#chr1:0-2400",
+      "identity": 1,
+      "numMatches": 2400,
+      "blockLen": 2400,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2400,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-2400|HG002#1#chr1:0-2350",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D600=",
+      "syntenyId": "GRCh38#chr1:0-2400|HG002#1#chr1:0-2350",
+      "identity": 0.6101694915254238,
+      "numMatches": 1800,
+      "blockLen": 2950,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2350,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-2400|HG002#2#chr1:0-2400",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=",
+      "syntenyId": "GRCh38#chr1:0-2400|HG002#2#chr1:0-2400",
+      "identity": 1,
+      "numMatches": 2400,
+      "blockLen": 2400,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2400,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "twopart 700-1100 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-2400|HG002#1#chr1:0-2350",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 2400,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D600=",
+      "syntenyId": "GRCh38#chr1:0-2400|HG002#1#chr1:0-2350",
+      "identity": 0.6101694915254238,
+      "numMatches": 1800,
+      "blockLen": 2950,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 2350,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "twopart 1200-2400 {}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3600=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG00097#1#chr1:0-3600",
+      "identity": 1,
+      "numMatches": 3600,
+      "blockLen": 3600,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#2#chr1:0-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "2400=20I600D600=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#2#chr1:0-3020",
+      "identity": 0.8287292817679558,
+      "numMatches": 3000,
+      "blockLen": 3620,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "twopart 1200-2400 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 0,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1200=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:0-3600|HG002#1#chr1:0-3550",
+      "identity": 0.7228915662650602,
+      "numMatches": 3000,
+      "blockLen": 4150,
+      "mate": {
+        "refName": "chr1",
+        "start": 0,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "twopart 2000-3000 {}": [
+    {
+      "uniqueId": "GRCh38#chr1:600-3600|HG00097#1#chr1:600-3600",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "3000=",
+      "syntenyId": "GRCh38#chr1:600-3600|HG00097#1#chr1:600-3600",
+      "identity": 1,
+      "numMatches": 3000,
+      "blockLen": 3000,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3600,
+        "assemblyName": "HG00097#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:600-3600|HG002#1#chr1:600-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "600=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:600-3600|HG002#1#chr1:600-3550",
+      "identity": 0.676056338028169,
+      "numMatches": 2400,
+      "blockLen": 3550,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    },
+    {
+      "uniqueId": "GRCh38#chr1:600-3600|HG002#2#chr1:600-3020",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "1800=20I600D600=",
+      "syntenyId": "GRCh38#chr1:600-3600|HG002#2#chr1:600-3020",
+      "identity": 0.7947019867549668,
+      "numMatches": 2400,
+      "blockLen": 3020,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3020,
+        "assemblyName": "HG002#2"
+      }
+    }
+  ],
+  "twopart 2000-3000 {\"targetAssemblyName\":\"HG002#1\"}": [
+    {
+      "uniqueId": "GRCh38#chr1:600-3600|HG002#1#chr1:600-3550",
+      "assemblyName": "hg38",
+      "refName": "chr1",
+      "start": 600,
+      "end": 3600,
+      "type": "match",
+      "strand": 1,
+      "CIGAR": "600=550I600D1800=",
+      "syntenyId": "GRCh38#chr1:600-3600|HG002#1#chr1:600-3550",
+      "identity": 0.676056338028169,
+      "numMatches": 2400,
+      "blockLen": 3550,
+      "mate": {
+        "refName": "chr1",
+        "start": 600,
+        "end": 3550,
+        "assemblyName": "HG002#1"
+      }
+    }
+  ],
+  "twopart 10000-50000 {}": [],
+  "twopart 10000-50000 {\"targetAssemblyName\":\"HG002#1\"}": [],
+  "twopart 20000-35000 {}": [],
+  "twopart 20000-35000 {\"targetAssemblyName\":\"HG002#1\"}": []
+}

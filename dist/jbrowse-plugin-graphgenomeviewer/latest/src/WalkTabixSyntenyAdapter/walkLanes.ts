@@ -5,6 +5,7 @@ import { panSNContig } from '@jbrowse/bandage-core/pansn'
 import SyntenyFeature from '../synteny/SyntenyFeature.ts'
 import { matchFeature } from '../synteny/matchFeature.ts'
 
+import type { ArrayRecord } from './placementRecords.ts'
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
 import type {
   WalkDeparture,
@@ -96,7 +97,7 @@ export function walkAligner(nodes: Map<number, WalkNode>) {
 // gbz-base's floor for a pair record
 const MIN_MATCH_BP = 100
 
-function appendEdit(edits: PairEdit[], op: PairEdit[0], len: number) {
+export function appendEdit(edits: PairEdit[], op: PairEdit[0], len: number) {
   const last = edits.at(-1)
   if (len > 0) {
     if (last?.[0] === op) {
@@ -309,7 +310,7 @@ export function chainFeature({
   mateAssemblyName,
 }: {
   chain: PairChain
-  target: WalkFragment
+  target: Pick<WalkFragment, 'name' | 'hapStart'>
   query: WalkFragment
   assemblyName: string
   refName: string
@@ -335,6 +336,53 @@ export function chainFeature({
     cigar: pairCigar(edits),
     matches: edits.reduce((sum, [op, n]) => sum + (op === '=' ? n : 0), 0),
     columns: edits.reduce((sum, [, n]) => sum + n, 0),
+  })
+}
+
+/**
+ * One array record of a walk against the reference, on the reference with the
+ * haplotype as its mate. It carries no CIGAR and no identity, so the display
+ * draws it as a plain band and no ramp or identity filter reads it as an
+ * alignment.
+ */
+export function arrayFeature({
+  record,
+  query,
+  assemblyName,
+  refName,
+  targetName,
+  mateAssemblyName,
+}: {
+  record: ArrayRecord
+  query: WalkFragment
+  assemblyName: string
+  refName: string
+  targetName: string
+  mateAssemblyName: string
+}) {
+  const { queryStart, queryEnd, targetStart, targetEnd, strand } = record
+  const mateStart = query.hapStart + queryStart
+  const mateEnd = query.hapStart + queryEnd
+  const id = `${targetName}:${targetStart}-${targetEnd}|${query.name}:${mateStart}-${mateEnd}:array`
+  return new SyntenyFeature({
+    uniqueId: id,
+    assemblyName,
+    refName,
+    start: targetStart,
+    end: targetEnd,
+    type: 'array',
+    strand: strand === '-' ? -1 : 1,
+    syntenyId: id,
+    placedBp: record.placedBp,
+    againstBp: record.againstBp,
+    hapWalks: record.hapWalks,
+    refWalks: record.refWalks,
+    mate: {
+      refName: panSNContig(query.name),
+      start: mateStart,
+      end: mateEnd,
+      assemblyName: mateAssemblyName,
+    },
   })
 }
 

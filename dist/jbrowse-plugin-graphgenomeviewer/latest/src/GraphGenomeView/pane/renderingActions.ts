@@ -1,7 +1,7 @@
 import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { getSession } from '@jbrowse/core/util'
 import { addDisposer, isAlive } from '@jbrowse/mobx-state-tree'
-import { autorun, reaction } from 'mobx'
+import { autorun, computed, reaction } from 'mobx'
 
 import { withLoadActions } from './loadActions'
 import { EMPTY_BATCH, TUBE_MAP_MODES, dependOn } from './paneBase'
@@ -20,7 +20,10 @@ import { routesToLoad, tubeMapWalksToLoad } from '../unloadedWalks'
 
 import type { LayoutEngineKind } from '@jbrowse/bandage-core/layoutEngines'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
-import type { Renderer } from '@jbrowse/bandage-core/renderer/types'
+import type {
+  RenderBatch,
+  Renderer,
+} from '@jbrowse/bandage-core/renderer/types'
 
 // How long after a cut's layout lands its labels wait for reads still on
 // their way. The slowest ordinary read measured landed 0.92 s after the
@@ -33,23 +36,55 @@ export const withRenderingActions = withLoadActions
       return self.keyShapeOf?.()
     },
   }))
-  // The frame the labels are placed in, settled: the layout is in and no
-  // morph is sliding to it, no read of genes, repeats or bubbles is on its
+  .views(self => ({
+    // The key as it is now is not measured yet
+    get keyAwaitsMeasure() {
+      return (
+        self.keyShape !== undefined &&
+        self.legendAtRest &&
+        self.measuredKeyShape !== self.keyShape
+      )
+    },
+  }))
+  .views(self => ({
+    // A build window the settle autorun is about to move: onto a new layout,
+    // or to a fit
+    get buildViewPending() {
+      const settled = self.settledBuildView
+      return (
+        settled !== undefined &&
+        !self.buildViewSettled &&
+        (settled.layout !== self.layoutResult || self.viewportOwner === 'fit')
+      )
+    },
+    // A view kept fitted whose fit has moved, which GraphKeepFitted applies
+    get fitPending() {
+      const fit =
+        self.viewportOwner === 'fit' ? self.fittedTransform : undefined
+      return (
+        !!fit &&
+        (fit.scale !== self.scale ||
+          fit.translateX !== self.translateX ||
+          fit.translateY !== self.translateY)
+      )
+    },
+  }))
+  // The frame the labels are placed in, settled: the layout is in, and built
+  // where a canvas draws it, no morph is sliding to it, no read of genes, repeats or bubbles is on its
   // way while the cut's labels await them, the key's size is measured for the
   // key as it is now, and a track has grown to hold it. The key's height never waits on the labels, since
   // it keeps its line for the unlabelled count whenever placeholders are
   // drawn, so placing them settles nothing again.
   .views(self => ({
     get labelFrameSettled() {
-      const keyMeasured =
-        self.keyShape === undefined ||
-        !self.legendAtRest ||
-        self.measuredKeyShape === self.keyShape
+      const keyMeasured = !self.keyAwaitsMeasure
       const heightAnswered =
         self.answeredKeyFloor === undefined ||
         self.answeredKeyFloor === self.canvasFloor
       return (
         self.layoutResult !== undefined &&
+        (self.currentRenderingBackend === undefined ||
+          self.settledLayout === self.layoutResult) &&
         !self.morphing &&
         (self.featureReadsInFlight === 0 || !self.labelsAwaitReads) &&
         keyMeasured &&
@@ -346,59 +381,84 @@ export const withRenderingActions = withLoadActions
       // The second argument is a SETUP THUNK, not the callbacks themselves:
       // anything it closes over lives exactly as long as the callbacks that
       // read it, which is what lets a per-backend memo work.
-      // eslint-disable-next-line no-restricted-syntax -- the pane uploads one batch, not keyed cells, which installUpload has no form for; its callbacks keep no memo, reading only the model
-      self.attachRenderingBackend<Renderer>(backend, () => ({
-        // Autorun: rebuild geometry when graph data, display options or the
-        // build window change. The transform itself repaints, in `render`.
-        upload: (b: Renderer) => {
-          dependOn(trackedDpr())
-          b.resize(self.paneWidth, self.canvasHeight)
-          if (self.layoutResult?.tubeMap) {
-            b.uploadGeometry(EMPTY_BATCH)
-            self.setGeometryMetrics(0, EMPTY_BATCH, self.buildView)
-            return true
-          }
-          // The panels paint the drawings, so the view recorded as built is
-          // theirs
-          const panel = self.facetDrawings?.[0]
-          if (panel) {
-            b.uploadGeometry(EMPTY_BATCH)
-            self.setGeometryMetrics(0, EMPTY_BATCH, panel.view)
-            return true
-          }
-          const geometryStart = performance.now()
-          const built = self.buildDrawing(
-            self.drawnHighlight,
-            self.effectiveDrawPaths,
-          )
-          if (built) {
-            b.uploadGeometry(built.batch)
-            self.setGeometryMetrics(
-              performance.now() - geometryStart,
-              built.batch,
-              built.view,
+      // eslint-disable-next-line no-restricted-syntax -- the pane uploads one batch, not keyed cells, which installUpload has no form for
+      self.attachRenderingBackend<Renderer>(backend, () => {
+        // The drawing, kept while the upload waits on the key, so a wait that
+        // ends with nothing changed builds nothing again
+        const drawing = computed(
+          () => {
+            const start = performance.now()
+            const built = self.buildDrawing(
+              self.drawnHighlight,
+              self.effectiveDrawPaths,
             )
-            return true
-          }
-          // Nothing reached the backend, so the autorun may skip the redraw
-          // it would otherwise force. Safe despite the resize above: with no
-          // positions there is nothing to draw, which is the same case
-          // `render` below returns false for.
-          return false
-        },
-        // Autorun: re-render on pan/zoom/theme without rebuilding geometry
-        render: (b: Renderer) => {
-          if (!self.nodePositions) {
+            return built && { ...built, ms: performance.now() - start }
+          },
+          { keepAlive: true },
+        )
+        let sent: { backend: Renderer; batch: RenderBatch } | undefined
+        const send = (b: Renderer, batch: RenderBatch) => {
+          b.uploadGeometry(batch)
+          sent = { backend: b, batch }
+        }
+        return {
+          // Autorun: rebuild geometry when graph data, display options or the
+          // build window change. The transform itself repaints, in `render`.
+          upload: (b: Renderer) => {
+            if (self.layoutResult?.tubeMap) {
+              send(b, EMPTY_BATCH)
+              self.setGeometryMetrics(0, EMPTY_BATCH, self.buildView)
+              return true
+            }
+            // The panels paint the drawings, so the view recorded as built is
+            // theirs
+            const panel = self.facetDrawings?.[0]
+            if (panel) {
+              send(b, EMPTY_BATCH)
+              self.setGeometryMetrics(0, EMPTY_BATCH, panel.view)
+              return true
+            }
+            // A key that changed is measured, the fit beside it made and the
+            // build window settled on it before the drawing is built, as the
+            // key's column moves the fit the build is made at
+            if (
+              self.keyAwaitsMeasure ||
+              self.fitPending ||
+              self.buildViewPending
+            ) {
+              return false
+            }
+            const built = drawing.get()
+            if (built) {
+              if (sent?.backend !== b || sent.batch !== built.batch) {
+                send(b, built.batch)
+                self.setGeometryMetrics(built.ms, built.batch, built.view)
+              }
+              return true
+            }
+            // Nothing reached the backend, so the autorun may skip the redraw
+            // it would otherwise force: with no positions there is nothing to
+            // draw, which is the same case `render` below returns false for.
             return false
-          }
-          self.paint(b)
-          self.markPainted()
-          return true
-        },
-        releaseTargets: (b: Renderer) => {
-          b.releaseOffscreenTargets()
-        },
-      }))
+          },
+          // Autorun: re-render on pan/zoom/theme without rebuilding geometry.
+          // The canvas is sized here, not in `upload`, so a pane that grows
+          // under a key measured after the build repaints without a rebuild.
+          render: (b: Renderer) => {
+            dependOn(trackedDpr())
+            b.resize(self.paneWidth, self.canvasHeight)
+            if (!self.nodePositions) {
+              return false
+            }
+            self.paint(b)
+            self.markPainted()
+            return true
+          },
+          releaseTargets: (b: Renderer) => {
+            b.releaseOffscreenTargets()
+          },
+        }
+      })
     },
   }))
   .actions(self => ({
