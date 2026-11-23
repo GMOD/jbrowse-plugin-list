@@ -22,6 +22,7 @@ import { liveViewIds } from '../../launchFromGraph/linearViewTarget'
 import { withLayer } from '../graphLayers'
 import { colorOfScheme } from '../nodeColor'
 import { sizeOf } from '../nodeSize'
+import { foldedCut } from '../threadFoldCut'
 
 import type { GraphGrammar } from './graphViews'
 import type { ScreenTransform } from './keepInView'
@@ -30,6 +31,7 @@ import type { BuildView, HoveredTube, TubeMapRoutes } from './paneBase'
 import type { LinksDrawn } from '../../linksDrawn'
 import type { GraphLayer } from '../graphLayers'
 import type { HoverHighlight } from '../hoverHighlight'
+import type { FoldedCut } from '../threadFoldCut'
 import type { WalkRowGroupBy } from '../walkRowGroups'
 import type { BubbleSpread } from '@jbrowse/bandage-core/bubbleSpreads'
 import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
@@ -49,6 +51,15 @@ import type {
 const ROW_HOVER_SETTLE_MS = 80
 
 export const withSettingActions = withTubeMapViews
+  .actions(self => ({
+    showFold(cut: FoldedCut) {
+      self.graph = cut.graph
+      self.foldedBelowBp = cut.foldedBelowBp
+      self.foldRefusal = cut.foldRefusal
+      self.threadEvents = cut.threadEvents
+      self.unfoldedGraph = cut.unfoldedGraph
+    },
+  }))
   .actions(() => ({
     // each host overrides: a view assigns its props, a track display writes
     // its config. Its own block, so the setters below reach the override
@@ -161,8 +172,11 @@ export const withSettingActions = withTubeMapViews
     // Re-anchor in place rather than re-parsing: the coordinate walk is
     // already recorded on the graph, and only which path counts as rank 0
     // changes. An rGFA is left alone — its coordinates are not derived.
+    // A graph with walks is re-anchored before its fold and folded again, so
+    // a refusal is the new reference's
     anchorOnReferencePath() {
-      const graph = self.graph
+      const shown = self.graph
+      const graph = self.unfoldedGraph ?? shown
       const anchored =
         graph?.anchoredBy === 'paths'
           ? anchorFromPaths(
@@ -173,10 +187,17 @@ export const withSettingActions = withTubeMapViews
             )
           : graph
       if (graph && anchored && anchored.referencePath !== graph.referencePath) {
-        forceLayouts.inherit(graph, anchored)
-        self.graph = anchored
+        const cut = foldedCut(
+          anchored,
+          anchored.reads ? 0 : self.cutFoldBelowBp,
+          { region: self.graphRegion, threads: self.modeDrawsNodes },
+        )
+        if (cut.graph === anchored) {
+          forceLayouts.inherit(graph, anchored)
+        }
+        self.showFold(cut)
       }
-      return self.graph !== graph
+      return self.graph !== shown
     },
     setLayer(layer: GraphLayer, on: boolean) {
       self.writeGrammar({ layers: withLayer(self.grammar.layers, layer, on) })

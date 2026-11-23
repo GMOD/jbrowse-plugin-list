@@ -8,6 +8,11 @@ import {
   regionLabel,
 } from '@jbrowse/bandage-core/hoverText'
 import { referenceLabel } from '@jbrowse/bandage-core/reference'
+import {
+  eventsAtLink,
+  eventsAtNode,
+  threadsThrough,
+} from '@jbrowse/bandage-core/threadFold'
 import { observer } from 'mobx-react'
 
 import { nodeOwnLocation } from '../../launchFromGraph/contributors'
@@ -40,6 +45,59 @@ function labelled({ label, readout }: Readout) {
       <strong>{label}</strong> — {readout}
     </>
   )
+}
+
+// the most threads a folded node's hover lists, the widest first
+const HOVER_THREADS = 6
+
+// What a fold to threads kept there, in graph-fold's words, which the graph
+// itself never writes (bandage-core graphLabels.ts)
+function eventLines(events: readonly { text: string }[]) {
+  return events.map(event => (
+    <span key={event.text}>
+      <br />
+      {event.text}
+    </span>
+  ))
+}
+
+// A folded node's hover: the nodes it holds, the events it is drawn for and
+// the threads through it, each with its count and what its haplotypes differ
+// by under the fold
+function foldedNodeLines(
+  model: GraphPaneModel,
+  nodeId: string,
+  held: number | undefined,
+) {
+  const graph = model.graph
+  const threads = graph?.threadFold
+    ? threadsThrough(graph, nodeId, name => model.walkLabel(name)).sort(
+        (a, b) => b.count - a.count,
+      )
+    : []
+  return graph?.threadFold ? (
+    <>
+      {held && held > 1 ? (
+        <>
+          <br />
+          {held.toLocaleString()} nodes folded into it
+        </>
+      ) : null}
+      {eventLines(eventsAtNode(model.threadEvents ?? [], nodeId))}
+      {threads.slice(0, HOVER_THREADS).map(thread => (
+        <span key={thread.name}>
+          <br />
+          {thread.count > 1 ? thread.variation : thread.label}
+        </span>
+      ))}
+      {threads.length > HOVER_THREADS ? (
+        <>
+          <br />
+          and {threads.length - HOVER_THREADS} more threads
+        </>
+      ) : null}
+    </>
+  ) : null
 }
 
 // What the pointer is on, the most specific first: a gene chip, a node, an
@@ -101,6 +159,7 @@ function hoverTip(
                 </>
               ) : null}
               {genesLine}
+              {foldedNodeLines(model, node.id, node.members?.length)}
               {/* gfa-to-tabix --max-component left its component off the
               reference, so the cut holds only its ends */}
               {node.moved ? (
@@ -134,7 +193,10 @@ function hoverTip(
           {text.deletion.where}
         </>
       ) : (
-        <>Edge: {text.ends}</>
+        <>
+          Edge: {text.ends}
+          {eventLines(eventsAtLink(model.threadEvents ?? [], edge))}
+        </>
       ),
     }
   }

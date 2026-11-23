@@ -34,6 +34,7 @@ import {
   isUnzoomableNodeLimitError,
 } from '../nodeLimitError'
 import { denseCovers } from './denseWindow'
+import { haplotypeColorsOf } from './haplotypeColors'
 import {
   cutHolds,
   cutRuleOf,
@@ -46,6 +47,7 @@ import {
 import { GraphPane, formatSpanBp } from '../GraphGenomeView/model'
 import { FACET_KEY_PX } from '../GraphGenomeView/pane/fitViews'
 import { paneBase } from '../GraphGenomeView/pane/paneBase'
+import { THREAD_FOLD_MIN_BP } from '../GraphGenomeView/threadFoldCut'
 import {
   configHaplotypes,
   cutsByHaplotype,
@@ -225,14 +227,28 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       capFor(tier: SubgraphTier) {
         return tier === 'coarse' ? Infinity : self.maxRegionBp
       },
+      // Whether a graph with walks drawn whole stays whole at a fold of
+      // `wantBp`: under the size walks fold to threads from, where graph-fold
+      // refused the cut, or on a layout that draws each walk itself
+      walksStayWhole(wantBp: number) {
+        return (
+          !!self.graph?.paths?.length &&
+          self.foldedBelowBp === undefined &&
+          (wantBp < THREAD_FOLD_MIN_BP ||
+            self.foldRefusal !== undefined ||
+            self.graph.reads !== undefined ||
+            !layoutModeByValue(self.chosenLayoutMode).drawsNodes)
+        )
+      },
       // Whether a zoom has moved far enough from the one the drawing was
       // folded for that folding again would show or hide more. A graph with
-      // walks is never folded, and a fold rounded to 0 bp counts as 1 bp.
+      // walks folds to threads from THREAD_FOLD_MIN_BP, and a fold rounded
+      // to 0 bp counts as 1 bp.
       foldDrifted(bpPerPx: number) {
         const want = FOLD_PX * bpPerPx
         const had = self.cutFoldBp
         return (
-          !self.graph?.paths?.length &&
+          !this.walksStayWhole(want) &&
           (want >= 2 * Math.max(had, 1) ||
             (self.foldedBelowBp !== undefined && want <= had / 2))
         )
@@ -256,6 +272,9 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       },
     }))
     .views(self => ({
+      get haplotypeColors() {
+        return haplotypeColorsOf(self.drawnWalks)
+      },
       overLimitKey(region: SubgraphRegion, seen: HostWindow) {
         return JSON.stringify([
           region,
@@ -288,7 +307,7 @@ export function stateModelFactory(configSchema: LinearGraphDisplayConfigModel) {
       cutHoldsAt(seen: HostWindow) {
         return self.snapsHostCut
           ? sameCut(self.cutRegion, self.cutFor(seen)) &&
-              (!!self.graph?.paths?.length ||
+              (self.walksStayWhole(self.foldFor(self.cutRegion, seen)) ||
                 self.cutFoldBp === self.foldFor(self.cutRegion, seen))
           : cutHolds(
               self.cutRegion,

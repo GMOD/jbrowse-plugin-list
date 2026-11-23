@@ -6,6 +6,7 @@ import { FIT_PADDING } from '@jbrowse/bandage-core/layout/fitAssumptions'
 import { LAYOUT_ENGINE_VALUES } from '@jbrowse/bandage-core/layoutEngines'
 import { LAYOUT_MODE_VALUES } from '@jbrowse/bandage-core/layoutModes'
 import { NO_FOLD } from '@jbrowse/bandage-core/levelOfDetail'
+import { nodeInk } from '@jbrowse/bandage-core/nodeWidths'
 import {
   cutScale,
   fittedTranslateY,
@@ -59,6 +60,7 @@ import {
   forceLayouts,
   paneBase,
 } from '../GraphGenomeView/pane/paneBase'
+import { THREAD_FOLD_MIN_BP, foldedCut } from '../GraphGenomeView/threadFoldCut'
 import graphGenomeViewModel from '../GraphGenomeView/viewModel'
 import {
   NO_NODES,
@@ -92,11 +94,19 @@ const LOOP_BP = 1_030_000
 // A backbone of `step`-long segments with a small allele bubble on every
 // second one; past 1.5 Mb the fine tier's bubbles run eight ranks deep, so a
 // re-cut there has more rows than one before it. `paths` walks the reference
-// and one haplotype through every bubble, for the tube map.
+// and one haplotype through every bubble, for the tube map; 'unfoldable' has
+// the reference step its first node again, which graph-fold refuses, so the
+// graph is drawn whole at any zoom; 'twins' adds HG2 on HG1's walk, so a fold
+// makes the two one thread; 'repathable' is 'unfoldable' with no rGFA tags,
+// so its walks place it and a picked reference re-anchors it.
+type Paths = boolean | 'unfoldable' | 'twins' | 'repathable'
+const NO_PATHS: Paths = false
+const NO_HOVER: unknown = undefined
+
 function syntheticGraph(
   tier: SubgraphTier,
   region: SubgraphRegion,
-  paths = false,
+  paths: Paths = false,
   loopAtStart = false,
   loopInside = false,
 ) {
@@ -161,9 +171,23 @@ function syntheticGraph(
     }
   }
   if (paths) {
-    lines.push(`P\t${REF}\t${ref.join(',')}\t*`, `P\tHG1\t${alt.join(',')}\t*`)
+    const walked =
+      paths === 'unfoldable' || paths === 'repathable' ? [...ref, ref[0]!] : ref
+    lines.push(
+      `P\t${REF}\t${walked.join(',')}\t*`,
+      `P\tHG1\t${alt.join(',')}\t*`,
+    )
+    if (paths === 'twins') {
+      lines.push(`P\tHG2\t${alt.join(',')}\t*`)
+    }
   }
-  return lines.join('\n')
+  return lines
+    .map(line =>
+      paths === 'repathable' && line.startsWith('S\t')
+        ? line.split('\t').slice(0, 4).join('\t')
+        : line,
+    )
+    .join('\n')
 }
 
 interface Cut {
@@ -281,7 +305,7 @@ const GENE_FEATURES = [
 function createEnvironment({
   tiered = true,
   coarse = COARSE_TIER,
-  paths = false,
+  paths = NO_PATHS,
   geneLaneFilter = undefined as string[] | undefined,
   contig = CONTIG,
   loopAtStart = false,
@@ -614,7 +638,7 @@ function createEnvironment({
         waitForAssembly: () => Promise.resolve(assembly),
         isValidRefName: () => true,
       },
-      hovered: undefined,
+      hovered: NO_HOVER,
     }))
     .views(self => ({
       getTrackById(id: string) {
@@ -641,6 +665,9 @@ function createEnvironment({
       setOther(view: Instance<typeof LinearGenomeModel>) {
         self.other = view
         return view
+      },
+      setHovered(hovered: unknown) {
+        self.hovered = hovered
       },
       notify() {},
       notifyError(message: string) {
@@ -694,7 +721,7 @@ async function shownGraph({
   windowBp = 60_000,
   tiered = true,
   coarse = COARSE_TIER,
-  paths = false,
+  paths = NO_PATHS,
   geneLaneFilter = undefined as string[] | undefined,
 } = {}) {
   const env = createEnvironment({ tiered, coarse, paths, geneLaneFilter })
@@ -1119,7 +1146,7 @@ test('a launch in the force layout cuts the snapped window', async () => {
 async function forceGraph({
   windowStart = 1_000_000,
   windowBp = 60_000,
-  paths = false,
+  paths = NO_PATHS,
   contig = CONTIG,
   track = 'graph',
   loopAtStart = false,
@@ -1329,7 +1356,7 @@ test('a pan at any one width inside the level is a pure translation, and zoom th
 // width, to set the scale
 async function heldSteps(height: number | undefined) {
   const windowBp = 60_000
-  const { view, pane, layouts } = await forceGraph({ paths: true })
+  const { view, pane, layouts } = await forceGraph({ paths: 'unfoldable' })
   if (height) {
     pane.setHeight(height)
   }
@@ -1399,7 +1426,7 @@ test('a force layout draws a window the same way however the view came to it', a
 })
 
 test('a snapped cut over the node limit falls back to the window alone, which a view always gets there however it came', async () => {
-  const { view, pane, cuts, panTo } = await forceGraph({ paths: true })
+  const { view, pane, cuts, panTo } = await forceGraph({ paths: 'unfoldable' })
   pane.setMaxGraphNodes(12)
   await wait(SETTLE_MS)
   const snappedAt = (start: number) =>
@@ -3031,10 +3058,145 @@ test('a folded drawing is clipped to the region it was cut for', async () => {
   }
 })
 
-test('a graph with walks is drawn whole at any zoom', async () => {
+test('a graph with walks folds to threads at a zoom that folds one, and says what it folded', async () => {
   const { pane } = await shownGraph({ paths: true })
+  expect(offReference(pane)).toHaveLength(0)
+  expect(pane.graph!.threadFold).toMatchObject({ haplotypes: 2, walks: 2 })
+  expect(pane.graph!.paths!.map(p => p.count)).toEqual([1, 1])
+  expect(pane.foldNote).toMatch(/^variants under .* folded into the reference$/)
+  expect(pane.foldRefusalNote).toBeUndefined()
+})
+
+test("a fold to threads keeps the cut's walks in the pickers, and a layout that draws each walk cuts again unfolded until one that draws nodes cuts again folded, a pick made between lighting its thread", async () => {
+  const { pane, cuts } = await shownGraph({ paths: 'twins' })
+  expect(pane.graph!.paths!.map(p => [p.name, p.count])).toEqual([
+    [REF, 1],
+    ['HG1', 2],
+  ])
+  expect(pane.walkChoices.map(c => c.name)).toEqual([REF, 'HG1', 'HG2'])
+  expect(pane.anchorPaths.map(p => p.name)).toEqual([REF, 'HG1', 'HG2'])
+  expect(pane.pathCount).toBe(3)
+  await pane.switchLayout('tubemap')
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(2)
+  expect(pane.graph!.threadFold).toBeUndefined()
+  expect(pane.graph!.paths).toHaveLength(3)
+  expect(pane.unfoldedGraph).toBeUndefined()
+  pane.liftWalks(['HG2'])
+  await pane.switchLayout('auto')
+  await wait(SETTLE_MS)
+  expect(cuts).toHaveLength(3)
+  expect(pane.graph!.threadFold).toMatchObject({ haplotypes: 3, walks: 3 })
+  expect(pane.pathCount).toBe(3)
+  expect(pane.walkLayers.map(l => l.walk)).toEqual(['HG2'])
+  expect(pane.walkLift!.walks.map(w => [w.name, w.count])).toEqual([['HG1', 2]])
+})
+
+test('split by walk, two picks on one thread of a fold each have a panel that lights that thread', async () => {
+  const { display } = await shownGraph({ paths: 'twins' })
+  display.liftWalks(['HG1', 'HG2'])
+  display.setFacet('walk')
+  expect(display.graph!.threadFold).toBeDefined()
+  expect(
+    display.facetPanels!.map(panel =>
+      panel.walks.map(w => [w.name, w.count, w.picked]),
+    ),
+  ).toEqual([[['HG1', 2, ['HG1']]], [['HG1', 2, ['HG2']]]])
+})
+
+test('a reference picked on a folded graph folds the cut again on it, its walks still in the pickers, and one that revisits a node unfolds it with the reason', async () => {
+  const { pane } = await shownGraph({ paths: 'repathable' })
+  pane.setReferencePath('HG1')
+  await wait(SETTLE_MS)
+  expect(pane.graph!.referencePath).toBe('HG1')
+  expect(pane.graph!.threadFold).toMatchObject({ haplotypes: 2, walks: 2 })
+  expect(pane.unfoldedGraph!.referencePath).toBe('HG1')
+  expect(pane.walkChoices.map(c => c.name)).toEqual([REF, 'HG1'])
+  pane.setReferencePath(REF)
+  await wait(SETTLE_MS)
+  expect(pane.graph!.threadFold).toBeUndefined()
+  expect(pane.foldRefusalNote).toMatch(/passes 1 nodes of the graph/)
+})
+
+test('a reference that passes no node twice folds a graph whose first reference did, and its refusal goes with it', async () => {
+  const { pane } = await shownGraph({ paths: 'repathable' })
+  expect(pane.graph!.threadFold).toBeUndefined()
+  expect(pane.foldRefusalNote).toMatch(/^walks not folded to this zoom: /)
+  expect(pane.walksStayWhole(pane.cutFoldBp)).toBe(true)
+  pane.setReferencePath('HG1')
+  await wait(SETTLE_MS)
+  expect(pane.graph!.threadFold).toBeDefined()
+  expect(pane.foldRefusal).toBeUndefined()
+  expect(pane.foldRefusalNote).toBeUndefined()
+  expect(pane.walksStayWhole(pane.cutFoldBp)).toBe(false)
+})
+
+test('a walk with no steps here is left out of the picker of a folded graph, and the fold note counts it', async () => {
+  const { pane } = await shownGraph({ paths: 'twins' })
+  const cut = pane.unfoldedGraph!
+  pane.showFold(
+    foldedCut(
+      { ...cut, paths: [...cut.paths!, { name: 'HG3', nodeIds: [] }] },
+      pane.cutFoldBelowBp,
+    ),
+  )
+  expect(pane.foldNote).toBe(
+    'variants under 600 bp folded into the reference; 1 walk with no steps here not drawn',
+  )
+  expect(pane.walkChoices.map(c => c.name)).toEqual([REF, 'HG1', 'HG2'])
+})
+
+test("hovering a lane row for a walk a thread holds, not the thread's first, lights that thread", async () => {
+  const { session, pane } = await shownGraph({ paths: 'twins' })
+  session.setHovered({
+    hoverPosition: { refName: REF, coord: 1_030_000, assemblyName: ASM },
+    hoverFeature: { name: 'HG2' },
+  })
+  expect(pane.hoveredRowWalks).toEqual(['HG2'])
+  expect(pane.walkLift!.walks.map(w => w.name)).toEqual(['HG1'])
+})
+
+test("a never-folded graph's nodes are hit as wide as they are drawn, whatever walks are picked", async () => {
+  const { pane } = await forceGraph({
+    paths: 'twins',
+    windowBp: (WIDTH_PX * (THREAD_FOLD_MIN_BP - 10)) / FOLD_PX,
+  })
+  pane.liftWalks([REF, 'HG1', 'HG2'])
+  const id = pane.graph!.nodes[0]!.id
+  const inkWith = (lanes: number) =>
+    nodeInk(
+      pane.drawnGraph,
+      pane.nodeById,
+      pane.contigThickness,
+      pane.nodeWidth,
+      lanes,
+      pane.drawnFold?.through,
+    ).halfWidthPx(id)
+  expect(pane.graph!.threadFold).toBeUndefined()
+  expect(pane.walkLift!.walks).toHaveLength(3)
+  expect(inkWith(3)).toBeGreaterThan(inkWith(0))
+  expect(pane.nodeInk.halfWidthPx(id)).toBe(inkWith(0))
+})
+
+test('a graph with walks that graph-fold refuses is drawn whole, and the legend says why', async () => {
+  const { pane } = await shownGraph({ paths: 'unfoldable' })
   expect(offReference(pane).length).toBeGreaterThan(0)
+  expect(pane.graph!.threadFold).toBeUndefined()
   expect(pane.foldNote).toBeUndefined()
+  expect(pane.foldRefusalNote).toMatch(/^walks not folded to this zoom: /)
+})
+
+test('a graph with walks is drawn whole under the size walks fold from', async () => {
+  const { pane } = await forceGraph({
+    paths: true,
+    windowBp: (WIDTH_PX * (THREAD_FOLD_MIN_BP - 10)) / FOLD_PX,
+  })
+  expect(pane.cutFoldBp).toBeGreaterThan(0)
+  expect(pane.cutFoldBp).toBeLessThan(THREAD_FOLD_MIN_BP)
+  expect(pane.graph!.paths).toHaveLength(2)
+  expect(pane.graph!.threadFold).toBeUndefined()
+  expect(pane.foldNote).toBeUndefined()
+  expect(pane.foldRefusalNote).toBeUndefined()
 })
 
 test('a force drawing is placed by its window alone: a pan only slides it, a zoom magnifies it before the next cut lands, and no screen map of the last frame stands in', async () => {
@@ -3178,7 +3340,7 @@ test('a force track restored before its view shows a window waits for one, and f
 
 test('a snapped cut over the node limit leaves the drawing on screen until the window alone lands, and the track never shows an error for it', async () => {
   const { pane, cuts, panTo } = await forceGraph({
-    paths: true,
+    paths: 'unfoldable',
     windowStart: 1_380_000,
   })
   const states: { phase: string; drawn: boolean; error: unknown }[] = []
@@ -3207,7 +3369,7 @@ test('a snapped cut over the node limit leaves the drawing on screen until the w
 }, 30_000)
 
 test("a chain hanging off where the cut's start runs through a reference node, which no window the cut holds shows, does not shrink the drawing", async () => {
-  const { pane } = await forceGraph({ paths: true, loopAtStart: true })
+  const { pane } = await forceGraph({ paths: 'unfoldable', loopAtStart: true })
   expect(pane.graph!.nodes.filter(n => /l\d+/.test(n.id))).toHaveLength(24)
   const { top, bottom } = pane.fitPads
   const usable = pane.canvasHeight - top - bottom
@@ -3263,7 +3425,7 @@ test("a cut kept from the track's other adapter is fetched again, not shown from
 })
 
 test('a snapped cut found over the node limit stands for its own region, tier, fold and options alone, and the last 64 are remembered', async () => {
-  const { view, pane, cuts, panTo } = await forceGraph({ paths: true })
+  const { view, pane, cuts, panTo } = await forceGraph({ paths: 'unfoldable' })
   // past 1.5 Mb a window alone holds 31 nodes and its snapped cut 51
   pane.setMaxGraphNodes(40)
   const snappedHere = () => snappedCut(hostWindow(pane.host!)!)
@@ -3416,7 +3578,10 @@ test("the track's sizing is its heightMode slot, fixed unless set, and the track
 })
 
 test("at fixed a zoom magnifies a drawing whose cut is taller than the track, which fit holds still at the track's height", async () => {
-  const { view, pane } = await forceGraph({ loopInside: true, paths: true })
+  const { view, pane } = await forceGraph({
+    loopInside: true,
+    paths: 'unfoldable',
+  })
   pane.setHeightMode('fit')
   const { top, bottom } = pane.fitPads
   const usable = pane.canvasHeight - top - bottom
@@ -3432,7 +3597,7 @@ test("at fixed a zoom magnifies a drawing whose cut is taller than the track, wh
 })
 
 test("a drawing taller than a fixed track keeps the window's reference between the pads and marks the edges it runs past, which the key names", async () => {
-  const { pane } = await forceGraph({ loopInside: true, paths: true })
+  const { pane } = await forceGraph({ loopInside: true, paths: 'unfoldable' })
   pane.setHeightMode('fixed')
   const { top, bottom } = pane.fitPads
   const ink = windowReferenceInk(pane)
@@ -3453,7 +3618,7 @@ test("a fixed track whose reference zigzags taller than the track draws it at th
   const { view, pane } = await forceGraph({
     zigzag: 4,
     loopInside: true,
-    paths: true,
+    paths: 'unfoldable',
   })
   pane.setHeightMode('fixed')
   const { top, bottom } = pane.fitPads
@@ -3500,7 +3665,7 @@ test("a fixed track whose reference zigzags taller than the track draws it at th
 })
 
 test("at grow the track is as tall as the whole cut drawn at the window's scale, up to growMaxHeight, and at fixed the slot's height", async () => {
-  const { pane } = await forceGraph({ loopInside: true, paths: true })
+  const { pane } = await forceGraph({ loopInside: true, paths: 'unfoldable' })
   expect(pane.height).toBe(300)
   pane.setHeightMode('grow')
   const wanted = grownHeight(pane.heldBounds!, pane.scale, pane.followPads)

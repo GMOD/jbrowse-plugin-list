@@ -1,11 +1,7 @@
 import { bubbleSegmentIds } from '@jbrowse/bandage-core/bubbles/bubbleLabel'
 import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
-import { foldVariants } from '@jbrowse/bandage-core/foldVariants'
 import { regionLabel } from '@jbrowse/bandage-core/hoverText'
-import {
-  clipToWindow,
-  trimToWindow,
-} from '@jbrowse/bandage-core/layout/trimToWindow'
+import { trimToWindow } from '@jbrowse/bandage-core/layout/trimToWindow'
 import { walkRowLayoutOf } from '@jbrowse/bandage-core/layout/walkRowLayout'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
@@ -42,6 +38,7 @@ import { DrawLimitError } from '../../nodeLimitError'
 import { geneModelsFrom } from '../genes/geneFeatures'
 import { gfaText } from '../gfaText'
 import { repeatArraysFrom } from '../repeats/repeatFeatures'
+import { foldedCut } from '../threadFoldCut'
 import {
   graphOfPaths,
   tubeMapPanelGroups,
@@ -61,6 +58,7 @@ import type {
   EngineRequest,
   EngineSettings,
 } from '@jbrowse/bandage-core/pipeline'
+import type { ThreadEvent } from '@jbrowse/bandage-core/threadFold'
 import type { Graph, LayoutResult } from '@jbrowse/bandage-core/types'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation } from '@jbrowse/core/util/types'
@@ -76,6 +74,10 @@ interface ParsedCut {
   region: SubgraphRegion | undefined
   loadedReferencePath: string | undefined
   foldedBelowBp: number | undefined
+  foldRefusal: string | undefined
+  threadEvents: ThreadEvent[] | undefined
+  unfoldedGraph: Graph | undefined
+  cutFoldBelowBp: number
   readsShown: { shown: number; total: number } | undefined
 }
 
@@ -399,6 +401,10 @@ export const withLoadActions = withEngineSettings.actions(self => {
     self.graphRegion = cut?.region
     self.loadedReferencePath = cut?.loadedReferencePath
     self.foldedBelowBp = cut?.foldedBelowBp
+    self.foldRefusal = cut?.foldRefusal
+    self.threadEvents = cut?.threadEvents
+    self.unfoldedGraph = cut?.unfoldedGraph
+    self.cutFoldBelowBp = cut?.cutFoldBelowBp ?? 0
     self.readsShown = cut?.readsShown
     self.indexBubbles = undefined
     self.geneTrackFeatures = undefined
@@ -431,17 +437,12 @@ export const withLoadActions = withEngineSettings.actions(self => {
       loaded !== parsed.referencePath
         ? anchorFromPaths(parsed, loaded)
         : parsed
-    const folded =
-      foldBelowBp > 0 && !withReads
-        ? foldVariants(anchored, foldBelowBp, { cut: true })
-        : anchored
     return {
-      graph:
-        region && folded !== anchored
-          ? clipToWindow(folded, region, foldBelowBp)
-          : folded,
+      ...foldedCut(anchored, withReads ? 0 : foldBelowBp, {
+        region,
+        threads: self.modeDrawsNodes,
+      }),
       loadedReferencePath: loaded,
-      foldedBelowBp: folded === anchored ? undefined : foldBelowBp,
     }
   }
 
@@ -455,13 +456,14 @@ export const withLoadActions = withEngineSettings.actions(self => {
     const { signal } = loadController
     const walkCut =
       typeof source !== 'string' && source.walkRowRuns ? source : undefined
-    const { graph, loadedReferencePath, foldedBelowBp } = deriveGraph(
-      source,
-      name,
-      region,
-      foldBelowBp,
-      !!readsOf,
-    )
+    const {
+      graph,
+      loadedReferencePath,
+      foldedBelowBp,
+      foldRefusal,
+      threadEvents,
+      unfoldedGraph,
+    } = deriveGraph(source, name, region, foldBelowBp, !!readsOf)
     let readsShown: { shown: number; total: number } | undefined
     if (readsOf) {
       self.setStatusMessage('Reading alignments')
@@ -486,6 +488,10 @@ export const withLoadActions = withEngineSettings.actions(self => {
       region,
       loadedReferencePath,
       foldedBelowBp,
+      foldRefusal,
+      threadEvents,
+      unfoldedGraph,
+      cutFoldBelowBp: foldBelowBp,
       readsShown,
     } satisfies ParsedCut
   }
@@ -867,29 +873,29 @@ export const withLoadActions = withEngineSettings.actions(self => {
   }
 
   // The graph a layout of the current mode draws: a walk-rows cut's
-  // stepless walks parsed whole once a layout that draws nodes needs them
+  // stepless walks parsed whole once a layout that draws nodes needs them.
+  // A switch between a layout that draws nodes and one that draws each walk
+  // changes the cut's options, so it cuts again and folds there
   function wholeGraph() {
     const cut = self.walkCut
     const graph = self.graph
-    if (!cut || !graph || self.chosenLayoutMode === 'walkrows') {
-      return graph
+    if (cut && graph && self.chosenLayoutMode !== 'walkrows') {
+      const whole = deriveGraph(
+        cut,
+        graph.name,
+        self.graphRegion,
+        self.cutFoldBelowBp,
+        graph.reads !== undefined,
+        true,
+      )
+      if (graph.reads) {
+        whole.graph.reads = graph.reads
+      }
+      self.showFold(whole)
+      self.walkCut = undefined
+      self.loadedReferencePath = whole.loadedReferencePath
     }
-    const whole = deriveGraph(
-      cut,
-      graph.name,
-      self.graphRegion,
-      self.foldedBelowBp ?? 0,
-      graph.reads !== undefined,
-      true,
-    )
-    if (graph.reads) {
-      whole.graph.reads = graph.reads
-    }
-    self.graph = whole.graph
-    self.walkCut = undefined
-    self.loadedReferencePath = whole.loadedReferencePath
-    self.foldedBelowBp = whole.foldedBelowBp
-    return whole.graph
+    return self.graph
   }
 
   // Drops the graph and all it derived, and ends any load in flight, which
@@ -1027,6 +1033,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
           opts,
           foldBelowBp,
           self.referencePath,
+          self.modeDrawsNodes,
         ])
         let cut = keep && !readsOf ? keptCuts.get(key) : undefined
         if (!cut) {

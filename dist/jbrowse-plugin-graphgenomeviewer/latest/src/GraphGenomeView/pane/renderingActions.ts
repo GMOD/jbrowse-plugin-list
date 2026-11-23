@@ -285,10 +285,12 @@ export const withRenderingActions = withLoadActions
                   ? hover
                   : undefined
               // a row naming a walk is the hover, not the node at its bp,
-              // whose band would cover the row's own cells
+              // whose band would cover the row's own cells; on a graph folded
+              // to threads, a walk of the cut, which lights its threads
+              const rowPaths = (self.unfoldedGraph ?? graph)?.paths
               const rowWalks =
-                inRegion?.featureName && graph?.paths
-                  ? walksForRow(inRegion.featureName, graph.paths)
+                inRegion?.featureName && rowPaths
+                  ? walksForRow(inRegion.featureName, rowPaths)
                   : []
               // a bubble track's feature, or a graph-derived VCF record,
               // names a whole bubble, which lights whatever the setting

@@ -57,6 +57,7 @@ import {
   LIFT_BACKDROP_CSS,
   computeReferenceRamp,
 } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
+import { threadLayers } from '@jbrowse/bandage-core/threadFold'
 import { tubeMapNodeColors } from '@jbrowse/bandage-core/tubeMap/nodeColors'
 import { axisScaleOf } from '@jbrowse/bandage-core/viewport'
 import { facetLifts, walkLift } from '@jbrowse/bandage-core/walkHighlight'
@@ -460,8 +461,9 @@ export const withGraphViews = paneBase
     get edgeCount() {
       return self.graph?.edges.length ?? 0
     },
+    // The cut's walks, not the threads a fold made of them
     get pathCount() {
-      return self.graph?.paths?.length ?? 0
+      return (self.unfoldedGraph ?? self.graph)?.paths?.length ?? 0
     },
     // No hover is changing the legend, so its size is the one to fit the
     // drawing around
@@ -495,11 +497,16 @@ export const withGraphViews = paneBase
     // The paths this graph could be anchored on, for the picker. Empty for an
     // rGFA, which has no P/W records and needs none.
     get anchorPaths() {
-      return self.graph?.anchorPaths ?? []
+      return (self.unfoldedGraph ?? self.graph)?.anchorPaths ?? []
     },
-    // Every walk the graph carries, named for a picker, whatever the count.
+    // Every walk the graph carries, named for a picker, whatever the count,
+    // and for a graph folded to threads every walk of the cut it was folded
+    // from that steps a node here, a pick lighting the threads that hold it
+    // (threadLayers); the fold note counts the rest
     get walkChoices() {
-      const paths = self.graph?.paths
+      const paths = self.unfoldedGraph
+        ? self.unfoldedGraph.paths?.filter(path => path.nodeIds.length > 0)
+        : self.graph?.paths
       return paths?.length ? pathLegend(paths) : []
     },
     // Whether the drawing is actually painted per path, which is not the same
@@ -595,7 +602,7 @@ export const withGraphViews = paneBase
         !self.walkCut &&
         layers.length > 0 &&
         !self.layoutResult?.tubeMap
-        ? walkLift(graph, layers, this.walkRamp)
+        ? walkLift(graph, threadLayers(graph, layers), this.walkRamp)
         : undefined
     },
     // One panel per lifted walk while the pane is faceted by walk, each a
@@ -608,9 +615,16 @@ export const withGraphViews = paneBase
         this.modeDrawsNodes &&
         graph &&
         lift &&
-        self.walkLayers.length > 1 &&
-        lift.walks.length > 1
-        ? facetLifts(graph, lift, this.coloredWalkLayers, this.walkRamp)
+        self.walkLayers.length > 1
+        ? graph.threadFold
+          ? this.coloredWalkLayers.flatMap(layer => {
+              const layers = threadLayers(graph, [layer])
+              const own = walkLift(graph, layers, this.walkRamp)
+              return own ? facetLifts(graph, own, layers, this.walkRamp) : []
+            })
+          : lift.walks.length > 1
+            ? facetLifts(graph, lift, this.coloredWalkLayers, this.walkRamp)
+            : undefined
         : undefined
     },
     // The lifted walks as drawn, each panel's own while faceted
@@ -831,9 +845,21 @@ export const withGraphViews = paneBase
     // what the legend says the drawing leaves out, when it was folded
     get foldNote() {
       const bp = self.foldedBelowBp
+      const stepless = self.graph?.threadFold?.stepless ?? 0
       return bp === undefined
         ? undefined
-        : `variants under ${formatBp(bp)} folded into the reference`
+        : `variants under ${formatBp(bp)} folded into the reference${
+            stepless > 0
+              ? `; ${stepless.toLocaleString()} ${stepless === 1 ? 'walk' : 'walks'} with no steps here not drawn`
+              : ''
+          }`
+    },
+    // why a graph with walks is drawn whole at a zoom that folds one
+    get foldRefusalNote() {
+      const reason = self.foldRefusal
+      return reason === undefined
+        ? undefined
+        : `walks not folded to this zoom: ${reason}`
     },
   }))
   .views(self => ({
@@ -1064,7 +1090,7 @@ export const withGraphViews = paneBase
         self.nodeById,
         self.contigThickness,
         self.nodeWidth,
-        0,
+        self.drawnGraph?.threadFold ? self.drawnWalks : 0,
         this.drawnFold?.through,
       )
     },

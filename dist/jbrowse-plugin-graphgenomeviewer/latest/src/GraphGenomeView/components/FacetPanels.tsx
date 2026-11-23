@@ -191,7 +191,7 @@ const FacetPanels = observer(function FacetPanels({
     >
       {panels.map((lift, i) => (
         <FacetPanel
-          key={lift.walks[0]!.name}
+          key={`${i}:${lift.walks[0]!.name}`}
           model={model}
           lift={lift}
           index={i}

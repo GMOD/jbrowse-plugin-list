@@ -24,6 +24,7 @@ import type { GeneModel } from '@jbrowse/bandage-core/genes/genePins'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
 import type { Bounds } from '@jbrowse/bandage-core/pipeline'
 import type { RenderBatch } from '@jbrowse/bandage-core/renderer/types'
+import type { ThreadEvent } from '@jbrowse/bandage-core/threadFold'
 import type { TubeMapMismatch } from '@jbrowse/bandage-core/tubeMap/mismatches'
 import type { Graph } from '@jbrowse/bandage-core/types'
 import type { AxisScale } from '@jbrowse/bandage-core/util/geometry'
@@ -390,6 +391,15 @@ export const paneBase = types
     // the size under which the graph on screen has variants folded into the
     // reference, by this cut or by the tier it was cut from
     foldedBelowBp: undefined as number | undefined,
+    // why the graph on screen, which has walks, was not folded to the zoom
+    // it was cut at, and what a fold to threads kept, for the hover
+    // (threadFoldCut.ts)
+    foldRefusal: undefined as string | undefined,
+    threadEvents: undefined as ThreadEvent[] | undefined,
+    // the graph the one on screen was thread-folded from, and the fold the cut
+    // was asked for, so a change of layout or reference can fold it again
+    unfoldedGraph: undefined as Graph | undefined,
+    cutFoldBelowBp: 0,
     // the gene track's features over the cut window, read once per cut
     geneTrackFeatures: undefined as Feature[] | undefined,
     // each walk row's genes, read from its haplotype's own assembly, by walk

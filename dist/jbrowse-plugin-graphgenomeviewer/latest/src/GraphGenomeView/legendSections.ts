@@ -442,7 +442,11 @@ function tubeMapNoteRows(model: GraphPaneModel): LegendRow[] {
 
 function foldRows(model: GraphPaneModel): LegendRow[] {
   const note = model.foldNote
-  return note ? [{ key: 'fold', label: note }] : []
+  const refusal = model.foldRefusalNote
+  return [
+    ...(note ? [{ key: 'fold', label: note }] : []),
+    ...(refusal ? [{ key: 'fold-refused', label: refusal }] : []),
+  ]
 }
 
 function pathRows(model: GraphPaneModel): LegendRow[] {
@@ -660,7 +664,9 @@ function walkRowsRows(model: GraphPaneModel): LegendRow[] {
 // shades by, then its name, with the scale's stretch under it
 export function walkKeyRow(model: GraphPaneModel, walk: LiftedWalk) {
   return keyRow(
-    walkKeyEntry(walk, model.walkLabel(walk.name), model.walkReference),
+    walkKeyEntry(walk, model.walkLabel(walk.name), model.walkReference, name =>
+      model.walkLabel(name),
+    ),
   )
 }
 
