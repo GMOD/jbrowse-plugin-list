@@ -494,7 +494,7 @@ export const withFitViews = withHostViews
         !layout.referenceAxis &&
         !layout.pixelRows &&
         !layout.tubeMap &&
-        !self.facetPanels
+        !self.facetsWalks
       )
     },
     // How a drawing the window places meets the pane's height (core's
@@ -589,7 +589,11 @@ export const withFitViews = withHostViews
     },
     // A key over a drawing the window places sits in a band above what the
     // pane's width shows, where the track is tall enough for both, so it
-    // covers none of it. Undefined where it is not.
+    // covers none of it. Undefined where it is not, and the key then covers
+    // the drawing's right end: falling back to a column there was tried and
+    // declined, since the band's fit moves as tall structures pan in, which
+    // rescaled the drawing ~27% mid-pan, and under heightMode 'grow' the
+    // fallback closed a cycle through the track's height.
     get keyBandTop() {
       const followed = this.followedTransform
       const held = this.heldLayout

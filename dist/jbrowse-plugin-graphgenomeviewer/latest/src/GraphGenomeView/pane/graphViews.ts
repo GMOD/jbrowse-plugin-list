@@ -605,26 +605,36 @@ export const withGraphViews = paneBase
         ? walkLift(graph, threadLayers(graph, layers), this.walkRamp)
         : undefined
     },
+    // whether facetPanels draws, from the walks lifted and not their colours,
+    // since a reference-position ramp waits on following the window
+    get facetsWalks() {
+      const { graph } = self
+      const lifted =
+        graph &&
+        self.facetSetting.field !== '' &&
+        this.modeDrawsNodes &&
+        self.walkLayers.length > 1 &&
+        !self.walkCut &&
+        !self.layoutResult?.tubeMap
+          ? (walkLift(graph, threadLayers(graph, self.walkLayers))?.walks
+              .length ?? 0)
+          : 0
+      return lifted > (graph?.threadFold ? 0 : 1)
+    },
     // One panel per lifted walk while the pane is faceted by walk, each a
     // lift of that walk alone, on a layout whose nodes the panels can split.
     // See facetLifts.
     get facetPanels() {
       const { graph } = self
-      const lift = this.walkLift
-      return self.facetSetting.field !== '' &&
-        this.modeDrawsNodes &&
-        graph &&
-        lift &&
-        self.walkLayers.length > 1
+      const lift = this.facetsWalks ? this.walkLift : undefined
+      return graph && lift
         ? graph.threadFold
           ? this.coloredWalkLayers.flatMap(layer => {
               const layers = threadLayers(graph, [layer])
               const own = walkLift(graph, layers, this.walkRamp)
               return own ? facetLifts(graph, own, layers, this.walkRamp) : []
             })
-          : lift.walks.length > 1
-            ? facetLifts(graph, lift, this.coloredWalkLayers, this.walkRamp)
-            : undefined
+          : facetLifts(graph, lift, this.coloredWalkLayers, this.walkRamp)
         : undefined
     },
     // The lifted walks as drawn, each panel's own while faceted

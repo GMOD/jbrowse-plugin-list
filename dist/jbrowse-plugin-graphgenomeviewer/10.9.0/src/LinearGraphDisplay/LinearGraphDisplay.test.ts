@@ -1711,6 +1711,45 @@ test('a drawing that follows the window draws and labels only what the view show
   )
 })
 
+test('a drawing that draws only the view follows the window with the reference walk lifted and coloured by reference position', async () => {
+  const { pane } = await forceGraph({
+    paths: true,
+    display: {
+      extent: 'view',
+      walks: [
+        { walk: REF, color: { field: 'reference', scheme: 'rainbow' } },
+        { walk: 'HG1', color: { value: '#d95f02' } },
+      ],
+    },
+  })
+  const seen = hostWindow(pane.host!)!
+  expect(pane.followsWindow).toBe(true)
+  expect(pane.viewWindow).toEqual({ start: seen.start, end: seen.end })
+  expect(pane.walkLift?.walks.map(w => w.name).sort()).toEqual(['HG1', REF])
+  expect(pane.walkLift?.referenceDomain).toEqual({
+    start: seen.start,
+    end: seen.end,
+  })
+})
+
+test('faceted by walk, with the reference walk coloured by reference position, a drawing under extent view does not follow the window', async () => {
+  const { pane } = await forceGraph({
+    paths: true,
+    display: {
+      extent: 'view',
+      facet: { field: 'walk' },
+      walks: [
+        { walk: REF, color: { field: 'reference', scheme: 'rainbow' } },
+        { walk: 'HG1', color: { value: '#d95f02' } },
+      ],
+    },
+  })
+  expect(pane.facetsWalks).toBe(true)
+  expect(pane.facetPanels).toHaveLength(2)
+  expect(pane.followsWindow).toBe(false)
+  expect(pane.viewWindow).toBeUndefined()
+})
+
 test("a track's SVG export is the scene its pane shows: the drawing beside the key at the track's height, framed as the screen frames it", async () => {
   const { pane, panTo } = await forceGraph()
   await panTo(970_000)
