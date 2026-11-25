@@ -161,3 +161,15 @@ test("a phased allele goes to one of its haplotype's walks", () => {
   })
   expect(both.map(r => r.call?.agrees)).toEqual([undefined, true])
 })
+
+// A walk that leaves the array and comes back holds bp away from the window
+// in its row, which the allele's length does not count
+test('a walk is scored by the bp it walks, not those it spends away from the window', () => {
+  const away = {
+    ...walk('HG1', 3161 + 40_000),
+    runs: [{ heldBp: undefined }, { heldBp: 40_000 }, { heldBp: undefined }],
+  }
+  expect(
+    withCalls([away], { HG1: calls(3161) }).map(r => r.call?.agrees),
+  ).toEqual([true])
+})

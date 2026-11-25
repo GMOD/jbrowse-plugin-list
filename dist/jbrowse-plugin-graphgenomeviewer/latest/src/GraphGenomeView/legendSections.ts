@@ -74,6 +74,8 @@ export type LegendSwatch =
       edged?: true
       // a hollow chip's rim, round the fill
       rim?: string
+      // chevrons along it, as walk rows draw a stretch walked reversed
+      chevrons?: true
     }
   // the reference strip, a band per lifted walk
   | { kind: 'bands'; bands: Stop[][] }
@@ -582,6 +584,9 @@ export function walkRowSwatch(swatch: KeySwatch): LegendSwatch {
             : flat(swatch.fill),
         height: swatch.kind === 'gap' ? swatch.px : WALK_ROW_SWATCH_PX,
         ...(swatch.kind === 'bar' && swatch.rim ? { rim: swatch.rim } : {}),
+        ...(swatch.kind === 'bar' && swatch.chevrons
+          ? { chevrons: swatch.chevrons }
+          : {}),
       }
 }
 
@@ -633,6 +638,7 @@ function walkRowsRows(model: GraphPaneModel): LegendRow[] {
       ramp: model.referenceRampDomain,
       genes: model.walkRowGeneKey,
       annotation: model.walkRowAnnotation,
+      ruler: model.hostBpFrame !== undefined,
       ...(model.rowVisitsNeeded
         ? { comparing: { fetchLimit: EXPAND_NAMED_MAX } }
         : {}),

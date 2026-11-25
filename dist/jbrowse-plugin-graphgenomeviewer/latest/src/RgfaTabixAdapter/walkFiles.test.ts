@@ -428,24 +428,26 @@ test.each([
       walkRows: true,
     })) as WalkCut
     const rows = walkRowsOf(cut.walkRowRuns!).rows.map(
-      ({ label, bp, complete, stop }) => ({ label, bp, complete, stop }),
+      ({ label, bp, complete, stops }) => ({ label, bp, complete, stops }),
     )
     expect(rows).toEqual([
-      { label: 'HG002#2', bp: 500, complete: true, stop: undefined },
+      { label: 'HG002#2', bp: 500, complete: true, stops: undefined },
       {
         label: 'HG002#1',
         bp: 500,
         complete: false,
-        stop: {
-          contigEnds: false,
-          shortBp: 0,
-          goesOn: {
-            near: 4000,
-            departure: expect.objectContaining({
-              leavePos: 1500,
-              rejoinPos: 4000,
-              ownBp: 4000,
-            }),
+        stops: {
+          right: {
+            contigEnds: false,
+            shortBp: 0,
+            goesOn: {
+              near: 4000,
+              departure: expect.objectContaining({
+                leavePos: 1500,
+                rejoinPos: 4000,
+                ownBp: 4000,
+              }),
+            },
           },
         },
       },
@@ -453,7 +455,7 @@ test.each([
         label: 'HG003#1',
         bp: 500,
         complete: false,
-        stop: { contigEnds: false, shortBp: 0 },
+        stops: { right: { contigEnds: false, shortBp: 0 } },
       },
     ])
   },

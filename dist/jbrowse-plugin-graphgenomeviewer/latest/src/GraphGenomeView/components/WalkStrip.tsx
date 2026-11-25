@@ -102,7 +102,14 @@ export const StripTip = observer(function StripTip({
   const row = all[index]
   const at =
     bars && frame && row ? walkRowReadoutAt(bars, index, frame) : undefined
-  if (!bars || !frame || !hover || !row || !at || (frame.labelled && !at.cut)) {
+  if (
+    !bars ||
+    !frame ||
+    !hover ||
+    !row ||
+    !at ||
+    (frame.labelled && at.full === at.shown)
+  ) {
     return null
   }
   const x = (bars.origin + hover.offset) * frame.scaleX + frame.translateX
@@ -118,7 +125,7 @@ export const StripTip = observer(function StripTip({
         top: index * frame.rowPx + frame.translateY - 18,
       }}
     >
-      {row.label} · {at.text}
+      {row.label} · {at.full}
     </div>
   )
 })

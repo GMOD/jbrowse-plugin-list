@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "license": "MIT",
   "name": "@cmdcolin/jbrowse-plugin-hubs",
   "repository": {
@@ -25,6 +25,7 @@
     "build": "tsc && NODE_ENV=production node esbuild.mjs",
     "lint": "eslint src --report-unused-disable-directives --max-warnings 0",
     "prepack": "pnpm build",
+    "version": "git-cliff --tag v$npm_package_version --unreleased --prepend CHANGELOG.md && git add CHANGELOG.md",
     "postversion": "git push --follow-tags",
     "preversion": "pnpm lint && pnpm test && pnpm build && pnpm check-host-floor && pnpm host-compat",
     "host-compat": "node scripts/host-compat-probe.mjs --bundle dist/jbrowse-plugin-hubs.esm.js",
@@ -44,6 +45,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unicorn": "^64.0.0",
+    "git-cliff": "^2.14.2",
     "mobx": "^7.1.1",
     "prettier": "^3.8.4",
     "pretty-bytes": "^7.1.0",

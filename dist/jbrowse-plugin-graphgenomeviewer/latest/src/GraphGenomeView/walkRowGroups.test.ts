@@ -293,7 +293,7 @@ describe('panning the trees', () => {
       height: 60,
       ...pitch,
     })
-    const tight = frameAt(150)
+    const tight = frameAt(470)
     const roomy = frameAt(-290)
     expect(walkRowReadoutAt(drawn, 1, tight).cut).toBe(true)
     const whole = walkRowReadoutAt(drawn, 1, roomy)

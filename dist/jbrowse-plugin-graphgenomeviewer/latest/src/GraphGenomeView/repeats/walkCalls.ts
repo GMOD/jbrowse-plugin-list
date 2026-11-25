@@ -1,4 +1,7 @@
+import { walkedBp } from '@jbrowse/bandage-core/layout/walkRowDraw'
+
 import type { RepeatCall } from './repeatFeatures'
+import type { WalkRun } from '@jbrowse/bandage-core/layout/walkRows'
 
 // Which genotyped allele belongs to which haplotype walk. A VCF states a
 // sample's alleles in genotype order, which is the genotyper's own order and
@@ -69,10 +72,19 @@ function byLength<T>(items: T[], bp: (item: T) => number) {
 
 const backed = (call: RepeatCall) => call.spanningReads !== 0
 
-function scored(row: { bp: number; complete: boolean }, call: RepeatCall) {
+// a row's walk is scored by the bp it walks, not those it spends away from
+// the window
+interface CalledRow {
+  bp: number
+  complete: boolean
+  runs?: readonly Pick<WalkRun, 'heldBp'>[]
+}
+
+function scored(row: CalledRow, call: RepeatCall) {
   return {
     ...call,
-    agrees: row.complete && backed(call) ? agrees(row.bp, call.bp) : undefined,
+    agrees:
+      row.complete && backed(call) ? agrees(walkedBp(row), call.bp) : undefined,
   }
 }
 
@@ -83,12 +95,13 @@ function scored(row: { bp: number; complete: boolean }, call: RepeatCall) {
 // two left. That decides the ambiguous cases on merit: which walk takes the
 // one allele a lone spanning read supports, and which allele a walk that stops
 // inside the array is drawn against.
-function pairSample<
-  R extends { bp: number; complete: boolean; haplotype?: number },
->(rows: R[], calls: RepeatCall[]) {
+function pairSample<R extends CalledRow & { haplotype?: number }>(
+  rows: R[],
+  calls: RepeatCall[],
+) {
   const out = new Map<number, WalkCall>()
   const taken = new Set<RepeatCall>()
-  const ranked = byLength(rows, r => r.bp)
+  const ranked = byLength(rows, walkedBp)
   const pair = (pool: typeof ranked, group: RepeatCall[]) => {
     const stages = [
       [pool.filter(r => r.item.complete), group.filter(backed)],
@@ -101,7 +114,7 @@ function pairSample<
         call => call.bp,
       )
       nearest(
-        free.map(r => r.item.bp),
+        free.map(r => walkedBp(r.item)),
         open.map(c => c.item.bp),
       ).forEach((pick, k) => {
         if (pick !== undefined) {
@@ -127,12 +140,7 @@ function pairSample<
 }
 
 export function withCalls<
-  R extends {
-    sample: string
-    bp: number
-    complete: boolean
-    haplotype?: number
-  },
+  R extends CalledRow & { sample: string; haplotype?: number },
 >(rows: R[], calls: Record<string, RepeatCall[]> | undefined) {
   if (!calls) {
     return rows as (R & { call?: WalkCall })[]

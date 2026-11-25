@@ -400,9 +400,24 @@ describe('walk rows', () => {
       const end = (bars.origin + barEnd(row)) * model.scaleX + model.translateX
       expect(end).toBeLessThanOrEqual(keyLeft)
       const at = model.walkRowReadoutOf(i)!
-      for (const line of at.lines) {
-        expect(at.x + measureReadout(line)).toBeLessThanOrEqual(keyLeft)
-      }
+      expect(at.x + measureReadout(at.shown)).toBeLessThanOrEqual(keyLeft)
+    })
+  })
+
+  test('beside a wide key the bars narrow so every readout is drawn whole', async () => {
+    rpcRespond()
+    const model = stateModelFactory().create({
+      type: 'GraphGenomeView',
+      layoutMode: 'walkrows',
+    })
+    await model.loadGFA(WALKS_GFA, 'walks')
+    model.setWidth(800)
+    model.setLegendSize({ width: 600, height: 120 })
+    model.zoomToFit()
+    const bars = model.walkRowBars!
+    expect(bars.rows.length).toBe(3)
+    ;[bars.reference, ...bars.rows].forEach((_, i) => {
+      expect(model.walkRowReadoutOf(i)!.cut).toBe(false)
     })
   })
 

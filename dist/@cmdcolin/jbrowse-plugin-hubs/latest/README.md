@@ -13,8 +13,8 @@ Resolves a genome a JBrowse session names but does not hold, from the configs
 ## Hosts
 
 Each release is an ES module for JBrowse 5, built against `v5.0.0-beta.18`
-(`scripts/check-host-floor.mjs`). A JBrowse 5 host resolves the `Hubs` store
-entry a jb2hubs config names and loads the newest release.
+(`scripts/hosts.mjs`). A JBrowse 5 host resolves the `Hubs` store entry a
+jb2hubs config names and loads the newest release.
 
 JBrowse 4, web and desktop, keeps 1.0.18 for good. It ignores the store entry
 and loads the config's `latest/dist/jbrowse-plugin-hubs.umd.production.min.js`,
@@ -24,8 +24,6 @@ as long as no release carries a file of that name (jbrowse-plugin-list ADR
 
 ## Releasing
 
-`pnpm version <patch|minor|major>` publishes to npm from CI. The first ESM
-release also needs the `Hubs` entry in jbrowse-plugin-list's `plugins.json` to
-trade `umdPath` for
-`"esmPath": "dist/jbrowse-plugin-hubs.esm.js", "jbrowseRange": ">=5.0.0"`,
-before `pnpm update-plugins`.
+`pnpm version <patch|minor|major>` publishes to npm from CI, and
+`pnpm update-plugins && pnpm verify && pnpm upload && pnpm invalidate` in
+jbrowse-plugin-list puts the release in the store.

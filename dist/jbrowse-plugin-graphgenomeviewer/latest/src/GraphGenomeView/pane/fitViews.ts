@@ -208,15 +208,19 @@ export const withFitViews = withHostViews
     // zoomToFit. On a reference-bp layout x is the cut window rather than
     // how far the drawing reaches: an allele anchored far outside it is a
     // fact about the graph, not a reason to draw the window at 6% of the
-    // frame. Walk rows reach as far as
-    // the bars on screen, which a repeat pick or a sample filter narrows
-    // after the layout ran.
+    // frame. Walk rows reach as far as the bars on screen, which a repeat
+    // pick or a sample filter narrows after the layout ran, and far enough
+    // that each readout is drawn whole beside its bar.
     get layoutBounds() {
       const layout = self.layoutResult
       const bars = self.walkRowBars
       const rowsExtent =
         bars && layout?.extent
-          ? walkRowsExtent(bars, this.walkRowPitch)
+          ? walkRowsExtent(bars, this.walkRowPitch, {
+              widthPx: this.drawingWidth - this.fitPadLeft - FIT_PADDING,
+              measure: measureReadout,
+              comparing: self.rowVisitsNeeded,
+            })
           : undefined
       return layout
         ? drawingBounds(layout, {
@@ -278,18 +282,21 @@ export const withFitViews = withHostViews
         : undefined
     },
     // A hovered row's label and its readout in full, while its rows are too
-    // thin to draw readouts or where its own readout is drawn cut short
+    // thin to draw readouts or where the line drawn leaves some of it out
     get hoveredWalkRowText() {
       const i = self.walkRowList.findIndex(r => r.name === self.hoveredWalkRow)
       const row = self.walkRowList[i]
       const at = row ? this.walkRowReadoutOf(i) : undefined
-      return row && at && (this.walkRowPitch?.readouts === false || at.cut)
-        ? { label: row.label, readout: at.text }
+      return row &&
+        at &&
+        (this.walkRowPitch?.readouts === false || at.full !== at.shown)
+        ? { label: row.label, readout: at.full }
         : undefined
     },
     // The walk row under a pane point, as its index among the reference row
-    // and the rows below it, where the point is on its bar or, for a readout
-    // drawn cut, between the bar's end and the readout's
+    // and the rows below it, where the point is on its bar or, for a line
+    // that leaves some of its readout out, between the bar's end and the
+    // line's
     walkRowAt(screenX: number, screenY: number) {
       const bars = self.walkRowBars
       const pitch = this.walkRowPitch
@@ -309,7 +316,8 @@ export const withFitViews = withHostViews
         ? (bars.origin + barEnd(row)) * self.scaleX + self.translateX
         : 0
       const overCut =
-        !!at?.cut &&
+        !!at &&
+        at.full !== at.shown &&
         screenX >= endX &&
         screenX <= at.x + measureReadout(at.shown)
       return row &&

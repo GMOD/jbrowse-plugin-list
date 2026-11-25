@@ -1,3 +1,8 @@
+import {
+  CHEVRON_HALO,
+  CHEVRON_INK,
+  chevronPoints,
+} from '@jbrowse/bandage-core/layout/walkRowDraw'
 import { NOT_LOADED_RIM_PX } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { THREAD_PX } from '@jbrowse/bandage-core/renderer/walkLanes'
 import { rulerInk } from '@jbrowse/bandage-core/tubeMap/axis'
@@ -78,18 +83,39 @@ export function SvgSwatch({
   switch (swatch.kind) {
     case 'fill': {
       const height = swatchHeight(swatch)
+      const width = swatchWidth(swatch)
       return (
-        <Gradient
-          id={id}
-          x={x}
-          y={mid - height / 2}
-          stops={swatch.stops}
-          width={swatchWidth(swatch)}
-          height={height}
-          square={swatch.square}
-          edged={swatch.edged}
-          rim={swatch.rim}
-        />
+        <>
+          <Gradient
+            id={id}
+            x={x}
+            y={mid - height / 2}
+            stops={swatch.stops}
+            width={width}
+            height={height}
+            square={swatch.square}
+            edged={swatch.edged}
+            rim={swatch.rim}
+          />
+          {swatch.chevrons
+            ? chevronPoints(x, x + width, mid, height).map(points => (
+                <g key={points}>
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={CHEVRON_HALO}
+                    strokeWidth={1.5}
+                  />
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={CHEVRON_INK}
+                    strokeWidth={0.8}
+                  />
+                </g>
+              ))
+            : null}
+        </>
       )
     }
     case 'bands': {

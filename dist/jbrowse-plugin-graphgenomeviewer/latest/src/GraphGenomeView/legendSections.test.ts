@@ -222,6 +222,15 @@ test("a walk row key's hollow bar keeps its rim round its fill", () => {
   )
 })
 
+test("a walk row key's swatch for a stretch walked against the reference carries the rows' chevrons", () => {
+  expect(
+    walkRowSwatch({ kind: 'bar', fill: '#9e9e9e', chevrons: true }),
+  ).toMatchObject({ kind: 'fill', chevrons: true })
+  expect(walkRowSwatch({ kind: 'bar', fill: '#3c4148' })).not.toHaveProperty(
+    'chevrons',
+  )
+})
+
 function stripLegend(over: Record<string, unknown>) {
   return rowsOf(
     Object.assign(keyModel(DEPTHS), {
