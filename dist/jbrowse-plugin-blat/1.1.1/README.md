@@ -7,10 +7,13 @@ Queries go through a jbrowse.org server that holds a UCSC apiKey, so a search
 needs no account; the server shares one budget among its users, waits out a busy
 slot, and gives each network a share per hour and per day.
 
-It does something only on an assembly UCSC hosts, so it is not bundled into
-JBrowse Web or Desktop. Every genome on
-[genomes.jbrowse.org](https://genomes.jbrowse.org) names it; another JBrowse
-turns it on with a config `plugins` entry:
+It comes pre-installed on the hosted genomes: every genome on
+[genomes.jbrowse.org](https://genomes.jbrowse.org), and every genome JBrowse
+Desktop opens from **Browse hosted genomes**. Their configs name it; neither
+JBrowse Web nor Desktop bundles it, since a search finds something only on an
+assembly UCSC hosts.
+
+Another JBrowse turns it on with a config `plugins` entry:
 
 ```json
 {
@@ -22,6 +25,13 @@ turns it on with a config `plugins` entry:
   ]
 }
 ```
+
+A genome UCSC does not host needs a UCSC Genome Browser mirror that has it, set
+in the dialog's server field. The field also takes a proxy of your own: the
+jbrowse.org one is
+[`products/aws/blat-proxy`](https://github.com/GMOD/jbrowse-components/tree/main/products/aws/blat-proxy)
+in jbrowse-components, deployable with your own UCSC apiKey. Either has to send
+CORS headers, since the browser calls it directly.
 
 User guide: https://jbrowse.org/jb2/docs/user_guides/blat
 

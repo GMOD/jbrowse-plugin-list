@@ -1,6 +1,6 @@
 {
   "name": "jbrowse-plugin-blat",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "description": "JBrowse 2 plugin for UCSC BLAT and in-silico PCR, through the jbrowse.org proxy",
   "keywords": [
