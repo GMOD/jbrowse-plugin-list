@@ -1,0 +1,100 @@
+{
+  "plugins": [
+    {
+      "name": "UCSC",
+      "url": "https://unpkg.com/jbrowse-plugin-ucsc/dist/jbrowse-plugin-ucsc.umd.production.min.js"
+    }
+  ],
+  "assemblies": [
+    {
+      "name": "hg38",
+      "aliases": ["GRCh38"],
+      "sequence": {
+        "type": "ReferenceSequenceTrack",
+        "trackId": "P6R5xbRqRr",
+        "adapter": {
+          "type": "BgzipFastaAdapter",
+          "fastaLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz"
+          },
+          "faiLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz.fai"
+          },
+          "gziLocation": {
+            "uri": "https://jbrowse.org/genomes/GRCh38/fasta/hg38.prefix.fa.gz.gzi"
+          }
+        }
+      },
+      "refNameAliases": {
+        "adapter": {
+          "type": "RefNameAliasAdapter",
+          "location": {
+            "uri": "https://s3.amazonaws.com/jbrowse.org/genomes/GRCh38/hg38_aliases.txt"
+          }
+        }
+      }
+    }
+  ],
+  "tracks": [
+    {
+      "type": "FeatureTrack",
+      "trackId": "ucsc_geneHancerRegElementsDoubleElite",
+      "name": "GeneHancer regulatory elements (double elite)",
+      "category": ["Regulation"],
+      "assemblyNames": ["hg38"],
+      "adapter": {
+        "type": "UCSCAdapter",
+        "genome": "hg38",
+        "track": "geneHancerRegElementsDoubleElite"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "ucsc_geneHancerInteractionsDoubleElite",
+      "name": "GeneHancer interactions (double elite)",
+      "category": ["Regulation"],
+      "assemblyNames": ["hg38"],
+      "adapter": {
+        "type": "UCSCAdapter",
+        "genome": "hg38",
+        "track": "geneHancerInteractionsDoubleElite"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "ucsc_cosmicMuts",
+      "name": "COSMIC mutations",
+      "category": ["Variation"],
+      "assemblyNames": ["hg38"],
+      "adapter": {
+        "type": "UCSCAdapter",
+        "genome": "hg38",
+        "track": "cosmicMuts"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "ucsc_decipherPopulation",
+      "name": "DECIPHER population CNVs",
+      "category": ["Variation"],
+      "assemblyNames": ["hg38"],
+      "adapter": {
+        "type": "UCSCAdapter",
+        "genome": "hg38",
+        "track": "decipherPopulation"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "ucsc_knownGene",
+      "name": "GENCODE (knownGene)",
+      "category": ["Genes"],
+      "assemblyNames": ["hg38"],
+      "adapter": {
+        "type": "UCSCAdapter",
+        "genome": "hg38",
+        "track": "knownGene"
+      }
+    }
+  ]
+}

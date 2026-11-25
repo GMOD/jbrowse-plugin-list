@@ -1,17 +1,17 @@
 import Plugin from '@jbrowse/core/Plugin';
-import { isAbstractMenuManager, isElectron } from '@jbrowse/core/util';
+import { isAbstractMenuManager, isElectron, isSessionModelWithConnections, saveAs, } from '@jbrowse/core/util';
 import { getRoot, getSnapshot, isStateTreeNode } from '@jbrowse/mobx-state-tree';
-import { getConfigUrls } from './configUrls';
 import { describeAssemblies } from './describeAssemblies';
-import { saveAs, toDesktopSnapshot } from './util';
+import { findHostedAssembly } from './hostedAssembly';
+import { toDesktopSnapshot } from './util';
 import { version } from '../package.json';
-// jbrowse-web's config node, on every host before 6ddcb6f886 (main, after
-// v5.0.0-beta.20), strips each `baseUri` from its own snapshot (a
-// postProcessor meant for the admin "save config" flow), which leaves each
-// relative `uri` bare, and desktop resolves a bare one against the directory
-// the .jbrowse file sits in: ENOENT ~/Downloads/hg38.chromAlias.txt. Its
-// children's snapshots don't pass through that processor, so the config is
-// read from them, baseUris intact, on old hosts and new alike.
+function isHubSession(session) {
+    return (isSessionModelWithConnections(session) && 'addConnectionConf' in session);
+}
+// jbrowse-web's config node, on hosts before v5.0.0-beta.21, strips each
+// `baseUri` from its own snapshot, which leaves each relative `uri` bare, and
+// desktop resolves a bare one against the directory the .jbrowse file sits
+// in. Its children's snapshots keep them
 function configSnapshot(jbrowse) {
     const node = jbrowse;
     return Object.fromEntries(Object.keys(getSnapshot(jbrowse)).map(key => {
@@ -19,93 +19,35 @@ function configSnapshot(jbrowse) {
         return [key, isStateTreeNode(value) ? getSnapshot(value) : value];
     }));
 }
-// Serializes the current web session as a desktop `.jbrowse` file. genomes
-// sessions are config-shaped already, so this just folds the live session into
-// a defaultSession and downloads it; desktop opens it via File > Open session.
 function downloadDesktopSession(session) {
     const { jbrowse } = getRoot(session);
     const snap = toDesktopSnapshot(configSnapshot(jbrowse), getSnapshot(session));
     saveAs(new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' }), 'session.jbrowse');
 }
-// Every assembly name this plugin has already taken a run at, whether the probe
-// is still in flight or came back with nothing. The extension point fires on an
-// unresolved read, and `get` is read from render paths, so a name that resolves
-// to no hosted config is asked about again and again — GenArk strain hubs
-// (mouseStrains and friends) live under /hubs/genark/<hub>/<strain>/ and are not
-// at the url guessed from the name, and a session can name an assembly this host
-// has never heard of at all. Clearing this once the probe settled (what an
-// earlier `finally` did) meant the next read re-probed, i.e. one HEAD per render
-// forever for exactly the names nothing can supply.
-//
-// A name that DID resolve is also in here, and is separately deduped by
-// connectionId once the connection exists. Nothing is ever removed within a
-// session: a probe answers a question about a url that does not change within a
-// page load.
-//
-// Keyed by session, because the connection a probe created belongs to the
-// session and goes with it. A flat Set would remember a name across
-// `setSession` and leave the new session unable to resolve a genome the old one
-// had. WeakMap so a replaced session is still collectable.
-//
-// jbrowse-core@main reports each unknown name to the extension point once per
-// session, which makes this redundant there — but this plugin runs against
-// whatever core the host page shipped, down to the v4.0.0 floor, where it is
-// the only thing standing between a mistyped assembly name and an unbounded
-// request stream.
-const attempted = new WeakMap();
-function markAttempted(session, assemblyName) {
-    let names = attempted.get(session);
-    if (!names) {
-        names = new Set();
-        attempted.set(session, names);
-    }
-    if (names.has(assemblyName)) {
-        return false;
-    }
-    names.add(assemblyName);
-    return true;
-}
-// Connect to the first of `uris` that exists. Connecting to a config that 404s
-// puts a red error snackbar over a session that is otherwise working, so probe
-// first and stay quiet when there's nothing there — some other handler, or the
-// session itself, may be supplying the assembly.
-async function connectIfConfigExists(session, assemblyName, uris) {
-    const connectionId = `jb2hub-${assemblyName}`;
-    if (!markAttempted(session, assemblyName)) {
-        return;
-    }
-    // A reloaded or shared session keeps the connection's config and not its
-    // instance, so the config being there does not mean the assembly is.
-    const stored = session.connections.find(f => f.connectionId === connectionId);
-    if (stored) {
-        session.makeConnection(stored, { silent: true });
-        return;
-    }
-    for (const uri of uris) {
-        const response = await fetch(uri, { method: 'HEAD' });
-        if (response.ok) {
-            const conf = {
-                type: 'JB2TrackHubConnection',
-                uri,
-                name: `conn_${assemblyName}`,
-                assemblyNames: [assemblyName],
-                connectionId,
-            };
-            session.addConnectionConf(conf);
-            // `silent`: no "Successfully loaded" snackbar. Nobody asked for this
-            // connection — it exists because a track referenced an assembly the
-            // session didn't have — so announcing it is noise over whatever the
-            // user was doing, and it lands on top of any screenshot of a hub
-            // genome. The property is newer than every released core (it landed
-            // after v4.3.0) and this plugin runs against whatever core the host
-            // page shipped, down to the v4.0.0 floor, but passing it is safe
-            // regardless: MST drops an undeclared key off a model snapshot rather
-            // than rejecting it (verified against the fork — the instance is
-            // created, the key is neither readable on it nor in its snapshot), so
-            // an older core makes the same connection it always did and keeps its
-            // toast.
-            session.makeConnection(conf, { silent: true });
-            return;
+// `silent` because nobody asked for this connection, so its "Successfully
+// loaded" snackbar would be noise over whatever the user was doing
+async function connectHostedAssembly(session, assemblyName) {
+    if (isHubSession(session)) {
+        const connectionId = `jb2hub-${assemblyName}`;
+        // A reloaded or shared session keeps the connection's config and not its
+        // instance
+        const stored = session.connections.find(conf => conf.connectionId === connectionId);
+        if (stored) {
+            session.makeConnection(stored, { silent: true });
+        }
+        else {
+            const hosted = await findHostedAssembly(assemblyName);
+            if (hosted) {
+                const conf = {
+                    type: 'JB2TrackHubConnection',
+                    uri: hosted.configUrl,
+                    name: `conn_${assemblyName}`,
+                    assemblyNames: [assemblyName],
+                    connectionId,
+                };
+                session.addConnectionConf(conf);
+                session.makeConnection(conf, { silent: true });
+            }
         }
     }
 }
@@ -113,68 +55,22 @@ export default class HubsViewerPlugin extends Plugin {
     name = 'HubsViewerPlugin';
     version = version;
     install(pluginManager) {
-        pluginManager.addToExtensionPoint('Core-handleUnrecognizedAssembly', (defaultResult, args) => {
-            const session = args.session;
-            const assemblyName = args.assemblyName;
-            const uris = assemblyName ? getConfigUrls(assemblyName) : [];
-            if (session && assemblyName && uris.length > 0) {
-                // The probe and the connection it may create land after this returns,
-                // which is fine because assemblyManager re-reads reactively once the
-                // assembly shows up.
-                //
-                // Returning the promise rather than the accumulator: a core that
-                // knows to look (jbrowse-core > 4.3.0) awaits it in waitForAssembly,
-                // which is what lets that wait end on an event instead of a 10s
-                // timeout. Nothing observable happens between being asked and the
-                // HEAD coming back, so a core with only the session to watch has to
-                // guess, and 10s is both too long to fail in and too short for a cold
-                // CDN. Older cores fold the return value into an accumulator they
-                // then discard, so this is inert there.
-                //
-                // Nothing else registers on this point (checked across the plugin
-                // ecosystem), so replacing the accumulator costs no other plugin its
-                // result; if that changes, a handler registered after this one still
-                // receives and can pass on whatever it is given.
-                return connectIfConfigExists(session, assemblyName, uris).catch((e) => {
-                    console.error(e);
-                });
-            }
-            // Pass the accumulator through: this extension point chains handlers, so
-            // returning undefined would clobber another plugin's result.
-            return defaultResult;
-        });
-        // A multi-way synteny lane whose genome the session lacks asks here for
-        // its assembly config and gene track. Cores older than the point never
-        // fire it, so this is inert on them
-        pluginManager.addToExtensionPoint('Core-describeAssemblies', (described, args) => describeAssemblies(described, args.assemblyNames));
+        // The promise is what lets core's waitForAssembly end when the lookup
+        // does, instead of on a timeout
+        pluginManager.listenToExtensionPoint('Core-handleUnrecognizedAssembly', ({ session, assemblyName }) => connectHostedAssembly(session, assemblyName).catch((e) => {
+            console.error(e);
+        }));
+        pluginManager.addToExtensionPoint('Core-describeAssemblies', (described, { assemblyNames }) => describeAssemblies(described, assemblyNames));
     }
     configure(pluginManager) {
-        // jbrowse-web only. In desktop you'd just save the session, and an exported
-        // .jbrowse file carries this plugin in its plugins list, so an older desktop
-        // would otherwise load and run this menu code when opening that file.
+        // In desktop you'd just save the session
         if (!isElectron && isAbstractMenuManager(pluginManager.rootModel)) {
-            // 'Tools', not 'File'. Every released core from v4.0.0 to latest defines
-            // the File menu as a thunk and appends with `menu.menuItems.push()`, which
-            // throws on a function; the throw escapes configure() and renders the app
-            // as an error page rather than costing just this menu item. Because the
-            // plugin store serves `latest/` no-cache, that took out every
-            // jbrowse.org/ucsc launch on hg38/hg19/mm39/hs1 the moment 1.0.9 shipped.
-            // core@main resolves item contributions lazily and accepts either form,
-            // but this plugin has to keep working on the releases already in the wild.
-            //
-            // Belt and braces on the same reasoning: a cosmetic menu item should never
-            // be able to cost a user their whole session.
-            try {
-                pluginManager.rootModel.appendToMenu('Tools', {
-                    label: 'Download desktop session (.jbrowse)',
-                    onClick: (session) => {
-                        downloadDesktopSession(session);
-                    },
-                });
-            }
-            catch (e) {
-                console.error('could not add the desktop-session download item', e);
-            }
+            pluginManager.rootModel.appendToMenu('Tools', {
+                label: 'Download desktop session (.jbrowse)',
+                onClick: (session) => {
+                    downloadDesktopSession(session);
+                },
+            });
         }
     }
 }

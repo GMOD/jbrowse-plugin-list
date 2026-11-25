@@ -1,0 +1,23 @@
+{
+  "genome": "hg38",
+  "trackType": "wig -20 7.532",
+  "track": "phyloP100way",
+  "start": 43044000,
+  "end": 43044003,
+  "chrom": "chr17",
+  "phyloP100way": [
+    {
+      "chrom": "chr17",
+      "start": 43044000,
+      "end": 43044001,
+      "value": 2.65918
+    },
+    {
+      "chrom": "chr17",
+      "start": 43044001,
+      "end": 43044002,
+      "value": 0.974299
+    }
+  ],
+  "itemsReturned": 3
+}

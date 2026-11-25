@@ -1,0 +1,41 @@
+{
+  "genome": "hg38",
+  "trackType": "chain hg38",
+  "track": "chainSelf",
+  "start": 1000000,
+  "end": 1000100,
+  "chrom": "chr1",
+  "chainSelf": [
+    {
+      "bin": 9,
+      "score": 13486400.0,
+      "tName": "chr1",
+      "tSize": 248956422,
+      "tStart": 596154,
+      "tEnd": 2777443,
+      "qName": "chr1",
+      "qSize": 248956422,
+      "qStrand": "+",
+      "qStart": 596262,
+      "qEnd": 2777525,
+      "id": 659,
+      "normScore": 41.5
+    },
+    {
+      "bin": 592,
+      "score": 17699,
+      "tName": "chr1",
+      "tSize": 248956422,
+      "tStart": 999054,
+      "tEnd": 1000413,
+      "qName": "chr1",
+      "qSize": 248956422,
+      "qStrand": "+",
+      "qStart": 6418806,
+      "qEnd": 6420193,
+      "id": 11769454,
+      "normScore": 15.9
+    }
+  ],
+  "itemsReturned": 4
+}

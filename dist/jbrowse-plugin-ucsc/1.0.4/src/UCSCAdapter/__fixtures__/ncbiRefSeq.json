@@ -1,0 +1,47 @@
+{
+  "genome": "hg38",
+  "trackType": "genePred",
+  "track": "ncbiRefSeq",
+  "start": 998000,
+  "end": 1001000,
+  "chrom": "chr1",
+  "ncbiRefSeq": [
+    {
+      "bin": 592,
+      "name": "NM_001142467.2",
+      "chrom": "chr1",
+      "strand": "-",
+      "txStart": 998963,
+      "txEnd": 1000097,
+      "cdsStart": 999058,
+      "cdsEnd": 999973,
+      "exonCount": 3,
+      "exonStarts": "998963,999525,999691,",
+      "exonEnds": "999432,999613,1000097,",
+      "score": 0,
+      "name2": "HES4",
+      "cdsStartStat": "cmpl",
+      "cdsEndStat": "cmpl",
+      "exonFrames": "1,0,0,"
+    },
+    {
+      "bin": 592,
+      "name": "XM_047426314.1",
+      "chrom": "chr1",
+      "strand": "-",
+      "txStart": 998963,
+      "txEnd": 1000097,
+      "cdsStart": 999360,
+      "cdsEnd": 999973,
+      "exonCount": 3,
+      "exonStarts": "998963,999532,999691,",
+      "exonEnds": "999432,999613,1000097,",
+      "score": 0,
+      "name2": "HES4",
+      "cdsStartStat": "cmpl",
+      "cdsEndStat": "cmpl",
+      "exonFrames": "0,0,0,"
+    }
+  ],
+  "itemsReturned": 5
+}

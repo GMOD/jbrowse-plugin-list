@@ -1,25 +1,27 @@
 {
   "name": "jbrowse-plugin-ucsc",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "JBrowse 2 UCSC API plugin",
   "repository": "github:cmdcolin/jbrowse-plugin-ucsc-api",
   "jbrowse-plugin": {
     "name": "UCSC"
   },
   "main": "dist/index.js",
-  "module": "dist/jbrowse-plugin-ucsc.esm.js",
   "typings": "dist/index.d.ts",
   "scripts": {
     "clean": "rimraf dist",
-    "start": "tsdx watch --verbose --noClean --format umd --name JBrowsePluginUCSC --onFirstSuccess \"yarn serve --cors --listen 9000 .\"",
-    "prebuild": "npm run clean",
-    "build": "tsdx build --format cjs,esm,umd --name JBrowsePluginUCSC && cp distconfig.json dist/config.json",
-    "test": "tsdx test",
-    "lint": "tsdx lint",
-    "prepare": "npm run build",
-    "prepublishOnly": "yarn test",
-    "postinstall": "jbrowse-plugin-postinstall",
-    "postversion": "git push --follow-tags"
+    "format": "pnpm prettier --write .",
+    "prebuild": "pnpm clean",
+    "start": "node esbuild.mjs --watch",
+    "build": "tsc -p tsconfig.build.json && NODE_ENV=production node esbuild.mjs",
+    "build:bundle": "NODE_ENV=production node esbuild.mjs",
+    "postbuild": "cp distconfig.json dist/config.json",
+    "lint": "eslint --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest run",
+    "prepack": "pnpm build",
+    "preversion": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "postversion": "git push --follow-tags",
+    "typecheck": "tsc"
   },
   "files": [
     "dist",
@@ -32,26 +34,36 @@
     "jbrowse2"
   ],
   "prettier": {
-    "trailingComma": "all"
+    "semi": false,
+    "trailingComma": "all",
+    "singleQuote": true,
+    "arrowParens": "avoid"
   },
   "peerDependencies": {
-    "@jbrowse/core": "^1.0.3"
+    "@jbrowse/core": ">=2.0.0"
   },
   "devDependencies": {
-    "@babel/preset-react": "^7.10.4",
-    "@jbrowse/core": "^1.0.3",
-    "@jbrowse/development-tools": "^1.0.3",
-    "@material-ui/core": "^4.9.13",
-    "@material-ui/lab": "^4.0.0-alpha.45",
-    "@types/react": "^17.0.0",
-    "mobx": "^5.0.0",
-    "mobx-react": "^6.0.0",
-    "mobx-state-tree": "3.14.1",
-    "react": "^16.8.0",
-    "rimraf": "^3.0.2",
-    "rxjs": "^6.0.0",
-    "serve": "^11.3.2",
-    "tslib": "^2.0.3",
-    "typescript": "^4.1.3"
+    "@eslint/js": "^10.0.1",
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@jbrowse/core": "5.0.0-beta.20",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.2.1",
+    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-unicorn": "^64.0.0",
+    "prettier": "^3.8.3",
+    "pretty-bytes": "^7.1.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "rimraf": "^6.1.3",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.1",
+    "vitest": "^4.1.5"
   }
 }

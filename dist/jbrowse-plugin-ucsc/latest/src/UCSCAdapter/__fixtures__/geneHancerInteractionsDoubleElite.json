@@ -1,0 +1,53 @@
+{
+  "genome": "hg38",
+  "trackType": "bigInteract",
+  "track": "geneHancerInteractionsDoubleElite",
+  "chrom": "chr1",
+  "chromSize": 248956422,
+  "bigDataUrl": "/gbdb/hg38/geneHancer/geneHancerInteractionsDoubleElite.v2.hg38.bb",
+  "start": 1000000,
+  "end": 1000100,
+  "geneHancerInteractionsDoubleElite": [
+    {
+      "chrom": "chr1",
+      "chromStart": 522927,
+      "chromEnd": 1243534,
+      "name": "ENSG00000237094/GH01J001235",
+      "score": 13,
+      "value": "28.53",
+      "geneAssociationMethods": "eQTLs,TF_co-expression",
+      "color": "77,190,238",
+      "geneHancerChrom": "chr1",
+      "geneHancerStart": 1235586,
+      "geneHancerEnd": 1243534,
+      "geneHancerIdentifier": "GH01J001235",
+      "geneHancerStrand": ".",
+      "geneChrom": "chr1",
+      "geneStart": 522927,
+      "geneEnd": 522928,
+      "geneName": "ENSG00000237094",
+      "geneStrand": "-"
+    },
+    {
+      "chrom": "chr1",
+      "chromStart": 827521,
+      "chromEnd": 1362606,
+      "name": "LINC00115/GH01J001356",
+      "score": 15,
+      "value": "32.21",
+      "geneAssociationMethods": "eQTLs,TF_co-expression",
+      "color": "126,47,142",
+      "geneHancerChrom": "chr1",
+      "geneHancerStart": 1356134,
+      "geneHancerEnd": 1362606,
+      "geneHancerIdentifier": "GH01J001356",
+      "geneHancerStrand": ".",
+      "geneChrom": "chr1",
+      "geneStart": 827521,
+      "geneEnd": 827522,
+      "geneName": "LINC00115",
+      "geneStrand": "-"
+    }
+  ],
+  "itemsReturned": 6
+}

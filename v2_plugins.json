@@ -38,14 +38,14 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/ucsc-screenshot-fs8.png",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/1.0.3/dist/jbrowse-plugin-ucsc.umd.production.min.js",
-      "integrity": "sha384-BKHSIkzSVv6OGQ31gBloEhhfhJIqoiKRIEz7/VhKLKAC9ZwYugEw/+QwZ6+IDI06",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/1.0.4/dist/jbrowse-plugin-ucsc.umd.production.min.js",
+      "integrity": "sha384-YN091VJ/ht7AnHAt1nnYcRTVLbQPg6Cv0cLSzgR6QwYGEJFX+ifDXSFjrNflX7FN",
       "versions": [
         {
-          "pluginVersion": "1.0.3",
+          "pluginVersion": "1.0.4",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/1.0.3/dist/jbrowse-plugin-ucsc.umd.production.min.js",
-          "integrity": "sha384-BKHSIkzSVv6OGQ31gBloEhhfhJIqoiKRIEz7/VhKLKAC9ZwYugEw/+QwZ6+IDI06"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/1.0.4/dist/jbrowse-plugin-ucsc.umd.production.min.js",
+          "integrity": "sha384-YN091VJ/ht7AnHAt1nnYcRTVLbQPg6Cv0cLSzgR6QwYGEJFX+ifDXSFjrNflX7FN"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-ucsc/latest/dist/jbrowse-plugin-ucsc.umd.production.min.js"
@@ -243,23 +243,21 @@
         "Colin Diesh"
       ],
       "description": "Automatically load jbrowse hubs as a connection",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-hubs",
+      "location": "https://github.com/GMOD/jbrowse-plugin-hubs",
       "tags": [
         "needs-setup",
         "track-hubs"
       ],
       "license": "MIT",
-      "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.18/dist/jbrowse-plugin-hubs.umd.production.min.js",
-      "integrity": "sha384-H3aCwT3i/OZMWI6cOE+EE0CBKaRjirht2ZhlxqWvLT4RAVOXg9WsF8pqpZWVI6cQ",
+      "esmUrl": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/2.0.0/dist/jbrowse-plugin-hubs.esm.js",
       "versions": [
         {
-          "pluginVersion": "1.0.18",
-          "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/1.0.18/dist/jbrowse-plugin-hubs.umd.production.min.js",
-          "integrity": "sha384-H3aCwT3i/OZMWI6cOE+EE0CBKaRjirht2ZhlxqWvLT4RAVOXg9WsF8pqpZWVI6cQ"
+          "pluginVersion": "2.0.0",
+          "jbrowseRange": ">=5.0.0",
+          "esmUrl": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/2.0.0/dist/jbrowse-plugin-hubs.esm.js"
         }
       ],
-      "latestUrl": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/latest/dist/jbrowse-plugin-hubs.umd.production.min.js"
+      "latestUrl": "https://jbrowse.org/plugins/@cmdcolin/jbrowse-plugin-hubs/latest/dist/jbrowse-plugin-hubs.esm.js"
     },
     {
       "name": "Apollo",

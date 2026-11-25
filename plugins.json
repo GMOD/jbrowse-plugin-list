@@ -105,10 +105,11 @@
       "packageName": "@cmdcolin/jbrowse-plugin-hubs",
       "authors": ["Colin Diesh"],
       "description": "Automatically load jbrowse hubs as a connection",
-      "location": "https://github.com/cmdcolin/jbrowse-plugin-hubs",
-      "umdPath": "dist/jbrowse-plugin-hubs.umd.production.min.js",
+      "location": "https://github.com/GMOD/jbrowse-plugin-hubs",
+      "esmPath": "dist/jbrowse-plugin-hubs.esm.js",
       "license": "MIT",
-      "tags": ["needs-setup", "track-hubs"]
+      "tags": ["needs-setup", "track-hubs"],
+      "jbrowseRange": ">=5.0.0"
     },
     {
       "name": "Apollo",

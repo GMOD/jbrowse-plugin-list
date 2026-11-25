@@ -1,0 +1,49 @@
+{
+  "genome": "hg38",
+  "trackType": "rmsk",
+  "track": "rmsk",
+  "start": 1000000,
+  "end": 1001000,
+  "chrom": "chr1",
+  "rmsk": [
+    {
+      "bin": 592,
+      "swScore": 17,
+      "milliDiv": 128,
+      "milliDel": 29,
+      "milliIns": 0,
+      "genoName": "chr1",
+      "genoStart": 1000023,
+      "genoEnd": 1000057,
+      "genoLeft": -247956365,
+      "strand": "+",
+      "repName": "G-rich",
+      "repClass": "Low_complexity",
+      "repFamily": "Low_complexity",
+      "repStart": 1,
+      "repEnd": 35,
+      "repLeft": 0,
+      "id": "1"
+    },
+    {
+      "bin": 592,
+      "swScore": 13,
+      "milliDiv": 167,
+      "milliDel": 48,
+      "milliIns": 23,
+      "genoName": "chr1",
+      "genoStart": 1000440,
+      "genoEnd": 1000482,
+      "genoLeft": -247955940,
+      "strand": "+",
+      "repName": "G-rich",
+      "repClass": "Low_complexity",
+      "repFamily": "Low_complexity",
+      "repStart": 1,
+      "repEnd": 44,
+      "repLeft": 0,
+      "id": "1"
+    }
+  ],
+  "itemsReturned": 3
+}

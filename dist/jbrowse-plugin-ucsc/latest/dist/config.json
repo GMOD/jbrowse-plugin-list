@@ -38,91 +38,61 @@
   "tracks": [
     {
       "type": "FeatureTrack",
-      "trackId": "genehancer_ucsc_hg38",
-      "name": "UCSC GeneHancer",
-      "category": ["Annotation"],
+      "trackId": "ucsc_geneHancerRegElementsDoubleElite",
+      "name": "GeneHancer regulatory elements (double elite)",
+      "category": ["Regulation"],
       "assemblyNames": ["hg38"],
       "adapter": {
         "type": "UCSCAdapter",
+        "genome": "hg38",
+        "track": "geneHancerRegElementsDoubleElite"
+      }
+    },
+    {
+      "type": "FeatureTrack",
+      "trackId": "ucsc_geneHancerInteractionsDoubleElite",
+      "name": "GeneHancer interactions (double elite)",
+      "category": ["Regulation"],
+      "assemblyNames": ["hg38"],
+      "adapter": {
+        "type": "UCSCAdapter",
+        "genome": "hg38",
         "track": "geneHancerInteractionsDoubleElite"
       }
     },
     {
       "type": "FeatureTrack",
-      "trackId": "nestedRepeats_hg38",
-      "name": "UCSC Nested Repeated",
-      "category": ["Repeats"],
+      "trackId": "ucsc_cosmicMuts",
+      "name": "COSMIC mutations",
+      "category": ["Variation"],
       "assemblyNames": ["hg38"],
       "adapter": {
         "type": "UCSCAdapter",
-        "track": "nestedRepeats"
+        "genome": "hg38",
+        "track": "cosmicMuts"
       }
     },
     {
       "type": "FeatureTrack",
-      "trackId": "microsatellite_hg38",
-      "name": "UCSC Microsatellites",
-      "category": ["Repeats"],
+      "trackId": "ucsc_decipherPopulation",
+      "name": "DECIPHER population CNVs",
+      "category": ["Variation"],
       "assemblyNames": ["hg38"],
       "adapter": {
         "type": "UCSCAdapter",
-        "track": "microsat"
+        "genome": "hg38",
+        "track": "decipherPopulation"
       }
     },
     {
       "type": "FeatureTrack",
-      "trackId": "rmsk_hg38",
-      "name": "UCSC RepeatMasker",
-      "category": ["Repeats"],
+      "trackId": "ucsc_knownGene",
+      "name": "GENCODE (knownGene)",
+      "category": ["Genes"],
       "assemblyNames": ["hg38"],
       "adapter": {
         "type": "UCSCAdapter",
-        "track": "rmsk"
-      },
-      "displays": [
-        {
-          "type": "LinearBasicDisplay",
-          "displayId": "rmsk_display",
-          "renderer": {
-            "type": "SvgFeatureRenderer",
-            "labels": {
-              "name": "function(feature) { return feature.get('repName') }"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "type": "FeatureTrack",
-      "trackId": "chainSelf_hg38",
-      "name": "UCSC Self-chain",
-      "category": ["Repeats"],
-      "assemblyNames": ["hg38"],
-      "adapter": {
-        "type": "UCSCAdapter",
-        "track": "chainSelf"
-      }
-    },
-
-    {
-      "type": "FeatureTrack",
-      "trackId": "segdups_ucsc_hg38",
-      "name": "UCSC SegDups",
-      "category": ["Repeat"],
-      "assemblyNames": ["hg38"],
-      "adapter": {
-        "type": "UCSCAdapter",
-        "track": "genomicSuperDups"
-      }
-    },
-    {
-      "type": "FeatureTrack",
-      "trackId": "knownGene",
-      "name": "UCSC knownGene",
-      "category": ["Annotation"],
-      "assemblyNames": ["hg38"],
-      "adapter": {
-        "type": "UCSCAdapter",
+        "genome": "hg38",
         "track": "knownGene"
       }
     }

@@ -1,6 +1,7 @@
-import Plugin from "@jbrowse/core/Plugin";
+import Plugin from '@jbrowse/core/Plugin';
+import type PluginManager from '@jbrowse/core/PluginManager';
 export default class UCSCPlugin extends Plugin {
     name: string;
-    version: any;
-    install(pluginManager: any): void;
+    version: string;
+    install(pluginManager: PluginManager): void;
 }

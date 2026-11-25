@@ -1,0 +1,35 @@
+{
+  "genome": "hg38",
+  "trackType": "bigBed 6 + 3",
+  "track": "cosmicMuts",
+  "chrom": "chr17",
+  "chromSize": 83257441,
+  "bigDataUrl": "/gbdb/hg38/cosmic/cosmic.bb",
+  "start": 43044380,
+  "end": 43044450,
+  "cosmicMuts": [
+    {
+      "chrom": "chr17",
+      "chromStart": 43044390,
+      "chromEnd": 43044391,
+      "name": "COSV58790086",
+      "score": 0,
+      "strand": "-",
+      "refAllele": "C",
+      "altAllele": "T",
+      "cosmicLegIden": "COSN28705827"
+    },
+    {
+      "chrom": "chr17",
+      "chromStart": 43044439,
+      "chromEnd": 43044440,
+      "name": "COSV106433609",
+      "score": 0,
+      "strand": "-",
+      "refAllele": "C",
+      "altAllele": "T",
+      "cosmicLegIden": "COSN32732215"
+    }
+  ],
+  "itemsReturned": 2
+}

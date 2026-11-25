@@ -1,0 +1,30 @@
+{
+  "genome": "hg38",
+  "trackType": "bed 12 +",
+  "track": "nestedRepeats",
+  "start": 1003000,
+  "end": 1004000,
+  "chrom": "chr1",
+  "nestedRepeats": [
+    {
+      "bin": 592,
+      "chrom": "chr1",
+      "chromStart": 1003378,
+      "chromEnd": 1003623,
+      "name": "MLT1G1",
+      "score": 485,
+      "strand": "+",
+      "thickStart": 1003378,
+      "thickEnd": 1003623,
+      "reserved": 0,
+      "blockCount": 2,
+      "blockSizes": "47,124,",
+      "chromStarts": "0,121,",
+      "blockStrands": "+,+,",
+      "id": 1262,
+      "repClass": "LTR",
+      "repFamily": "ERVL-MaLR"
+    }
+  ],
+  "itemsReturned": 1
+}

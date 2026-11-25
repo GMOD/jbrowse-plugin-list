@@ -1,43 +1,37 @@
-# `jbrowse-plugin-ucsc`
+# jbrowse-plugin-ucsc
 
-> This plugin adapts the [UCSC API](https://genome.ucsc.edu/goldenPath/help/api.html)
+A JBrowse 2 adapter that reads features from the
+[UCSC Genome Browser API](https://genome.ucsc.edu/goldenPath/help/api.html).
 
-## Install
+The API serves some tracks whose files UCSC does not offer for download, so
+this adapter is a way to show them in JBrowse. On hg38 these include the
+GeneHancer regulatory elements, genes and interactions, COSMIC mutations and
+the DECIPHER population CNVs. Tracks UCSC marks as protected (HGMD, SpliceAI,
+PrimateAI and others) are refused by the API too, and the track shows UCSC's
+explanation.
 
-### For use in [JBrowse Web](https://jbrowse.org/jb2/docs/quickstart_web)
+## JBrowse versions
 
-No installation required
+- **JBrowse 2 v2.0.0 and newer** can load the current release. It imports only
+  modules every host since v2.0.0 provides, and it has been run on v4.3.0 and
+  v5.
+- **v5 or newer** is needed for features coloured by their UCSC colour column
+  and for the zoom-in notice when a region holds more than `maxItems`
+  features. Older hosts draw the default colour and show the limit as an error.
+- **The plugin store** serves this release to v5 hosts. Hosts older than v5
+  read a frozen store manifest that installs v1.0.3.
 
-### For use in [`@jbrowse/react-linear-view`](https://www.npmjs.com/package/@jbrowse/react-linear-genome-view)
+## Demo
 
-```
-yarn add jbrowse-plugin-ucsc
-```
+https://jbrowse.org/code/jb2/latest/?config=https%3A%2F%2Funpkg.com%2Fjbrowse-plugin-ucsc%2Fdist%2Fconfig.json
+
+## Screenshot
+
+![](img/1.png)
 
 ## Usage
 
-### In [JBrowse Web](https://jbrowse.org/jb2/docs/quickstart_web)
-
-#### Development
-
-```
-git clone https://github.com/cmdcolin/jbrowse-plugin-ucsc-api.git
-cd jbrowse-plugin-ucsc-api
-yarn
-yarn start
-```
-
-Then open JBrowse Web to (assuming it is running on port 3000):
-
-http://localhost:3000/?config=http://localhost:9000/config.json
-
-#### Demo
-
-https://s3.amazonaws.com/jbrowse.org/code/jb2/master/index.html?config=https%3A%2F%2Funpkg.com%2Fjbrowse-plugin-ucsc%2Fdist%2Fconfig.json&session=share-wyY8ZgC9uY&password=CtcMX
-
-#### Production
-
-Add to the "plugins" of your JBrowse Web config:
+Add the plugin to the `plugins` of a JBrowse Web config:
 
 ```json
 {
@@ -50,39 +44,50 @@ Add to the "plugins" of your JBrowse Web config:
 }
 ```
 
-### In [`@jbrowse/react-linear-view`](https://www.npmjs.com/package/@jbrowse/react-linear-genome-view)
+Then add a track whose adapter names a UCSC track:
 
-```tsx
-import React from "react";
-import "fontsource-roboto";
-import {
-  createViewState,
-  createJBrowseTheme,
-  JBrowseLinearGenomeView,
-  ThemeProvider,
-} from "@jbrowse/react-linear-view";
-import UCSC from "jbrowse-plugin-ucsc";
-
-const theme = createJBrowseTheme();
-
-function View() {
-  const state = createViewState({
-    assembly: {
-      /* assembly */
-    },
-    tracks: [
-      /* tracks */
-    ],
-    plugins: [UCSC],
-  });
-  return (
-    <ThemeProvider theme={theme}>
-      <JBrowseLinearGenomeView viewState={state} />
-    </ThemeProvider>
-  );
+```json
+{
+  "type": "FeatureTrack",
+  "trackId": "ucsc_geneHancerRegElementsDoubleElite",
+  "name": "GeneHancer regulatory elements (double elite)",
+  "assemblyNames": ["hg38"],
+  "adapter": {
+    "type": "UCSCAdapter",
+    "genome": "hg38",
+    "track": "geneHancerRegElementsDoubleElite"
+  }
 }
 ```
 
-## Screenshot
+[distconfig.json](distconfig.json) has more examples.
 
-![](img/1.png)
+## Adapter options
+
+| Option     | Default                       | Meaning                                                                             |
+| ---------- | ----------------------------- | ----------------------------------------------------------------------------------- |
+| `track`    |                               | The UCSC track name                                                                 |
+| `genome`   | the assembly name             | The UCSC genome, such as `hg38` or a GenArk accession like `GCF_000001405.40`       |
+| `maxItems` | 20000                         | The most features fetched for one region; a region holding more asks you to zoom in |
+| `base`     | `https://api.genome.ucsc.edu` | The API server, as a file location (`{ "uri": "…" }`)                               |
+
+Set `genome` whenever the JBrowse assembly name is not the UCSC one. It also
+lets the adapter list the genome's chromosomes, so assemblies with other
+chromosome names map onto UCSC's through their refName aliases.
+
+To find track names, list a genome's tracks:
+`https://api.genome.ucsc.edu/list/tracks?genome=hg38;trackLeavesOnly=1`
+
+## What the adapter reads
+
+- **Gene tracks** (genePred and bigGenePred, such as `ncbiRefSeq` and
+  `knownGene`) become transcripts with CDS and UTR parts, labelled with the
+  gene name.
+- **BED tracks with blocks** keep their blocks as subfeatures.
+- **RepeatMasker** features are labelled with the repeat name; **chains** are
+  placed by their target coordinates.
+- **itemRgb** and bigInteract **color** columns colour the features.
+
+## Embedding in @jbrowse/react-linear-genome-view
+
+See [DEVELOPERS.md](DEVELOPERS.md).
