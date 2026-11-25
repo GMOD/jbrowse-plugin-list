@@ -23,7 +23,7 @@ Each picture opens full size, and the ones of the GIAB trio also open as a
 
 <a href="img/insertion-alu.png"><img src="img/insertion-alu.png" width="380" alt="An Alu insertion in HG002, as a JBrowse pileup above and a tview below"></a>
 
-An Alu insertion in HG002: a box per read in the pileup, 290 aligned columns in
+An Alu insertion in HG002: a box per read in the pileup, 294 aligned columns in
 the tview. [Live demo][tview-demo-alu]
 
 </td>
@@ -67,18 +67,18 @@ down, each with its count as a bar and a number. [Live demo][tview-demo-abca7]
 <tr>
 <td width="50%" valign="top">
 
-<a href="img/tview-modifications-bases.png"><img src="img/tview-modifications-bases.png" width="380" alt="Nanopore reads with 5mC calls, coloured by bases, with a bar under each called base"></a>
+<a href="img/tview-modifications-bases.png"><img src="img/tview-modifications-bases.png" width="380" alt="Nanopore reads with 5mC calls, each called base filled from blue at 0% to red at 100%, over the base colours"></a>
 
-**Color by bases**: base colours, and a bar under each base with a modification
-call.
+**Over base colors**: each called base filled from blue (0%) to red (100%), and
+every other mismatch in its base colour.
 
 </td>
 <td width="50%" valign="top">
 
-<a href="img/tview-modifications.png"><img src="img/tview-modifications.png" width="380" alt="The same reads coloured by modification, from blue at 0% to red at 100%"></a>
+<a href="img/tview-modifications.png"><img src="img/tview-modifications.png" width="380" alt="The same reads with only the called bases filled"></a>
 
-**Color by modification**: each called base filled from blue (0%) to red (100%),
-one of them in an inserted column.
+**Without base colors**: only the called bases are filled, one of them in an
+inserted column.
 
 </td>
 </tr>
@@ -149,7 +149,7 @@ screenshot and the numbers are three renderings of one window.
 An Alu in an intron of NPHP4, in HG002's PacBio HiFi reads. JBrowse's pileup
 above draws each read's copy as a purple box labelled with its length, 282 to
 285bp in the reads on screen. The tview below aligns the copies to each other in
-290 columns, with the poly-A tail in green at the right-hand end, and the rows
+294 columns, with the poly-A tail in green at the right-hand end, and the rows
 without the insertion are blank across them. [Open this one
 live][tview-demo-alu].
 
@@ -178,6 +178,18 @@ sequences are aligned to each other:
   left through the read's own bases for as long as the read spells the same
   sequence, so reads carrying one event share one site. An insertion a tandem
   array owns stays where the array put it.
+- **Near-duplicate sites are merged.** Left-normalization only moves an
+  insertion where the read's bases allow it, so a read with a sequencing error
+  at the boundary, or one the aligner anchored a base or two off, keeps a site
+  of its own, and every other row gets a run of gaps as wide as the insertion.
+  An insertion of 10bp or more is moved to a site up to 25bp away that more
+  reads use, when its length is within 20% of theirs and the move adds at most
+  two mismatches against the reference to its row. The row still spells the
+  read; what changes is which of its bases count as inserted. At the Alu above,
+  one read has a base the others do not just before its copy, and the aligner
+  put the copy a base early, at a 287-column site of its own; it now joins the
+  other 21. Without the reference sequence nothing is merged, since there is
+  nothing to count a mismatch against.
 - **A read that does not span a site is absent there.** In the alignment's text,
   a read that spans a site without inserting has `-` in its columns, and a read
   that does not span it has `.`.
@@ -193,7 +205,7 @@ Each insertion site has a bracket in the Highlights strip above the alignment,
 labelled with the size and the reference base it follows, such as
 `+1bp after ctgA:15,163`. The size is the length most of the reads at the site
 insert: HG002's reads have 280 to 287bp of the Alu above, and the bracket over
-its 290 columns is labelled `+283bp`. Each tandem array has a bracket labelled
+its 294 columns is labelled `+283bp`. Each tandem array has a bracket labelled
 with its unit and the reference's copy count, such as
 `(GCG)x21 in the reference`. In a noisy window only the 100 sites carrying the
 most inserted sequence get a bracket. A one-column bracket draws as a triangle,
@@ -405,18 +417,20 @@ Three things about this figure are settings rather than data:
 
 When the reads carry MM/ML tags, the view places each read's most probable call
 at each base on that base, inserted bases included. Hovering a cell names the
-call, such as `5mC 97%`. The view's menu gains a **Base modifications** submenu:
+call, such as `5mC 97%`. Each called base is filled on a scale from blue (0%) to
+red (100%) of its call's probability, with a legend, and the view's menu gains a
+**Base modifications** submenu:
 
-- **Color by bases**, the default, keeps the base colours.
-- **Color by modification** fills each called base on a scale from blue (0%) to
-  red (100%) of its call's probability, with a legend.
+- **Over base colors**, the default, keeps the base colour of every mismatch
+  with no call. A mismatching T is red too, so a red cell is a call where it
+  holds a dot, a C or a G.
+- **Without base colors** fills the called bases and nothing else.
 
-![Nanopore reads with 5mC calls at 20:13,226..13,275, coloured by modification, with a called base in an insertion column](img/tview-modifications.png)
+![Nanopore reads with 5mC calls at 20:13,226..13,275, the called bases filled red over the base colours, one of them in an insertion column](img/tview-modifications-bases.png)
 
-Seven nanopore reads from `public/methylation_clip.bam`, coloured by
-modification. The red G in the second read sits in the column bracketed after
-20:13,243, a base the reference does not have; the read is on the reverse
-strand, so its called C reads as a G.
+Seven nanopore reads from `public/methylation_clip.bam`. The red G in the second
+read sits in the column bracketed after 20:13,243, a base the reference does not
+have; the read is on the reverse strand, so its called C reads as a G.
 
 The calls have limits:
 
@@ -460,6 +474,9 @@ The view stays connected to the genome view it came from:
   keeps it highlighted and moves the genome view there.
 - Hovering the genome view highlights that base of the reference row in the
   alignment.
+- The **Position** ruler above the alignment numbers the columns in the genome's
+  coordinates, and so do its tooltips and the **Go to row or column** box. A
+  column the reference has no base in, such as an inserted one, gets no tick.
 
 While it builds, the view says what it is waiting for. When it cannot load a
 region, it shows why in place of the alignment, with a retry button where
@@ -520,16 +537,6 @@ A JBrowse v5 host: `@jbrowse/core` 5.0.0 or later. No v5 is released yet (npm's
 [JBrowse Web nightly](https://jbrowse.org/code/jb2/main/) or a `5.0.0-beta`
 build from npm's `next` tag; this version was built and tested against
 5.0.0-beta.23.
-
-## Features react-msaview lacks
-
-This view would use two things react-msaview does not have yet:
-
-- **A ruler in genomic coordinates.** The position ruler, off by default,
-  numbers the reference row's own residues, so it counts from 1 at the start of
-  the window rather than from the chromosome position.
-- **Base colours under modification fills.** Coloured by modification, a cell
-  with no call loses its base colour, so a mismatch reads only as its letter.
 
 ## Development
 

@@ -8,7 +8,7 @@ import { hoverPosition, lowerBound } from './genome'
 import { initRegion, initSources, missingTrackIds } from './init'
 import { tviewInitMenuItems } from './initMenu'
 import {
-  MODIFICATION_FILL,
+  MODIFICATION_MARK,
   modificationAnnotations,
   modificationMenu,
 } from './modifications'
@@ -26,7 +26,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 import type {
   Highlight,
-  ResidueColor,
+  ResidueColorDefault,
   RowPanelSpec,
   RowTransform,
 } from 'react-msaview'
@@ -63,10 +63,11 @@ export type TViewState =
 const FIT_WIDTH_PX = 3000
 
 const GENOME_HOVER = 'genome-hover'
+const LOAD_BRACKETS = 'tview-load'
 
 const ROW_HEIGHT = 12
 
-const DNA_COLORS: ResidueColor = {
+const DNA_COLORS: ResidueColorDefault = {
   field: 'residue',
   scale: { scheme: 'jbrowse_dna' },
 }
@@ -97,8 +98,13 @@ function rowTransform(samples: string[], bySubject: boolean): RowTransform {
  * to hundreds of columns and at 10 almost none of it is on screen at once, so
  * the width shrinks to fit roughly two screen-widths.
  */
+const MAX_COL_WIDTH = 10
+
 function fittedColWidth(columns: number) {
-  return Math.max(1, Math.min(10, Math.floor(FIT_WIDTH_PX / columns)))
+  return Math.max(
+    1,
+    Math.min(MAX_COL_WIDTH, Math.floor(FIT_WIDTH_PX / columns)),
+  )
 }
 
 const highlightKey = (h: Highlight) => JSON.stringify(h)
@@ -109,18 +115,20 @@ const highlightKey = (h: Highlight) => JSON.stringify(h)
  * - MSAModel from https://github.com/GMOD/react-msaview
  */
 export default function stateModelFactory() {
-  const msaModel = MSAModelF({ maxInlineSnapshotBytes: 0 })
-  const msaDefaults = {
-    colWidth: msaModel.properties.colWidth.getDefaultInstanceOrSnapshot(),
-    rowHeight: msaModel.properties.rowHeight.getDefaultInstanceOrSnapshot(),
-    labelsAlignRight:
-      msaModel.properties.labelsAlignRight.getDefaultInstanceOrSnapshot(),
-  }
   return types
     .compose(
       'TView',
       BaseViewModel,
-      msaModel,
+      MSAModelF({
+        maxInlineSnapshotBytes: 0,
+        defaults: {
+          colWidth: MAX_COL_WIDTH,
+          rowHeight: ROW_HEIGHT,
+          labelsAlignRight: true,
+          residueColor: DNA_COLORS,
+          turnedOffTracks: { 'position-ruler': false },
+        },
+      }),
       types.model({
         type: types.literal('TView'),
         /**
@@ -147,11 +155,6 @@ export default function stateModelFactory() {
        * the reference region the loaded alignment spans
        */
       loadedRegion: undefined as IRegion | undefined,
-      /**
-       * #volatile
-       * the highlights the last load added, which the next one replaces
-       */
-      loadedHighlights: [] as Highlight[],
       /**
        * #volatile
        * the base modification calls the last load placed, when its reads had any
@@ -341,11 +344,8 @@ export default function stateModelFactory() {
             modifications ? modificationAnnotations(modifications) : [],
           )
         }
-        if (
-          modifications &&
-          !self.encodings.some(e => e.channel === 'featureFill')
-        ) {
-          self.setEncodings([...self.encodings, MODIFICATION_FILL])
+        if (modifications && self.marks === undefined) {
+          self.setMarks([MODIFICATION_MARK])
         }
         self.loadedModifications = modifications
           ? {
@@ -358,39 +358,35 @@ export default function stateModelFactory() {
       /**
        * #action
        * shows a built alignment: its rows, how they are grouped, ordered and
-       * marked, and the defaults a view that has not set its own takes
+       * marked, and numbered in the genome's coordinates. The brackets are
+       * transient, since every load rebuilds them, and a session saved by 3.0.0
+       * carries its own copies of them, which are dropped here
        */
       setAlignment(result: TviewPlanResult) {
+        const { region, highlights } = result
         const bySubject = result.hasSubject
-        const replaced = new Set(
-          [...self.loadedHighlights, ...result.highlights].map(highlightKey),
-        )
-        self.loadedRegion = result.region
-        self.loadedHighlights = result.highlights
+        const rebuilt = new Set(highlights.map(highlightKey))
+        self.loadedRegion = region
         self.setMSA(result.msa)
         this.setModifications(result.modifications)
         self.data.setTree(undefined)
         self.setRowData(result.rowData)
         self.setRowTransform(rowTransform(result.samples, bySubject))
         self.setRowPanels(bySubject ? COPY_PANELS : [])
-        self.setHighlights([
-          ...self.highlights.filter(h => !replaced.has(highlightKey(h))),
-          ...result.highlights,
+        self.setRowCoordinates([
+          { row: REFERENCE, start: region.start + 1, name: region.refName },
         ])
+        self.applyHighlight(LOAD_BRACKETS, highlights)
+        if (self.highlights.some(h => rebuilt.has(highlightKey(h)))) {
+          self.setHighlights(
+            self.highlights.filter(h => !rebuilt.has(highlightKey(h))),
+          )
+        }
         if (self.relativeTo === undefined) {
           self.drawRelativeTo(REFERENCE)
         }
-        if (Object.keys(self.residueColor).length === 0) {
-          self.setResidueColor(DNA_COLORS)
-        }
-        if (self.colWidth === msaDefaults.colWidth) {
+        if (self.colWidth === MAX_COL_WIDTH) {
           self.setColWidth(fittedColWidth(result.columnCount))
-        }
-        if (self.rowHeight === msaDefaults.rowHeight) {
-          self.setRowHeight(ROW_HEIGHT)
-        }
-        if (self.labelsAlignRight === msaDefaults.labelsAlignRight) {
-          self.setLabelsAlignRight(true)
         }
       },
       /**

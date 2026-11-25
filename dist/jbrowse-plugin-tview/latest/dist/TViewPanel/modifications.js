@@ -15,16 +15,21 @@ const NAMES = {
     17596: 'inosine',
     21839: '4mC',
 };
-export const MODIFICATION_FILL = {
-    channel: 'featureFill',
-    field: 'probability',
-    scale: {
-        type: 'linear',
-        domainMin: 0,
-        domainMax: 100,
-        range: ['#0000ff', '#ff0000'],
+export const MODIFICATION_MARK = {
+    kind: 'features',
+    height: { band: 1 },
+    encoding: {
+        fill: {
+            field: 'probability',
+            scale: {
+                type: 'linear',
+                domainMin: 0,
+                domainMax: 100,
+                range: ['#0000ff', '#ff0000'],
+            },
+            legend: { title: 'modification %' },
+        },
     },
-    legend: { title: 'modification %' },
 };
 export function modificationName(type) {
     return NAMES[type] ?? type;
@@ -60,7 +65,7 @@ export function modificationSummaryLine({ shown, dropped, unplaced, }) {
     ].join(', ');
 }
 export function modificationMenu(summary, view) {
-    const byModification = view.resolvedResidueColor.field === 'feature';
+    const alone = view.resolvedResidueColor.field === 'feature';
     const colorBy = (field) => () => {
         view.setResidueColor({ ...view.residueColor, field });
     };
@@ -71,15 +76,15 @@ export function modificationMenu(summary, view) {
         label: 'Base modifications',
         subMenu: [
             {
-                label: 'Color by bases',
+                label: 'Over base colors',
                 type: 'radio',
-                checked: !byModification,
+                checked: !alone,
                 onClick: colorBy('residue'),
             },
             {
-                label: 'Color by modification',
+                label: 'Without base colors',
                 type: 'radio',
-                checked: byModification,
+                checked: alone,
                 onClick: colorBy('feature'),
             },
             ...summaryLine,

@@ -69,6 +69,19 @@ export declare function extractAllele(read: ReadLayout, start: number, end: numb
  * this as the preferred spelling and not as the test of whether to move.
  */
 export declare function shiftInsertion(read: ReadLayout, from: number, to: number, ins: string): string | undefined;
+/**
+ * `ins`, inserted before `from`, moved to before `to` by re-dividing the read's
+ * own bases between the two: the bases it passes over and the inserted ones
+ * are one run of the read, and the move only changes which of them are called
+ * inserted. Unlike `shiftInsertion` it moves whether or not the bases agree,
+ * so the row may come out with mismatches it did not have; it still spells the
+ * read exactly. Undefined where the read has no base at a position passed
+ * over, or does not reach the target.
+ */
+export declare function moveInsertion(read: ReadLayout, from: number, to: number, ins: string): {
+    seq: string;
+    refChars: string;
+} | undefined;
 /** an array with the span of reference positions whose insertions it may claim */
 interface FlankWindow {
     array: ReferenceArray;
@@ -124,6 +137,30 @@ export declare function reanchorInsertions(reads: ReadLayout[], arrays: Referenc
  * it.
  */
 export declare function normalizeInsertions(reads: ReadLayout[], arrays: ReferenceArray[], regionStart: number): ReadLayout[];
+/**
+ * Move each long insertion to a nearby site more reads use, when the read
+ * inserts about as much there and the move costs its row no more than a
+ * mismatch or two against the reference.
+ *
+ * Left-normalization is exact, so it brings reads together only where their
+ * bases allow it. A read with a sequencing error at the boundary, or anchored a
+ * base or two off by the aligner, keeps a site of its own, and every other row
+ * pays for that site with a run of gap columns as wide as the insertion.
+ * `moveInsertion` re-divides the read's own bases, so the row still spells the
+ * read; what the move gives up is that some of them now sit on reference
+ * positions they do not match.
+ *
+ * Sites are visited by the reads inserting there, most first and ties to the
+ * leftmost. Each insertion at a site goes to the first site already kept that
+ * is within reach, of a similar length, and admits the move, and a site keeps
+ * its place if any read still inserts there. Like `normalizeInsertions`, this
+ * touches no position from an array's `start` to its `end`, keeps an insertion
+ * in view a base inside the region, and keeps a read's insertions in order.
+ */
+export declare function mergeInsertionSites(reads: ReadLayout[], arrays: ReferenceArray[], reference: {
+    seq: string;
+    start: number;
+}): ReadLayout[];
 /**
  * Lay every row's allele out unit-per-block, one block per array.
  *

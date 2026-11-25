@@ -304,14 +304,14 @@
         "alignment"
       ],
       "license": "MIT",
-      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/3.0.0/dist/jbrowse-plugin-tview.umd.production.min.js",
-      "integrity": "sha384-1iGCD2DRg18/pk9A3uWnnmmSSFyLKJQ7NPdoSZfTD//JZPuyspWIKhxfCTDJPWSE",
+      "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/3.1.0/dist/jbrowse-plugin-tview.umd.production.min.js",
+      "integrity": "sha384-7OQQz9NbFMBZiIXrxw2lNvxjFM9ckgVkD5Hzqh5bShR+ccV4FxYCSWVbVm0ynEp4",
       "versions": [
         {
-          "pluginVersion": "3.0.0",
+          "pluginVersion": "3.1.0",
           "jbrowseRange": ">=5.0.0",
-          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/3.0.0/dist/jbrowse-plugin-tview.umd.production.min.js",
-          "integrity": "sha384-1iGCD2DRg18/pk9A3uWnnmmSSFyLKJQ7NPdoSZfTD//JZPuyspWIKhxfCTDJPWSE"
+          "url": "https://jbrowse.org/plugins/jbrowse-plugin-tview/3.1.0/dist/jbrowse-plugin-tview.umd.production.min.js",
+          "integrity": "sha384-7OQQz9NbFMBZiIXrxw2lNvxjFM9ckgVkD5Hzqh5bShR+ccV4FxYCSWVbVm0ynEp4"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-tview/latest/dist/jbrowse-plugin-tview.umd.production.min.js"

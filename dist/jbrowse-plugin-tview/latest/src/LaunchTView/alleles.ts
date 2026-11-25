@@ -151,6 +151,44 @@ export function shiftInsertion(
   return seq
 }
 
+/**
+ * `ins`, inserted before `from`, moved to before `to` by re-dividing the read's
+ * own bases between the two: the bases it passes over and the inserted ones
+ * are one run of the read, and the move only changes which of them are called
+ * inserted. Unlike `shiftInsertion` it moves whether or not the bases agree,
+ * so the row may come out with mismatches it did not have; it still spells the
+ * read exactly. Undefined where the read has no base at a position passed
+ * over, or does not reach the target.
+ */
+export function moveInsertion(
+  read: ReadLayout,
+  from: number,
+  to: number,
+  ins: string,
+) {
+  const lo = Math.min(from, to) - read.start
+  const hi = Math.max(from, to) - read.start
+  const passed = read.refChars.slice(lo, hi)
+  const rightward = from < to
+  const spelled = rightward ? ins + passed : passed + ins
+  return lo < 0 ||
+    hi > read.refChars.length ||
+    passed.includes(SPANNED_GAP) ||
+    passed.includes(ABSENT)
+    ? undefined
+    : {
+        seq: rightward
+          ? spelled.slice(passed.length)
+          : spelled.slice(0, ins.length),
+        refChars:
+          read.refChars.slice(0, lo) +
+          (rightward
+            ? spelled.slice(0, passed.length)
+            : spelled.slice(ins.length)) +
+          read.refChars.slice(hi),
+      }
+}
+
 /** an array with the span of reference positions whose insertions it may claim */
 interface FlankWindow {
   array: ReferenceArray
@@ -348,6 +386,174 @@ export function normalizeInsertions(
     }
     return moved ? { ...read, insertions: next } : read
   })
+}
+
+/*
+ * The four constants below were swept over HG002's PacBio HiFi reads at the
+ * NPHP4 Alu and at 80 insertions from the GIAB HG002 SV benchmark (v0.6,
+ * GRCh37: PASS, 50 to 2000bp, outside segmental duplications, 40 in tandem
+ * repeats and 40 not, taken evenly through the file), each in a 200bp window.
+ * Unmerged those windows have 102 insertion sites 10 or more columns wide,
+ * holding 34,876 insertion columns; at these values, 85 sites and 28,425.
+ */
+
+/**
+ * Shortest insertion that is moved, or that draws others. Every value from 2
+ * to 20 merges the same sites. At 1 the 1bp read errors scattered through the
+ * windows are dragged into each other, 85 sites of them; at 50 a chr18 VNTR's
+ * 26 to 30bp allele stays split, and so does a 49 to 51bp insertion on chr5.
+ */
+const MERGE_MIN_BP = 10
+
+/**
+ * Farthest an insertion is moved. The farthest merge measured is 20bp: at
+ * 22:47,740,767 six reads carry a 61bp insertion 20bp from where fourteen
+ * others put it, and the bases between spell the same, so moving them costs
+ * nothing. Nothing more merges between 25 and 60.
+ */
+const MERGE_REACH_BP = 25
+
+/**
+ * How far a read's insertion length may be from the median at the site it
+ * joins, as a fraction of that median. One event read twice came out up to 13%
+ * apart (26 and 30bp of one chr18 VNTR allele; 8% for a 76bp one), and the
+ * different events within reach at least 53% apart (a 29bp allele beside a 62bp
+ * one, a 38bp insertion beside a 532bp one) — and both of those would have
+ * moved for free, so this is what keeps them apart, not the mismatches.
+ */
+const MERGE_LENGTH_SPREAD = 0.2
+
+/**
+ * Most mismatches against the reference a move may add to its row, net of
+ * those the bases it passes already had. Since a move cannot add more than the
+ * bases it passes, a read 1 or 2bp off always merges, and one farther off only
+ * where the bases between nearly agree. At this cap 49 reads move, 45 of them
+ * adding one mismatch or none. The costs do not fall into two groups: a cap of
+ * 3 moves 6 more reads, 3 to 7bp off, and each step up after that moves a few
+ * more, at about one mismatch for every two bases passed, which is what
+ * unrelated sequence costs.
+ */
+const MERGE_MAX_MISMATCHES = 2
+
+function median(values: number[]) {
+  return [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!
+}
+
+function differences(a: string, b: string) {
+  let ret = 0
+  for (let i = 0; i < a.length; i++) {
+    ret += a[i] === b[i] ? 0 : 1
+  }
+  return ret
+}
+
+/**
+ * `read` with its insertion `ins` moved from `from` to `to`, unless another of
+ * its insertions lies in between, it has no base on a position passed over, or
+ * the move adds more than `MERGE_MAX_MISMATCHES` against the reference.
+ */
+function mergedRead(
+  read: ReadLayout,
+  from: number,
+  to: number,
+  ins: string,
+  reference: { seq: string; start: number },
+) {
+  const lo = Math.min(from, to)
+  const hi = Math.max(from, to)
+  const moved = [...read.insertions.keys()].some(
+    pos => pos !== from && pos >= lo && pos <= hi,
+  )
+    ? undefined
+    : moveInsertion(read, from, to, ins)
+  const passed = (refChars: string) =>
+    refChars.slice(lo - read.start, hi - read.start)
+  const ref = reference.seq.slice(lo - reference.start, hi - reference.start)
+  const insertions = new Map(read.insertions)
+  insertions.delete(from)
+  return moved &&
+    differences(passed(moved.refChars), ref) -
+      differences(passed(read.refChars), ref) <=
+      MERGE_MAX_MISMATCHES
+    ? {
+        ...read,
+        refChars: moved.refChars,
+        insertions: insertions.set(to, moved.seq),
+      }
+    : undefined
+}
+
+/**
+ * Move each long insertion to a nearby site more reads use, when the read
+ * inserts about as much there and the move costs its row no more than a
+ * mismatch or two against the reference.
+ *
+ * Left-normalization is exact, so it brings reads together only where their
+ * bases allow it. A read with a sequencing error at the boundary, or anchored a
+ * base or two off by the aligner, keeps a site of its own, and every other row
+ * pays for that site with a run of gap columns as wide as the insertion.
+ * `moveInsertion` re-divides the read's own bases, so the row still spells the
+ * read; what the move gives up is that some of them now sit on reference
+ * positions they do not match.
+ *
+ * Sites are visited by the reads inserting there, most first and ties to the
+ * leftmost. Each insertion at a site goes to the first site already kept that
+ * is within reach, of a similar length, and admits the move, and a site keeps
+ * its place if any read still inserts there. Like `normalizeInsertions`, this
+ * touches no position from an array's `start` to its `end`, keeps an insertion
+ * in view a base inside the region, and keeps a read's insertions in order.
+ */
+export function mergeInsertionSites(
+  reads: ReadLayout[],
+  arrays: ReferenceArray[],
+  reference: { seq: string; start: number },
+) {
+  const touchesArray = (lo: number, hi: number) =>
+    arrays.some(array => array.start <= hi && array.end >= lo)
+  const holders = new Map<number, number[]>()
+  reads.forEach((read, i) => {
+    for (const [pos, ins] of read.insertions) {
+      if (ins.length >= MERGE_MIN_BP && !touchesArray(pos, pos)) {
+        holders.set(pos, [...(holders.get(pos) ?? []), i])
+      }
+    }
+  })
+  const reaches = (
+    target: { pos: number; length: number },
+    pos: number,
+    length: number,
+  ) =>
+    target.pos > reference.start &&
+    Math.abs(target.pos - pos) <= MERGE_REACH_BP &&
+    Math.abs(length - target.length) <= MERGE_LENGTH_SPREAD * target.length &&
+    !touchesArray(Math.min(pos, target.pos), Math.max(pos, target.pos))
+  const ret = [...reads]
+  const kept: { pos: number; length: number }[] = []
+  for (const [pos, indices] of [...holders].sort(
+    (a, b) => b[1].length - a[1].length || a[0] - b[0],
+  )) {
+    const stayed: number[] = []
+    for (const i of indices) {
+      const read = ret[i]!
+      const ins = read.insertions.get(pos) ?? ''
+      const moved = kept
+        .filter(target => reaches(target, pos, ins.length))
+        .reduce<ReadLayout | undefined>(
+          (found, target) =>
+            found ?? mergedRead(read, pos, target.pos, ins, reference),
+          undefined,
+        )
+      if (moved) {
+        ret[i] = moved
+      } else {
+        stayed.push(ins.length)
+      }
+    }
+    if (stayed.length) {
+      kept.push({ pos, length: median(stayed) })
+    }
+  }
+  return ret
 }
 
 /**

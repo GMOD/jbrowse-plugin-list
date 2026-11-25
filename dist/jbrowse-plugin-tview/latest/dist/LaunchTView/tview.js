@@ -1,5 +1,5 @@
 import { alignInsertionSite } from './align';
-import { buildArrayBlocks, normalizeInsertions, reanchorInsertions, } from './alleles';
+import { buildArrayBlocks, mergeInsertionSites, normalizeInsertions, reanchorInsertions, } from './alleles';
 import { ABSENT, SPANNED_GAP, byStart, clipInsertions, getReadNames, parseRead, } from './readLayout';
 import { findReferenceArrays, mergeArrays } from './repeats';
 export { clipInsertions, parseCigar, parseRead } from './readLayout';
@@ -231,7 +231,13 @@ export function planTviewMsa({ features, refName, start, end, sequence, sampleOf
     const intervals = sequence
         ? mergeArrays(findReferenceArrays(sequence, start))
         : [];
-    const anchored = normalizeInsertions(reanchorInsertions(clipped, intervals), intervals, start);
+    const normalized = normalizeInsertions(reanchorInsertions(clipped, intervals), intervals, start);
+    const anchored = referenceRead
+        ? mergeInsertionSites(normalized, intervals, {
+            seq: referenceRead.refChars,
+            start,
+        })
+        : normalized;
     const arrays = buildArrayBlocks(anchored, intervals);
     const ownedByArray = new Set();
     for (const array of arrays) {

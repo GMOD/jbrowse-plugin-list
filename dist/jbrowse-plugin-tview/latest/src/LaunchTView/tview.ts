@@ -1,6 +1,7 @@
 import { alignInsertionSite } from './align'
 import {
   buildArrayBlocks,
+  mergeInsertionSites,
   normalizeInsertions,
   reanchorInsertions,
 } from './alleles'
@@ -340,11 +341,17 @@ export function planTviewMsa({
   const intervals = sequence
     ? mergeArrays(findReferenceArrays(sequence, start))
     : []
-  const anchored = normalizeInsertions(
+  const normalized = normalizeInsertions(
     reanchorInsertions(clipped, intervals),
     intervals,
     start,
   )
+  const anchored = referenceRead
+    ? mergeInsertionSites(normalized, intervals, {
+        seq: referenceRead.refChars,
+        start,
+      })
+    : normalized
   const arrays = buildArrayBlocks(anchored, intervals)
   const ownedByArray = new Set<number>()
   for (const array of arrays) {
