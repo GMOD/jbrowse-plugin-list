@@ -8,8 +8,8 @@
  * There are two ways to do it, and which one applies is a property of the
  * inserted sequence rather than a setting:
  *
- * - **Aperiodic** (`alignInsertions`): one center-star alignment over the whole
- *   inserted sequence. Right for a novel insertion, a mobile element, anything
+ * - **Aperiodic** (`alignInsertionSite`): one center-star alignment over the
+ *   whole inserted sequence. Right for a novel insertion, a mobile element, anything
  *   whose bases only make sense read straight through.
  * - **Periodic** (`alignPeriodicInsertions`): a tandem array, where the whole
  *   inserted sequence is n copies of one unit. Aligning those base-to-base is
@@ -25,30 +25,11 @@
  * untouched either way.
  */
 
+import { MAX_PERIOD, MIN_COPIES, MIN_PERIOD } from './repeats'
+
 const MATCH = 2
 const MISMATCH = -2
 const GAP = -3
-
-// each sequence costs an O(n*m) pairwise alignment against the center, so fall
-// back to left-justified layout rather than stall on a pathological site
-const MAX_LEN = 200
-const MAX_DISTINCT = 30
-
-// Shortest unit that earns a unit-per-block layout. The scan below starts at 1
-// so it reports the TRUE minimal period, which is what makes a homopolymer come
-// back as 1 and get declined here: `AAAA...` is periodic at every lag, and
-// laying it out as 2bp blocks would be an arbitrary reading of one run of A.
-const MIN_UNIT_PERIOD = 2
-
-// Longest unit the scan looks for. Covers STRs and the common VNTR range; the
-// megabase-unit arrays (LPA KIV-2 at 5.5kb) need more copies than a read holds
-// before they are periodic at all, so they are out of reach here regardless.
-const MAX_PERIOD = 300
-
-// Copies needed before a sequence counts as an array. Two copies of anything is
-// a duplication, not a tandem repeat, and at two the period is unidentifiable
-// from the sequence alone.
-const MIN_COPIES = 3
 
 // Fraction of positions that must agree at lag p for p to be the period. Loose
 // enough for the ~5-15% divergence between copies of a real VNTR unit and for
@@ -59,66 +40,170 @@ const PERIODIC_MATCH = 0.8
 // whole insert. An array that is periodic in its first 3kb is periodic.
 const PROBE_LEN = 3000
 
-// Backstops on the unit-level work, in the same spirit as MAX_LEN/MAX_DISTINCT:
-// decline and leave the site to the aperiodic path rather than stall on it.
+// Backstops on the work done at one insertion site: decline and leave the site
+// left-justified rather than stall on it.
 const MAX_UNITS = 1000
-const MAX_PERIODIC_CELLS = 20_000_000
+const MAX_SITE_CELLS = 20_000_000
 
-function subst(a: string | undefined, b: string | undefined) {
-  return a === b ? MATCH : MISMATCH
-}
+const INITIAL_BAND = 8
 
-/** global alignment, returns both sequences with '-' inserted */
-function needlemanWunsch(a: string, b: string) {
+const UNREACHABLE = -(2 ** 30)
+const DIAGONAL = 1
+const UP = 2
+const LEFT = 4
+
+/**
+ * Global alignment of `a` against `b` over the diagonals `lo..hi` (j - i) of
+ * the dynamic programming matrix, keeping every move that reaches each cell's
+ * best score. With `lo = -a.length` and `hi = b.length` it is the full matrix.
+ */
+function fillBand(a: string, b: string, lo: number, hi: number) {
   const n = a.length
   const m = b.length
-  const stride = m + 1
-  const score = new Int32Array((n + 1) * stride)
-  for (let i = 1; i <= n; i++) {
-    score[i * stride] = i * GAP
+  const width = hi - lo + 1
+  const codesB = Uint16Array.from(b, c => c.charCodeAt(0))
+  const moves = new Uint8Array((n + 1) * width)
+  let previous = new Int32Array(width + 1).fill(UNREACHABLE)
+  let current = new Int32Array(width + 1).fill(UNREACHABLE)
+  for (let j = 0; j <= Math.min(m, hi); j++) {
+    previous[j - lo] = j * GAP
+    moves[j - lo] = LEFT
   }
-  for (let j = 1; j <= m; j++) {
-    score[j] = j * GAP
-  }
   for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      score[i * stride + j] = Math.max(
-        score[(i - 1) * stride + j - 1]! + subst(a[i - 1], b[j - 1]),
-        score[(i - 1) * stride + j]! + GAP,
-        score[i * stride + j - 1]! + GAP,
-      )
+    current.fill(UNREACHABLE)
+    const row = i * width
+    const codeA = a.charCodeAt(i - 1)
+    const first = Math.max(0, i + lo)
+    const last = Math.min(m, i + hi)
+    if (first === 0) {
+      current[-i - lo] = i * GAP
+      moves[row - i - lo] = UP
     }
+    for (let j = Math.max(1, first); j <= last; j++) {
+      const k = j - i - lo
+      const diagonal =
+        previous[k]! + (codeA === codesB[j - 1] ? MATCH : MISMATCH)
+      const up = previous[k + 1]! + GAP
+      const left = k > 0 ? current[k - 1]! + GAP : UNREACHABLE
+      const best =
+        diagonal >= up
+          ? diagonal >= left
+            ? diagonal
+            : left
+          : up >= left
+            ? up
+            : left
+      current[k] = best
+      moves[row + k] =
+        (diagonal === best ? DIAGONAL : 0) |
+        (up === best ? UP : 0) |
+        (left === best ? LEFT : 0)
+    }
+    ;[previous, current] = [current, previous]
   }
+  return { lo, width, moves, lastRow: previous }
+}
 
+type Band = ReturnType<typeof fillBand>
+
+/**
+ * The alignment ending at cell (i, j), preferring a diagonal step, then a gap
+ * in `b`, then a gap in `a`, so equally-scoring alignments resolve the same way
+ * at every site.
+ */
+function traceBand(a: string, b: string, band: Band, i: number, j: number) {
   const outA: string[] = []
   const outB: string[] = []
-  let i = n
-  let j = m
-  while (i > 0 || j > 0) {
-    const cur = score[i * stride + j]!
-    const diagonal =
-      i > 0 &&
-      j > 0 &&
-      cur === score[(i - 1) * stride + j - 1]! + subst(a[i - 1], b[j - 1])
-    if (diagonal) {
-      outA.push(a[i - 1]!)
-      outB.push(b[j - 1]!)
-      i--
-      j--
-    } else if (i > 0 && cur === score[(i - 1) * stride + j]! + GAP) {
-      outA.push(a[i - 1]!)
+  let x = i
+  let y = j
+  while (x > 0 || y > 0) {
+    const move = band.moves[x * band.width + y - x - band.lo]!
+    if (move & DIAGONAL) {
+      outA.push(a[x - 1]!)
+      outB.push(b[y - 1]!)
+      x--
+      y--
+    } else if (move & UP) {
+      outA.push(a[x - 1]!)
       outB.push('-')
-      i--
+      x--
     } else {
       outA.push('-')
-      outB.push(b[j - 1]!)
-      j--
+      outB.push(b[y - 1]!)
+      y--
     }
   }
   return {
     center: outA.reverse().join(''),
     other: outB.reverse().join(''),
   }
+}
+
+/** the best score an alignment of `length` bases in all, `gaps` of them gapped, can reach */
+function scoreCeiling(length: number, gaps: number) {
+  return (MATCH * (length - gaps)) / 2 + GAP * gaps
+}
+
+/** cells of the dynamic programming matrix a site may still fill */
+interface Budget {
+  cells: number
+}
+
+/**
+ * One banded fill, `slack` diagonals either side of the ones joining the two
+ * corners, charged to `budget`. `proven` says no alignment leaving the band can
+ * score as well as the best one inside it, so the band's alignment is the
+ * global one, traceback included.
+ */
+function fillWithin(a: string, b: string, slack: number, budget: Budget) {
+  const n = a.length
+  const m = b.length
+  const lo = Math.max(-n, Math.min(0, m - n) - slack)
+  const hi = Math.min(m, Math.max(0, m - n) + slack)
+  budget.cells -= (n + 1) * (hi - lo + 1)
+  const gapsThrough = (diagonal: number) =>
+    Math.abs(diagonal) + Math.abs(m - n - diagonal)
+  const outside = Math.min(
+    lo > -n ? gapsThrough(lo - 1) : Infinity,
+    hi < m ? gapsThrough(hi + 1) : Infinity,
+  )
+  const band = budget.cells < 0 ? undefined : fillBand(a, b, lo, hi)
+  const score = band?.lastRow[m - n - lo]
+  return band && score !== undefined
+    ? { band, score, proven: score > scoreCeiling(n + m, outside) }
+    : undefined
+}
+
+/**
+ * The slack whose band beats the score cap outside it, given a band that has
+ * already scored `score`. A wider band can only score higher, so it stays
+ * beaten.
+ */
+function provingSlack(a: string, b: string, score: number) {
+  const gaps =
+    (scoreCeiling(a.length + b.length, 0) - score) / (MATCH / 2 - GAP)
+  return Math.max(
+    INITIAL_BAND + 1,
+    Math.floor((gaps - Math.abs(b.length - a.length)) / 2),
+  )
+}
+
+/**
+ * Global alignment in time proportional to length times divergence.
+ *
+ * A path through diagonal d needs at least |d| + |m - n - d| gaps, which caps
+ * its score, so a narrow band whose best score beats the cap on the first
+ * diagonal outside it holds the global alignment. When the first fill does not,
+ * its score says how wide a band has to be, and the second fill is that wide.
+ * Undefined once `budget` is spent.
+ */
+function alignGlobal(a: string, b: string, budget: Budget) {
+  const first = fillWithin(a, b, INITIAL_BAND, budget)
+  const settled =
+    first && !first.proven
+      ? fillWithin(a, b, provingSlack(a, b, first.score), budget)
+      : first
+  return settled && traceBand(a, b, settled.band, a.length, b.length)
 }
 
 /**
@@ -216,74 +301,20 @@ export function consensusUnit(seq: string, period: number) {
  */
 function alignUnitAt(consensus: string, seq: string, from: number) {
   const n = consensus.length
-  const m = Math.min(2 * n, seq.length - from)
-  const stride = m + 1
-  const score = new Int32Array((n + 1) * stride)
-  for (let i = 1; i <= n; i++) {
-    score[i * stride] = i * GAP
-  }
-  for (let j = 1; j <= m; j++) {
-    score[j] = j * GAP
-  }
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      score[i * stride + j] = Math.max(
-        score[(i - 1) * stride + j - 1]! +
-          subst(consensus[i - 1], seq[from + j - 1]),
-        score[(i - 1) * stride + j]! + GAP,
-        score[i * stride + j - 1]! + GAP,
-      )
-    }
-  }
-
+  const window = seq.slice(from, from + 2 * n)
+  const band = fillBand(consensus, window, -n, window.length)
   // the copy ends at whichever window position scores best once the consensus
   // is spent
   let consumed = 0
-  let best = score[n * stride]!
-  for (let j = 1; j <= m; j++) {
-    const s = score[n * stride + j]!
-    if (s > best) {
-      best = s
+  for (let j = 1; j <= window.length; j++) {
+    if (band.lastRow[j]! > band.lastRow[consumed]!) {
       consumed = j
     }
   }
   // a copy that consumed nothing would not advance the cursor
-  if (consumed === 0) {
-    return undefined
-  }
-
-  const outCenter: string[] = []
-  const outOther: string[] = []
-  let i = n
-  let j = consumed
-  while (i > 0 || j > 0) {
-    const cur = score[i * stride + j]!
-    const diagonal =
-      i > 0 &&
-      j > 0 &&
-      cur ===
-        score[(i - 1) * stride + j - 1]! +
-          subst(consensus[i - 1], seq[from + j - 1])
-    if (diagonal) {
-      outCenter.push(consensus[i - 1]!)
-      outOther.push(seq[from + j - 1]!)
-      i--
-      j--
-    } else if (i > 0 && cur === score[(i - 1) * stride + j]! + GAP) {
-      outCenter.push(consensus[i - 1]!)
-      outOther.push('-')
-      i--
-    } else {
-      outCenter.push('-')
-      outOther.push(seq[from + j - 1]!)
-      j--
-    }
-  }
-  return {
-    center: outCenter.reverse().join(''),
-    other: outOther.reverse().join(''),
-    consumed,
-  }
+  return consumed === 0
+    ? undefined
+    : { ...traceBand(consensus, window, band, n, consumed), consumed }
 }
 
 /** Every copy in `seq`, each as a pairwise alignment against the consensus. */
@@ -411,7 +442,7 @@ export interface PeriodicAlignment {
  * as wide as the widest version of that copy across the site, so a sequence with
  * fewer copies runs out of blocks rather than drifting out of register. Returns
  * undefined when the site is not a tandem array, or is too big to lay out this
- * way; the caller falls back to `alignInsertions`.
+ * way; the caller falls back to the center-star alignment.
  *
  * **Blocks are array order, not homology.** Copies are anchored at the left edge
  * of the insertion and counted rightward, so block k is "the kth copy along",
@@ -427,7 +458,7 @@ export function alignPeriodicInsertions(
   const distinct = [...new Set(seqs)]
   const longest = distinct.reduce((a, b) => (b.length > a.length ? b : a), '')
   const period = detectPeriod(longest)
-  if (period === undefined || period < MIN_UNIT_PERIOD) {
+  if (period === undefined || period < MIN_PERIOD) {
     return undefined
   }
   return alignToUnit(distinct, consensusUnit(longest, period))
@@ -456,7 +487,7 @@ export function alignToUnit(
 ): PeriodicAlignment | undefined {
   const distinct = [...new Set(seqs)]
   const period = consensus.length
-  if (!distinct.some(s => s.length) || period < MIN_UNIT_PERIOD) {
+  if (!distinct.some(s => s.length) || period < MIN_PERIOD) {
     return undefined
   }
 
@@ -464,7 +495,7 @@ export function alignToUnit(
     (a, s) => a + Math.ceil(s.length / period),
     0,
   )
-  if (totalUnits * (period + 1) * (2 * period + 1) > MAX_PERIODIC_CELLS) {
+  if (totalUnits * (period + 1) * (2 * period + 1) > MAX_SITE_CELLS) {
     return undefined
   }
 
@@ -518,62 +549,80 @@ export interface InsertionAlignment {
 }
 
 /**
- * Lay out the sequences inserted at one reference position, by whichever of the
- * two alignments the sequence itself calls for. The single place that decision
- * is made, so a caller reading the period cannot disagree with the layout it
- * gets.
+ * The sequence every other one at a site is aligned against: the one the most
+ * reads carry, so a single chimeric outlier cannot gap every row. Ties go to
+ * the length nearest the median, then lexicographically, so the choice is a
+ * function of the input and not of the order reads arrived in.
+ */
+function chooseCenter(seqs: string[]) {
+  const counts = new Map<string, number>()
+  for (const seq of seqs) {
+    counts.set(seq, (counts.get(seq) ?? 0) + 1)
+  }
+  const lengths = seqs.map(s => s.length).sort((a, b) => a - b)
+  const median =
+    (lengths[(lengths.length - 1) >> 1]! + lengths[lengths.length >> 1]!) / 2
+  const offMedian = (seq: string) => Math.abs(seq.length - median)
+  return [...counts].sort(
+    ([a, countA], [b, countB]) =>
+      countB - countA || offMedian(a) - offMedian(b) || (a < b ? -1 : 1),
+  )[0]![0]
+}
+
+/**
+ * Every distinct sequence aligned to the center and widened to the same set of
+ * columns, or undefined when the alignments would exceed the site's budget.
+ */
+function alignAroundCenter(seqs: string[], distinct: string[]) {
+  const center = chooseCenter(seqs)
+  const budget: Budget = { cells: MAX_SITE_CELLS }
+  const others = distinct.filter(s => s !== center)
+  const splits: CenterSplit[] = []
+  for (const seq of others) {
+    const pair = alignGlobal(center, seq, budget)
+    if (pair) {
+      splits.push(splitAgainstCenter(pair, center.length))
+    }
+  }
+  const slotWidths = Array.from({ length: center.length + 1 }, (_, j) =>
+    splits.reduce((max, s) => Math.max(max, s.slots[j]!.length), 0),
+  )
+  const centerSplit: CenterSplit = {
+    slots: slotWidths.map(() => ''),
+    atCenter: center,
+  }
+  return splits.length === others.length
+    ? new Map([
+        [center, emit(centerSplit, slotWidths)],
+        ...others.map((seq, i): [string, string] => [
+          seq,
+          emit(splits[i]!, slotWidths),
+        ]),
+      ])
+    : undefined
+}
+
+/**
+ * Lay out the sequences inserted at one reference position, one entry per
+ * read, by whichever of the two alignments the sequence itself calls for. The
+ * single place that decision is made, so a caller reading the period cannot
+ * disagree with the layout it gets.
  *
- * A tandem array goes unit-per-block, which is both the readable answer and the
- * affordable one — the size caps here are what the base-to-base alignment costs,
- * and an expansion is always past them. Everything else gets the center-star
- * alignment, or is left alone (`gapped` empty) when there is nothing to gain
- * from a single distinct sequence, or the site is too large to be worth it.
+ * A tandem array goes unit-per-block, which is the readable answer however many
+ * copies it has. Everything else gets the center-star alignment, or is left
+ * alone (`gapped` empty) when there is nothing to gain from a single distinct
+ * sequence, or the alignments would cost more than the site's budget.
  */
 export function alignInsertionSite(seqs: string[]): InsertionAlignment {
   const distinct = [...new Set(seqs)]
   // an array is worth unrolling even when every read agrees on it: the copies
   // still have to be squared up with each other before they can be counted
   const periodic = alignPeriodicInsertions(distinct)
-  if (periodic) {
-    return { gapped: periodic.gapped, periodic }
-  }
-  const longest = distinct.reduce((a, b) => (b.length > a.length ? b : a), '')
-  if (
-    distinct.length < 2 ||
-    distinct.length > MAX_DISTINCT ||
-    longest.length > MAX_LEN
-  ) {
-    return { gapped: new Map<string, string>() }
-  }
-
-  const centerLen = longest.length
-  const others = distinct.filter(s => s !== longest)
-  const splits = others.map(s =>
-    splitAgainstCenter(needlemanWunsch(longest, s), centerLen),
-  )
-  const centerSplit: CenterSplit = {
-    slots: Array.from({ length: centerLen + 1 }, () => ''),
-    atCenter: longest,
-  }
-
-  const slotWidths = Array.from({ length: centerLen + 1 }, (_, j) =>
-    splits.reduce((max, s) => Math.max(max, s.slots[j]!.length), 0),
-  )
-  return {
-    gapped: new Map([
-      [longest, emit(centerSplit, slotWidths)],
-      ...others.map((seq, i): [string, string] => [
-        seq,
-        emit(splits[i]!, slotWidths),
-      ]),
-    ]),
-  }
-}
-
-/**
- * The gapped sequences alone, for callers with no use for the period. Every
- * decision lives in `alignInsertionSite`.
- */
-export function alignInsertions(seqs: string[]) {
-  return alignInsertionSite(seqs).gapped
+  return periodic
+    ? { gapped: periodic.gapped, periodic }
+    : {
+        gapped:
+          (distinct.length > 1 && alignAroundCenter(seqs, distinct)) ||
+          new Map<string, string>(),
+      }
 }

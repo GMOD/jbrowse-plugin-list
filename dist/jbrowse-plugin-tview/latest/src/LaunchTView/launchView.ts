@@ -1,16 +1,14 @@
-import { initKeys } from '../TViewPanel/init'
+import { launchTView } from './launch'
 
-import type { TviewInit } from '../TViewPanel/init'
+import type { TviewTrackInit } from '../TViewPanel/init'
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { AbstractSessionModel } from '@jbrowse/core/util'
 
 /**
  * `LaunchView-TView`, so a session spec URL can open one.
  *
- * The two ways of writing a view are not the same shape, and JBrowse's spec
- * loader says so out loud: a spec view is **flat arguments** to this launcher,
- * while a config or defaultSession view is MST state, where anything needing
- * resolution on load lives under the view's own `init`. So the spec
+ * A spec view is flat arguments to this launcher, while a config or
+ * defaultSession view is MST state with the locus under `init`, so the spec
  *
  *     { type: 'TView', assembly: 'hg19', loc: 'chrX:1..2', tracks: ['HG002'] }
  *
@@ -18,32 +16,42 @@ import type { AbstractSessionModel } from '@jbrowse/core/util'
  *
  *     { type: 'TView', init: { assembly: 'hg19', loc: '…', tracks: […] } }
  *
- * are the same view, and this is the one line between them. Splitting on
- * `initKeys` rather than listing the pass-through props means every react-msaview
- * view prop — colWidth, rowHeight, colorSchemeName, the ones added next — rides
- * along without being enumerated here.
+ * are the same view. Every other key is passed through as a view prop.
  */
 export type LaunchTViewArgs = { session: AbstractSessionModel } & Record<
   string,
   unknown
 >
 
+function isTrackInit(entry: unknown): entry is TviewTrackInit {
+  return (
+    typeof entry === 'string' ||
+    (typeof entry === 'object' &&
+      entry !== null &&
+      'trackId' in entry &&
+      typeof entry.trackId === 'string' &&
+      (!('sample' in entry) || typeof entry.sample === 'string'))
+  )
+}
+
 export default function LaunchTViewF(pluginManager: PluginManager) {
   /** #extensionPoint LaunchView-TView | async | Programmatically launch a tview */
   pluginManager.addToExtensionPoint(
     'LaunchView-TView',
     (args: LaunchTViewArgs) => {
-      const { session, ...spec } = args
-      const init: Record<string, unknown> = {}
-      const viewProps: Record<string, unknown> = {}
-      for (const [key, value] of Object.entries(spec)) {
-        ;(initKeys.has(key) ? init : viewProps)[key] = value
+      const { session, assembly, loc, tracks, ...viewProps } = args
+      if (
+        typeof assembly === 'string' &&
+        typeof loc === 'string' &&
+        Array.isArray(tracks) &&
+        tracks.every(isTrackInit)
+      ) {
+        launchTView(session, { assembly, loc, tracks }, viewProps)
+      } else {
+        throw new Error(
+          'A TView spec needs an assembly name, a loc string and a tracks array of trackIds',
+        )
       }
-      session.addView('TView', {
-        type: 'TView',
-        ...viewProps,
-        init: init as unknown as TviewInit,
-      })
       return args
     },
   )

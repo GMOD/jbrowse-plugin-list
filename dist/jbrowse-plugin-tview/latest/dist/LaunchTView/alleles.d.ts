@@ -111,6 +111,20 @@ export declare function flankWindows(arrays: ReferenceArray[]): FlankWindow[];
  */
 export declare function reanchorInsertions(reads: ReadLayout[], arrays: ReferenceArray[]): ReadLayout[];
 /**
+ * Re-file each insertion no array owns at the leftmost position that spells the
+ * same read, so reads carrying one event agree on its site.
+ *
+ * This is `shiftInsertion`'s equivalence walked as far as it holds rather than
+ * to a target, which is the left-normalization of Tan, Abecasis & Kang. It runs
+ * after `reanchorInsertions`, leaves alone any insertion from an array's `start`
+ * to its `end` inclusive, and walks none into that span, so no allele an array
+ * measures changes. The walk also stops one base inside the region's start, so
+ * an insertion in view keeps a reference base on both sides of it, at the
+ * read's own start, and at any position where the read has no base. Two insertions of one read that meet keep their order along
+ * it.
+ */
+export declare function normalizeInsertions(reads: ReadLayout[], arrays: ReferenceArray[], regionStart: number): ReadLayout[];
+/**
  * Lay every row's allele out unit-per-block, one block per array.
  *
  * Arrays whose alleles are all one length still get a block: squaring the copies

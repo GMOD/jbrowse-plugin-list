@@ -284,6 +284,72 @@ export function reanchorInsertions(
   })
 }
 
+function mod(a: number, b: number) {
+  return ((a % b) + b) % b
+}
+
+/**
+ * `ins`, inserted before `pos`, walked left through the read's own bases for as
+ * long as each step spells the same read, and no further than `floor`.
+ */
+function walkLeft(read: ReadLayout, pos: number, ins: string, floor: number) {
+  let at = pos
+  while (
+    at > floor &&
+    readBase(read, at - 1) === ins[mod(ins.length - 1 - (pos - at), ins.length)]
+  ) {
+    at--
+  }
+  const cut = ins.length - mod(pos - at, ins.length)
+  return { at, seq: ins.slice(cut) + ins.slice(0, cut) }
+}
+
+/**
+ * Re-file each insertion no array owns at the leftmost position that spells the
+ * same read, so reads carrying one event agree on its site.
+ *
+ * This is `shiftInsertion`'s equivalence walked as far as it holds rather than
+ * to a target, which is the left-normalization of Tan, Abecasis & Kang. It runs
+ * after `reanchorInsertions`, leaves alone any insertion from an array's `start`
+ * to its `end` inclusive, and walks none into that span, so no allele an array
+ * measures changes. The walk also stops one base inside the region's start, so
+ * an insertion in view keeps a reference base on both sides of it, at the
+ * read's own start, and at any position where the read has no base. Two insertions of one read that meet keep their order along
+ * it.
+ */
+export function normalizeInsertions(
+  reads: ReadLayout[],
+  arrays: ReferenceArray[],
+  regionStart: number,
+) {
+  const owned = (pos: number) =>
+    arrays.some(array => pos >= array.start && pos <= array.end)
+  const arrayFloor = (pos: number) =>
+    Math.max(
+      -Infinity,
+      ...arrays.filter(array => array.end < pos).map(array => array.end + 1),
+    )
+  return reads.map(read => {
+    let moved = false
+    let previous = -Infinity
+    const next = new Map<number, string>()
+    for (const [pos, ins] of [...read.insertions].sort((a, b) => a[0] - b[0])) {
+      const { at, seq } = owned(pos)
+        ? { at: pos, seq: ins }
+        : walkLeft(
+            read,
+            pos,
+            ins,
+            Math.max(regionStart + 1, read.start, arrayFloor(pos), previous),
+          )
+      next.set(at, (next.get(at) ?? '') + seq)
+      moved ||= at !== pos
+      previous = at
+    }
+    return moved ? { ...read, insertions: next } : read
+  })
+}
+
 /**
  * Lay every row's allele out unit-per-block, one block per array.
  *

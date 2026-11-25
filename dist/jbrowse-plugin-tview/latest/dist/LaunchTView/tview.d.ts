@@ -1,5 +1,6 @@
 import type { ArrayBlock } from './alleles';
 import type { AlignmentFeature, ReadLayout } from './readLayout';
+import type { Highlight, RowDataInput } from 'react-msaview';
 export type { AlignmentFeature, ReadLayout } from './readLayout';
 export { clipInsertions, parseCigar, parseRead } from './readLayout';
 /**
@@ -12,10 +13,10 @@ export { clipInsertions, parseCigar, parseRead } from './readLayout';
 export declare function alignInsertionColumns(reads: ReadLayout[], ownedByArray: Set<number>): {
     insertions: Map<number, string>;
     name: string;
-    label?: string;
     sample?: string;
     start: number;
     refChars: string;
+    query?: import("./readLayout").ReadQuery;
 }[];
 /** widest insertion any read has at each reference position (sparse) */
 export declare function maxInsertionWidths(reads: ReadLayout[], ownedByArray: Set<number>): Map<number, number>;
@@ -51,6 +52,15 @@ export interface ColumnLayout {
  */
 export declare function buildColumnLayout(start: number, end: number, insWidths: Map<number, number>, arrays?: ArrayBlock[]): ColumnLayout;
 /**
+ * The reference positions a row is walked over, from inclusive to exclusive. A
+ * trailing insertion is keyed one past the last position the read spans, so
+ * that slot is in it.
+ */
+export declare function rowSpan(read: ReadLayout, layout: ColumnLayout): {
+    from: number;
+    to: number;
+};
+/**
  * Lays a single row out across the whole region. Rows are typically a tiny
  * fraction of the region, so the columns on either side are filled in one shot
  * from the offsets rather than walked position by position — which works over
@@ -60,29 +70,17 @@ export declare function buildColumnLayout(start: number, end: number, insWidths:
  */
 export declare function renderRow(read: ReadLayout, layout: ColumnLayout): string;
 /**
- * What a row is called on screen. The one place `label` falls back to `name`,
- * so the defline and the tree leaf cannot disagree about it — react-msaview
- * joins them by string, and a row the tree names differently renders blank.
+ * The reference row's name, and the sample its row table entry gives it. Not
+ * the sequence's own name: react-msaview prints a row's residues as
+ * `<row>:<index>`, and `chr4:25` would read as a genome coordinate when it is an
+ * index into the window.
  */
-export declare function rowLabel(read: ReadLayout): string;
-/**
- * Rows ordered longest-allele-first and labelled with their copy count.
- *
- * Copy number is the measurement at a tandem array, and reading it off where a
- * row runs out is the thing the unit-per-block layout exists to avoid, so it is
- * stated in the label. Ordering by it puts the alleles in a ladder, which is
- * what makes one row's array comparable to the next at a glance. Rows that do
- * not span the array keep genomic order, below the ones that do; the reference
- * stays on top whatever its allele, since it is what the columns are named
- * after rather than one of the observations.
- */
-export declare function labelAndOrderByCopies(reads: ReadLayout[], array: ArrayBlock, referenceName?: string): ReadLayout[];
+export declare const REFERENCE = "reference";
 export interface TviewPlan {
     reads: ReadLayout[];
+    /** the row each feature became, parallel to the features planned */
+    featureNames: string[];
     layout: ColumnLayout;
-    insertionWidths: [number, number][];
-    /** [start, end, width] per array block, to rebuild the column mapping */
-    arraySpans: [number, number, number][];
     region: {
         refName: string;
         start: number;
@@ -92,7 +90,7 @@ export interface TviewPlan {
     cellCount: number;
     /** tandem arrays the reference carries here, left to right */
     arrays: ArrayBlock[];
-    /** the array the rows are ordered and labelled by, when there is one */
+    /** the array the rows are ordered by, when there is one */
     subject?: ArrayBlock;
     /** name of the reference row, when the reference sequence was available */
     referenceName?: string;
@@ -115,11 +113,24 @@ export interface PlanArgs {
  * proportional to rows x columns and can be far larger.
  */
 export declare function planTviewMsa({ features, refName, start, end, sequence, sampleOf, }: PlanArgs): TviewPlan;
-export declare function renderTviewMsa({ reads, layout }: TviewPlan): string;
+export declare function renderRows({ reads, layout }: TviewPlan): string[];
+export declare function toFasta({ reads }: TviewPlan, rows: string[]): string;
+export declare function renderTviewMsa(plan: TviewPlan): string;
+/**
+ * What each row is, keyed by its name: the sample it came from and, where there
+ * is a subject array, the copies it carries there and their length in bp.
+ */
+export declare function planRowData({ reads, subject }: TviewPlan): RowDataInput;
+/**
+ * A bracket over the runs of columns that are not one reference base: the
+ * insertion sites, and each array block. Columns are the file's, 1-based.
+ */
+export declare function planHighlights({ reads, layout, region, referenceName, }: TviewPlan): Highlight[];
 export declare function buildTviewMsa(args: PlanArgs): {
     msa: string;
+    rowData: RowDataInput;
+    highlights: Highlight[];
     insertionWidths: [number, number][];
-    arraySpans: [number, number, number][];
     region: {
         refName: string;
         start: number;

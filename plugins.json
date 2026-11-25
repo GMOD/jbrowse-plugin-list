@@ -137,7 +137,8 @@
       "location": "https://github.com/cmdcolin/jbrowse-plugin-tview",
       "umdPath": "dist/jbrowse-plugin-tview.umd.production.min.js",
       "license": "MIT",
-      "tags": ["bring-your-own-data", "alignment"]
+      "tags": ["bring-your-own-data", "alignment"],
+      "jbrowseRange": ">=5.0.0"
     },
     {
       "name": "GraphGenomeView",

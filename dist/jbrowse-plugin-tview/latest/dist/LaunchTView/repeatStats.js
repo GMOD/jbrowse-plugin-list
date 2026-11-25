@@ -8,7 +8,6 @@
  * back counts, which is what makes it testable without the network.
  */
 import { ABSENT, SPANNED_GAP } from './readLayout';
-import { newickSafe } from './sampleTree';
 import { renderRow } from './tview';
 /**
  * Least support an allele needs before it is reported as one of a sample's,
@@ -92,25 +91,11 @@ export function alleleModes(copies) {
     }
     return peaks.filter(p => p.reads >= floor).sort((a, b) => a.value - b.value);
 }
-function sampleOfRow(name) {
-    const i = name.indexOf('|');
-    return i < 0 ? undefined : name.slice(0, i);
-}
-/**
- * Rows are prefixed with the Newick-safe form of their sample's name, so a
- * caller naming the samples it wants reported has to be met there rather than
- * taken at its word. A track called `HG004 (mother)` otherwise matched no row
- * and came back with nought spanning reads and no alleles — which is what a
- * locus nobody sequenced looks like, not what a misspelt name should.
- *
- * The name the caller gave is what gets reported back; only the matching is
- * sanitized.
- */
-function rowsOfSample(copiesByName, sample) {
-    const key = newickSafe(sample);
-    return [...copiesByName]
-        .filter(([name]) => sampleOfRow(name) === key)
-        .map(([, n]) => n);
+function rowsOfSample(array, plan, sample) {
+    return plan.reads
+        .filter(read => read.sample === sample)
+        .map(read => array.copiesByName.get(read.name))
+        .filter(copies => copies !== undefined);
 }
 function arrayStats(array, plan, samples) {
     return {
@@ -125,7 +110,7 @@ function arrayStats(array, plan, samples) {
             : undefined,
         subject: array === plan.subject,
         samples: samples.map(sample => {
-            const copies = rowsOfSample(array.copiesByName, sample);
+            const copies = rowsOfSample(array, plan, sample);
             const modes = alleleModes(copies);
             return {
                 sample,

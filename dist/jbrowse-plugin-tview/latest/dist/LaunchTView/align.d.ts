@@ -8,8 +8,8 @@
  * There are two ways to do it, and which one applies is a property of the
  * inserted sequence rather than a setting:
  *
- * - **Aperiodic** (`alignInsertions`): one center-star alignment over the whole
- *   inserted sequence. Right for a novel insertion, a mobile element, anything
+ * - **Aperiodic** (`alignInsertionSite`): one center-star alignment over the
+ *   whole inserted sequence. Right for a novel insertion, a mobile element, anything
  *   whose bases only make sense read straight through.
  * - **Periodic** (`alignPeriodicInsertions`): a tandem array, where the whole
  *   inserted sequence is n copies of one unit. Aligning those base-to-base is
@@ -74,7 +74,7 @@ export interface PeriodicAlignment {
  * as wide as the widest version of that copy across the site, so a sequence with
  * fewer copies runs out of blocks rather than drifting out of register. Returns
  * undefined when the site is not a tandem array, or is too big to lay out this
- * way; the caller falls back to `alignInsertions`.
+ * way; the caller falls back to the center-star alignment.
  *
  * **Blocks are array order, not homology.** Copies are anchored at the left edge
  * of the insertion and counted rightward, so block k is "the kth copy along",
@@ -110,20 +110,14 @@ export interface InsertionAlignment {
     periodic?: PeriodicAlignment;
 }
 /**
- * Lay out the sequences inserted at one reference position, by whichever of the
- * two alignments the sequence itself calls for. The single place that decision
- * is made, so a caller reading the period cannot disagree with the layout it
- * gets.
+ * Lay out the sequences inserted at one reference position, one entry per
+ * read, by whichever of the two alignments the sequence itself calls for. The
+ * single place that decision is made, so a caller reading the period cannot
+ * disagree with the layout it gets.
  *
- * A tandem array goes unit-per-block, which is both the readable answer and the
- * affordable one — the size caps here are what the base-to-base alignment costs,
- * and an expansion is always past them. Everything else gets the center-star
- * alignment, or is left alone (`gapped` empty) when there is nothing to gain
- * from a single distinct sequence, or the site is too large to be worth it.
+ * A tandem array goes unit-per-block, which is the readable answer however many
+ * copies it has. Everything else gets the center-star alignment, or is left
+ * alone (`gapped` empty) when there is nothing to gain from a single distinct
+ * sequence, or the alignments would cost more than the site's budget.
  */
 export declare function alignInsertionSite(seqs: string[]): InsertionAlignment;
-/**
- * The gapped sequences alone, for callers with no use for the period. Every
- * decision lives in `alignInsertionSite`.
- */
-export declare function alignInsertions(seqs: string[]): Map<string, string>;

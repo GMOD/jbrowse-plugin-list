@@ -1,9 +1,12 @@
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes';
+import type { TviewModifications } from '../modifications';
+import type { RpcCallContext, RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry';
 import type { Region } from '@jbrowse/core/util';
+import type { Highlight, RowDataInput } from 'react-msaview';
 /** one BAM/CRAM to draw rows from, and the name its rows are grouped under */
 export interface TviewSourceArgs {
     adapterConfig: Record<string, unknown>;
-    sample?: string;
+    sample: string;
     /**
      * what this file calls the region's sequence. Filled in on the client, where
      * the assembly's aliases live: two files over one assembly routinely spell it
@@ -12,47 +15,43 @@ export interface TviewSourceArgs {
     refName?: string;
 }
 export interface TviewGetPlanArgs {
-    sessionId: string;
     sources: TviewSourceArgs[];
-    /** the assembly's sequence adapter, when it has one */
-    sequenceAdapterConfig?: Record<string, unknown>;
+    /** names the genome, so the call layer attaches its sequence adapter */
+    assemblyName: string;
     /** the sequence adapter's own spelling of the region */
-    sequenceRefName?: string;
+    sequenceRefName: string;
     region: Region;
     /** stop before rendering an alignment bigger than this many cells */
     maxCells: number;
 }
-/** what crosses back: the alignment, and the numbers the dialog reports */
-export interface TviewArrayReport {
-    start: number;
-    end: number;
-    period: number;
-    unit: string;
-    width: number;
-    /** per row: copies carried, and allele length in bp */
-    copies: [string, number][];
-    lengths: [string, number][];
-}
 export interface TviewPlanResult {
     msa: string;
-    /** Newick grouping rows by sample; absent unless several were loaded */
-    tree?: string;
-    rowCount: number;
+    /** per row name: its sample, and its copies and allele length at the subject */
+    rowData: RowDataInput;
+    /** a bracket over each insertion site and each array block */
+    highlights: Highlight[];
     columnCount: number;
     cellCount: number;
-    insertionWidths: [number, number][];
-    arraySpans: [number, number, number][];
     region: {
         refName: string;
         start: number;
         end: number;
     };
-    arrays: TviewArrayReport[];
-    subjectIndex?: number;
-    referenceName?: string;
+    /** whether rows carry a copy count at a subject array */
+    hasSubject: boolean;
     samples: string[];
     /** set when the alignment was over maxCells and `msa` is empty */
     tooLarge?: boolean;
+    /** set when some read in the window has an MM tag */
+    modifications?: TviewModifications;
+}
+declare module '@jbrowse/core/rpc/RpcRegistry' {
+    interface RpcRegistry {
+        TviewGetPlan: {
+            args: TviewGetPlanArgs;
+            return: TviewPlanResult;
+        };
+    }
 }
 /**
  * Builds the whole alignment in the worker and sends back the FASTA.
@@ -69,64 +68,45 @@ export interface TviewPlanResult {
  * against the same reference interval, so an array's copies are counted once,
  * over rows from all of them.
  */
-export default class TviewGetPlan extends RpcMethodType {
-    name: string;
-    /**
-     * Written against the 4.3.0 base class, which takes a bare
-     * `Record<string, unknown>` and has no `renameRegions` helper — that is the
-     * oldest host this bundle boots on, and the newer base class accepts the same
-     * shape.
-     */
-    serializeArguments(args: Record<string, unknown>, rpcDriverClassName: string): Promise<Record<string, unknown>>;
-    execute(args: TviewGetPlanArgs, rpcDriverClassName: string): Promise<{
+export default class TviewGetPlan extends RpcMethodType<'TviewGetPlan'> {
+    name: "TviewGetPlan";
+    serializeArguments(args: TviewGetPlanArgs & RpcCallContext): Promise<Record<string, unknown>>;
+    execute(args: RpcExecuteArgs<'TviewGetPlan'>): Promise<{
+        modifications?: {
+            rows: string[];
+            types: string[];
+            row: Uint32Array<ArrayBuffer>;
+            residue: Uint32Array<ArrayBuffer>;
+            type: Uint8Array<ArrayBuffer>;
+            prob: Uint8Array<ArrayBuffer>;
+            dropped: number;
+            unplaced: number;
+        } | undefined;
         msa: string;
-        tooLarge: boolean;
-        rowCount: number;
         columnCount: number;
         cellCount: number;
-        insertionWidths: [number, number][];
-        arraySpans: [number, number, number][];
+        rowData: RowDataInput;
+        highlights: Highlight[];
         region: {
             refName: string;
             start: number;
             end: number;
         };
-        arrays: {
-            start: number;
-            end: number;
-            period: number;
-            unit: string;
-            width: number;
-            copies: [string, number][];
-            lengths: [string, number][];
-        }[];
-        subjectIndex: number | undefined;
-        referenceName: string | undefined;
+        hasSubject: boolean;
         samples: string[];
     } | {
         msa: string;
-        tree: string | undefined;
-        rowCount: number;
+        tooLarge: boolean;
         columnCount: number;
         cellCount: number;
-        insertionWidths: [number, number][];
-        arraySpans: [number, number, number][];
+        rowData: RowDataInput;
+        highlights: Highlight[];
         region: {
             refName: string;
             start: number;
             end: number;
         };
-        arrays: {
-            start: number;
-            end: number;
-            period: number;
-            unit: string;
-            width: number;
-            copies: [string, number][];
-            lengths: [string, number][];
-        }[];
-        subjectIndex: number | undefined;
-        referenceName: string | undefined;
+        hasSubject: boolean;
         samples: string[];
     }>;
 }

@@ -7,7 +7,6 @@ export default function TviewGetPlanRpcF(pluginManager: PluginManager) {
 }
 
 export type {
-  TviewArrayReport,
   TviewGetPlanArgs,
   TviewPlanResult,
   TviewSourceArgs,

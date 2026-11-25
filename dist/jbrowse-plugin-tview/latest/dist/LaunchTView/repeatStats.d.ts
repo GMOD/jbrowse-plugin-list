@@ -43,7 +43,7 @@ export interface ArrayStats {
     width: number;
     /** the reference's own copy count, when the reference was a row */
     referenceCopies?: number;
-    /** whether the rows were ordered and labelled by this array */
+    /** whether the rows were ordered by this array */
     subject: boolean;
     samples: SampleArrayStats[];
 }

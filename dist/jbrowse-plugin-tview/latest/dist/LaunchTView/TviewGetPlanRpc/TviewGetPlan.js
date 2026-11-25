@@ -1,11 +1,10 @@
+import { isSequenceAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
 import { getAdapter } from '@jbrowse/core/data_adapters/dataAdapterCache';
+import { getFeatureAdapterOrThrow } from '@jbrowse/core/data_adapters/getFeatureAdapter';
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes';
-import { renameRegionsIfNeeded } from '@jbrowse/core/util';
-import { buildSampleTree } from '../sampleTree';
-import { planTviewMsa, renderTviewMsa } from '../tview';
-function isFeatureSource(adapter) {
-    return 'getFeatures' in adapter && typeof adapter.getFeatures === 'function';
-}
+import { assembleLocString } from '@jbrowse/core/util';
+import { planModifications } from '../modifications';
+import { planHighlights, planRowData, planTviewMsa, renderRows, toFasta, } from '../tview';
 /**
  * Drains an adapter's feature observable into an array.
  *
@@ -13,14 +12,11 @@ function isFeatureSource(adapter) {
  * not a dependency here and `@jbrowse/core/util/rxjs` publishes only
  * `ObservableCreate`. Subscribing directly needs neither.
  */
-async function fetchAll(pluginManager, sessionId, adapterConfig, region) {
-    const { dataAdapter } = await getAdapter(pluginManager, sessionId, adapterConfig);
-    if (!isFeatureSource(dataAdapter)) {
-        throw new Error(`${adapterConfig.type} has no getFeatures`);
-    }
+async function fetchAll(args, region) {
+    const dataAdapter = await getFeatureAdapterOrThrow(args);
     return new Promise((resolve, reject) => {
         const ret = [];
-        dataAdapter.getFeatures(region).subscribe({
+        dataAdapter.getFeatures(region, { signal: args.signal }).subscribe({
             next: feature => ret.push(feature),
             error: reject,
             complete: () => {
@@ -28,6 +24,26 @@ async function fetchAll(pluginManager, sessionId, adapterConfig, region) {
             },
         });
     });
+}
+/**
+ * The reference over exactly `region`, which becomes the alignment's first row
+ * and is what makes an array an interval rather than an insertion. The region
+ * arrives clamped to its contig, so a short answer means the sequence could not
+ * be read, and a row that stops early would misplace every column after it.
+ */
+async function fetchReference(pluginManager, { sessionId, sequenceAdapter, sequenceRefName, region, signal, }) {
+    const dataAdapter = sequenceAdapter
+        ? (await getAdapter(pluginManager, sessionId, sequenceAdapter)).dataAdapter
+        : undefined;
+    const sequence = dataAdapter && isSequenceAdapter(dataAdapter)
+        ? await dataAdapter.getSequence({ ...region, refName: sequenceRefName }, { signal })
+        : undefined;
+    const want = region.end - region.start;
+    if (sequence?.length !== want) {
+        const n = (x) => x.toLocaleString('en-US');
+        throw new Error(`Could not read the reference sequence over ${assembleLocString(region)}: got ${n(sequence?.length ?? 0)}bp of ${n(want)}bp`);
+    }
+    return sequence;
 }
 /**
  * Builds the whole alignment in the worker and sends back the FASTA.
@@ -49,41 +65,24 @@ export default class TviewGetPlan extends RpcMethodType {
         super(...arguments);
         this.name = 'TviewGetPlan';
     }
-    /**
-     * Written against the 4.3.0 base class, which takes a bare
-     * `Record<string, unknown>` and has no `renameRegions` helper — that is the
-     * oldest host this bundle boots on, and the newer base class accepts the same
-     * shape.
-     */
-    async serializeArguments(args, rpcDriverClassName) {
-        const typed = args;
-        const assemblyManager = this.pluginManager.rootModel?.session?.assemblyManager;
-        if (!assemblyManager) {
-            throw new Error('no assembly manager');
-        }
-        const refNameFor = async (adapterConfig) => {
-            const { regions } = await renameRegionsIfNeeded(assemblyManager, {
-                sessionId: typed.sessionId,
-                adapterConfig,
-                regions: [typed.region],
+    async serializeArguments(args) {
+        const sources = await Promise.all(args.sources.map(async (source) => {
+            const { regions } = await this.renameRegions({
+                sessionId: args.sessionId,
+                adapterConfig: source.adapterConfig,
+                regions: [args.region],
             });
-            return regions[0].refName;
-        };
-        const sources = await Promise.all(typed.sources.map(async (source) => ({
-            ...source,
-            refName: await refNameFor(source.adapterConfig),
-        })));
-        const sequenceRefName = typed.sequenceAdapterConfig
-            ? await refNameFor(typed.sequenceAdapterConfig)
-            : undefined;
-        return super.serializeArguments({ ...args, sources, sequenceRefName }, rpcDriverClassName);
+            return { ...source, refName: regions[0].refName };
+        }));
+        return super.serializeArguments({ ...args, sources });
     }
-    async execute(args, rpcDriverClassName) {
-        const { sessionId, sources, sequenceAdapterConfig, sequenceRefName, region, maxCells, } = await this.deserializeArguments(args, rpcDriverClassName);
-        const perSource = await Promise.all(sources.map(source => fetchAll(this.pluginManager, sessionId, source.adapterConfig, {
-            ...region,
-            refName: source.refName ?? region.refName,
-        })));
+    async execute(args) {
+        const { pluginManager } = this;
+        const { sources, region, maxCells } = args;
+        const [perSource, sequence] = await Promise.all([
+            Promise.all(sources.map(source => fetchAll({ ...args, pluginManager, adapterConfig: source.adapterConfig }, { ...region, refName: source.refName ?? region.refName }))),
+            fetchReference(pluginManager, args),
+        ]);
         const features = [];
         const sampleByIndex = [];
         for (const [i, feats] of perSource.entries()) {
@@ -94,20 +93,6 @@ export default class TviewGetPlan extends RpcMethodType {
                 }
             }
         }
-        let sequence;
-        if (sequenceAdapterConfig) {
-            const seqFeats = await fetchAll(this.pluginManager, sessionId, sequenceAdapterConfig, { ...region, refName: sequenceRefName ?? region.refName });
-            const seq = seqFeats[0]?.get('seq');
-            const seqStart = seqFeats[0]?.get('start');
-            // the adapter may answer with a wider block than it was asked for
-            const sliced = seq !== undefined && seqStart !== undefined
-                ? seq.slice(region.start - seqStart, region.end - seqStart)
-                : undefined;
-            // a short answer means the region runs off the end of the contig, and a
-            // reference row that stops early would misplace every column after it
-            sequence =
-                sliced?.length === region.end - region.start ? sliced : undefined;
-        }
         const plan = planTviewMsa({
             features,
             refName: region.refName,
@@ -117,36 +102,27 @@ export default class TviewGetPlan extends RpcMethodType {
             sampleOf: i => sampleByIndex[i],
         });
         const shared = {
-            rowCount: plan.reads.length,
             columnCount: plan.layout.totalColumns,
             cellCount: plan.cellCount,
-            insertionWidths: plan.insertionWidths,
-            arraySpans: plan.arraySpans,
+            rowData: planRowData(plan),
+            highlights: planHighlights(plan),
             region: plan.region,
-            arrays: plan.arrays.map(a => ({
-                start: a.start,
-                end: a.end,
-                period: a.period,
-                unit: a.unit,
-                width: a.width,
-                copies: [...a.copiesByName.entries()],
-                lengths: [...a.lengthByName.entries()],
-            })),
-            subjectIndex: plan.subject
-                ? plan.arrays.indexOf(plan.subject)
-                : undefined,
-            referenceName: plan.referenceName,
+            hasSubject: plan.subject !== undefined,
             samples: plan.samples,
         };
         // the render is the expensive half and the only part bounded by rows x
         // columns, so the size check happens before it rather than after
-        return plan.cellCount > maxCells
-            ? { ...shared, msa: '', tooLarge: true }
-            : {
+        const rows = plan.cellCount > maxCells ? undefined : renderRows(plan);
+        const modifications = rows
+            ? planModifications({ features, plan, rows })
+            : undefined;
+        return rows
+            ? {
                 ...shared,
-                msa: renderTviewMsa(plan),
-                tree: buildSampleTree(plan.reads),
-            };
+                msa: toFasta(plan, rows),
+                ...(modifications ? { modifications } : {}),
+            }
+            : { ...shared, msa: '', tooLarge: true };
     }
 }
 //# sourceMappingURL=TviewGetPlan.js.map

@@ -1,19 +1,25 @@
-import { initKeys } from '../TViewPanel/init';
+import { launchTView } from './launch';
+function isTrackInit(entry) {
+    return (typeof entry === 'string' ||
+        (typeof entry === 'object' &&
+            entry !== null &&
+            'trackId' in entry &&
+            typeof entry.trackId === 'string' &&
+            (!('sample' in entry) || typeof entry.sample === 'string')));
+}
 export default function LaunchTViewF(pluginManager) {
     /** #extensionPoint LaunchView-TView | async | Programmatically launch a tview */
     pluginManager.addToExtensionPoint('LaunchView-TView', (args) => {
-        const { session, ...spec } = args;
-        const init = {};
-        const viewProps = {};
-        for (const [key, value] of Object.entries(spec)) {
-            ;
-            (initKeys.has(key) ? init : viewProps)[key] = value;
+        const { session, assembly, loc, tracks, ...viewProps } = args;
+        if (typeof assembly === 'string' &&
+            typeof loc === 'string' &&
+            Array.isArray(tracks) &&
+            tracks.every(isTrackInit)) {
+            launchTView(session, { assembly, loc, tracks }, viewProps);
         }
-        session.addView('TView', {
-            type: 'TView',
-            ...viewProps,
-            init: init,
-        });
+        else {
+            throw new Error('A TView spec needs an assembly name, a loc string and a tracks array of trackIds');
+        }
         return args;
     });
 }

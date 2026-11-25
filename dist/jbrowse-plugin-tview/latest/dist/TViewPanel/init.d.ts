@@ -1,4 +1,4 @@
-import type { TviewSource } from '../LaunchTView/fetchTviewPlan';
+import type { FetchRegion, TviewSource } from '../LaunchTView/fetchTviewPlan';
 import type { AbstractSessionModel } from '@jbrowse/core/util';
 /**
  * One alignment file the view reads, and optionally the name to group its rows
@@ -19,15 +19,14 @@ export type TviewTrackInit = string | {
  * - A session can **author** a tview. `{ type: 'TView', init: { … } }` in a
  *   defaultSession opens one with no click path — as does the flat form of the
  *   same keys in a session spec URL, which is what makes a repeat locus a link.
- * - There is one code path. Launching from the track menu, restoring a saved
- *   session and following a link all end up applying the same blob, so the
- *   launch dialog does not build the view — it names it.
+ * - There is one code path. Launching from a menu, restoring a saved session
+ *   and following a link all end up applying the same blob, and changing what
+ *   the view shows from its own menu is replacing that blob.
  *
  * Unlike LinearGenomeView's, this init is **kept, not cleared**. What it
- * resolves to is a multiple alignment held as one string, which react-msaview
- * drops from snapshots past 50kb and has no file to reload from; the blob is
- * both smaller than what it produces and the only durable statement of what the
- * view is.
+ * resolves to — the alignment and its row table — is kept out of snapshots and
+ * rebuilt from it on restore, so the blob is the only durable statement of what
+ * the view is.
  */
 export interface TviewInit {
     /** assembly the locus and the tracks belong to */
@@ -37,20 +36,40 @@ export interface TviewInit {
     /** the alignment files to draw rows from, in order */
     tracks: TviewTrackInit[];
 }
-export declare const initKeys: Set<string>;
-/** the region `init.loc` names, or undefined until the assembly can parse it */
-export declare function initRegion(session: AbstractSessionModel, init: TviewInit): {
-    assemblyName: string;
-    refName: string;
-    start: number;
-    end: number;
-} | undefined;
+export type RegionCheck = {
+    region: FetchRegion;
+    error?: undefined;
+} | {
+    region?: undefined;
+    error: string;
+};
+/** the slice of a loaded assembly that a locstring is resolved against */
+export interface LocAssembly {
+    name: string;
+    isValidRefName: (refName: string) => boolean;
+    getCanonicalRefName2: (refName: string) => string;
+    getRegionForRefName: (refName: string) => {
+        start: number;
+        end: number;
+    } | undefined;
+}
+/**
+ * The region `loc` names on `assembly`, under the assembly's own name for the
+ * sequence and clamped to it, or why there is none: a locstring that does not
+ * parse, a region off the end of the contig, or one wider than {@link MAX_BP}.
+ * A bare refName means the whole contig, and is held to the same limit.
+ */
+export declare function checkRegion(assembly: LocAssembly, loc: string): RegionCheck;
+/** {@link checkRegion} for `init`, or undefined until its assembly has loaded */
+export declare function initRegion(session: AbstractSessionModel, init: TviewInit): RegionCheck | undefined;
+export declare function entryTrackId(entry: TviewTrackInit): string;
+/** what rows from `entry` are grouped under, or its trackId if no track has it */
+export declare function trackLabel(session: AbstractSessionModel, entry: TviewTrackInit): string;
 /**
  * The sources `init.tracks` names, or undefined until every one of them
  * resolves. All or nothing: a partial set comes back with samples missing and
  * nothing on screen says any were.
- *
- * Whether the names are *used* is decided here and only here — one file's rows
- * need no prefix, and would gain a tree of one clade drawn beside a list.
  */
 export declare function initSources(session: AbstractSessionModel, init: TviewInit): TviewSource[] | undefined;
+/** the trackIds `init.tracks` names that this session has no track for */
+export declare function missingTrackIds(session: AbstractSessionModel, init: TviewInit): string[];

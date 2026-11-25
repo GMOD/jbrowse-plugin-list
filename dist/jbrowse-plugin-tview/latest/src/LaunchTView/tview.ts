@@ -1,5 +1,9 @@
 import { alignInsertionSite } from './align'
-import { buildArrayBlocks, reanchorInsertions } from './alleles'
+import {
+  buildArrayBlocks,
+  normalizeInsertions,
+  reanchorInsertions,
+} from './alleles'
 import {
   ABSENT,
   SPANNED_GAP,
@@ -9,10 +13,10 @@ import {
   parseRead,
 } from './readLayout'
 import { findReferenceArrays, mergeArrays } from './repeats'
-import { newickSafe } from './sampleTree'
 
 import type { ArrayBlock } from './alleles'
 import type { AlignmentFeature, ReadLayout } from './readLayout'
+import type { Highlight, RowDataInput } from 'react-msaview'
 
 export type { AlignmentFeature, ReadLayout } from './readLayout'
 export { clipInsertions, parseCigar, parseRead } from './readLayout'
@@ -169,6 +173,26 @@ function arrayContaining(arrays: ArrayBlock[], pos: number) {
 }
 
 /**
+ * The reference positions a row is walked over, from inclusive to exclusive. A
+ * trailing insertion is keyed one past the last position the read spans, so
+ * that slot is in it.
+ */
+export function rowSpan(read: ReadLayout, layout: ColumnLayout) {
+  const { start, end, arrays } = layout
+  const lastPos = read.start + read.refChars.length
+  const from = Math.max(start, read.start)
+  const to = Math.min(end, lastPos + 1)
+  // a row that begins or ends inside an array does not span it, so it gets no
+  // block; snapping past the block keeps the walk from emitting part of one
+  const startsInside = arrayContaining(arrays, from)
+  const endsInside = arrayContaining(arrays, to)
+  return {
+    from: startsInside ? Math.min(end, startsInside.end) : from,
+    to: endsInside ? endsInside.start : to,
+  }
+}
+
+/**
  * Lays a single row out across the whole region. Rows are typically a tiny
  * fraction of the region, so the columns on either side are filled in one shot
  * from the offsets rather than walked position by position — which works over
@@ -177,22 +201,10 @@ function arrayContaining(arrays: ArrayBlock[], pos: number) {
  * `refChars` between them.
  */
 export function renderRow(read: ReadLayout, layout: ColumnLayout) {
-  const { start, end, insWidths, arrays, offsets, totalColumns } = layout
+  const { start, insWidths, offsets, totalColumns } = layout
   const { arrayByStart, breaks } = layout
-  // a trailing insertion is keyed one past the last position the read spans
   const lastPos = read.start + read.refChars.length
-  let from = Math.max(start, read.start)
-  let to = Math.min(end, lastPos + 1)
-  // a row that begins or ends inside an array does not span it, so it gets no
-  // block; snapping past the block keeps the walk from emitting part of one
-  const startsInside = arrayContaining(arrays, from)
-  if (startsInside) {
-    from = Math.min(end, startsInside.end)
-  }
-  const endsInside = arrayContaining(arrays, to)
-  if (endsInside) {
-    to = endsInside.start
-  }
+  const { from, to } = rowSpan(read, layout)
   if (to <= from) {
     return ABSENT.repeat(totalColumns)
   }
@@ -224,81 +236,40 @@ export function renderRow(read: ReadLayout, layout: ColumnLayout) {
       continue
     }
     const refChar = pos < lastPos ? read.refChars[pos - read.start]! : ABSENT
-    // a read that is not really here pads the insertion the same way it pads
-    // the reference column, so an intron reads as one absence
-    const pad = refChar === ABSENT ? ABSENT : SPANNED_GAP
     const ins = read.insertions.get(pos) ?? ''
+    // insertion columns sit between pos - 1 and pos, so a read that is absent
+    // on either side, an intron or its own first base, does not span them
+    const spans =
+      ins !== '' ||
+      (refChar !== ABSENT &&
+        pos > read.start &&
+        read.refChars[pos - read.start - 1] !== ABSENT)
+    const pad = spans ? SPANNED_GAP : ABSENT
     ret += ins + pad.repeat(insWidths.get(pos)! - ins.length) + refChar
     pos++
   }
   return ret + ABSENT.repeat(totalColumns - offsets[to - start]!)
 }
 
-// A defline is truncated at its first space (msa-parsers' FastaMSA), so the
-// count is joined on. `labelsAlignRight` puts it flush against the sequence.
-const COPY_COUNT_SEPARATOR = '|'
-
 /**
- * What a row is called on screen. The one place `label` falls back to `name`,
- * so the defline and the tree leaf cannot disagree about it — react-msaview
- * joins them by string, and a row the tree names differently renders blank.
+ * The reference row's name, and the sample its row table entry gives it. Not
+ * the sequence's own name: react-msaview prints a row's residues as
+ * `<row>:<index>`, and `chr4:25` would read as a genome coordinate when it is an
+ * index into the window.
  */
-export function rowLabel(read: ReadLayout) {
-  return read.label ?? read.name
-}
-
-/**
- * Rows ordered longest-allele-first and labelled with their copy count.
- *
- * Copy number is the measurement at a tandem array, and reading it off where a
- * row runs out is the thing the unit-per-block layout exists to avoid, so it is
- * stated in the label. Ordering by it puts the alleles in a ladder, which is
- * what makes one row's array comparable to the next at a glance. Rows that do
- * not span the array keep genomic order, below the ones that do; the reference
- * stays on top whatever its allele, since it is what the columns are named
- * after rather than one of the observations.
- */
-export function labelAndOrderByCopies(
-  reads: ReadLayout[],
-  array: ArrayBlock,
-  referenceName?: string,
-) {
-  const rank = (read: ReadLayout) => (read.name === referenceName ? 1 : 0)
-  return reads
-    .map(read => ({ read, copies: array.copiesByName.get(read.name) }))
-    .sort((a, b) => {
-      const byRef = rank(b.read) - rank(a.read)
-      if (byRef) {
-        return byRef
-      }
-      if (a.copies === undefined || b.copies === undefined) {
-        return a.copies === b.copies
-          ? byStart(a.read, b.read)
-          : a.copies === undefined
-            ? 1
-            : -1
-      }
-      return b.copies - a.copies || byStart(a.read, b.read)
-    })
-    .map(({ read, copies }) =>
-      copies === undefined
-        ? read
-        : { ...read, label: `${read.name}${COPY_COUNT_SEPARATOR}n=${copies}` },
-    )
-}
+export const REFERENCE = 'reference'
 
 export interface TviewPlan {
   reads: ReadLayout[]
+  /** the row each feature became, parallel to the features planned */
+  featureNames: string[]
   layout: ColumnLayout
-  insertionWidths: [number, number][]
-  /** [start, end, width] per array block, to rebuild the column mapping */
-  arraySpans: [number, number, number][]
   region: { refName: string; start: number; end: number }
   /** rows x columns, i.e. how big the alignment renderTviewMsa builds will be */
   cellCount: number
   /** tandem arrays the reference carries here, left to right */
   arrays: ArrayBlock[]
-  /** the array the rows are ordered and labelled by, when there is one */
+  /** the array the rows are ordered by, when there is one */
   subject?: ArrayBlock
   /** name of the reference row, when the reference sequence was available */
   referenceName?: string
@@ -336,7 +307,7 @@ export function planTviewMsa({
   sequence,
   sampleOf,
 }: PlanArgs): TviewPlan {
-  const names = getReadNames(features, sampleOf)
+  const names = getReadNames(features, [REFERENCE])
   const parsed = features
     .map((f, i) => parseRead(f, names[i]!, sampleOf?.(i)))
     .sort(byStart)
@@ -344,10 +315,11 @@ export function planTviewMsa({
   // The reference is laid out as a row like any other, which is what lets it be
   // one of the alleles an array block squares up rather than a thing the block
   // has to be compared against afterwards.
-  const referenceName = sequence ? newickSafe(refName) : undefined
+  const referenceName = sequence ? REFERENCE : undefined
   const referenceRead: ReadLayout | undefined = sequence
     ? {
-        name: referenceName!,
+        name: REFERENCE,
+        sample: REFERENCE,
         start,
         refChars: sequence.toUpperCase(),
         insertions: new Map(),
@@ -368,7 +340,11 @@ export function planTviewMsa({
   const intervals = sequence
     ? mergeArrays(findReferenceArrays(sequence, start))
     : []
-  const anchored = reanchorInsertions(clipped, intervals)
+  const anchored = normalizeInsertions(
+    reanchorInsertions(clipped, intervals),
+    intervals,
+    start,
+  )
   const arrays = buildArrayBlocks(anchored, intervals)
   const ownedByArray = new Set<number>()
   for (const array of arrays) {
@@ -387,39 +363,130 @@ export function planTviewMsa({
       best && alleleSpread(best) >= alleleSpread(array) ? best : array,
     undefined,
   )
-  const reads = subject
-    ? labelAndOrderByCopies(aligned, subject, referenceName)
-    : aligned
-
-  const insWidths = maxInsertionWidths(reads, ownedByArray)
+  const insWidths = maxInsertionWidths(aligned, ownedByArray)
   const layout = buildColumnLayout(start, end, insWidths, arrays)
 
   return {
-    reads,
+    reads: aligned,
+    featureNames: names,
     layout,
-    insertionWidths: [...insWidths.entries()].sort((a, b) => a[0] - b[0]),
-    arraySpans: arrays.map(a => [a.start, a.end, a.width]),
     region: { refName, start, end },
-    cellCount: reads.length * layout.totalColumns,
+    cellCount: aligned.length * layout.totalColumns,
     arrays,
     subject,
     referenceName,
     samples: [
-      ...new Set(parsed.map(r => r.sample).filter(s => s !== undefined)),
+      ...new Set(
+        features.map((_, i) => sampleOf?.(i)).filter(s => s !== undefined),
+      ),
     ],
   }
 }
 
-export function renderTviewMsa({ reads, layout }: TviewPlan) {
-  return reads.map(r => `>${rowLabel(r)}\n${renderRow(r, layout)}\n`).join('')
+export function renderRows({ reads, layout }: TviewPlan) {
+  return reads.map(r => renderRow(r, layout))
+}
+
+export function toFasta({ reads }: TviewPlan, rows: string[]) {
+  return reads.map((r, i) => `>${r.name}\n${rows[i]}\n`).join('')
+}
+
+export function renderTviewMsa(plan: TviewPlan) {
+  return toFasta(plan, renderRows(plan))
+}
+
+/**
+ * What each row is, keyed by its name: the sample it came from and, where there
+ * is a subject array, the copies it carries there and their length in bp.
+ */
+export function planRowData({ reads, subject }: TviewPlan): RowDataInput {
+  return Object.fromEntries(
+    reads.map(({ name, sample }) => {
+      const copies = subject?.copiesByName.get(name)
+      const alleleBp = subject?.lengthByName.get(name)
+      return [
+        name,
+        {
+          ...(sample === undefined ? {} : { sample }),
+          ...(copies === undefined ? {} : { copies }),
+          ...(alleleBp === undefined ? {} : { alleleBp }),
+        },
+      ]
+    }),
+  )
+}
+
+/** the value most of `values` share, the larger of two equally common */
+function commonest(values: number[]) {
+  const counts = new Map<number, number>()
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1)
+  }
+  return [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]![0]
+}
+
+// A bracket is kept in the session and drawn in one strip, and a noisy window
+// has an insertion site every few bases, so only the sites carrying the most
+// inserted sequence are marked.
+const MAX_INSERTION_BRACKETS = 100
+
+/**
+ * A bracket over the runs of columns that are not one reference base: the
+ * insertion sites, and each array block. Columns are the file's, 1-based.
+ */
+export function planHighlights({
+  reads,
+  layout,
+  region,
+  referenceName,
+}: TviewPlan): Highlight[] {
+  const { start, offsets, insWidths, arrays } = layout
+  const n = (x: number) => x.toLocaleString('en-US')
+  const column = (pos: number) => offsets[pos - start]! + 1
+  const lengthsAt = new Map<number, number[]>()
+  for (const read of reads) {
+    for (const [pos, ins] of read.insertions) {
+      const lengths = lengthsAt.get(pos) ?? []
+      lengths.push(ins.replaceAll(SPANNED_GAP, '').length)
+      lengthsAt.set(pos, lengths)
+    }
+  }
+  const insertedBases = (pos: number) =>
+    (lengthsAt.get(pos) ?? []).reduce((a, b) => a + b, 0)
+  const insertions = [...insWidths]
+    .filter(([, width]) => width > 0)
+    .sort((a, b) => insertedBases(b[0]) - insertedBases(a[0]) || a[0] - b[0])
+    .slice(0, MAX_INSERTION_BRACKETS)
+    .map(([pos, width]) => ({
+      start: column(pos),
+      end: column(pos) + width - 1,
+      label: `+${commonest(lengthsAt.get(pos) ?? [width])}bp after ${region.refName}:${n(pos)}`,
+    }))
+  const blocks = arrays.map(array => {
+    const copies = referenceName
+      ? array.copiesByName.get(referenceName)
+      : undefined
+    return {
+      start: column(array.start),
+      end: column(array.start) + array.width - 1,
+      label:
+        copies === undefined
+          ? `(${array.unit})n`
+          : `(${array.unit})x${copies} in the reference`,
+    }
+  })
+  return [...insertions, ...blocks]
+    .sort((a, b) => a.start - b.start)
+    .map((h): Highlight => ({ ...h, mark: 'bracket' }))
 }
 
 export function buildTviewMsa(args: PlanArgs) {
   const plan = planTviewMsa(args)
   return {
     msa: renderTviewMsa(plan),
-    insertionWidths: plan.insertionWidths,
-    arraySpans: plan.arraySpans,
+    rowData: planRowData(plan),
+    highlights: planHighlights(plan),
+    insertionWidths: [...plan.layout.insWidths].sort((a, b) => a[0] - b[0]),
     region: plan.region,
     arrays: plan.arrays,
     subject: plan.subject,

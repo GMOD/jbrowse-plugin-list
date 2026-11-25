@@ -1,18 +1,31 @@
+import { isSequenceAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { getAdapter } from '@jbrowse/core/data_adapters/dataAdapterCache'
+import { getFeatureAdapterOrThrow } from '@jbrowse/core/data_adapters/getFeatureAdapter'
 import { RpcMethodType } from '@jbrowse/core/pluggableElementTypes'
-import { renameRegionsIfNeeded } from '@jbrowse/core/util'
+import { assembleLocString } from '@jbrowse/core/util'
 
-import { buildSampleTree } from '../sampleTree'
-import { planTviewMsa, renderTviewMsa } from '../tview'
+import { planModifications } from '../modifications'
+import {
+  planHighlights,
+  planRowData,
+  planTviewMsa,
+  renderRows,
+  toFasta,
+} from '../tview'
 
-import type { AlignmentFeature } from '../readLayout'
+import type { TviewModifications } from '../modifications'
 import type PluginManager from '@jbrowse/core/PluginManager'
-import type { Region } from '@jbrowse/core/util'
+import type {
+  RpcCallContext,
+  RpcExecuteArgs,
+} from '@jbrowse/core/rpc/RpcRegistry'
+import type { Feature, Region } from '@jbrowse/core/util'
+import type { Highlight, RowDataInput } from 'react-msaview'
 
 /** one BAM/CRAM to draw rows from, and the name its rows are grouped under */
 export interface TviewSourceArgs {
   adapterConfig: Record<string, unknown>
-  sample?: string
+  sample: string
   /**
    * what this file calls the region's sequence. Filled in on the client, where
    * the assembly's aliases live: two files over one assembly routinely spell it
@@ -22,60 +35,38 @@ export interface TviewSourceArgs {
 }
 
 export interface TviewGetPlanArgs {
-  sessionId: string
   sources: TviewSourceArgs[]
-  /** the assembly's sequence adapter, when it has one */
-  sequenceAdapterConfig?: Record<string, unknown>
+  /** names the genome, so the call layer attaches its sequence adapter */
+  assemblyName: string
   /** the sequence adapter's own spelling of the region */
-  sequenceRefName?: string
+  sequenceRefName: string
   region: Region
   /** stop before rendering an alignment bigger than this many cells */
   maxCells: number
 }
 
-/** what crosses back: the alignment, and the numbers the dialog reports */
-export interface TviewArrayReport {
-  start: number
-  end: number
-  period: number
-  unit: string
-  width: number
-  /** per row: copies carried, and allele length in bp */
-  copies: [string, number][]
-  lengths: [string, number][]
-}
-
 export interface TviewPlanResult {
   msa: string
-  /** Newick grouping rows by sample; absent unless several were loaded */
-  tree?: string
-  rowCount: number
+  /** per row name: its sample, and its copies and allele length at the subject */
+  rowData: RowDataInput
+  /** a bracket over each insertion site and each array block */
+  highlights: Highlight[]
   columnCount: number
   cellCount: number
-  insertionWidths: [number, number][]
-  arraySpans: [number, number, number][]
   region: { refName: string; start: number; end: number }
-  arrays: TviewArrayReport[]
-  subjectIndex?: number
-  referenceName?: string
+  /** whether rows carry a copy count at a subject array */
+  hasSubject: boolean
   samples: string[]
   /** set when the alignment was over maxCells and `msa` is empty */
   tooLarge?: boolean
+  /** set when some read in the window has an MM tag */
+  modifications?: TviewModifications
 }
 
-/** the slice of a data adapter this reads, which is all of `getFeatures` */
-interface FeatureSource {
-  getFeatures: (region: Region) => {
-    subscribe: (observer: {
-      next: (feature: AlignmentFeature) => void
-      error: (error: unknown) => void
-      complete: () => void
-    }) => unknown
+declare module '@jbrowse/core/rpc/RpcRegistry' {
+  interface RpcRegistry {
+    TviewGetPlan: { args: TviewGetPlanArgs; return: TviewPlanResult }
   }
-}
-
-function isFeatureSource(adapter: object): adapter is FeatureSource {
-  return 'getFeatures' in adapter && typeof adapter.getFeatures === 'function'
 }
 
 /**
@@ -86,22 +77,16 @@ function isFeatureSource(adapter: object): adapter is FeatureSource {
  * `ObservableCreate`. Subscribing directly needs neither.
  */
 async function fetchAll(
-  pluginManager: PluginManager,
-  sessionId: string,
-  adapterConfig: Record<string, unknown>,
+  args: RpcExecuteArgs<'TviewGetPlan'> & {
+    pluginManager: PluginManager
+    adapterConfig: Record<string, unknown>
+  },
   region: Region,
 ) {
-  const { dataAdapter } = await getAdapter(
-    pluginManager,
-    sessionId,
-    adapterConfig,
-  )
-  if (!isFeatureSource(dataAdapter)) {
-    throw new Error(`${adapterConfig.type as string} has no getFeatures`)
-  }
-  return new Promise<AlignmentFeature[]>((resolve, reject) => {
-    const ret: AlignmentFeature[] = []
-    dataAdapter.getFeatures(region).subscribe({
+  const dataAdapter = await getFeatureAdapterOrThrow(args)
+  return new Promise<Feature[]>((resolve, reject) => {
+    const ret: Feature[] = []
+    dataAdapter.getFeatures(region, { signal: args.signal }).subscribe({
       next: feature => ret.push(feature),
       error: reject,
       complete: () => {
@@ -109,6 +94,42 @@ async function fetchAll(
       },
     })
   })
+}
+
+/**
+ * The reference over exactly `region`, which becomes the alignment's first row
+ * and is what makes an array an interval rather than an insertion. The region
+ * arrives clamped to its contig, so a short answer means the sequence could not
+ * be read, and a row that stops early would misplace every column after it.
+ */
+async function fetchReference(
+  pluginManager: PluginManager,
+  {
+    sessionId,
+    sequenceAdapter,
+    sequenceRefName,
+    region,
+    signal,
+  }: RpcExecuteArgs<'TviewGetPlan'>,
+) {
+  const dataAdapter = sequenceAdapter
+    ? (await getAdapter(pluginManager, sessionId, sequenceAdapter)).dataAdapter
+    : undefined
+  const sequence =
+    dataAdapter && isSequenceAdapter(dataAdapter)
+      ? await dataAdapter.getSequence(
+          { ...region, refName: sequenceRefName },
+          { signal },
+        )
+      : undefined
+  const want = region.end - region.start
+  if (sequence?.length !== want) {
+    const n = (x: number) => x.toLocaleString('en-US')
+    throw new Error(
+      `Could not read the reference sequence over ${assembleLocString(region)}: got ${n(sequence?.length ?? 0)}bp of ${n(want)}bp`,
+    )
+  }
+  return sequence
 }
 
 /**
@@ -126,69 +147,40 @@ async function fetchAll(
  * against the same reference interval, so an array's copies are counted once,
  * over rows from all of them.
  */
-export default class TviewGetPlan extends RpcMethodType {
-  name = 'TviewGetPlan'
+export default class TviewGetPlan extends RpcMethodType<'TviewGetPlan'> {
+  name = 'TviewGetPlan' as const
 
-  /**
-   * Written against the 4.3.0 base class, which takes a bare
-   * `Record<string, unknown>` and has no `renameRegions` helper — that is the
-   * oldest host this bundle boots on, and the newer base class accepts the same
-   * shape.
-   */
-  async serializeArguments(
-    args: Record<string, unknown>,
-    rpcDriverClassName: string,
-  ) {
-    const typed = args as unknown as TviewGetPlanArgs
-    const assemblyManager =
-      this.pluginManager.rootModel?.session?.assemblyManager
-    if (!assemblyManager) {
-      throw new Error('no assembly manager')
-    }
-    const refNameFor = async (adapterConfig: Record<string, unknown>) => {
-      const { regions } = await renameRegionsIfNeeded(assemblyManager, {
-        sessionId: typed.sessionId,
-        adapterConfig,
-        regions: [typed.region],
-      })
-      return regions[0]!.refName
-    }
+  async serializeArguments(args: TviewGetPlanArgs & RpcCallContext) {
     const sources = await Promise.all(
-      typed.sources.map(async source => ({
-        ...source,
-        refName: await refNameFor(source.adapterConfig),
-      })),
+      args.sources.map(async source => {
+        const { regions } = await this.renameRegions({
+          sessionId: args.sessionId,
+          adapterConfig: source.adapterConfig,
+          regions: [args.region],
+        })
+        return { ...source, refName: regions[0]!.refName }
+      }),
     )
-    const sequenceRefName = typed.sequenceAdapterConfig
-      ? await refNameFor(typed.sequenceAdapterConfig)
-      : undefined
-
-    return super.serializeArguments(
-      { ...args, sources, sequenceRefName },
-      rpcDriverClassName,
-    )
+    return super.serializeArguments({ ...args, sources })
   }
 
-  async execute(args: TviewGetPlanArgs, rpcDriverClassName: string) {
-    const {
-      sessionId,
-      sources,
-      sequenceAdapterConfig,
-      sequenceRefName,
-      region,
-      maxCells,
-    } = await this.deserializeArguments(args, rpcDriverClassName)
+  async execute(args: RpcExecuteArgs<'TviewGetPlan'>) {
+    const { pluginManager } = this
+    const { sources, region, maxCells } = args
 
-    const perSource = await Promise.all(
-      sources.map(source =>
-        fetchAll(this.pluginManager, sessionId, source.adapterConfig, {
-          ...region,
-          refName: source.refName ?? region.refName,
-        }),
+    const [perSource, sequence] = await Promise.all([
+      Promise.all(
+        sources.map(source =>
+          fetchAll(
+            { ...args, pluginManager, adapterConfig: source.adapterConfig },
+            { ...region, refName: source.refName ?? region.refName },
+          ),
+        ),
       ),
-    )
-    const features: AlignmentFeature[] = []
-    const sampleByIndex: (string | undefined)[] = []
+      fetchReference(pluginManager, args),
+    ])
+    const features: Feature[] = []
+    const sampleByIndex: string[] = []
     for (const [i, feats] of perSource.entries()) {
       for (const feature of feats) {
         if (feature.get('seq')) {
@@ -196,27 +188,6 @@ export default class TviewGetPlan extends RpcMethodType {
           sampleByIndex.push(sources[i]!.sample)
         }
       }
-    }
-
-    let sequence: string | undefined
-    if (sequenceAdapterConfig) {
-      const seqFeats = await fetchAll(
-        this.pluginManager,
-        sessionId,
-        sequenceAdapterConfig,
-        { ...region, refName: sequenceRefName ?? region.refName },
-      )
-      const seq = seqFeats[0]?.get('seq') as string | undefined
-      const seqStart = seqFeats[0]?.get('start') as number | undefined
-      // the adapter may answer with a wider block than it was asked for
-      const sliced =
-        seq !== undefined && seqStart !== undefined
-          ? seq.slice(region.start - seqStart, region.end - seqStart)
-          : undefined
-      // a short answer means the region runs off the end of the contig, and a
-      // reference row that stops early would misplace every column after it
-      sequence =
-        sliced?.length === region.end - region.start ? sliced : undefined
     }
 
     const plan = planTviewMsa({
@@ -229,36 +200,27 @@ export default class TviewGetPlan extends RpcMethodType {
     })
 
     const shared = {
-      rowCount: plan.reads.length,
       columnCount: plan.layout.totalColumns,
       cellCount: plan.cellCount,
-      insertionWidths: plan.insertionWidths,
-      arraySpans: plan.arraySpans,
+      rowData: planRowData(plan),
+      highlights: planHighlights(plan),
       region: plan.region,
-      arrays: plan.arrays.map(a => ({
-        start: a.start,
-        end: a.end,
-        period: a.period,
-        unit: a.unit,
-        width: a.width,
-        copies: [...a.copiesByName.entries()],
-        lengths: [...a.lengthByName.entries()],
-      })),
-      subjectIndex: plan.subject
-        ? plan.arrays.indexOf(plan.subject)
-        : undefined,
-      referenceName: plan.referenceName,
+      hasSubject: plan.subject !== undefined,
       samples: plan.samples,
     }
 
     // the render is the expensive half and the only part bounded by rows x
     // columns, so the size check happens before it rather than after
-    return plan.cellCount > maxCells
-      ? { ...shared, msa: '', tooLarge: true }
-      : {
+    const rows = plan.cellCount > maxCells ? undefined : renderRows(plan)
+    const modifications = rows
+      ? planModifications({ features, plan, rows })
+      : undefined
+    return rows
+      ? {
           ...shared,
-          msa: renderTviewMsa(plan),
-          tree: buildSampleTree(plan.reads),
+          msa: toFasta(plan, rows),
+          ...(modifications ? { modifications } : {}),
         }
+      : { ...shared, msa: '', tooLarge: true }
   }
 }

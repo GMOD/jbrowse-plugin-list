@@ -18,6 +18,5 @@ export default class TViewPlugin extends Plugin {
         TviewGetPlanRpcF(pluginManager);
         AddHighlightModelF(pluginManager);
     }
-    configure(_pluginManager) { }
 }
 //# sourceMappingURL=index.js.map

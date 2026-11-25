@@ -1,9 +1,9 @@
-import { newickSafe } from './sampleTree'
-
 /** the subset of an @jbrowse/core Feature that the layout reads */
 export interface AlignmentFeature {
-  get: (key: string) => any
+  get: (key: string) => unknown
 }
+
+const text = (value: unknown) => (typeof value === 'string' ? value : '')
 
 /**
  * Only '-' and '.' are treated as gaps by react-msaview (anything else counts
@@ -17,32 +17,36 @@ export interface AlignmentFeature {
  */
 export const SPANNED_GAP = '-'
 export const ABSENT = '.'
+export const GAPS = /[-.]/g
 
 export interface ReadLayout {
   /**
-   * Identity. Every per-row lookup is keyed by this — the array blocks, the
-   * tree — so it is fixed once, here, and nothing downstream rewrites it.
+   * Identity, and the row's name in the alignment. Every per-row lookup is
+   * keyed by this — the array blocks, the row table — so it is fixed once,
+   * here, and nothing downstream rewrites it.
    */
   name: string
-  /**
-   * What the row is called on screen, when that is not just its name. Kept
-   * apart from `name` because the copy-number label is added after the array
-   * blocks are built and keyed: renaming in place instead left every labelled
-   * row unable to find its own block, and the block fell back to gaps — a row
-   * that silently loses its sequence while keeping its label.
-   */
-  label?: string
-  /**
-   * The sample the row belongs to, when several were loaded at once. Already
-   * Newick-safe, and the same string the row's own name is prefixed with, so
-   * the clade label and its leaves agree.
-   */
+  /** the sample the row belongs to, as the caller named it */
   sample?: string
   start: number
   /** one char per reference position consumed: the aligned base, or a gap */
   refChars: string
   /** reference position -> bases inserted immediately before that position */
   insertions: Map<number, string>
+  /** where the row's bases came from in the read, for a row parsed from one */
+  query?: ReadQuery
+}
+
+/**
+ * The read's own sequence, SEQ as the file stores it, and enough of its CIGAR
+ * to find any base of the row in it: the query index of the first base at
+ * `start`, and how many bases the aligner inserted before each position. Kept
+ * as parsed, since the layout later moves and drops insertions.
+ */
+export interface ReadQuery {
+  seq: string
+  offset: number
+  inserted: Map<number, number>
 }
 
 const cigarRegex = /([MIDNSHPX=])/
@@ -58,16 +62,21 @@ export function parseRead(
   name: string,
   sample?: string,
 ): ReadLayout {
-  const seq = feature.get('seq') as string
-  const ops = parseCigar(feature.get('CIGAR') as string)
-  const start = feature.get('start')
+  const seq = text(feature.get('seq'))
+  const ops = parseCigar(text(feature.get('CIGAR')))
+  const start = Number(feature.get('start'))
   const insertions = new Map<number, string>()
+  const inserted = new Map<number, number>()
   let refChars = ''
   let seqOffset = 0
+  let offset: number | undefined
 
   for (let i = 0; i < ops.length; i += 2) {
     const len = +ops[i]!
     const op = ops[i + 1]!
+    if (op !== 'S' && op !== 'H' && op !== 'P') {
+      offset ??= seqOffset
+    }
     if (op === 'S') {
       seqOffset += len
     } else if (op === 'I') {
@@ -75,6 +84,7 @@ export function parseRead(
       const pos = start + refChars.length
       const prev = insertions.get(pos) ?? ''
       insertions.set(pos, prev + seq.slice(seqOffset, seqOffset + len))
+      inserted.set(pos, (inserted.get(pos) ?? 0) + len)
       seqOffset += len
     } else if (op === 'D') {
       refChars += SPANNED_GAP.repeat(len)
@@ -86,15 +96,31 @@ export function parseRead(
     }
     // H and P consume neither the read sequence nor the reference
   }
-  // sanitized here, the same way getReadNames sanitizes the prefix it builds
-  // from it, so the clade label and the leaves inside it are one string
   return {
     name,
-    sample: sample === undefined ? undefined : newickSafe(sample),
+    sample,
     start,
     refChars,
     insertions,
+    query: { seq, offset: offset ?? seqOffset, inserted },
   }
+}
+
+/**
+ * The query index of the first base a parsed read has at or after reference
+ * position `pos`, counting what it inserted at `pos` itself as coming first.
+ */
+export function queryIndexAt(read: ReadLayout, query: ReadQuery, pos: number) {
+  const aligned = read.refChars
+    .slice(0, Math.max(0, pos - read.start))
+    .replaceAll(GAPS, '').length
+  let insertedBefore = 0
+  for (const [at, len] of query.inserted) {
+    if (at < pos) {
+      insertedBefore += len
+    }
+  }
+  return query.offset + aligned + insertedBefore
 }
 
 /**
@@ -120,26 +146,24 @@ function mateSuffix(flags: number | undefined) {
 }
 
 /**
- * MSA rows are keyed by name, so mates and duplicate names need disambiguating.
- * With several samples loaded at once the same read name can also arrive twice
- * from two files, which the sample prefix separates before the counter has to.
- *
- * The name is made Newick-safe here rather than where the tree is written,
- * because the tree names the same rows the FASTA does and the two have to agree
- * exactly. '|' separates the parts because ':' opens a branch length.
+ * MSA rows are keyed by name, and a FASTA defline names its row by the first
+ * whitespace-delimited word, dropping any later row whose word repeats. So a
+ * name loses its whitespace, mates are told apart by flag, and whatever still
+ * collides (the same read in two files, or a name in `reserved`) is numbered.
  */
 export function getReadNames(
   features: AlignmentFeature[],
-  sampleOf?: (index: number) => string | undefined,
+  reserved: string[] = [],
 ) {
-  const counts = new Map<string, number>()
-  return features.map((f, i) => {
-    const sample = sampleOf?.(i)
-    const prefix = sample ? `${newickSafe(sample)}|` : ''
-    const name = newickSafe(String(f.get('name')))
-    const base = `${prefix}${name}${mateSuffix(f.get('flags'))}`
-    const n = (counts.get(base) ?? 0) + 1
-    counts.set(base, n)
-    return n === 1 ? base : `${base}_${n}`
+  const taken = new Set(reserved)
+  return features.map(f => {
+    const flags = f.get('flags')
+    const base = `${String(f.get('name')).replaceAll(/\s+/g, '_')}${mateSuffix(typeof flags === 'number' ? flags : undefined)}`
+    let name = base
+    for (let n = 2; taken.has(name); n++) {
+      name = `${base}_${n}`
+    }
+    taken.add(name)
+    return name
   })
 }
