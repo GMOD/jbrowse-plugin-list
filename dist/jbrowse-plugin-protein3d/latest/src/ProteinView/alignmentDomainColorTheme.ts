@@ -37,7 +37,7 @@ function molstarColor(css: string) {
   return Color.fromRgb(r, g, b)
 }
 
-export function alignmentDomainLegend(color: DomainColor) {
+function alignmentDomainLegend(color: DomainColor) {
   return TableLegend([
     ...color.domain.map((accession, i): [string, Color] => [
       color.labels[i] ?? accession,

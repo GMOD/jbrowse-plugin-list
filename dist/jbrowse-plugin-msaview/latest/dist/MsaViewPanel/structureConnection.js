@@ -1,6 +1,8 @@
+import { isRecord } from './util';
 export function isProteinView(view) {
-    const v = view;
-    return v.type === 'ProteinView' && Array.isArray(v.structures);
+    return (isRecord(view) &&
+        view.type === 'ProteinView' &&
+        Array.isArray(view.structures));
 }
 /**
  * Extract all ProteinView instances from a session's views array.

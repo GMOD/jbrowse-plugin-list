@@ -1,7 +1,6 @@
 import { SimpleFeature } from '@jbrowse/core/util'
 import { makeCoordinateMapper, transcriptPos } from 'p2s_mapper'
 
-import { clinVarTrackConf, clinVarTrackFeatures } from './clinVarTrack'
 import {
   linkedGenomeAssemblyName,
   resolveLinkageAlignment,
@@ -13,9 +12,10 @@ import {
 } from '../../ProteinView/clinVar'
 import { placeClinVarOnTranscript } from '../../ProteinView/clinVarSource'
 import { withTimeout } from '../../ProteinView/variantEffectSource'
+import { clinVarTrackConf, clinVarTrackFeatures } from './clinVarTrack'
 
-import type { ProteinTrackConf } from './proteinTrackSetup'
 import type { Protein1DLinkage } from '../../Protein1DLinkage/linkage'
+import type { ProteinTrackConf } from './proteinTrackSetup'
 import type { AbstractSessionModel } from '@jbrowse/core/util'
 
 // TP53's slice is under 1 MB; a stalled host should not hold the view open

@@ -49,6 +49,26 @@ function markRepresentation(mark: Exclude<ResidueMark['mark'], 'none'>) {
 }
 export const DEFAULT_MARK_COLOR = '#f28e2b'
 
+/**
+ * One line for each mark whose site selects nothing in its loaded structure,
+ * naming the structure as `structures[i]` in a view of `structureCount` > 1.
+ */
+export function unmatchedMarkNotices(
+  unmatched: readonly ResidueMark[],
+  structureCount: number,
+) {
+  return unmatched.map(
+    ({ site, structure = 0 }) =>
+      `mark ${site} is not in ${structureCount > 1 ? `structures[${structure}]` : 'the structure'}`,
+  )
+}
+
+/**
+ * Draws `marks` in place of the ones drawn before, and resolves to the marks
+ * whose site selects nothing in a structure that has loaded. Each entry of
+ * `structures` holds a view structure's Mol* structures, one per model of an
+ * NMR ensemble: a mark draws on every model, its label beside the first.
+ */
 export function syncResidueMarks({
   plugin,
   structures,
@@ -56,7 +76,7 @@ export function syncResidueMarks({
   labels = true,
 }: {
   plugin: PluginContext
-  structures: readonly (Structure | undefined)[]
+  structures: readonly (readonly Structure[] | undefined)[]
   marks: readonly ResidueMark[]
   /** the text beside each labelled site; Node has no canvas to draw it in tests */
   labels?: boolean
@@ -78,43 +98,55 @@ export function syncResidueMarks({
     )) {
       update.delete(cell.transform.ref)
     }
+    const unmatched: ResidueMark[] = []
     for (const mark of marks) {
-      const structure = structures[mark.structure ?? 0]
+      const models = structures[mark.structure ?? 0] ?? []
       const site = parseSite(mark.site)
-      const root = structure
-        ? structureRootCell(plugin, molstar, structure)
-        : undefined
-      if (!structure || !site || !root) {
+      if (!models[0] || !site) {
         continue
       }
-      if (mark.mark !== 'none') {
+      if (
+        StructureSelection.isEmpty(
+          Script.getStructureSelection(siteExpression(MS, site), models[0]),
+        )
+      ) {
+        unmatched.push(mark)
+      } else if (mark.mark !== 'none') {
         const color = encodedColor(mark.encoding, DEFAULT_MARK_COLOR)
-        update
-          .to(root)
-          .apply(
-            StateTransforms.Model.StructureComponent,
-            {
-              type: { name: 'expression', params: siteExpression(MS, site) },
-              nullIfEmpty: true,
-              label: mark.site,
-            },
-            drawnUnder(root, RESIDUE_MARKS_TAG),
-          )
-          .apply(
-            StateTransforms.Representation.StructureRepresentation3D,
-            createStructureRepresentationParams(plugin, structure, {
-              ...markRepresentation(mark.mark),
-              color: 'uniform',
-              colorParams: { value: Color.fromHexStyle(color) },
-            }),
-            drawnUnder(root, RESIDUE_MARKS_TAG),
-          )
+        for (const structure of models) {
+          const root = structureRootCell(plugin, molstar, structure)
+          if (root) {
+            update
+              .to(root)
+              .apply(
+                StateTransforms.Model.StructureComponent,
+                {
+                  type: {
+                    name: 'expression',
+                    params: siteExpression(MS, site),
+                  },
+                  nullIfEmpty: true,
+                  label: mark.site,
+                },
+                drawnUnder(root, RESIDUE_MARKS_TAG),
+              )
+              .apply(
+                StateTransforms.Representation.StructureRepresentation3D,
+                createStructureRepresentationParams(plugin, structure, {
+                  ...markRepresentation(mark.mark),
+                  color: 'uniform',
+                  colorParams: { value: Color.fromHexStyle(color) },
+                }),
+                drawnUnder(root, RESIDUE_MARKS_TAG),
+              )
+          }
+        }
       }
     }
     await update.commit()
     if (labels) {
       for (const mark of marks) {
-        const structure = structures[mark.structure ?? 0]
+        const structure = structures[mark.structure ?? 0]?.[0]
         const site = parseSite(mark.site)
         if (mark.label && structure && site) {
           const loci = StructureSelection.toLociWithSourceUnits(
@@ -140,5 +172,6 @@ export function syncResidueMarks({
         }
       }
     }
+    return unmatched
   })
 }

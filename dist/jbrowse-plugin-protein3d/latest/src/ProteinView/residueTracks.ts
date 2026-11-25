@@ -1,6 +1,14 @@
-import { structurePos } from 'p2s_mapper'
+import { looksLikePlddt, stripStopCodon, structurePos } from 'p2s_mapper'
 
-import type { CoordinateMapper } from 'p2s_mapper'
+import { cssScaleOf, rampKeyOf } from './colorScale'
+import { resolvedColor } from './proteinColor'
+import { RESIDUE_COLORS } from './residueColors'
+
+import type { ProteinColor } from './proteinColor'
+import type { CoordinateMapper, Entity, EntityConfidence } from 'p2s_mapper'
+
+type StructureToAlignment = CoordinateMapper['structureToAlignment'] | undefined
+
 // Kyte-Doolittle hydropathy index. Positive = hydrophobic, negative =
 // hydrophilic. Residues absent from the table (X, gaps, non-standard) map to
 // undefined so they render as gaps in the track.
@@ -42,7 +50,7 @@ export function kyteDoolittleScores(seq: string): (number | undefined)[] {
  */
 export function mapResidueValuesToColumns(
   values: (number | undefined)[],
-  structureToAlignment: CoordinateMapper['structureToAlignment'] | undefined,
+  structureToAlignment: StructureToAlignment,
 ): { col: number; value: number }[] {
   return structureToAlignment
     ? values.flatMap((value, pos) => {
@@ -50,4 +58,55 @@ export function mapResidueValuesToColumns(
         return value !== undefined && col !== undefined ? [{ col, value }] : []
       })
     : []
+}
+
+/**
+ * Per-residue pLDDT of an entity on alignment columns, only when the
+ * B-factor column actually looks like AlphaFold confidence. Values are looked
+ * up by label_seq_id through the entity's own seqIds, so an unobserved
+ * residue leaves a gap instead of shifting the rest of the track.
+ */
+export function confidenceCells(
+  entity: Entity | undefined,
+  confidence: readonly EntityConfidence[] | undefined,
+  structureToAlignment: StructureToAlignment,
+) {
+  const byLabelSeqId = confidence?.find(
+    c => c.entityId === entity?.entityId,
+  )?.byLabelSeqId
+  const values =
+    entity && byLabelSeqId
+      ? entity.seqIds.map(id => byLabelSeqId.get(id))
+      : undefined
+  return values && looksLikePlddt(values.filter(v => v !== undefined))
+    ? mapResidueValuesToColumns(values, structureToAlignment)
+    : []
+}
+
+/** Per-residue Kyte-Doolittle hydrophobicity of a protein entity on
+ * alignment columns */
+export function hydrophobicityCells(
+  entity: Entity | undefined,
+  structureToAlignment: StructureToAlignment,
+) {
+  return entity?.seq && !entity.nucleicAcid
+    ? mapResidueValuesToColumns(
+        kyteDoolittleScores(stripStopCodon(entity.seq)),
+        structureToAlignment,
+      )
+    : []
+}
+
+/** The hydrophobicity row's color: the view's color object while the view
+ * colors by hydrophobicity, so a member it sets reaches the row too */
+export function hydrophobicityScale(color: ProteinColor) {
+  const resolved =
+    color.field === 'hydrophobicity' ? resolvedColor(color) : undefined
+  const scale =
+    resolved?.scale === 'linear' ? resolved : RESIDUE_COLORS.hydrophobicity
+  return {
+    title: scale.title ?? '',
+    paint: cssScaleOf(scale),
+    key: rampKeyOf(scale),
+  }
 }

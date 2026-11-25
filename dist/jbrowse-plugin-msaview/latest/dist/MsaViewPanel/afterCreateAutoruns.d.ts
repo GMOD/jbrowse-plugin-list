@@ -22,11 +22,7 @@ interface TranscriptWait {
 export declare function launchAwaitsTranscript(self: TranscriptWait): boolean;
 export declare function launchOrthologsIfNeeded(self: JBrowsePluginMsaViewModel): void;
 export declare function launchBlastIfNeeded(self: JBrowsePluginMsaViewModel): void;
-/**
- * Once an alignment whose rows carry accessions is present, fetch NCBI CDD
- * domains for them and overlay them. `domainsRequested` makes this once per
- * view, so NCBI returning no domains does not refire it.
- */
+export declare function abortDomainLoad(self: object): void;
 export declare function autoLoadProteinDomains(self: JBrowsePluginMsaViewModel): void;
 export declare function processInit(self: JBrowsePluginMsaViewModel): void;
 /**

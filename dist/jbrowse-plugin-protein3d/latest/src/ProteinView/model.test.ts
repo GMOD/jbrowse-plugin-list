@@ -1,11 +1,11 @@
 import { getSnapshot, recordPatches } from '@jbrowse/mobx-state-tree'
 import { expect, test, vi } from 'vitest'
 
+import { parseStructure } from '../test_data/molstarStructure'
 import { COMPACT_TRACK_HEIGHT, NORMAL_TRACK_HEIGHT } from './constants'
 import stateModelFactory from './model'
 import { removeMolstarStructure } from './removeStructure'
 import { PERSISTED_SETTINGS } from './storedSettings'
-import { parseStructure } from '../test_data/molstarStructure'
 
 import type { ProteinFigure, ProteinStructureSpec } from './proteinViewSpec'
 import type { PersistedSetting, PersistedSettings } from './storedSettings'
@@ -29,7 +29,10 @@ const plugin = {} as unknown as PluginContext
 function makeView(settings: PersistedSettings = {}) {
   return ProteinView.create({
     type: 'ProteinView',
-    structures: [{ url: 'a.cif' }, { url: 'b.cif' }],
+    structures: [
+      { url: 'a.cif', userProvidedTranscriptSequence: 'MEEPQ' },
+      { url: 'b.cif', userProvidedTranscriptSequence: 'MEEPQ' },
+    ],
     ...settings,
   })
 }
@@ -111,6 +114,37 @@ test('a notice leaves the view loading, and repeats once', () => {
   expect(view.notices).toEqual([])
 })
 
+test("a figure notice goes with the sync that no longer finds it, beside the view's own", () => {
+  const view = makeView()
+  view.addNotice(new Error('superposition failed'))
+  view.setFigureNotices('marks', ['mark A:999 is not in the structure'])
+  view.setFigureNotices('distances', ['distance A:1 to A:2: no atoms'])
+  expect(view.report.notices).toEqual([
+    'superposition failed',
+    'mark A:999 is not in the structure',
+    'distance A:1 to A:2: no atoms',
+  ])
+  view.applyFigure({ marks: [{ site: 'A:99' }] })
+  view.setFigureNotices('marks', [])
+  expect(view.report.notices).toEqual([
+    'superposition failed',
+    'distance A:1 to A:2: no atoms',
+  ])
+})
+
+test('a dismissed figure notice stays dismissed until the figure changes', () => {
+  const view = makeView()
+  const line = 'mark A:999 is not in the structure'
+  view.setFigureNotices('marks', [line])
+  view.dismissNotice(line)
+  expect(view.shownNotices).toEqual([])
+  view.setFigureNotices('marks', [line])
+  expect(view.shownNotices).toEqual([])
+  view.applyFigure({ marks: [{ site: 'A:999' }, { site: 'A:1' }] })
+  view.setFigureNotices('marks', [line])
+  expect(view.shownNotices).toEqual([line])
+})
+
 test('a Mol* that failed to start settles the view', () => {
   const view = makeView()
   view.setError(new Error('Could not create a WebGL rendering context'))
@@ -127,9 +161,10 @@ test('the view menu carries actions and the Tune menu carries toggles', () => {
   expect(labels).toEqual([
     'Add structure...',
     'Remove structure',
+    'Go to residue...',
     'Clear selection',
     'Import manual alignment...',
-    'Re-align structures (TM-align)',
+    'Re-superpose structures (TM-align)',
     'Restore hidden feature tracks',
   ])
 
@@ -141,6 +176,60 @@ test('the view menu carries actions and the Tune menu carries toggles', () => {
   expect(
     labels.some(label => typeof label === 'string' && toggles.includes(label)),
   ).toBe(false)
+})
+
+function disabledMenuItems(view: View) {
+  return view
+    .menuItems()
+    .flatMap(item =>
+      'label' in item && 'disabled' in item && item.disabled
+        ? [item.label]
+        : [],
+    )
+}
+
+test('a view-menu action is disabled until there is something for it to do', () => {
+  const view = makeView()
+  expect(disabledMenuItems(view)).toEqual([
+    'Go to residue...',
+    'Clear selection',
+    'Restore hidden feature tracks',
+  ])
+
+  const [first, second] = view.structures
+  first!.setStructureData({
+    entities: [{ entityId: '1', seq: 'MEEPQ', seqIds: [], chains: ['A'] }],
+  })
+  second!.setClickedStructureRanges([{ start: 3, end: 7 }])
+  first!.hideFeatureType('Helix')
+  expect(disabledMenuItems(view)).toEqual([])
+
+  view.removeStructure(second!)
+  expect(disabledMenuItems(view)).toEqual([
+    'Clear selection',
+    'Re-superpose structures (TM-align)',
+  ])
+})
+
+test('importing an alignment needs a structure with a transcript', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }],
+  })
+  expect(disabledMenuItems(view)).toContain('Import manual alignment...')
+})
+
+// the only structure carries the transcript and genome link an added one copies
+// from it, and the view's own close button already takes the whole view away
+test('a view of one structure offers no Remove structure', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }],
+  })
+  const labels = view
+    .menuItems()
+    .map(item => ('label' in item ? item.label : undefined))
+  expect(labels).not.toContain('Remove structure')
 })
 
 // Each structure with a choice gets a radio list under its own name
@@ -355,7 +444,7 @@ test('the compact toggle reads the lane height, not the flag under it', () => {
 
   const declared = ProteinView.create({
     type: 'ProteinView',
-    structures: [{ url: 'a.cif' }],
+    structures: [{ url: 'a.cif', userProvidedTranscriptSequence: 'MEEPQ' }],
     trackHeight: 5,
     compactTracks: false,
   })
@@ -385,6 +474,81 @@ test('a toggle is disabled while a setting it needs is off', () => {
 
   const noTracks = makeView({ showProteinTracks: false })
   expect(new Set(disabledKeys(noTracks))).toEqual(new Set(TRACK_TOGGLES))
+})
+
+const DNA = {
+  entityId: '1',
+  seq: 'ACGT',
+  seqIds: [1, 2, 3, 4],
+  chains: ['E'],
+  nucleicAcid: true,
+}
+const PROTEIN = {
+  entityId: '2',
+  seq: 'MKAA',
+  seqIds: [1, 2, 3, 4],
+  chains: ['A'],
+}
+
+// A structure with no transcript and no protein chain to show has no sequence
+// panel, so the toggles for it changed nothing on screen. One still loading
+// may yet have one.
+test('the panel toggles are disabled, with why, once no structure has a transcript or a protein chain', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }],
+  })
+  const structure = view.structures[0]!
+  expect(view.noPanelReason).toBeUndefined()
+  expect(disabledKeys(view)).toEqual([])
+
+  structure.setStructureData({ entities: [] })
+  expect(new Set(disabledKeys(view))).toEqual(
+    new Set(['showAlignment', ...PANEL_TOGGLES, ...TRACK_TOGGLES]),
+  )
+  expect(view.noPanelReason).toBe(
+    'No structure in this view has a chain to show',
+  )
+
+  structure.setStructureData({ entities: [DNA] })
+  expect(structure.panelAlignment).toBeUndefined()
+  expect(view.noPanelReason).toBe(
+    'The sequence panel draws protein chains, and the chain shown is DNA or RNA',
+  )
+
+  structure.setStructureData({ entities: [DNA, PROTEIN] })
+  expect(view.noPanelReason).toBeUndefined()
+  expect(disabledKeys(view)).toEqual([])
+
+  structure.chooseEntity('1')
+  expect(structure.panelAlignment).toBeUndefined()
+  expect(view.noPanelReason).toMatch(/DNA or RNA/)
+})
+
+test('a failed structure with no transcript leaves no panel to draw', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }],
+  })
+  view.structures[0]!.setLoadError(new Error('404'))
+  expect(view.noPanelReason).toBe(
+    'No structure in this view has a chain to show',
+  )
+})
+
+// The panel opens on the first structure, but the second's header row offers
+// its own once the panel is shown, which a disabled toggle prevented.
+test('a panel toggle stays enabled while any structure has a transcript', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    showAlignment: false,
+    structures: [
+      { url: 'a.cif' },
+      { url: 'b.cif', userProvidedTranscriptSequence: 'MEEPQ' },
+    ],
+  })
+  expect(view.noPanelReason).toBeUndefined()
+  expect(disabledKeys(view)).not.toContain('showAlignment')
 })
 
 test('a disabled toggle changes nothing and stores nothing', () => {
@@ -516,6 +680,29 @@ test('a snapshot whose marks do not parse is refused with the reason', () => {
       marks: [{ site: 'not a site' }],
     }),
   ).toThrow('marks[0].site is a site such as')
+})
+
+test('a saved session keeps the marks on its structures and drops one past them', () => {
+  const view = ProteinView.create({
+    type: 'ProteinView',
+    structures: [{ url: 'a.cif' }, { url: 'b.cif' }],
+    marks: [
+      { site: 'A:1', structure: 1 },
+      { site: 'A:2', structure: 2 },
+    ],
+    distances: [{ a: 'A:1', b: 'A:2', structure: 2 }],
+  })
+  expect(view.marks).toEqual([{ site: 'A:1', structure: 1 }])
+  expect(view.distances).toEqual([])
+})
+
+test('applyFigure refuses a mark on a structure the view lacks', () => {
+  const view = makeView()
+  expect(() => {
+    view.applyFigure({ marks: [{ site: 'A:1', structure: 2 }] })
+  }).toThrow(
+    "marks[0].structure is the index of one of the view's 2 structures, not 2",
+  )
 })
 
 const FIGURE: ProteinFigure = {

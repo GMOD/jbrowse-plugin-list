@@ -24,7 +24,6 @@ export function useFeatureSequence({ view, feature, }) {
         : '', [sequence, feature]);
     return {
         proteinSequence,
-        sequence,
         error,
         isLoading,
     };

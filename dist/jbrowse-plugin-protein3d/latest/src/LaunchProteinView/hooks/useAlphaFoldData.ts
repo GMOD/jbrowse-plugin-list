@@ -3,9 +3,9 @@ import { useMemo } from 'react'
 import { fetchAlphaFoldModels } from 'p2s_mapper'
 import useSWR from 'swr'
 
+import { launchAlphaFoldModel } from '../resolveGeneLaunch'
 import { STATIC_SWR_OPTIONS } from './swrOptions'
 import useIsoformProteinSequences from './useIsoformProteinSequences'
-import { launchAlphaFoldModel } from '../resolveGeneLaunch'
 
 import type { Feature } from '@jbrowse/core/util'
 
@@ -24,38 +24,35 @@ export default function useAlphaFoldData({
   view?: { assemblyNames?: string[] }
   preferredTranscriptId?: string
 }) {
-  const { data, isLoading, isValidating, error } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     uniprotId ? (['alphafold-models', uniprotId] as const) : null,
     ([, id]) => fetchAlphaFoldModels(id),
-    { ...STATIC_SWR_OPTIONS, keepPreviousData: true },
+    STATIC_SWR_OPTIONS,
   )
   const { isoformSequences } = useIsoformProteinSequences({ feature, view })
-  // keepPreviousData hands back the last accession's models after an error
-  // and after the accession is cleared, when the key is null
   const model = useMemo(
     () =>
       uniprotId && (data || error)
         ? launchAlphaFoldModel(
             uniprotId,
-            error ? undefined : data,
+            data,
             isoformSequences,
             preferredTranscriptId,
           )
         : undefined,
     [uniprotId, data, error, isoformSequences, preferredTranscriptId],
   )
-  const modelsUnreachable: unknown = uniprotId ? error : undefined
+  const modelsUnreachable: unknown = error
   const entry = uniprotId?.replace(/-\d+$/, '')
   return {
     isLoading,
-    isValidating,
     modelsUnreachable,
     model,
     /** the length of the entry's own sequence, which PDB entries number on */
-    entryLength:
-      uniprotId && !error
-        ? data?.find(m => m.accession === entry)?.sequence.length
-        : undefined,
-    noModel: !!uniprotId && !isLoading && !error && data?.length === 0,
+    entryLength: data?.find(m => m.accession === entry)?.sequence.length,
+    noModel: data?.length === 0,
+    retry: () => {
+      void mutate()
+    },
   }
 }

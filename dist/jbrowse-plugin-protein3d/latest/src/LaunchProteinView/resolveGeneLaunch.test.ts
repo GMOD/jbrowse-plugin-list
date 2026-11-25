@@ -1,12 +1,12 @@
 import { SimpleFeature } from '@jbrowse/core/util'
 import { expect, test } from 'vitest'
 
+import { rankIsoforms } from '../AlignTranscriptRpc/isoformRanking'
 import {
   describeMissingStructure,
   resolveGeneLaunch,
   unambiguousEntry,
 } from './resolveGeneLaunch'
-import { rankIsoforms } from '../AlignTranscriptRpc/isoformRanking'
 
 import type { GeneLaunchHost } from './resolveGeneLaunch'
 import type { AlphaFoldModel, UniProtEntry } from 'p2s_mapper'

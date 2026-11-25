@@ -1,5 +1,5 @@
 import { deleteDB } from 'idb';
-import { bestEffort, createDbOpener } from './idb';
+import { createDbOpener, getMany, putMany } from './idb';
 // v2: a site's locations are its residues, where v1 stored one bounding span.
 // v3: each match keeps its GenPept key, Region or Site, which a v2 entry lacks
 // and which would otherwise class every cached site as a domain for good.
@@ -30,21 +30,8 @@ function getDB() {
     return openDB();
 }
 export function getCachedDomains(accessions) {
-    return bestEffort('domain cache read', async () => {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const results = await Promise.all(accessions.map(accession => tx.store.get(accession)));
-        await tx.done;
-        return results;
-    }, []);
+    return getMany('domain cache', getDB, STORE_NAME, accessions);
 }
 export function saveDomains(entries) {
-    return bestEffort('domain cache write', async () => {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        for (const entry of entries) {
-            await tx.store.put(entry);
-        }
-        await tx.done;
-    }, undefined);
+    return putMany('domain cache', getDB, STORE_NAME, entries);
 }

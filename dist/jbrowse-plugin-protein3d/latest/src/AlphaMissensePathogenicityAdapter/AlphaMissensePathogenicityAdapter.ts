@@ -1,8 +1,8 @@
 import { max, min } from '@jbrowse/core/util'
 import { openLocation } from '@jbrowse/core/util/io'
 
-import { type AlphaMissenseRow, parseAlphaMissense } from './parseAlphaMissense'
 import { BaseProteinAnnotationAdapter } from '../BaseProteinAnnotationAdapter'
+import { type AlphaMissenseRow, parseAlphaMissense } from './parseAlphaMissense'
 
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Region } from '@jbrowse/core/util'

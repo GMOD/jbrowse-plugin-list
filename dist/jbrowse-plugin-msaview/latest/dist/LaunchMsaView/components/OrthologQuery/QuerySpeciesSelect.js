@@ -24,6 +24,7 @@ async function describeTaxon(query, signal) {
         .join(' ');
     return { taxId, label: label || `taxon ${taxId}` };
 }
+const defaultTaxId = 9606;
 /**
  * The species the query gene came from, as free text resolved against NCBI's
  * taxonomy rather than picked from a fixed list.
@@ -33,7 +34,7 @@ async function describeTaxon(query, signal) {
  * organism rather than to nothing, and the only place that surfaces is the gene
  * lookup, as "could not resolve NLRP1 in taxon 9986".
  */
-const QuerySpeciesSelect = observer(function QuerySpeciesSelect({ value, assemblyName, onChange, className, }) {
+export function useQuerySpecies(assemblyName) {
     // undefined until the user types, which is what makes the two lookups
     // exclusive rather than both firing on open
     const [typed, setTyped] = useState();
@@ -48,29 +49,43 @@ const QuerySpeciesSelect = observer(function QuerySpeciesSelect({ value, assembl
     // is not just waste: eutils allows 3 requests a second and throttles by
     // answering without CORS headers, so all four fired on open and the browser
     // reported the throttle as "blocked by CORS policy" in the helper text.
-    const { data: fromAssembly } = useFetch(assemblyName && typed === undefined
+    const fromAssembly = useFetch(assemblyName && typed === undefined
         ? [assemblyName, 'assembly-species']
-        : null, signal => resolveAssemblySpecies(assemblyName, signal), {
-        onSuccess: found => {
-            if (found) {
-                onChange(found.taxId);
-            }
-        },
-    });
-    const { data: fromText, error } = useFetch(debounced?.trim() ? [debounced.trim(), 'taxon'] : null, signal => describeTaxon(debounced, signal), {
-        onSuccess: ({ taxId }) => {
-            onChange(taxId);
-        },
-    });
-    // derived, not seeded through an effect: whatever the user typed wins, and
-    // until they type anything the assembly's species does, so a lookup that
-    // lands while they are mid-word cannot overwrite the field
-    const text = typed ?? fromAssembly?.speciesName ?? 'human';
-    const resolved = typed === undefined ? fromAssembly?.speciesName : fromText?.label;
+        : null, signal => resolveAssemblySpecies(assemblyName, signal));
+    const fromText = useFetch(debounced?.trim() ? [debounced.trim(), 'taxon'] : null, signal => describeTaxon(debounced, signal));
+    const taxId = typed === undefined
+        ? fromAssembly.isLoading || fromAssembly.error
+            ? undefined
+            : (fromAssembly.data?.taxId ?? defaultTaxId)
+        : typed === debounced
+            ? fromText.data?.taxId
+            : undefined;
+    return {
+        taxId,
+        resolving: typed === undefined
+            ? fromAssembly.isLoading
+            : typed !== debounced || fromText.isLoading,
+        // derived, not seeded through an effect: whatever the user typed wins, and
+        // until they type anything the assembly's species does, so a lookup that
+        // lands while they are mid-word cannot overwrite the field
+        text: typed ??
+            fromAssembly.data?.speciesName ??
+            (fromAssembly.error ? '' : 'human'),
+        resolved: typed === undefined
+            ? fromAssembly.data?.speciesName
+            : fromText.data?.label,
+        error: typed === undefined ? fromAssembly.error : fromText.error,
+        setTyped,
+    };
+}
+const QuerySpeciesSelect = observer(function QuerySpeciesSelect({ species: { taxId, text, resolved, error, setTyped }, className, }) {
     return (React.createElement(TextField2, { variant: "outlined", label: "Query species", className: className, value: text, onChange: event => {
             setTyped(event.target.value);
         }, error: !!error, helperText: error
             ? `${error}`
-            : (resolved ?? `the species this gene is from (taxon ${value})`) }));
+            : (resolved ??
+                (taxId === undefined
+                    ? 'the species this gene is from'
+                    : `the species this gene is from (taxon ${taxId})`)) }));
 });
 export default QuerySpeciesSelect;

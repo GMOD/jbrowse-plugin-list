@@ -1,13 +1,4 @@
 /**
- * EBI's Job Dispatcher REST services (clustalo, muscle, ncbiblast, ...) all
- * speak the same run/status/result protocol, so the transport lives here and
- * each tool only supplies its own parameters and result types.
- *
- * Unlike NCBI's Blast.cgi these endpoints send `Access-Control-Allow-Origin: *`,
- * which is why the BLAST backend moved here — see docs/blast.md.
- */
-export declare const EBI_BASE = "https://www.ebi.ac.uk/Tools/services/rest";
-/**
  * EBI asks for a contact address on every submission so they can reach whoever
  * is generating the load. The default is the project's mailbox; a deployment
  * that sends real volume should name its own maintainer in the BLAST settings
@@ -21,7 +12,7 @@ export declare function getEbiEmail(): string;
  * it is not a reason to abandon one. A job the server has accepted keeps running
  * whatever happens to the poller's connection, and EBI's cluster has answered
  * status checks with a 502 for ten minutes on jobs that then finished (see
- * docs/blast.md).
+ * agent-docs/blast-design.md).
  *
  * So the poll gives up only once checks have failed without a break for this
  * long: an endpoint that has genuinely gone away must not be polled forever.
@@ -43,5 +34,7 @@ export declare function runEbiJob({ tool, label, params, onProgress, onRid, sign
     signal?: AbortSignal;
 }): Promise<{
     jobId: string;
-    result: (type: string) => Promise<string>;
+    result: (type: string, { retry }?: {
+        retry?: boolean | undefined;
+    }) => Promise<string>;
 }>;

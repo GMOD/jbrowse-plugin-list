@@ -4,11 +4,11 @@ import { openLocation } from '@jbrowse/core/util/io';
 import { FormControl, FormControlLabel, Radio, RadioGroup } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
-import TextField2 from '../../../components/TextField2';
 import { useDebounced, useFetch } from '../../../utils/useFetch';
 import { useQueryRowName } from '../../useQueryRowName';
-import { getGeneDisplayName, getLinearGenomeView } from '../../util';
+import { getLinearGenomeView, getViewTitle } from '../../util';
 import LaunchPanelContent from '../LaunchPanelContent';
+import PastedAlignmentFields from '../PastedAlignmentFields';
 import QueryRowSelector from '../QueryRowSelector';
 import SequenceStatusMessage from '../SequenceStatus';
 import SubmitCancelActions from '../SubmitCancelActions';
@@ -36,11 +36,8 @@ const useStyles = makeStyles()({
     fileContainer: {
         maxWidth: 500,
     },
-    msaInput: {
-        marginBottom: 20,
-    },
 });
-const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handleClose, preferredTranscriptId, }) {
+const ManualMSALoader = observer(function ManualMSALoader({ model, feature, handleClose, preferredTranscriptId, }) {
     const view = getLinearGenomeView(model);
     const { classes } = useStyles();
     const { launchError, submit } = useLaunchSubmit(handleClose);
@@ -68,16 +65,11 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
                     React.createElement(FormControlLabel, { value: "text", control: React.createElement(Radio, null), label: "Paste text" }))),
             React.createElement("div", { className: classes.inputContainer }, inputMethod === 'file' ? (React.createElement("div", { className: classes.fileContainer },
                 React.createElement(FileSelector, { name: "MSA File .aln (Clustal), .fa/.mfa (aligned FASTA), .stock (Stockholm), etc)", inline: true, location: msaFileLocation, setLocation: setMsaFileLocation }),
-                React.createElement(FileSelector, { name: "Tree file .nh (Newick) or .asn (NCBI COBALT ASN.1)", inline: true, location: treeFileLocation, setLocation: setTreeFileLocation }))) : (React.createElement(React.Fragment, null,
-                React.createElement(TextField2, { variant: "outlined", name: "MSA", multiline: true, minRows: 5, className: classes.msaInput, maxRows: 10, fullWidth: true, placeholder: "Paste MSA here", value: msaText, onChange: event => {
-                        setMsaText(event.target.value);
-                    } }),
-                React.createElement(TextField2, { variant: "outlined", name: "Tree", multiline: true, minRows: 5, maxRows: 10, fullWidth: true, placeholder: "Paste newick tree (optional)", value: treeText, onChange: event => {
-                        setTreeText(event.target.value);
-                    } })))),
+                React.createElement(FileSelector, { name: "Tree file .nh (Newick) or .asn (NCBI COBALT ASN.1)", inline: true, location: treeFileLocation, setLocation: setTreeFileLocation }))) : (React.createElement(PastedAlignmentFields, { msaText: msaText, setMsaText: setMsaText, treeText: treeText, setTreeText: setTreeText }))),
             React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }),
-            React.createElement(QueryRowSelector, { ...queryRow })),
+            React.createElement(QueryRowSelector, { ...queryRow, sequenceStatus: sequenceStatus })),
         React.createElement(SubmitCancelActions, { model: model, hint: React.createElement(SequenceStatusMessage, { status: sequenceStatus }), submitDisabled: !selectedTranscript ||
+                sequenceStatus === 'loading' ||
                 (inputMethod === 'file' && (!msaFileLocation || msaFile.isLoading)) ||
                 (inputMethod === 'text' && !msaText.trim()), onSubmit: placement => {
                 if (selectedTranscript) {
@@ -85,7 +77,7 @@ const ManualMSALoader = observer(function PreLoadedMSA2({ model, feature, handle
                         view,
                         feature: selectedTranscript,
                         placement,
-                        displayName: getGeneDisplayName(selectedTranscript),
+                        displayName: getViewTitle(feature, selectedTranscript),
                         querySeqName: queryRow.querySeqName,
                         querySeqOffset: queryRow.querySeqOffset,
                         ...(inputMethod === 'file'

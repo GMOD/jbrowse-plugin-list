@@ -5,6 +5,7 @@ export interface CachedSearch {
     fasta: string;
     treeMetadata: Record<string, Record<string, string>>;
     rid?: string;
+    aligned?: boolean;
     timestamp: number;
 }
 export declare function searchKey({ searchProgram, database, maxHits, querySeqName, query, }: {

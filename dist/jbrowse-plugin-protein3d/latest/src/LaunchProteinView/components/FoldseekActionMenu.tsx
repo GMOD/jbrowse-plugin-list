@@ -92,26 +92,26 @@ const FoldseekActionMenu = observer(function FoldseekActionMenu({
         size="small"
         variant="outlined"
         disabled={launching}
-        onClick={handleClick}
+        onClick={launch1D ? handleClick : handleLaunch3D}
       >
         Load
       </Button>
-      <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
-        <MenuItem
-          data-testid="protein-launch-option-3d"
-          onClick={handleLaunch3D}
-        >
-          {PROTEIN_LAUNCH_LABELS['3d']}
-        </MenuItem>
-        {launch1D ? (
+      {launch1D ? (
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          <MenuItem
+            data-testid="protein-launch-option-3d"
+            onClick={handleLaunch3D}
+          >
+            {PROTEIN_LAUNCH_LABELS['3d']}
+          </MenuItem>
           <MenuItem
             data-testid="protein-launch-option-1d"
             onClick={runLaunch(launch1D)}
           >
             {PROTEIN_LAUNCH_LABELS['1d']}
           </MenuItem>
-        ) : null}
-      </Menu>
+        </Menu>
+      ) : null}
     </>
   )
 })

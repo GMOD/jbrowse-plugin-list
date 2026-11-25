@@ -3,12 +3,12 @@ import { getGeneticCode } from '@jbrowse/core/util/geneticCodes'
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper'
 import { expect, test } from 'vitest'
 
+import { genomeToTranscriptSeqMapping as featureMapping } from '../mappings'
 import {
   parseLaunchVariant,
   placeLaunchVariant,
   placeOnTranscripts,
 } from './launchVariant'
-import { genomeToTranscriptSeqMapping as featureMapping } from '../mappings'
 
 import type { LaunchVariant } from './launchVariant'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'

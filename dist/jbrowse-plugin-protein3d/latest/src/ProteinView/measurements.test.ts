@@ -3,11 +3,16 @@ import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test } from 'vitest'
 
+import { loadPocket } from '../test_data/molstarPlugin'
 import loadMolstar from './loadMolstar'
-import { MEASUREMENT_TAG, closestAtoms, syncMeasurements } from './measurements'
+import {
+  MEASUREMENT_TAG,
+  closestAtoms,
+  measurementNotices,
+  syncMeasurements,
+} from './measurements'
 import { superposeStructures } from './superposeStructures'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadPocket } from '../test_data/molstarPlugin'
 
 import type { StructureElement as StructureElementType } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -171,6 +176,28 @@ test('a measurement names its structure by index and waits for it to load', asyn
       'the structure is not loaded',
     ])
     expect(drawn(plugin)).toHaveLength(0)
+  })
+})
+
+test('a distance that will not draw on a loaded structure is a notice, one still loading is not', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    const { structure } = await loadPocket(plugin)
+    const results = await syncMeasurements({
+      labels: false,
+      plugin,
+      structures: [structure, undefined],
+      measurements: [
+        { a: 'A:12', b: 'MOV' },
+        { a: 'A:999', b: 'MOV' },
+        { a: 'A:12', b: 'MOV', structure: 1 },
+      ],
+    })
+    expect(measurementNotices(results, 2)).toEqual([
+      'distance A:999 to MOV on structures[0]: A:999 is not in the structure',
+    ])
+    expect(measurementNotices(results.slice(0, 2), 1)).toEqual([
+      'distance A:999 to MOV: A:999 is not in the structure',
+    ])
   })
 })
 

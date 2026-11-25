@@ -10,13 +10,8 @@ export interface OrthologRow {
     protein: string;
     sequence: string;
 }
-/**
- * A candidate gene reference as the ortholog services know it: a GFF ID prefix
- * (gene:TP53) and a version suffix (NM_000546.6) stripped off. Shared with
- * pantherOrthologs, which asks PANTHER the same question with the same
- * candidates.
- */
 export declare function cleanGeneCandidate(raw: string): string;
+export declare function droppedRowsWarning(dropped: number, total: number): string | undefined;
 export interface SymbolCandidate {
     gene_id?: string;
     symbol?: string;
@@ -105,4 +100,7 @@ export declare function fetchOrthologRows({ geneId, taxa, exclude, limit, onProg
     limit?: number;
     onProgress: (arg: string) => void;
     signal?: AbortSignal;
-}): Promise<OrthologRow[]>;
+}): Promise<{
+    rows: OrthologRow[];
+    warning?: string;
+}>;

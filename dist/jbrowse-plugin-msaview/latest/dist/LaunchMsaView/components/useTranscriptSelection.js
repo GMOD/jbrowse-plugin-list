@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { featureMatchesId, getId, getSortedTranscriptFeatures } from '../util';
+import { useContext, useMemo, useState } from 'react';
+import { getId, getSortedTranscriptFeatures } from '../util';
+import { TranscriptChoiceContext, defaultTranscriptId, } from './transcriptChoice';
 import { useFeatureSequence } from './useFeatureSequence';
 // Keep the current selection if it has data, otherwise fall back to the first
 // option that does (or the current id if none do). With no hasData constraint
@@ -32,14 +33,17 @@ function sequenceStatus({ error, isLoading, proteinSequence, }) {
 }
 export function useTranscriptSelection({ feature, view, hasData, preferredTranscriptId, }) {
     const options = useMemo(() => getSortedTranscriptFeatures(feature), [feature]);
-    const [selectedId, setSelectedId] = useState(() => getId(options.find(opt => featureMatchesId(opt, preferredTranscriptId ?? '')) ??
-        options[0]));
-    const validatedSelectedId = pickSelectedId(selectedId, options, hasData);
+    const choice = useContext(TranscriptChoiceContext);
+    const ownPick = useState();
+    const [pickedId, setSelectedId] = choice?.pick ?? ownPick;
+    const validatedSelectedId = pickSelectedId(pickedId ?? defaultTranscriptId(options, preferredTranscriptId), options, hasData);
     const selectedTranscript = options.find(val => getId(val) === validatedSelectedId);
-    const { proteinSequence, error, isLoading } = useFeatureSequence({
+    const sharedSequence = choice?.sequenceFor === validatedSelectedId ? choice.sequence : undefined;
+    const ownSequence = useFeatureSequence({
         view,
-        feature: selectedTranscript,
+        feature: sharedSequence ? undefined : selectedTranscript,
     });
+    const { proteinSequence, error, isLoading } = sharedSequence ?? ownSequence;
     return {
         options,
         selectedId: validatedSelectedId,

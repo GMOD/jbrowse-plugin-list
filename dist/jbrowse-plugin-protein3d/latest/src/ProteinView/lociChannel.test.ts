@@ -1,8 +1,8 @@
 import { autorun, observable, runInAction } from 'mobx'
 import { expect, test, vi } from 'vitest'
 
-import { makeLociChannel } from './lociChannel'
 import { parseStructure } from '../test_data/molstarStructure'
+import { makeLociChannel } from './lociChannel'
 
 import type { LociMarks } from './applyLociInteractivity'
 import type {

@@ -1,18 +1,18 @@
 import { pdbEntryPartners, rcsbEntryUrl } from 'p2s_mapper'
 
-import { getTranscriptDisplayName } from './util'
 import { CRYSTALLIZATION_ADDITIVES } from '../../ProteinView/crystallizationAdditives'
+import { getTranscriptDisplayName } from './util'
 
-import type { DatasetMatch } from './structureDatasets'
 import type { LaunchAlphaFoldModel } from '../resolveGeneLaunch'
+import type { DatasetMatch } from './structureDatasets'
 import type {
   AlphaFoldComplex,
   ExperimentalStructure,
   PdbEntrySummary,
 } from 'p2s_mapper'
 
-/** What a structure shows of the gene's protein */
-export type StructureSection = 'alone' | 'partner' | 'fragment'
+/** What a structure shows of the gene's protein, or that the user added it */
+export type StructureSection = 'added' | 'alone' | 'partner' | 'fragment'
 
 export type StructureFilter = 'all' | 'experimental' | 'predicted'
 
@@ -43,10 +43,11 @@ export type StructureRow =
   | (RowBase & { kind: 'pdb'; entry: ExperimentalStructure })
   | (RowBase & { kind: 'complex'; complex: AlphaFoldComplex })
   | (RowBase & { kind: 'dataset'; match: DatasetMatch })
+  | (Omit<RowBase, 'start' | 'end'> & { kind: 'added'; pdbId: string })
 
 /** Below this share of the protein a structure is a peptide or one small
  * domain, too short for TM-align to place beside the whole protein */
-export const FRAGMENT_COVERAGE = 0.5
+const FRAGMENT_COVERAGE = 0.5
 
 const LIGAND_NAMES: Record<string, string> = {
   ADP: 'ADP',
@@ -153,6 +154,16 @@ export function partnerTags(summary: PdbEntrySummary, uniprotId: string) {
   }
 }
 
+function pdbTitle(
+  pdbId: string,
+  summary: PdbEntrySummary | undefined,
+  geneName: string,
+) {
+  return summary?.title
+    ? sentenceCase(summary.title, [geneName, ...summary.ligands.map(l => l.id)])
+    : `PDB entry ${pdbId.toUpperCase()}`
+}
+
 function pdbRow({
   entry,
   summary,
@@ -166,7 +177,6 @@ function pdbRow({
 }): StructureRow {
   const partners = summary ? partnerTags(summary, uniprotId) : undefined
   const ligands = summary ? ligandTags(summary) : []
-  const id = entry.pdbId.toUpperCase()
   return {
     kind: 'pdb',
     key: `pdb:${entry.pdbId}`,
@@ -178,19 +188,45 @@ function pdbRow({
           ? 'partner'
           : 'alone',
     predicted: false,
-    label: id,
+    label: entry.pdbId.toUpperCase(),
     href: rcsbEntryUrl(entry.pdbId),
-    title: summary?.title
-      ? sentenceCase(summary.title, [
-          geneName,
-          ...summary.ligands.map(l => l.id),
-        ])
-      : `PDB entry ${id}`,
+    title: pdbTitle(entry.pdbId, summary, geneName),
     partners: partners?.tags ?? [],
     ligands,
     notes: [],
     start: entry.start,
     end: entry.end,
+  }
+}
+
+/**
+ * An entry added by its PDB id, which RCSB may file under another protein: a
+ * complex listed under its partner, an entry a paper names. With no accession
+ * every polymer counts as a partner. What it covers is unknown until it loads.
+ */
+export function addedRow({
+  pdbId,
+  summary,
+  geneName,
+  uniprotId = '',
+}: {
+  pdbId: string
+  summary?: PdbEntrySummary
+  geneName: string
+  uniprotId?: string
+}): StructureRow {
+  return {
+    kind: 'added',
+    key: `pdb:${pdbId}`,
+    pdbId,
+    section: 'added',
+    predicted: false,
+    label: pdbId.toUpperCase(),
+    href: rcsbEntryUrl(pdbId),
+    title: pdbTitle(pdbId, summary, geneName),
+    partners: summary ? partnerTags(summary, uniprotId).tags : [],
+    ligands: summary ? ligandTags(summary) : [],
+    notes: [],
   }
 }
 
@@ -349,6 +385,118 @@ export function structureRows({
   ]
 }
 
+/**
+ * The rows of the entries added by id that the listing does not already hold,
+ * and the ids RCSB described no entry for. An entry RCSB has not described
+ * yet, or could not, is listed under its id alone.
+ */
+export function addedRows({
+  pdbIds,
+  summaries,
+  listed,
+  geneName,
+  uniprotId,
+}: {
+  pdbIds: readonly string[]
+  summaries?: ReadonlyMap<string, PdbEntrySummary>
+  listed: readonly StructureRow[]
+  geneName: string
+  uniprotId?: string
+}) {
+  const unknown = summaries ? pdbIds.filter(id => !summaries.has(id)) : []
+  return {
+    rows: pdbIds
+      .filter(
+        id => !unknown.includes(id) && !listed.some(r => r.key === `pdb:${id}`),
+      )
+      .map(pdbId =>
+        addedRow({
+          pdbId,
+          summary: summaries?.get(pdbId),
+          geneName,
+          uniprotId,
+        }),
+      ),
+    unknown,
+  }
+}
+
+/** An entry added by its PDB id, and whether it is checked. It outlives the
+ * accession, which the pick of listed rows belongs to. */
+export interface AddedEntry {
+  pdbId: string
+  checked: boolean
+}
+
+function addedKey(pdbId: string) {
+  return `pdb:${pdbId}`
+}
+
+/** The checked rows: the listed ones picked for the accession, and the
+ * entries added by id, wherever they are now listed */
+export function checkedKeys(
+  listed: readonly string[],
+  added: readonly AddedEntry[],
+) {
+  return [
+    ...new Set([
+      ...listed,
+      ...added.filter(a => a.checked).map(a => addedKey(a.pdbId)),
+    ]),
+  ]
+}
+
+/** Checked keys split back into the pick of listed rows and the added
+ * entries, so a change of accession resets the one and keeps the other */
+export function splitChecked(
+  keys: readonly string[],
+  added: readonly AddedEntry[],
+) {
+  const addedKeys = new Set(added.map(a => addedKey(a.pdbId)))
+  return {
+    listed: keys.filter(key => !addedKeys.has(key)),
+    added: added.map(a => ({
+      ...a,
+      checked: keys.includes(addedKey(a.pdbId)),
+    })),
+  }
+}
+
+/**
+ * Adding an id, checked beside the checked rows: an id added before is checked
+ * again, a new one goes last, and ids RCSB has no entry for are dropped. A
+ * listed entry is checked in its own section, and kept as added so it stays
+ * checked if the accession changes.
+ */
+export function addPdbId({
+  pdbId,
+  added,
+  unknown,
+  checked,
+  rows,
+}: {
+  pdbId: string
+  added: readonly AddedEntry[]
+  unknown: readonly string[]
+  checked: readonly string[]
+  rows: readonly StructureRow[]
+}) {
+  const key = addedKey(pdbId)
+  const kept = added.filter(a => !unknown.includes(a.pdbId))
+  return splitChecked(
+    checked.includes(key)
+      ? checked
+      : toggleStructure(
+          checked,
+          rows.find(r => r.key === key) ?? { key, section: 'added' },
+          rows,
+        ),
+    kept.some(a => a.pdbId === pdbId)
+      ? kept
+      : [...kept, { pdbId, checked: true }],
+  )
+}
+
 export function matchesFilter(row: StructureRow, filter: StructureFilter) {
   return filter === 'all' || (filter === 'predicted') === row.predicted
 }
@@ -360,7 +508,7 @@ export function matchesFilter(row: StructureRow, filter: StructureFilter) {
  */
 export function toggleStructure(
   checked: readonly string[],
-  row: StructureRow,
+  row: Pick<StructureRow, 'key' | 'section'>,
   rows: readonly StructureRow[],
 ) {
   const fragments = new Set(
@@ -373,15 +521,27 @@ export function toggleStructure(
       : [...checked.filter(key => !fragments.has(key)), row.key]
 }
 
+// the added entries last, as they come last in the launch, so the first
+// checked row shown is the one the rest are superposed onto
 export const SECTIONS: readonly StructureSection[] = [
   'alone',
   'partner',
   'fragment',
+  'added',
 ]
 
 /** The rows as the dialog lists them, section by section */
 export function listOrder(rows: readonly StructureRow[]) {
   return SECTIONS.flatMap(section => rows.filter(r => r.section === section))
+}
+
+/** A folded section's first rows, and any checked row below them, in order */
+export function firstRowsAndChecked(
+  rows: readonly StructureRow[],
+  checked: readonly string[],
+  count: number,
+) {
+  return rows.filter((r, i) => i < count || checked.includes(r.key))
 }
 
 /**

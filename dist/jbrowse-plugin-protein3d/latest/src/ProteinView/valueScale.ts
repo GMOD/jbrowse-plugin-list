@@ -7,8 +7,20 @@ export interface ValueDomain {
 
 const TRIM = 0.02
 
-function rounded(value: number) {
-  return Math.round(value * 100) / 100
+function rounded(value: number, span: number) {
+  const scale = 10 ** Math.max(2, 1 - Math.floor(Math.log10(span)))
+  return Math.round(value * scale) / scale
+}
+
+function stepBeside(value: number) {
+  return value === 0
+    ? 1
+    : Math.min(1, 10 ** Math.floor(Math.log10(Math.abs(value))))
+}
+
+function stepPast(value: number, direction: 1 | -1) {
+  const step = stepBeside(value)
+  return rounded(value + direction * step, step)
 }
 
 /**
@@ -22,9 +34,12 @@ export function valueDomain(values: Iterable<number>): ValueDomain | undefined {
     return undefined
   }
   const last = sorted.length - 1
-  const min = rounded(sorted[Math.floor(TRIM * last)]!)
-  const max = rounded(sorted[Math.ceil((1 - TRIM) * last)]!)
-  return { min, max: max > min ? max : min + 1 }
+  const low = sorted[Math.floor(TRIM * last)]!
+  const high = sorted[Math.ceil((1 - TRIM) * last)]!
+  const step = stepBeside(low)
+  return high > low
+    ? { min: rounded(low, high - low), max: rounded(high, high - low) }
+    : { min: rounded(low, step), max: rounded(low + step, step) }
 }
 
 export function isValueField(color: ProteinColor) {
@@ -35,8 +50,9 @@ export function isValueField(color: ProteinColor) {
  * The color object a theme paints with: for a field scaled by its data, any
  * end of the domain the session leaves out comes from `domain`, and the title
  * falls back to `label`. An end from the data that lands on the wrong side of
- * the session's moves to one past it: a `domainMin` of 10 over values of 1 to
- * 3 paints them all the low color rather than reversing the ramp.
+ * the session's moves one step past it, 1 or the end's own magnitude below 1:
+ * a `domainMin` of 10 over values of 1 to 3 paints them all the low color
+ * rather than reversing the ramp.
  */
 export function paintedColor(
   color: ProteinColor,
@@ -52,12 +68,12 @@ export function paintedColor(
   const min =
     given.min ??
     (dataMin !== undefined && given.max !== undefined && dataMin >= given.max
-      ? given.max - 1
+      ? stepPast(given.max, -1)
       : dataMin)
   const max =
     given.max ??
     (dataMax !== undefined && min !== undefined && dataMax <= min
-      ? min + 1
+      ? stepPast(min, 1)
       : dataMax)
   const title = color.title ?? label
   return {

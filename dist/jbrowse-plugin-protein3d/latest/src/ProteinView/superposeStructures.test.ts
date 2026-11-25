@@ -3,13 +3,13 @@ import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
 import { superposeStructures } from './superposeStructures'
 import { describeSuperposition } from './superpositionOutcome'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
 
-import type { LoadMapping } from './superposeStructures'
 import type { TestChain } from '../test_data/molstarStructure'
+import type { LoadMapping } from './superposeStructures'
 import type { Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 

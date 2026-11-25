@@ -1,12 +1,10 @@
 import React from 'react';
 import { getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
-import { isMsaView } from '../MsaViewPanel/isMsaView';
 import { hasHoverPosition, useStyles } from './util';
 const GenomeMouseoverHighlight = observer(function ({ model, }) {
-    const { hovered, views } = getSession(model);
-    const hasMsaView = views.some(s => isMsaView(s) && s.connectedViewId === model.id);
-    return hasMsaView && hasHoverPosition(hovered) ? (React.createElement(GenomeMouseoverHighlightRenderer, { model: model, hovered: hovered })) : null;
+    const { hovered } = getSession(model);
+    return hasHoverPosition(hovered) ? (React.createElement(GenomeMouseoverHighlightRenderer, { model: model, hovered: hovered })) : null;
 });
 const GenomeMouseoverHighlightRenderer = observer(function ({ model, hovered, }) {
     const { classes } = useStyles();

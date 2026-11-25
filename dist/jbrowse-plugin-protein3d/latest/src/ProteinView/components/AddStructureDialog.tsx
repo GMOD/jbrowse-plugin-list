@@ -65,7 +65,7 @@ const AddStructureDialog = observer(function AddStructureDialog({
             : choice === 'url' && structureURL
               ? { url: structureURL }
               : choice === 'file' && file
-                ? { data: await readStructureFile(file) }
+                ? { data: await readStructureFile(file), fileName: file.name }
                 : undefined
 
       if (source) {
@@ -218,8 +218,11 @@ const AddStructureDialog = observer(function AddStructureDialog({
         ) : null}
 
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Tip: Structures will be automatically superposed using TM-align. For
-          manual control, use the Mol* controls (🔧 wrench icon).
+          The new structure is superposed on the first with TM-align. A chain
+          too short or too unlike the first for TM-align is fitted on the
+          residues both map to on the transcript instead, or left where its file
+          places it, and its header row says so. To move it by hand, open the
+          Mol* controls with the wrench button beside the 3D view.
         </Typography>
       </DialogContent>
       <DialogActions>

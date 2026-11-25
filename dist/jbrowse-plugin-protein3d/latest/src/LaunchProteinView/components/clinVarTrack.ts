@@ -1,13 +1,13 @@
 import { CLINVAR_CATEGORIES, clinVarCategory } from '../../ProteinView/clinVar'
 import { colorChannel } from '../../ProteinView/colorScale'
 
-import type { ProteinTrackConf } from './proteinTrackSetup'
 import type {
   ClinVarCategory,
   ClinVarMissense,
   PlacedMissense,
 } from '../../ProteinView/clinVar'
 import type { CategoricalColor } from '../../ProteinView/colorScale'
+import type { ProteinTrackConf } from './proteinTrackSetup'
 
 // The structure's ClinVar coloring counts pathogenic calls in reds; the track
 // shows every classification, so the reds are kept for the pathogenic end,

@@ -9,20 +9,21 @@ import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
+import ListSubheader from '@mui/material/ListSubheader'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
 import { observer } from 'mobx-react'
 
-import { ColorKey, MolstarLegendKey } from './ColorKey'
-import HeaderStructureRows from './HeaderStructureRow'
-import ProteinAlignment from './ProteinAlignment'
-import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton'
 import {
   COLOR_FIELDS,
   DEFAULT_COLOR_LABEL,
   colorLabelOf,
 } from '../proteinColor'
+import { ColorKey, MolstarLegendKey } from './ColorKey'
+import HeaderStructureRows from './HeaderStructureRow'
+import ProteinAlignment from './ProteinAlignment'
+import ProteinAlignmentHelpButton from './ProteinAlignmentHelpButton'
 
 import type { JBrowsePluginProteinViewModel } from '../model'
 import type { ColorField } from '../proteinColor'
@@ -149,6 +150,11 @@ const DisplaySettingsMenu = observer(function DisplaySettingsMenu({
           setAnchorEl(null)
         }}
       >
+        {model.noPanelReason ? (
+          <ListSubheader disableSticky sx={{ lineHeight: 2 }}>
+            {model.noPanelReason}
+          </ListSubheader>
+        ) : null}
         {model.displayToggles.map(toggle => (
           <ToggleMenuItem
             key={toggle.key}
@@ -182,6 +188,7 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
     showAlignment,
     colorLegend,
     colorLegendTitle,
+    colorLegendNoValue,
     domainLegend,
   } = model
   return (
@@ -215,9 +222,13 @@ const ProteinViewHeader = observer(function ProteinViewHeader({
           />
         ))
       ) : colorLegend ? (
-        <MolstarLegendKey title={colorLegendTitle} legend={colorLegend} />
+        <MolstarLegendKey
+          title={colorLegendTitle}
+          legend={colorLegend}
+          noValue={colorLegendNoValue}
+        />
       ) : null}
-      {showAlignment && alignmentStructure?.pairwiseAlignment ? (
+      {showAlignment && alignmentStructure?.panelAlignment ? (
         <ProteinAlignment model={alignmentStructure} />
       ) : showAlignment && alignmentStructure?.alignmentPending ? (
         <LoadingEllipses message="Loading pairwise alignment" />

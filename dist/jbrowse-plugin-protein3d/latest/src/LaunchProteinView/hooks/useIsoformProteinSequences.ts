@@ -1,9 +1,9 @@
 import { getSession } from '@jbrowse/core/util'
 import useSWR from 'swr'
 
-import { STATIC_SWR_OPTIONS } from './swrOptions'
 import { codingTranscripts } from '../codingFeature'
 import { fetchTranscriptProteinSeqs } from '../utils/translateTranscripts'
+import { STATIC_SWR_OPTIONS } from './swrOptions'
 
 import type { IsoformSequences } from '../utils/util'
 import type { Feature } from '@jbrowse/core/util'
@@ -21,36 +21,34 @@ export default function useIsoformProteinSequences({
   feature: Feature
   view?: { assemblyNames?: string[] }
 }) {
-  const { data, error, isLoading } = useSWR<IsoformTranslations>(
-    ['isoform-sequences', feature.id(), view?.assemblyNames?.[0]],
-    async () => {
-      const transcripts = codingTranscripts(feature)
-      const results = await fetchTranscriptProteinSeqs({
-        transcripts,
-        session: getSession(view),
-        assemblyName: view?.assemblyNames?.[0],
-      })
-      for (const { feature: f, error: e } of results) {
-        if (e !== undefined) {
-          console.error('[useIsoformProteinSequences] error for', f.id(), e)
+  const { data, error, isLoading, isValidating, mutate } =
+    useSWR<IsoformTranslations>(
+      ['isoform-sequences', feature.id(), view?.assemblyNames?.[0]],
+      async () => {
+        const transcripts = codingTranscripts(feature)
+        const results = await fetchTranscriptProteinSeqs({
+          transcripts,
+          session: getSession(view),
+          assemblyName: view?.assemblyNames?.[0],
+        })
+        for (const { feature: f, error: e } of results) {
+          if (e !== undefined) {
+            console.error('[useIsoformProteinSequences] error for', f.id(), e)
+          }
         }
-      }
-      const entries = results.flatMap(r =>
-        r.seq === undefined
-          ? []
-          : [[r.feature.id(), { feature: r.feature, seq: r.seq }] as const],
-      )
-      return {
-        sequences: Object.fromEntries(entries),
-        translated: entries.length,
-        total: results.length,
-      }
-    },
-    {
-      ...STATIC_SWR_OPTIONS,
-      keepPreviousData: true,
-    },
-  )
+        const entries = results.flatMap(r =>
+          r.seq === undefined
+            ? []
+            : [[r.feature.id(), { feature: r.feature, seq: r.seq }] as const],
+        )
+        return {
+          sequences: Object.fromEntries(entries),
+          translated: entries.length,
+          total: results.length,
+        }
+      },
+      STATIC_SWR_OPTIONS,
+    )
 
   // A transcript without a sequence is reported rather than dropped: silently
   // listing 18 of 20 isoforms reads as a gene with 18 isoforms. It covers both
@@ -65,5 +63,9 @@ export default function useIsoformProteinSequences({
       missing > 0 && data
         ? `${missing} of ${data.total} transcripts have no protein sequence`
         : undefined,
+    retry: () => {
+      void mutate()
+    },
+    retrying: isValidating,
   }
 }

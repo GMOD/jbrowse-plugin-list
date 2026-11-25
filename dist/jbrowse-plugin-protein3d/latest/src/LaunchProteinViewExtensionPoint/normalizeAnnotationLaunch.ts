@@ -1,4 +1,4 @@
-import { isConnectedViewSpec, isString } from './normalizeLaunch'
+import { fieldReader, isConnectedViewSpec, isString } from './normalizeLaunch'
 
 import type { ConnectedViewSpec } from './resolveShortLaunch'
 
@@ -39,18 +39,11 @@ export function normalizeAnnotationLaunch(
   if (unknownKeys.length > 0) {
     warnings.push(`ignored unknown key(s): ${unknownKeys.join(', ')}`)
   }
-  function read<T>(
-    key: keyof AnnotationLaunch,
-    accepts: (value: unknown) => value is T,
-    expected: string,
-  ) {
-    const value = fields.get(key)
-    if (value === undefined || accepts(value)) {
-      return value
-    }
-    warnings.push(`\`${key}\` is not ${expected} and was ignored`)
-    return undefined
-  }
+  const read = fieldReader<keyof AnnotationLaunch>(
+    fields,
+    key => `\`${key}\``,
+    warnings,
+  )
   const uniprotId = read('uniprotId', isString, 'a string')
   const gene = read('gene', isString, 'a string')
   const transcriptId = read('transcriptId', isString, 'a string')

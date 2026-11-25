@@ -7,7 +7,7 @@ import { makeStyles } from 'tss-react/mui';
 import TextField2 from '../../../components/TextField2';
 import { useFetch } from '../../../utils/useFetch';
 import { resolveQueryRowName, useQueryRowName } from '../../useQueryRowName';
-import { findDatasetId, getGeneDisplayName, getLinearGenomeView, getTranscriptDisplayName, } from '../../util';
+import { findDatasetId, getLinearGenomeView, getTranscriptDisplayName, getViewTitle, } from '../../util';
 import LaunchPanelContent from '../LaunchPanelContent';
 import QueryRowSelector from '../QueryRowSelector';
 import SequenceStatusMessage from '../SequenceStatus';
@@ -90,18 +90,21 @@ const PreLoadedMSA = observer(function ({ model, feature, handleClose, preferred
                 msaList ? (React.createElement("div", null,
                     React.createElement(SanitizedHTML, { html: selectedDataset.description }),
                     React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }),
-                    msaText ? (React.createElement(QueryRowSelector, { ...queryRow, querySeqName: querySeqName })) : null)) : null)) : null),
-        React.createElement(SubmitCancelActions, { model: model, hint: msaDataLoading ? (React.createElement(LoadingEllipses, { message: "Loading alignment" })) : !!msaText && !querySeqName ? (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "no row matches this transcript")) : (React.createElement(SequenceStatusMessage, { status: sequenceStatus })), 
+                    msaText ? (React.createElement(QueryRowSelector, { ...queryRow, querySeqName: querySeqName, sequenceStatus: sequenceStatus })) : null)) : null)) : null),
+        React.createElement(SubmitCancelActions, { model: model, hint: msaDataLoading ? (React.createElement(LoadingEllipses, { message: "Loading alignment" })) : msaList && !msaId ? (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "this dataset has no alignment for this gene")) : sequenceStatus !== 'ready' ? (React.createElement(SequenceStatusMessage, { status: sequenceStatus })) : !!msaText && !querySeqName ? (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "no row matches this transcript")) : null, 
             // launching without a query row opens a view that renders and then
             // never navigates, which reads as a broken feature rather than a
             // dataset that does not cover this gene
-            submitDisabled: !selectedTranscript || !msaText || !querySeqName, onSubmit: placement => {
+            submitDisabled: !selectedTranscript ||
+                sequenceStatus === 'loading' ||
+                !msaText ||
+                !querySeqName, onSubmit: placement => {
                 if (selectedTranscript && msaText) {
                     submit(() => launchConnectedView({
                         view,
                         feature: selectedTranscript,
                         placement,
-                        displayName: getGeneDisplayName(selectedTranscript),
+                        displayName: getViewTitle(feature, selectedTranscript),
                         drawNodeBubbles: false,
                         labelsAlignRight: true,
                         showBranchLen: false,

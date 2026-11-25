@@ -8,11 +8,25 @@ export interface PantherGenome {
     /** scientific name */
     longName: string;
 }
+export interface GenomesResponse {
+    search?: {
+        output?: {
+            genomes?: {
+                genome?: {
+                    short_name?: string;
+                    taxon_id?: number;
+                    name?: string;
+                    long_name?: string;
+                }[];
+            };
+        };
+    };
+}
 /**
  * `supportedgenomes` -> the code<->taxon map every other parse needs. PANTHER
  * names organisms by code only in ortholog results.
  */
-export declare function parseGenomes(json: unknown): PantherGenome[];
+export declare function parseGenomes(json: GenomesResponse): PantherGenome[];
 export interface PantherGene {
     code: string;
     /** UniProt accession */
@@ -28,12 +42,28 @@ export interface PantherHit extends PantherGene {
      */
     type: 'LDO' | 'O';
 }
+interface Mapping {
+    id?: string;
+    gene?: string;
+    target_gene?: string;
+    target_gene_symbol?: string | number;
+    ortholog?: string;
+}
+export interface MatchResponse {
+    search?: {
+        mapping?: {
+            /** one object for a single (or empty) match, an array otherwise */
+            mapped?: Mapping | Mapping[];
+            unmapped_ids?: unknown;
+        };
+    };
+}
 /**
  * `matchortho` -> the query gene (PANTHER names it in every row) and one hit
  * per target gene. An unknown gene comes back under `unmapped_ids`; a gene with
  * no ortholog in the target set comes back as a bare `{ id }`.
  */
-export declare function parseMatches(json: unknown): {
+export declare function parseMatches(json: MatchResponse): {
     unmapped: boolean;
     query?: PantherGene;
     hits: PantherHit[];
@@ -45,8 +75,16 @@ export declare function parseMatches(json: unknown): {
  * species in the alignment.
  */
 export declare function pickOnePerGenome(hits: PantherHit[]): PantherHit[];
+export interface UniProtResponse {
+    results?: {
+        primaryAccession?: string;
+        sequence?: {
+            value?: string;
+        };
+    }[];
+}
 /** `uniprotkb/accessions` -> accession -> sequence */
-export declare function parseSequences(json: unknown): Map<string, string>;
+export declare function parseSequences(json: UniProtResponse): Map<string, string>;
 export interface PantherOrthologs {
     /** the candidate PANTHER recognised */
     matched: string;
@@ -55,6 +93,7 @@ export interface PantherOrthologs {
         sequence: string;
     };
     rows: OrthologRow[];
+    warning?: string;
 }
 /**
  * The whole PANTHER half of the pipeline: gene -> ortholog rows carrying
@@ -76,3 +115,4 @@ export declare function fetchPantherOrthologs({ candidates, taxId, taxa, exclude
     onProgress: (arg: string) => void;
     signal?: AbortSignal;
 }): Promise<PantherOrthologs>;
+export {};

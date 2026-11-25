@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
-import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
 import { toAlignment } from '../test_data/positionLookups'
+import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
 
 test('kyteDoolittleScores returns per-residue hydropathy, undefined for gaps', () => {
   // I=4.5 (most hydrophobic), R=-4.5 (most hydrophilic), X/'-' absent

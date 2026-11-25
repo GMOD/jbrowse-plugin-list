@@ -1,15 +1,15 @@
 import { Change, changeRegistry, checkRegistry, isAssemblySpecificChange, isFeatureChange } from "@apollo-annotation/common";
-import { AddAssemblyAliasesChange, AddAssemblyAndFeaturesFromFileChange, AddAssemblyFromExternalChange, AddAssemblyFromFileChange, AddFeatureChange, AddFeaturesFromFileChange, AddRefSeqAliasesChange, AddUserChange, CDSCheck, CoreValidation, DeleteAssemblyChange, DeleteFeatureChange, DeleteUserChange, FeatureAttributeChange, ImportJBrowseConfigChange, LocationEndChange, LocationStartChange, MergeExonsChange, MergeTranscriptsChange, ParentChildValidation, SplitExonChange, StrandChange, TranscriptCheck, TypeChange, UserChange, ValidationResultSet, annotationFeatureToGFF3, attributesToRecords, changes, filterJBrowseConfig, getDecodedToken, gff3ToAnnotationFeature, gffColumnToInternal, gffInternalToColumn, gffToInternal, internalToGFF, isDeleteFeatureChange, isGFFColumnInternal, isGFFInternalAttribute, makeUserSessionId, splitStringIntoChunks, stringifyAttributes, validationRegistry } from "@apollo-annotation/shared";
+import { AddAssemblyAliasesChange, AddAssemblyAndFeaturesFromFileChange, AddAssemblyFromExternalChange, AddAssemblyFromFileChange, AddFeatureChange, AddFeaturesFromFileChange, AddRefSeqAliasesChange, AddUserChange, CDSCheck, CoreValidation, DeleteAssemblyChange, DeleteFeatureChange, DeleteUserChange, FeatureAttributeChange, ImportJBrowseConfigChange, LocationEndChange, LocationStartChange, MergeExonsChange, MergeTranscriptsChange, ParentChildValidation, SplitExonChange, StrandChange, TranscriptCheck, TypeChange, UserChange, ValidationResultSet, alignBins, annotationFeatureToGFF3, attributesToRecords, changes, computeFeatureDensity, densityStrands, filterJBrowseConfig, getDecodedToken, gff3ToAnnotationFeature, gffColumnToInternal, gffInternalToColumn, gffToInternal, internalToGFF, isDeleteFeatureChange, isGFFColumnInternal, isGFFInternalAttribute, makeUserSessionId, niceBinSize, splitStringIntoChunks, stringifyAttributes, validationRegistry } from "@apollo-annotation/shared";
 import Plugin from "@jbrowse/core/Plugin";
 import { ConfigurationReference, ConfigurationSchema, getConf, readConfObject } from "@jbrowse/core/configuration";
 import { BaseDisplay, BaseInternetAccountConfig, DisplayType, InternetAccount, InternetAccountType, TextSearchAdapterType, TrackType, WidgetType, createBaseTrackConfig, createBaseTrackModel } from "@jbrowse/core/pluggableElementTypes";
-import { defaultCodonTable, doesIntersect2, getContainingView, getEnv, getFrame, getSession, intersection2, isAbstractMenuManager, isElectron, isLocalPathLocation, isSessionModelWithWidgets, isUriLocation, measureText, revcom } from "@jbrowse/core/util";
+import { checkStopToken, defaultCodonTable, doesIntersect2, getContainingView, getEnv, getFrame, getSession, intersection2, isAbstractMenuManager, isContainedWithin, isElectron, isLocalPathLocation, isSessionModelWithWidgets, isUriLocation, measureText, revcom } from "@jbrowse/core/util";
 import AddIcon from "@mui/icons-material/Add";
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Autocomplete, Avatar, Badge, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControl, FormControlLabel, FormGroup, FormHelperText, FormLabel, Grid, IconButton, InputAdornment, InputLabel, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Menu, MenuItem, Paper, Radio, RadioGroup, Select, SvgIcon, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography, alpha, createTheme, useTheme } from "@mui/material";
 import { addDisposer, applySnapshot, cast, flow, getParent, getParentOfType, getRoot, getSnapshot, isAlive, resolveIdentifier, types } from "@jbrowse/mobx-state-tree";
 import LockPersonIcon from "@mui/icons-material/LockPerson";
 import LoginIcon from "@mui/icons-material/Login";
-import { autorun, entries, flow as flow$1, observable, when } from "mobx";
+import { autorun, computed, entries, flow as flow$1, observable, when } from "mobx";
 import { io } from "socket.io-client";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -21,7 +21,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import RadioButtonCheckedIcon from "@mui/icons-material/RadioButtonChecked";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import ObjectID from "bson-objectid";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 import SkipNextRoundedIcon from "@mui/icons-material/SkipNextRounded";
 import SkipPreviousRoundedIcon from "@mui/icons-material/SkipPreviousRounded";
@@ -31,7 +31,7 @@ import { checkAbortSignal, isAbortException } from "@jbrowse/core/util/aborting"
 import { JSONPath } from "jsonpath-plus";
 import { openLocation } from "@jbrowse/core/util/io";
 import equal from "fast-deep-equal/es6";
-import { BaseTooltip, Dialog as Dialog$1, Menu as Menu$1 } from "@jbrowse/core/ui";
+import { BaseTooltip, Dialog as Dialog$1, ExternalLink, Menu as Menu$1 } from "@jbrowse/core/ui";
 import CloseIcon from "@mui/icons-material/Close";
 import { observer } from "mobx-react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
@@ -64,12 +64,13 @@ import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import LockIcon from "@mui/icons-material/Lock";
 import ErrorIcon from "@mui/icons-material/Error";
+import HelpIcon from "@mui/icons-material/Help";
 import LogoutIcon from "@mui/icons-material/Logout";
 import RedoIcon from "@mui/icons-material/Redo";
 import UndoIcon from "@mui/icons-material/Undo";
 import SaveIcon from "@mui/icons-material/Save";
 //#region package.json
-var version = "1.2.0";
+var version = "1.3.0";
 //#endregion
 //#region src/ApolloInternetAccount/configSchema.ts
 const ApolloConfigSchema = ConfigurationSchema("ApolloInternetAccount", {
@@ -138,13 +139,13 @@ function getRelatedFeatures(feature, bp, includeSiblings = false) {
 	relatedFeatures.push(feature);
 	for (const x of getParents(feature)) relatedFeatures.push(x);
 	const children = getChildren(feature);
-	for (const child of children) if (child.min < bp && child.max >= bp) relatedFeatures.push(child);
+	for (const child of children) if (child.min <= bp && bp < child.max) relatedFeatures.push(child);
 	if (!includeSiblings) return relatedFeatures;
 	if (feature.parent) {
 		const siblings = feature.parent.children;
 		if (siblings) for (const [, sib] of siblings) {
 			if (sib._id == feature._id) continue;
-			if (sib.min < bp && sib.max >= bp) relatedFeatures.push(sib);
+			if (sib.min <= bp && bp < sib.max) relatedFeatures.push(sib);
 		}
 	}
 	return relatedFeatures;
@@ -310,6 +311,22 @@ const stopwords = /* @__PURE__ */ new Set([
 ]);
 //#endregion
 //#region src/OntologyManager/OntologyStore/prefixes.ts
+/**
+* This file contains stuff dealing with IRI prefixes used in ontologies.
+*
+* ```
+* const prefixes = new Map(['GO:', 'http://long.url/GO_'])
+*
+* applyPrefixes('http://long.url/GO_1234345') // returns 'GO:1234345'
+*
+* expandPrefixes('GO:1234345') // returns 'http://long.url/GO_1234345'
+* ```
+*/
+/** The prefixes the ontology manager uses unless configured otherwise */
+const defaultPrefixes = {
+	"GO:": "http://purl.obolibrary.org/obo/GO_",
+	"SO:": "http://purl.obolibrary.org/obo/SO_"
+};
 /**
 * compact the given URI using the given prefixes
 */
@@ -851,7 +868,8 @@ const OntologyRecordType = types.model("OntologyRecord", {
 	equivalentTypes: types.map(types.array(types.string))
 }).volatile((_self) => ({
 	dataStore: void 0,
-	equivalentTypeRequests: /* @__PURE__ */ new Map()
+	equivalentTypeRequests: /* @__PURE__ */ new Map(),
+	equivalentTypeSets: /* @__PURE__ */ new WeakMap()
 })).actions((self) => ({
 	/** does nothing, just used to access the model to force its lifecycle hooks to run */
 	ping() {},
@@ -912,14 +930,17 @@ loadEquivalentTypes(type) {
 		self.loadEquivalentTypes(typeOf);
 		return false;
 	}
-	return equivalents.includes(queryType);
+	const snapshot = getSnapshot(equivalents);
+	let equivalentSet = self.equivalentTypeSets.get(snapshot);
+	if (!equivalentSet) {
+		equivalentSet = new Set(snapshot);
+		self.equivalentTypeSets.set(snapshot, equivalentSet);
+	}
+	return equivalentSet.has(queryType);
 } }));
 const OntologyManagerType = types.model("OntologyManager", {
 	ontologies: types.array(OntologyRecordType),
-	prefixes: types.optional(types.map(types.string), {
-		"GO:": "http://purl.obolibrary.org/obo/GO_",
-		"SO:": "http://purl.obolibrary.org/obo/SO_"
-	})
+	prefixes: types.optional(types.map(types.string), { ...defaultPrefixes })
 }).views((self) => ({ get featureTypeOntologyName() {
 	const pluginConfiguration = getRoot(self).jbrowse.configuration.ApolloPlugin;
 	return readConfObject(pluginConfiguration, "featureTypeOntologyName");
@@ -1003,7 +1024,7 @@ async function fetchValidDescendantTerms(parentFeature, ontologyStore, _signal) 
 }
 //#endregion
 //#region src/components/Dialog.tsx
-const useStyles$15 = makeStyles()((theme) => ({
+const useStyles$17 = makeStyles()((theme) => ({
 	dialogTitle: {
 		background: theme.palette.primary.main,
 		color: theme.palette.primary.contrastText,
@@ -1017,7 +1038,7 @@ const useStyles$15 = makeStyles()((theme) => ({
 	}
 }));
 const Dialog$2 = observer(function JBrowseDialog(props) {
-	const { classes } = useStyles$15();
+	const { classes } = useStyles$17();
 	const { handleClose, title, ...other } = props;
 	return /* @__PURE__ */ jsx(Dialog$1, {
 		...other,
@@ -1407,6 +1428,20 @@ function ColorFeature({ changeManager, handleClose, sourceAssemblyId, sourceFeat
 	});
 }
 //#endregion
+//#region src/components/copyFeatureCoordinates.ts
+/** Translate the dialog's 1-based position to an interbase interval. */
+function copyFeatureCoordinates(start, length, region) {
+	if (!Number.isInteger(start) || start < 1) throw new Error("Start position must be a positive whole number.");
+	const min = start - 1;
+	const max = min + length;
+	if (max > region.end) throw new Error(`Feature would extend beyond the bounds of the selected reference sequence. (Feature would end at ${max}, but reference sequence ends at ${region.end})`);
+	if (min < region.start) throw new Error(`Reference sequence starts at ${region.start + 1}, feature cannot start before that.`);
+	return {
+		min,
+		max
+	};
+}
+//#endregion
 //#region src/components/CopyFeature.tsx
 /**
 * Recursively assign new IDs to a feature
@@ -1435,7 +1470,7 @@ function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, so
 	const [selectedAssemblyId, setSelectedAssemblyId] = useState(assemblies.find((a) => a.name !== sourceAssemblyId)?.name);
 	const [refNames, setRefNames] = useState([]);
 	const [selectedRefSeqId, setSelectedRefSeqId] = useState("");
-	const [start, setStart] = useState(sourceFeature.min);
+	const [start, setStart] = useState(sourceFeature.min + 1);
 	const [errorMessage, setErrorMessage] = useState("");
 	function handleChangeAssembly(e) {
 		setSelectedAssemblyId(e.target.value);
@@ -1482,23 +1517,22 @@ function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, so
 			setErrorMessage(`RefSeq not found: ${selectedRefSeqId}.`);
 			return;
 		}
-		const newEnd = start + featureLength;
-		if (newEnd > region.end) {
-			setErrorMessage(`Feature would extend beyond the bounds of the selected reference sequence. (Feature would end at ${newEnd}, but reference sequence ends at ${region.end})`);
+		let coordinates;
+		try {
+			coordinates = copyFeatureCoordinates(start, featureLength, region);
+		} catch (error) {
+			setErrorMessage(error instanceof Error ? error.message : String(error));
 			return;
 		}
-		if (start < region.start) {
-			setErrorMessage(`Reference sequence starts at ${region.start}, feature cannot start before that.`);
-			return;
-		}
+		const { min: newStart, max: newEnd } = coordinates;
 		const featureIds = [];
 		const newFeatureLine = generateNewIds(getSnapshot(sourceFeature), featureIds);
 		const attributeMap = { ...newFeatureLine.attributes };
 		if ("Parent" in attributeMap) delete attributeMap.Parent;
 		newFeatureLine.refSeq = selectedRefSeqId;
-		const locationMove = start - newFeatureLine.min;
-		newFeatureLine.min = start;
-		newFeatureLine.max = start + featureLength;
+		const locationMove = newStart - newFeatureLine.min;
+		newFeatureLine.min = newStart;
+		newFeatureLine.max = newEnd;
 		const updatedChildren = updateRefSeqStartEnd(newFeatureLine, locationMove);
 		const change = new AddFeatureChange({
 			changedIds: [newFeatureLine._id],
@@ -1581,20 +1615,24 @@ function CopyFeature({ changeManager, handleClose, session, sourceAssemblyId, so
 							children: option.name
 						}, option._id))
 					}),
-					/* @__PURE__ */ jsx(DialogContentText, { children: "Start position in target reference sequence" }),
+					/* @__PURE__ */ jsx(DialogContentText, { children: "Start position in target reference sequence (1-based)" }),
 					/* @__PURE__ */ jsx(TextField, {
 						margin: "dense",
 						type: "number",
 						fullWidth: true,
 						variant: "outlined",
 						value: start,
+						slotProps: { htmlInput: {
+							min: 1,
+							step: 1
+						} },
 						onChange: (e) => {
 							setStart(Number(e.target.value));
 						}
 					})
 				]
 			}), /* @__PURE__ */ jsxs(DialogActions, { children: [/* @__PURE__ */ jsx(Button, {
-				disabled: !selectedAssemblyId || !selectedRefSeqId || !start,
+				disabled: !selectedAssemblyId || !selectedRefSeqId || !Number.isInteger(start) || start < 1,
 				variant: "contained",
 				type: "submit",
 				children: "Submit"
@@ -1934,6 +1972,44 @@ function getStreamIcon(strand, isUpstream, isFlipped) {
 	if (isFlipped) icon = icon === SkipPreviousRoundedIcon ? SkipNextRoundedIcon : SkipPreviousRoundedIcon;
 	return icon;
 }
+function getLeftPx$1(display, feature, block) {
+	const { lgv } = display;
+	const { bpPerPx, offsetPx } = lgv;
+	return block.offsetPx - offsetPx + (block.reversed ? block.end - feature.max : feature.min - block.start) / bpPerPx;
+}
+/**
+* Round a horizontal span to whole pixels. Both edges are rounded, rather than
+* the left edge and width separately, so spans that touch still touch.
+*/
+function roundPxSpan(leftPx, widthPx) {
+	const startPx = Math.round(leftPx);
+	return {
+		startPx,
+		widthPx: Math.round(leftPx + widthPx) - startPx
+	};
+}
+/**
+* Size a canvas's drawing buffer. Assigning width or height clears the canvas
+* even if the value doesn't change, so only assign them when they differ.
+* Call this before drawing so the drawing isn't cleared by a later resize.
+*/
+function setCanvasSize(canvas, width, height) {
+	const canvasWidth = Math.floor(width);
+	const canvasHeight = Math.floor(height);
+	if (canvas.width !== canvasWidth) canvas.width = canvasWidth;
+	if (canvas.height !== canvasHeight) canvas.height = canvasHeight;
+}
+/**
+* Whole-pixel left edge and width of a feature in a block. The width is at
+* least 1px so small features stay visible.
+*/
+function getFeaturePx(display, feature, block) {
+	const { startPx, widthPx } = roundPxSpan(getLeftPx$1(display, feature, block), (feature.max - feature.min) / display.lgv.bpPerPx);
+	return {
+		startPx,
+		widthPx: Math.max(widthPx, 1)
+	};
+}
 function getMinAndMaxPx(feature, refName, regionNumber, lgv) {
 	const minPxInfo = lgv.bpToPx({
 		refName,
@@ -2076,14 +2152,23 @@ function navToFeatureCenter(feature, paddingPct, refSeqLength) {
 }
 //#endregion
 //#region src/util/mouseEventsUtils.ts
-function expandFeatures(feature, newLocation, edge) {
+function expandFeatures(feature, newLocation, edge, session) {
+	const featureId = feature._id;
+	const oldLocation = feature[edge];
 	const changes = [{
-		featureId: feature._id,
-		oldLocation: feature[edge],
+		featureId,
+		oldLocation,
 		newLocation
 	}];
 	const { parent } = feature;
-	if (parent && (edge === "min" && parent[edge] > newLocation || edge === "max" && parent[edge] < newLocation)) changes.push(...expandFeatures(parent, newLocation, edge));
+	if (session ? isCDSFeature(feature, session) : feature.type === "CDS") {
+		for (const exon of parent?.children?.values() ?? []) if ((session ? isExonFeature(exon, session) : exon.type === "exon") && (edge === "min" ? exon.min <= oldLocation && oldLocation < exon.max : exon.min < oldLocation && oldLocation <= exon.max) && (edge === "min" ? newLocation < exon.min : newLocation > exon.max)) changes.push({
+			featureId: exon._id,
+			oldLocation: exon[edge],
+			newLocation
+		});
+	}
+	if (parent && (edge === "min" && parent[edge] > newLocation || edge === "max" && parent[edge] < newLocation)) changes.push(...expandFeatures(parent, newLocation, edge, session));
 	return changes;
 }
 function shrinkFeatures(feature, newLocation, edge, shrinkParent, childIdToSkip) {
@@ -2113,18 +2198,27 @@ function shrinkFeatures(feature, newLocation, edge, shrinkParent, childIdToSkip)
 	}
 	return changes;
 }
-function getPropagatedLocationChanges(feature, newLocation, edge, shrinkParent = false) {
+function getPropagatedLocationChanges(feature, newLocation, edge, shrinkParent = false, session) {
 	const oldLocation = feature[edge];
 	if (newLocation === oldLocation) throw new Error(`New and existing locations are the same: "${newLocation}"`);
 	if (edge === "min") {
 		if (newLocation > oldLocation) return shrinkFeatures(feature, newLocation, edge, shrinkParent);
-		return expandFeatures(feature, newLocation, edge);
+		return expandFeatures(feature, newLocation, edge, session);
 	}
 	if (newLocation < oldLocation) return shrinkFeatures(feature, newLocation, edge, shrinkParent);
-	return expandFeatures(feature, newLocation, edge);
+	return expandFeatures(feature, newLocation, edge, session);
 }
 function isMousePositionWithFeature(mousePosition) {
 	return "feature" in mousePosition;
+}
+/**
+* The 0-based base boundary nearest a position from `lgv.pxToBp()`. Use this
+* rather than the base under the mouse when placing something that sits
+* between bases, like a dragged feature edge.
+*/
+function nearestBaseBoundary(pxToBpResult) {
+	const { end, offset, reversed, start } = pxToBpResult;
+	return Math.round(reversed ? end - offset : start + offset);
 }
 function getMousePosition$1(event, lgv) {
 	const canvas = event.currentTarget;
@@ -2132,12 +2226,14 @@ function getMousePosition$1(event, lgv) {
 	const { left, top } = canvas.getBoundingClientRect();
 	const x = clientX - left;
 	const y = clientY - top;
-	const { coord: bp, index: regionNumber, refName } = lgv.pxToBp(x);
+	const pxToBpResult = lgv.pxToBp(x);
+	const { coord, index: regionNumber, refName } = pxToBpResult;
 	return {
 		x,
 		y,
 		refName,
-		bp,
+		bp: coord - 1,
+		edgeBp: nearestBaseBoundary(pxToBpResult),
 		regionNumber
 	};
 }
@@ -2160,7 +2256,7 @@ function getApolloInternetAccount(session) {
 }
 //#endregion
 //#region src/components/AddAssembly.tsx
-const useStyles$14 = makeStyles()((theme) => ({
+const useStyles$16 = makeStyles()((theme) => ({
 	accordion: {
 		border: `1px solid ${theme.palette.divider}`,
 		"&:not(:last-child)": { borderBottom: 0 }
@@ -2185,7 +2281,7 @@ function checkSumbission(validAsm, sequenceIsEditable, fileType, fastaFile, fast
 	return false;
 }
 function AddAssembly({ changeManager, handleClose, session }) {
-	const { classes } = useStyles$14();
+	const { classes } = useStyles$16();
 	const { internetAccounts } = getRoot(session);
 	const { notify } = session;
 	const apolloInternetAccounts = internetAccounts.filter((ia) => ia.type === "ApolloInternetAccount");
@@ -2786,6 +2882,11 @@ function AddAssemblyAliases({ changeManager, handleClose, session }) {
 }
 //#endregion
 //#region src/util/sequenceUtils.ts
+/**
+* `defaultCodonTable` widened so it can be indexed by any string. Codons not in
+* the table (e.g. ones containing ambiguous bases like "NNA") yield undefined.
+*/
+const codonTable = defaultCodonTable;
 const START_CODON = "ATG";
 const STOP_CODONS = /* @__PURE__ */ new Set([
 	"TAA",
@@ -3020,6 +3121,23 @@ var LocalDriver = class extends BackendDriver {
 		for await (const cursor of tx.objectStore(checkStoreName).index("min").iterate(IDBKeyRange.upperBound(end, true))) if (cursor.value.end > start) checkResults.push(cursor.value);
 		return [features, checkResults];
 	}
+	async getFeatureDensity(region, binSize, featureTypes = []) {
+		const { assemblyName, end, refName, start } = region;
+		const db = await openDb(assemblyName, (await this.getRegions(assemblyName)).map((r) => r.refName));
+		const aligned = alignBins(start, end, binSize);
+		const alignedEnd = aligned.start + aligned.nBins * binSize;
+		const intervals = [];
+		const tx = db.transaction(`features-${refName}`);
+		for await (const cursor of tx.store.index("min").iterate(IDBKeyRange.upperBound(alignedEnd, true))) {
+			const { max, min, strand, type } = cursor.value;
+			if (max >= aligned.start && (featureTypes.length === 0 || featureTypes.includes(type))) intervals.push({
+				min,
+				max,
+				strand
+			});
+		}
+		return computeFeatureDensity(intervals, start, end, binSize);
+	}
 	async getSequence(region) {
 		const { assemblyManager } = getSession(this.clientStore);
 		const assembly = await assemblyManager.waitForAssembly(region.assemblyName);
@@ -3220,9 +3338,10 @@ const changeHandlers = {
 			if (parentFeatureId) {
 				let parentFeature = dataStore.getFeature(parentFeatureId);
 				if (!parentFeature) {
+					const refName = dataStore.assemblies.get(assembly)?.refSeqs.get(addedFeature.refSeq)?.name ?? addedFeature.refSeq;
 					await dataStore.loadFeatures([{
 						assemblyName: assembly,
-						refName: addedFeature.refSeq,
+						refName,
 						start: addedFeature.min,
 						end: addedFeature.max
 					}]);
@@ -3432,6 +3551,7 @@ var ChangeManager = class {
 				this.undoneChanges = [];
 			}
 		}
+		this.dataStore.incrementChangeCount();
 		if (updateJobsManager) jobsManager.done(job);
 		setChangeInProgress(false);
 	}
@@ -3525,6 +3645,27 @@ var CollaborationServerDriver = class extends BackendDriver {
 			throw new Error(errorMessage);
 		}
 		this.checkSocket(assemblyName, refName, internetAccount);
+		return response.json();
+	}
+	async getFeatureDensity(region, binSize, featureTypes = []) {
+		const { assemblyName, end, refName, start } = region;
+		const refSeqEntry = (await this.getRefSeqMapping(assemblyName)).get(refName);
+		if (!refSeqEntry) throw new Error(`Could not find refSeq "${refName}"`);
+		const internetAccount = this.clientStore.getInternetAccount(assemblyName);
+		const url = new URL("features/getFeatureDensity", internetAccount.baseURL);
+		const searchParams = new URLSearchParams({
+			refSeq: refSeqEntry.id,
+			start: String(start),
+			end: String(end),
+			binSize: String(binSize)
+		});
+		for (const featureType of featureTypes) searchParams.append("type", featureType);
+		url.search = searchParams.toString();
+		const response = await this.fetch(internetAccount, url.toString());
+		if (!response.ok) {
+			const errorMessage = await createFetchErrorMessage(response, "getFeatureDensity failed");
+			throw new Error(errorMessage);
+		}
 		return response.json();
 	}
 	/**
@@ -4163,8 +4304,12 @@ function DownloadGFF3({ handleClose, session, assembly: assemblyName }) {
 	async function onSubmit(event) {
 		event.preventDefault();
 		setErrorMessage("");
-		await (internetAccountConfigId ? exportFromCollaborationServer(internetAccountConfigId) : downloadAssemblyGFF3(assemblyName));
-		handleClose();
+		try {
+			await (internetAccountConfigId ? exportFromCollaborationServer(internetAccountConfigId) : downloadAssemblyGFF3(assemblyName));
+			handleClose();
+		} catch (error) {
+			setErrorMessage(error instanceof Error ? error.message : String(error));
+		}
 	}
 	async function exportFromCollaborationServer(internetAccountConfigId) {
 		const internetAccount = getInternetAccount(assemblyName, internetAccountConfigId);
@@ -4175,11 +4320,7 @@ function DownloadGFF3({ handleClose, session, assembly: assemblyName }) {
 			locationType: "UriLocation",
 			uri
 		})(uri, { method: "GET" });
-		if (!response.ok) {
-			const newErrorMessage = await createFetchErrorMessage(response, "Error when exporting ID");
-			setErrorMessage(newErrorMessage);
-			return;
-		}
+		if (!response.ok) throw new Error(await createFetchErrorMessage(response, "Error when exporting ID"));
 		const { exportID } = await response.json();
 		const exportURL = new URL("export", internetAccount.baseURL);
 		exportURL.search = new URLSearchParams({
@@ -5538,7 +5679,7 @@ const MergeTranscripts = observer(function MergeTranscripts({ changeManager, han
 });
 //#endregion
 //#region src/components/ViewChangeLog.tsx
-const useStyles$13 = makeStyles()((theme) => ({ changeTextarea: {
+const useStyles$15 = makeStyles()((theme) => ({ changeTextarea: {
 	fontFamily: "monospace",
 	width: 600,
 	resize: "none",
@@ -5567,7 +5708,7 @@ function buildFiltersFromModel(filterModel) {
 	return filters;
 }
 function ViewChangeLog({ handleClose, session, assembly: assemblyId }) {
-	const { classes } = useStyles$13();
+	const { classes } = useStyles$15();
 	const [errorMessage, setErrorMessage] = useState();
 	const [displayGridData, setDisplayGridData] = useState([]);
 	const [rowCount, setRowCount] = useState(0);
@@ -6320,7 +6461,7 @@ function Microsoft(props) {
 }
 //#endregion
 //#region src/ApolloInternetAccount/components/LoginButtons.tsx
-const useStyles$12 = makeStyles()((theme) => ({ loginButton: {
+const useStyles$14 = makeStyles()((theme) => ({ loginButton: {
 	marginBottom: theme.spacing(1),
 	width: "220px",
 	height: "40px",
@@ -6330,7 +6471,7 @@ const useStyles$12 = makeStyles()((theme) => ({ loginButton: {
 	padding: "3px 12px"
 } }));
 function GoogleButton(props) {
-	const { classes } = useStyles$12();
+	const { classes } = useStyles$14();
 	const { message } = props;
 	return /* @__PURE__ */ jsx(Button, {
 		className: classes.loginButton,
@@ -6341,7 +6482,7 @@ function GoogleButton(props) {
 	});
 }
 function MicrosoftButton(props) {
-	const { classes } = useStyles$12();
+	const { classes } = useStyles$14();
 	const { message } = props;
 	return /* @__PURE__ */ jsx(Button, {
 		className: classes.loginButton,
@@ -6352,7 +6493,7 @@ function MicrosoftButton(props) {
 	});
 }
 function GuestButton(props) {
-	const { classes } = useStyles$12();
+	const { classes } = useStyles$14();
 	const { message } = props;
 	return /* @__PURE__ */ jsx(Button, {
 		className: classes.loginButton,
@@ -6363,7 +6504,7 @@ function GuestButton(props) {
 	});
 }
 function GenericButton(props) {
-	const { classes } = useStyles$12();
+	const { classes } = useStyles$14();
 	const { message } = props;
 	return /* @__PURE__ */ jsx(Button, {
 		className: classes.loginButton,
@@ -6375,12 +6516,12 @@ function GenericButton(props) {
 }
 //#endregion
 //#region src/ApolloInternetAccount/components/AuthTypeSelector.tsx
-const useStyles$11 = makeStyles()((theme) => ({ divider: {
+const useStyles$13 = makeStyles()((theme) => ({ divider: {
 	marginTop: theme.spacing(4),
 	marginBottom: theme.spacing(5)
 } }));
 const AuthTypeSelector = ({ baseURL, handleClose, name }) => {
-	const { classes } = useStyles$11();
+	const { classes } = useStyles$13();
 	const [errorMessage, setErrorMessage] = useState("");
 	const [loginTypes, setLoginTypes] = useState(null);
 	useEffect(() => {
@@ -7178,46 +7319,122 @@ const stateModelFactory$3 = (configSchema) => {
 	}));
 };
 //#endregion
-//#region src/ApolloRefNameAliasAdapter/ApolloRefNameAliasAdapter.ts
-function isApolloRefNameAliasMessage(data) {
-	return typeof data === "object" && data !== null && "apollo" in data && data.apollo === true && "refNameAliases" in data;
+//#region src/mainThreadRequest.ts
+/** How long a worker waits for the main thread to answer a request */
+const MAIN_THREAD_REQUEST_TIMEOUT_MS = 2e4;
+/** How often a pending request checks whether JBrowse has cancelled it */
+const STOP_TOKEN_CHECK_INTERVAL_MS = 1e3;
+/**
+* Whether this code is running in a web worker. Checked on each call rather
+* than once at module load, so tests can control it.
+*/
+function isInWebWorker() {
+	return "WorkerGlobalScope" in globalThis;
 }
-const isInWebWorker$1 = typeof sessionStorage === "undefined";
+function isMainThreadReply(data) {
+	return typeof data === "object" && data !== null && "apollo" in data && data.apollo === true && "messageId" in data && typeof data.messageId === "string";
+}
+/** Reply handlers for the pending requests, keyed by message ID */
+function toError(reason) {
+	return reason instanceof Error ? reason : new Error(String(reason));
+}
+const pendingRequests = /* @__PURE__ */ new Map();
+/**
+* One listener handles the replies for every pending request. It's only
+* registered while at least one request is waiting.
+*/
+function handleReply(event) {
+	const { data } = event;
+	if (!isMainThreadReply(data)) return;
+	pendingRequests.get(data.messageId)?.(data);
+}
+/**
+* Ask the main thread to run `method` and wait for its reply. Only call this
+* from a web worker.
+*
+* The request is cleaned up however it ends: a reply, an error reply, the
+* timeout, `signal` aborting, `stopToken` being stopped, or `rpcServer.emit`
+* throwing. Cancelling only stops the worker from waiting; the main thread
+* still finishes the request and its reply is ignored.
+*/
+function requestFromMainThread(method, params, { signal, stopToken } = {}) {
+	return new Promise((resolve, reject) => {
+		try {
+			signal?.throwIfAborted();
+			checkStopToken(stopToken);
+		} catch (error) {
+			reject(toError(error));
+			return;
+		}
+		const messageId = nanoid();
+		const settle = () => {
+			clearTimeout(timeoutId);
+			clearInterval(stopTokenIntervalId);
+			signal?.removeEventListener("abort", onAbort);
+			pendingRequests.delete(messageId);
+			if (pendingRequests.size === 0) removeEventListener("message", handleReply);
+		};
+		const fail = (reason) => {
+			settle();
+			reject(toError(reason));
+		};
+		const onAbort = () => {
+			fail(signal?.reason);
+		};
+		const timeoutId = setTimeout(() => {
+			fail(/* @__PURE__ */ new Error(`Timed out waiting for the main thread to ${method}`));
+		}, MAIN_THREAD_REQUEST_TIMEOUT_MS);
+		const stopTokenIntervalId = stopToken === void 0 ? void 0 : setInterval(() => {
+			try {
+				checkStopToken(stopToken);
+			} catch (error) {
+				fail(error);
+			}
+		}, STOP_TOKEN_CHECK_INTERVAL_MS);
+		if (pendingRequests.size === 0) addEventListener("message", handleReply);
+		pendingRequests.set(messageId, (reply) => {
+			settle();
+			if ("error" in reply) {
+				reject(new Error(reply.error));
+				return;
+			}
+			resolve(reply);
+		});
+		signal?.addEventListener("abort", onAbort);
+		try {
+			rpcServer.emit("apollo", {
+				apollo: true,
+				method,
+				messageId,
+				...params
+			});
+		} catch (error) {
+			fail(error);
+		}
+	});
+}
+//#endregion
+//#region src/ApolloRefNameAliasAdapter/ApolloRefNameAliasAdapter.ts
 var RefNameAliasAdapter = class extends BaseAdapter {
 	refNameAliasesP;
+	/**
+	* In a worker, concurrent callers share one request to the main thread. A
+	* failed request isn't cached, so the next call tries again.
+	*/
 	async getRefNameAliases() {
-		if (this.refNameAliasesP) return this.refNameAliasesP;
 		const assemblyId = readConfObject(this.config, "assemblyId");
-		if (!isInWebWorker$1) {
+		if (!isInWebWorker()) {
 			const dataStore = (this.pluginManager?.rootModel?.session)?.apolloDataStore;
 			if (!dataStore) throw new Error("No Apollo data store found");
 			const backendDriver = dataStore.getBackendDriver(assemblyId);
 			if (!backendDriver) throw new Error("No backend driver found");
-			return await backendDriver.getRefNameAliases(assemblyId);
+			return backendDriver.getRefNameAliases(assemblyId);
 		}
-		const refNameAliases = new Promise((resolve, reject) => {
-			const timeoutId = setTimeout(() => {
-				reject(/* @__PURE__ */ new Error("timeout"));
-			}, 2e4);
-			const messageId = nanoid();
-			const messageListener = (event) => {
-				const data = event.data;
-				if (!isApolloRefNameAliasMessage(data)) return;
-				if (data.messageId !== messageId) return;
-				clearTimeout(timeoutId);
-				removeEventListener("message", messageListener);
-				resolve(data.refNameAliases);
-			};
-			addEventListener("message", messageListener);
-			rpcServer.emit("apollo", {
-				apollo: true,
-				method: "getRefNameAliases",
-				assembly: assemblyId,
-				messageId
-			});
+		this.refNameAliasesP ??= requestFromMainThread("getRefNameAliases", { assembly: assemblyId }).then(({ refNameAliases }) => refNameAliases, (error) => {
+			this.refNameAliasesP = void 0;
+			throw error;
 		});
-		this.refNameAliasesP = refNameAliases;
-		return refNameAliases;
+		return this.refNameAliasesP;
 	}
 	freeResources() {}
 };
@@ -7243,57 +7460,41 @@ function installApolloRefNameAliasAdapter(pluginManager) {
 }
 //#endregion
 //#region src/ApolloSequenceAdapter/ApolloSequenceAdapter.ts
-function isApolloMessageData$1(data) {
-	return typeof data === "object" && data !== null && "apollo" in data && data.apollo === true;
-}
-const isInWebWorker = typeof sessionStorage === "undefined";
 var ApolloSequenceAdapter = class extends BaseSequenceAdapter {
-	regions;
+	regionsP;
 	async getRefNames() {
 		return (await this.getRegions()).map((regions) => regions.refName);
 	}
-	async getRegions() {
-		if (this.regions) return this.regions;
-		const assemblyId = readConfObject(this.config, "assemblyId");
-		if (!isInWebWorker) {
-			const dataStore = (this.pluginManager?.rootModel?.session)?.apolloDataStore;
-			if (!dataStore) throw new Error("No Apollo data store found");
-			const backendDriver = dataStore.getBackendDriver(assemblyId);
-			if (!backendDriver) throw new Error("No backend driver found");
-			const regions = await backendDriver.getRegions(assemblyId);
-			this.regions = regions;
-			return regions;
-		}
-		const regions = await new Promise((resolve, reject) => {
-			const timeoutId = setTimeout(() => {
-				reject("timeout");
-			}, 2e4);
-			const messageId = nanoid();
-			const messageListener = (event) => {
-				const { data } = event;
-				if (!isApolloMessageData$1(data)) return;
-				if (data.messageId !== messageId) return;
-				clearTimeout(timeoutId);
-				removeEventListener("message", messageListener);
-				resolve(data.regions);
-			};
-			addEventListener("message", messageListener);
-			globalThis.rpcServer.emit("apollo", {
-				apollo: true,
-				method: "getRegions",
-				assembly: assemblyId,
-				messageId
-			});
+	/**
+	* Concurrent callers share one request. A failed request isn't cached, so
+	* the next call tries again.
+	*/
+	getRegions() {
+		this.regionsP ??= this.fetchRegions().catch((error) => {
+			this.regionsP = void 0;
+			throw error;
 		});
-		this.regions = regions;
+		return this.regionsP;
+	}
+	async fetchRegions() {
+		const assemblyId = readConfObject(this.config, "assemblyId");
+		if (!isInWebWorker()) return this.getBackendDriver(assemblyId).getRegions(assemblyId);
+		const { regions } = await requestFromMainThread("getRegions", { assembly: assemblyId });
 		return regions;
+	}
+	getBackendDriver(assemblyId) {
+		const dataStore = (this.pluginManager?.rootModel?.session)?.apolloDataStore;
+		if (!dataStore) throw new Error("No Apollo data store found");
+		const backendDriver = dataStore.getBackendDriver(assemblyId);
+		if (!backendDriver) throw new Error("No backend driver found");
+		return backendDriver;
 	}
 	/**
 	* Fetch features for a certain region
 	* @param param -
 	* @returns Observable of Feature objects in the region
 	*/
-	getFeatures(region) {
+	getFeatures(region, opts) {
 		const { end, refName, start } = region;
 		const assemblyId = readConfObject(this.config, "assemblyId");
 		const regionWithAssemblyName = {
@@ -7301,57 +7502,18 @@ var ApolloSequenceAdapter = class extends BaseSequenceAdapter {
 			assemblyName: assemblyId
 		};
 		return ObservableCreate(async (observer) => {
-			if (!isInWebWorker) {
-				const dataStore = (this.pluginManager?.rootModel?.session)?.apolloDataStore;
-				if (!dataStore) {
-					observer.error("No Apollo data store found");
-					return;
-				}
-				const backendDriver = dataStore.getBackendDriver(assemblyId);
-				if (!backendDriver) {
-					observer.error("No backend driver found");
-					return;
-				}
-				const region = (await backendDriver.getRegions(regionWithAssemblyName.assemblyName)).find((region) => region.refName === regionWithAssemblyName.refName);
-				if (!region) {
-					observer.error("Cannot get region");
-					return;
-				}
-				if (regionWithAssemblyName.end > region.end) regionWithAssemblyName.end = region.end;
-				const { seq } = await backendDriver.getSequence(regionWithAssemblyName);
-				observer.next(new SimpleFeature({
-					id: `${refName} ${start}-${end}`,
-					data: {
-						refName,
-						start,
-						end,
-						seq
-					}
-				}));
-				observer.complete();
-				return;
+			let seq;
+			if (isInWebWorker()) ({sequence: seq} = await requestFromMainThread("getSequence", { region: regionWithAssemblyName }, {
+				signal: opts?.signal,
+				stopToken: opts?.stopToken
+			}));
+			else {
+				const backendDriver = this.getBackendDriver(assemblyId);
+				const fullRegion = (await backendDriver.getRegions(assemblyId)).find((r) => r.refName === refName);
+				if (!fullRegion) throw new Error("Cannot get region");
+				if (regionWithAssemblyName.end > fullRegion.end) regionWithAssemblyName.end = fullRegion.end;
+				({seq} = await backendDriver.getSequence(regionWithAssemblyName));
 			}
-			const seq = await new Promise((resolve, reject) => {
-				const timeoutId = setTimeout(() => {
-					reject("timeout");
-				}, 2e4);
-				const messageId = nanoid();
-				const messageListener = (event) => {
-					const { data } = event;
-					if (!isApolloMessageData$1(data)) return;
-					if (data.messageId !== messageId) return;
-					clearTimeout(timeoutId);
-					removeEventListener("message", messageListener);
-					resolve(data.sequence);
-				};
-				addEventListener("message", messageListener);
-				globalThis.rpcServer.emit("apollo", {
-					apollo: true,
-					method: "getSequence",
-					region: regionWithAssemblyName,
-					messageId
-				});
-			});
 			observer.next(new SimpleFeature({
 				id: `${refName} ${start}-${end}`,
 				data: {
@@ -7478,12 +7640,12 @@ function installApolloTextSearchAdapter(pluginManager) {
 }
 //#endregion
 //#region src/FeatureDetailsWidget/AttributeKey.tsx
-const useStyles$10 = makeStyles()((theme) => ({ attributeKey: {
+const useStyles$12 = makeStyles()((theme) => ({ attributeKey: {
 	fontWeight: "bold",
 	marginRight: theme.spacing(2)
 } }));
 function AttributeKey({ attributeKey: key }) {
-	const { classes } = useStyles$10();
+	const { classes } = useStyles$12();
 	const startsWithCapital = /^[A-Z]/.test(key);
 	let displayKey = key;
 	let titleText;
@@ -7699,13 +7861,13 @@ function DefaultAttributeViewer({ values }) {
 }
 //#endregion
 //#region src/FeatureDetailsWidget/Attributes.tsx
-const useStyles$9 = makeStyles()((theme) => ({ list: {
+const useStyles$11 = makeStyles()((theme) => ({ list: {
 	"li:nth-of-type(odd)": { backgroundColor: theme.palette.action.focus },
 	"li:nth-of-type(even)": { backgroundColor: theme.palette.action.hover }
 } }));
 const Attributes = observer(function Attributes({ assembly, editable, feature, session }) {
 	const { pluginManager } = getEnv(session);
-	const { classes } = useStyles$9();
+	const { classes } = useStyles$11();
 	const [anchorEl, setAnchorEl] = useState(null);
 	const [selectedKey, setSelectedKey] = useState(null);
 	const [editingKey, setEditingKey] = useState(null);
@@ -8063,7 +8225,7 @@ const FeatureDetailsNavigation = observer(function FeatureDetailsNavigation(prop
 				parent.type,
 				getFeatureNameOrId$1(parent),
 				" (",
-				parent.min,
+				parent.min + 1,
 				"..",
 				parent.max,
 				")"
@@ -8082,7 +8244,7 @@ const FeatureDetailsNavigation = observer(function FeatureDetailsNavigation(prop
 					child.type,
 					getFeatureNameOrId$1(child),
 					" (",
-					child.min,
+					child.min + 1,
 					"..",
 					child.max,
 					")"
@@ -8193,7 +8355,7 @@ function getSequenceSegments(segmentType, feature, getSequence) {
 			let protein = "";
 			for (let i = 0; i < wholeSequence.length; i += 3) {
 				const codonSeq = wholeSequence.slice(i, i + 3).toUpperCase();
-				protein += defaultCodonTable[codonSeq] || "&";
+				protein += codonTable[codonSeq] ?? "&";
 			}
 			segments.push({
 				type: "protein",
@@ -8294,13 +8456,13 @@ function SequenceViewer({ locationIntervals, refSeqName, sequenceSegments, stran
 }
 //#endregion
 //#region src/FeatureDetailsWidget/ApolloFeatureDetailsWidget.tsx
-const useStyles$8 = makeStyles()((theme) => ({ root: { padding: theme.spacing(2) } }));
+const useStyles$10 = makeStyles()((theme) => ({ root: { padding: theme.spacing(2) } }));
 const ApolloFeatureDetailsWidget = observer(function ApolloFeatureDetailsWidget(props) {
 	const { model } = props;
 	const { assembly, feature, refName } = model;
 	const session = getSession(model);
 	const currentAssembly = session.apolloDataStore.assemblies.get(assembly);
-	const { classes } = useStyles$8();
+	const { classes } = useStyles$10();
 	const [panelState, setPanelState] = useState(["attributes"]);
 	useEffect(() => {
 		setPanelState(["attributes"]);
@@ -8494,12 +8656,8 @@ const TranscriptSequence = observer(function TranscriptSequence({ assembly, feat
 		"protein"
 	] : defaultSequenceOptions;
 	const effectiveSelectedOption = sequenceOptions.includes(selectedOption) ? selectedOption : defaultSelectedOption;
-	const sequenceSegments = useMemo(() => refData ? getSequenceSegments(effectiveSelectedOption, feature, (min, max) => refData.getSequence(min, max)) : [], [
-		refData,
-		feature,
-		effectiveSelectedOption
-	]);
-	const locationIntervals = useMemo(() => getLocationIntervals(sequenceSegments), [sequenceSegments]);
+	const sequenceSegments = refData ? getSequenceSegments(effectiveSelectedOption, feature, (min, max) => refData.getSequence(min, max)) : [];
+	const locationIntervals = getLocationIntervals(sequenceSegments);
 	if (!(currentAssembly && refData)) return null;
 	if (!featureTypeOntology) throw new Error("featureTypeOntology is undefined");
 	if (!featureTypeOntology.isTypeOf(feature.type, "transcript")) return null;
@@ -8548,7 +8706,7 @@ function Translation({ changeInProgress, cdsLocations, refData, strand, updateCD
 	const proteinSequence = [];
 	for (let codonGenomicPos = 0; codonGenomicPos < cdsSequence.length; codonGenomicPos += 3) {
 		const codonSeq = cdsSequence.slice(codonGenomicPos, codonGenomicPos + 3).toUpperCase();
-		proteinSequence.push(defaultCodonTable[codonSeq] || "&");
+		proteinSequence.push(codonTable[codonSeq] ?? "&");
 	}
 	const onCopyClick = () => {
 		const seqDiv = seqRef.current;
@@ -9257,7 +9415,7 @@ const TranscriptWidgetSummary = observer(function TranscriptWidgetSummary(props)
 			/* @__PURE__ */ jsxs(TableRow, { children: [/* @__PURE__ */ jsx(HeaderTableCell, { children: "Location" }), /* @__PURE__ */ jsxs(TableCell, { children: [
 				props.refName,
 				":",
-				feature.min,
+				feature.min + 1,
 				"..",
 				feature.max
 			] })] }),
@@ -9267,7 +9425,7 @@ const TranscriptWidgetSummary = observer(function TranscriptWidgetSummary(props)
 });
 //#endregion
 //#region src/FeatureDetailsWidget/ApolloTranscriptDetailsWidget.tsx
-const useStyles$7 = makeStyles()((theme) => ({ root: { padding: theme.spacing(2) } }));
+const useStyles$9 = makeStyles()((theme) => ({ root: { padding: theme.spacing(2) } }));
 const StyledAccordionSummary = styled(AccordionSummary)(() => ({
 	minHeight: 30,
 	maxHeight: 30,
@@ -9280,7 +9438,7 @@ function NoOpCustomComponent(_props) {
 	return null;
 }
 const ApolloTranscriptDetailsWidget = observer(function ApolloTranscriptDetails(props) {
-	const { classes } = useStyles$7();
+	const { classes } = useStyles$9();
 	const DEFAULT_PANELS = ["summary", "location"];
 	const [panelState, setPanelState] = useState(DEFAULT_PANELS);
 	const { model } = props;
@@ -9474,8 +9632,508 @@ const ApolloTranscriptDetailsWidget = observer(function ApolloTranscriptDetails(
 	});
 });
 //#endregion
+//#region src/HelpWidget/ApolloHelpWidget.tsx
+const websiteUrl = "https://apollo.jbrowse.org";
+const githubUrl = "https://github.com/GMOD/Apollo3";
+const contactEmail = "team@apollo.jbrowse.org";
+const guideSections = [
+	{
+		title: "Learn Apollo",
+		links: [
+			{
+				label: "User guide",
+				href: `${websiteUrl}/docs/user-guide`,
+				description: "step-by-step instructions for creating and editing gene models"
+			},
+			{
+				label: "Evidence tracks",
+				href: `${websiteUrl}/docs/multi-user/guides/evidence-tracks`,
+				description: "show RNA-seq, gene models, synteny, and other evidence, and copy features into your annotations"
+			},
+			{
+				label: "Documentation",
+				href: `${websiteUrl}/docs`,
+				description: "everything else"
+			}
+		]
+	},
+	{
+		title: "Set up Apollo",
+		links: [{
+			label: "Annotate on your own",
+			href: `${websiteUrl}/docs/single-user`,
+			description: "in JBrowse Web or JBrowse Desktop, with no server"
+		}, {
+			label: "Annotate as a team",
+			href: `${websiteUrl}/docs/multi-user`,
+			description: "on a shared collaboration server where edits appear for everyone in real time"
+		}]
+	},
+	{
+		title: "Automate and extend",
+		links: [
+			{
+				label: "Command-line tool",
+				href: `${websiteUrl}/docs/multi-user/guides/cli`
+			},
+			{
+				label: "REST API",
+				href: `${websiteUrl}/docs/multi-user/guides/rest-api`
+			},
+			{
+				label: "Developer guide",
+				href: `${websiteUrl}/docs/developer-guide`,
+				description: "write client and server plugins"
+			}
+		]
+	}
+];
+const citations = [
+	{
+		label: "Apollo 3 (preprint)",
+		reference: "Stevens, G. J., et al. (2026). Apollo 3: Multi-Species Genome Curation. bioRxiv.",
+		doi: "10.64898/2026.06.08.730970"
+	},
+	{
+		label: "Apollo",
+		reference: "Dunn, N. A., et al. (2019). Apollo: Democratizing genome annotation. PLOS Computational Biology, 15(2), e1006790.",
+		doi: "10.1371/journal.pcbi.1006790"
+	},
+	{
+		label: "JBrowse 2, which Apollo is built on",
+		reference: "Diesh, C., et al. (2023). JBrowse 2: a modular genome browser with views of synteny and structural variation. Genome Biology, 24(1), 74.",
+		doi: "10.1186/s13059-023-02914-z"
+	}
+];
+const useStyles$8 = makeStyles()((theme) => ({
+	root: { margin: theme.spacing(2) },
+	subtitle: { margin: theme.spacing(1) },
+	divider: { margin: theme.spacing(2, 0) },
+	sectionTitle: { marginTop: theme.spacing(1) },
+	list: {
+		marginTop: theme.spacing(.5),
+		paddingLeft: theme.spacing(3),
+		"& li": { marginBottom: theme.spacing(.5) }
+	},
+	paragraph: { marginBottom: theme.spacing(1.5) },
+	citation: { marginBottom: theme.spacing(1) }
+}));
+function LinkList({ links }) {
+	const { classes } = useStyles$8();
+	return /* @__PURE__ */ jsx("ul", {
+		className: classes.list,
+		children: links.map(({ description, href, label }) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsxs(Typography, {
+			variant: "body2",
+			children: [/* @__PURE__ */ jsx(ExternalLink, {
+				href,
+				children: label
+			}), description ? `: ${description}` : null]
+		}) }, href))
+	});
+}
+const ApolloHelpWidget = observer(function ApolloHelpWidget({ model }) {
+	const { classes } = useStyles$8();
+	const { version: jbrowseVersion } = getSession(model);
+	return /* @__PURE__ */ jsxs("div", {
+		className: classes.root,
+		children: [
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "h4",
+				align: "center",
+				children: "Apollo"
+			}),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "subtitle1",
+				align: "center",
+				color: "textSecondary",
+				children: "Collaborative, customizable, and scalable graphical genome annotation"
+			}),
+			/* @__PURE__ */ jsxs(Typography, {
+				variant: "h6",
+				align: "center",
+				className: classes.subtitle,
+				children: [
+					"Version",
+					" ",
+					/* @__PURE__ */ jsx(ExternalLink, {
+						href: `${githubUrl}/releases/tag/v${version}`,
+						children: version
+					})
+				]
+			}),
+			jbrowseVersion ? /* @__PURE__ */ jsxs(Typography, {
+				variant: "body2",
+				align: "center",
+				color: "textSecondary",
+				children: ["Running in JBrowse ", jbrowseVersion]
+			}) : null,
+			/* @__PURE__ */ jsx(Divider, { className: classes.divider }),
+			/* @__PURE__ */ jsxs(Typography, {
+				variant: "body2",
+				className: classes.paragraph,
+				children: [
+					"Apollo is a genome annotation editor built as a plugin for",
+					" ",
+					/* @__PURE__ */ jsx(ExternalLink, {
+						href: "https://jbrowse.org/jb2/",
+						children: "JBrowse 2"
+					}),
+					". Create and refine gene models directly on any genome, next to any evidence JBrowse can display. Work on your own in a web browser or on the desktop, or with a team in real time on a shared server."
+				]
+			}),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "body2",
+				className: classes.paragraph,
+				children: "As you edit, Apollo shows each transcript's protein translation and flags problems such as missing or internal stop codons and unexpected splice sites. Import and export GFF3 and FASTA to move annotations in and out."
+			}),
+			/* @__PURE__ */ jsxs(Typography, {
+				variant: "body2",
+				children: [
+					"Learn more on the",
+					" ",
+					/* @__PURE__ */ jsx(ExternalLink, {
+						href: websiteUrl,
+						children: "Apollo website"
+					}),
+					" or see the source on ",
+					/* @__PURE__ */ jsx(ExternalLink, {
+						href: githubUrl,
+						children: "GitHub"
+					}),
+					"."
+				]
+			}),
+			/* @__PURE__ */ jsx(Divider, { className: classes.divider }),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "h6",
+				children: "Get help"
+			}),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "body2",
+				children: "Please include the version numbers above when asking questions or reporting bugs. Thanks!"
+			}),
+			/* @__PURE__ */ jsx(LinkList, { links: [
+				{
+					label: "Question & answer forum",
+					href: `${githubUrl}/discussions`,
+					description: "ask the Apollo developers and community"
+				},
+				{
+					label: "Report a bug",
+					href: `${githubUrl}/issues/new/choose`
+				},
+				{
+					label: contactEmail,
+					href: `mailto:${contactEmail}`,
+					description: "email the Apollo team"
+				}
+			] }),
+			/* @__PURE__ */ jsx(Divider, { className: classes.divider }),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "h6",
+				children: "Guides"
+			}),
+			guideSections.map(({ links, title }) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx(Typography, {
+				variant: "subtitle2",
+				className: classes.sectionTitle,
+				children: title
+			}), /* @__PURE__ */ jsx(LinkList, { links })] }, title)),
+			/* @__PURE__ */ jsx(Divider, { className: classes.divider }),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "h6",
+				children: "Cite Apollo"
+			}),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "body2",
+				className: classes.paragraph,
+				children: "If you use Apollo in your research, please cite:"
+			}),
+			citations.map(({ doi, label, reference }) => /* @__PURE__ */ jsxs("div", {
+				className: classes.citation,
+				children: [/* @__PURE__ */ jsx(Typography, {
+					variant: "subtitle2",
+					children: label
+				}), /* @__PURE__ */ jsxs(Typography, {
+					variant: "body2",
+					children: [
+						reference,
+						" ",
+						/* @__PURE__ */ jsxs(ExternalLink, {
+							href: `https://doi.org/${doi}`,
+							children: ["https://doi.org/", doi]
+						})
+					]
+				})]
+			}, doi)),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "body2",
+				children: /* @__PURE__ */ jsx(ExternalLink, {
+					href: `${websiteUrl}/#cite`,
+					children: "Full citations and BibTeX"
+				})
+			}),
+			/* @__PURE__ */ jsx(Divider, { className: classes.divider }),
+			/* @__PURE__ */ jsx(Typography, {
+				variant: "h6",
+				children: "Stay up to date"
+			}),
+			/* @__PURE__ */ jsx(LinkList, { links: [{
+				label: "Release notes",
+				href: `${websiteUrl}/blog`
+			}, {
+				label: "Newsletter",
+				href: `${websiteUrl}/#apollo-newsletter`,
+				description: "get updates about new Apollo releases"
+			}] })
+		]
+	});
+});
+//#endregion
+//#region src/HelpWidget/index.ts
+const configSchema$3 = ConfigurationSchema("ApolloHelpWidget", {});
+const stateModel = types.model("ApolloHelpWidget", {
+	id: ElementId,
+	type: types.literal("ApolloHelpWidget")
+});
+function installApolloHelpWidget(pluginManager) {
+	pluginManager.addWidgetType(() => new WidgetType({
+		name: "ApolloHelpWidget",
+		heading: "Apollo help",
+		configSchema: configSchema$3,
+		stateModel,
+		ReactComponent: ApolloHelpWidget
+	}));
+}
+//#endregion
+//#region src/util/featureDensityModel.ts
+/** Width of a histogram bin, in px, before rounding the bin size in bp */
+const minBinWidthPx = 3;
+/** Don't summarize views with more regions than this */
+const maxDensityRegions = 50;
+/** How many sets of regions known to be under the limit to remember */
+const maxUnderLimitEntries = 10;
+/** Configuration slots for displays that use {@link FeatureDensityMixin} */
+const featureDensityConfigSlots = {
+	thresholdMode: {
+		model: types.enumeration("ThresholdMode", ["auto", "fixed"]),
+		type: "stringEnum",
+		defaultValue: "auto",
+		description: "When to show a feature density histogram instead of features. `auto` shows features when there are at most `maxFeatureCount` in view. `fixed` shows features when zoomed in to less than `zoomThreshold` bp per px."
+	},
+	maxFeatureCount: {
+		type: "number",
+		defaultValue: 200,
+		description: "In `auto` mode, the most features to show before showing a feature density histogram instead"
+	},
+	zoomThreshold: {
+		type: "number",
+		defaultValue: 200,
+		description: "In `fixed` mode, the bp per px at or above which a feature density histogram is shown instead of features"
+	}
+};
+/** The display this is mixed into provides the configuration */
+function getDisplayConf(self, slotName) {
+	return getConf(self, slotName);
+}
+function regionsKey(regions, binSize, featureTypes, changeCount) {
+	return JSON.stringify([
+		changeCount,
+		binSize,
+		featureTypes.toSorted(),
+		regions.map(({ assemblyName, end, refName, start }) => [
+			assemblyName,
+			refName,
+			start,
+			end
+		])
+	]);
+}
+/**
+* Whether a count of `countedTypes` is at least as large as a count of
+* `featureTypes` would be. An empty list means all types.
+*/
+function countsAtLeast(countedTypes, featureTypes) {
+	if (countedTypes.length === 0) return true;
+	return featureTypes.length > 0 && featureTypes.every((type) => countedTypes.includes(type));
+}
+/**
+* Decides whether a display renders features or a feature density histogram.
+*
+* In "auto" mode, it asks the backend how many features are in view and shows
+* features if there are at most `maxFeatureCount`. In "fixed" mode, it shows
+* features when zoomed in to less than `zoomThreshold` bp per px.
+*/
+function FeatureDensityMixin() {
+	return types.model("FeatureDensityMixin", {
+		thresholdMode: types.maybe(types.enumeration("ThresholdMode", ["auto", "fixed"])),
+		maxFeatureCount: types.maybe(types.number),
+		zoomThreshold: types.maybe(types.number)
+	}).volatile(() => ({
+		densityStats: void 0,
+		densityError: void 0,
+		pendingDensityKey: void 0,
+		underLimit: [],
+		forceLoadBpPerPx: void 0
+	})).views((self) => ({
+		/**
+		* Only count top-level features of these types, or all features if
+		* empty. Displays that filter features by type override this.
+		*/
+		get densityFeatureTypes() {
+			return [];
+		},
+		get densityLgv() {
+			return getContainingView(self);
+		},
+		get thresholdModeSetting() {
+			return self.thresholdMode ?? getDisplayConf(self, "thresholdMode") ?? "auto";
+		},
+		get maxFeatureCountSetting() {
+			return self.maxFeatureCount ?? getDisplayConf(self, "maxFeatureCount") ?? 200;
+		},
+		get zoomThresholdSetting() {
+			return self.zoomThreshold ?? getDisplayConf(self, "zoomThreshold") ?? 200;
+		}
+	})).views((self) => ({
+		get densityRegions() {
+			return self.densityLgv.dynamicBlocks.contentBlocks.map(({ assemblyName, end, refName, start }) => ({
+				assemblyName,
+				refName,
+				start: Math.round(start),
+				end: Math.round(end)
+			}));
+		},
+		get densityBinSize() {
+			return niceBinSize(self.densityLgv.bpPerPx * minBinWidthPx);
+		},
+		get isForceLoaded() {
+			const { forceLoadBpPerPx } = self;
+			return forceLoadBpPerPx !== void 0 && self.densityLgv.bpPerPx <= forceLoadBpPerPx;
+		}
+	})).views((self) => ({
+		get densityKey() {
+			const { apolloDataStore } = getSession(self);
+			return regionsKey(self.densityRegions, self.densityBinSize, self.densityFeatureTypes, apolloDataStore.changeCount);
+		},
+		/**
+		* Whether the regions in view are within regions already known to have
+		* few enough features. If so, there's no need to check again.
+		*/
+		get isKnownUnderLimit() {
+			const regions = self.densityRegions;
+			return self.underLimit.some((entry) => entry.count <= self.maxFeatureCountSetting && countsAtLeast(entry.featureTypes, self.densityFeatureTypes) && regions.every((region) => entry.regions.some((known) => known.assemblyName === region.assemblyName && known.refName === region.refName && isContainedWithin(region.start, region.end, known.start, known.end))));
+		},
+		get hasTooManyDensityRegions() {
+			return self.densityRegions.length > maxDensityRegions;
+		},
+		/** Total number of features in view, if known */
+		get featureCountInView() {
+			const { densityStats } = self;
+			if (densityStats?.key !== this.densityKey) return;
+			let count = 0;
+			for (const density of densityStats.densities) count += density.count;
+			return count;
+		}
+	})).views((self) => ({
+		get densityStatsNeeded() {
+			if (self.isForceLoaded) return false;
+			if (self.thresholdModeSetting === "fixed") return self.densityLgv.bpPerPx >= self.zoomThresholdSetting;
+			return !self.isKnownUnderLimit;
+		},
+		get displayMode() {
+			if (self.isForceLoaded) return "features";
+			if (self.thresholdModeSetting === "fixed") return self.densityLgv.bpPerPx < self.zoomThresholdSetting ? "features" : "density";
+			if (self.isKnownUnderLimit) return "features";
+			const { densityStats } = self;
+			if (!densityStats) return "pending";
+			let count = 0;
+			for (const density of densityStats.densities) count += density.count;
+			return count <= self.maxFeatureCountSetting ? "features" : "density";
+		}
+	})).views((self) => ({
+		/** Whether it's safe to load the features for the regions in view */
+		get canLoadFeatures() {
+			if (self.displayMode !== "features") return false;
+			if (self.isForceLoaded || self.thresholdModeSetting === "fixed" || self.isKnownUnderLimit) return true;
+			const count = self.featureCountInView;
+			return count !== void 0 && count <= self.maxFeatureCountSetting;
+		},
+		/** A message to show if neither features nor density can be shown */
+		get densityMessage() {
+			if (self.displayMode === "features") return;
+			if (self.hasTooManyDensityRegions) return "Too many regions to summarize, zoom in to see annotations";
+			if (self.densityError) return "Could not load feature density, zoom in to see annotations";
+		}
+	})).actions((self) => ({
+		setDensityStats(key, regions, featureTypes, densities) {
+			if (key !== self.pendingDensityKey) return;
+			self.pendingDensityKey = void 0;
+			self.densityError = void 0;
+			const filledDensities = densities.map((density, idx) => density ?? {
+				count: 0,
+				start: regions[idx].start,
+				binSize: 1,
+				bins: []
+			});
+			self.densityStats = {
+				key,
+				regions,
+				densities: filledDensities
+			};
+			let count = 0;
+			for (const density of filledDensities) count += density.count;
+			if (count <= self.maxFeatureCountSetting) self.underLimit = [{
+				regions,
+				count,
+				featureTypes
+			}, ...self.underLimit].slice(0, maxUnderLimitEntries);
+		},
+		setDensityError(key, error) {
+			if (key !== self.pendingDensityKey) return;
+			self.pendingDensityKey = void 0;
+			self.densityError = error instanceof Error ? error.message : String(error);
+		},
+		/**
+		* @param key - the current `densityKey`. Passed in so the caller's
+		* autorun tracks it; actions are untracked.
+		*/
+		fetchDensityStats(key) {
+			if (key === self.pendingDensityKey || key === self.densityStats?.key && !self.densityError) return;
+			self.pendingDensityKey = key;
+			const regions = self.densityRegions;
+			const binSize = self.densityBinSize;
+			const featureTypes = self.densityFeatureTypes;
+			const { apolloDataStore } = getSession(self);
+			Promise.all(regions.map((region) => apolloDataStore.getFeatureDensity(region, binSize, featureTypes))).then((densities) => {
+				this.setDensityStats(key, regions, featureTypes, densities);
+			}, (error) => {
+				console.error(error);
+				this.setDensityError(key, error);
+			});
+		},
+		/** Show features in view even though there are more than the limit */
+		forceLoadFeatures() {
+			self.forceLoadBpPerPx = self.densityLgv.bpPerPx;
+		},
+		setFeatureDisplayThreshold({ maxFeatureCount, mode, zoomThreshold }) {
+			self.thresholdMode = mode;
+			self.maxFeatureCount = maxFeatureCount;
+			self.zoomThreshold = zoomThreshold;
+			self.forceLoadBpPerPx = void 0;
+		}
+	})).actions((self) => ({ afterAttach() {
+		addDisposer(self, autorun(() => {
+			if (!self.densityLgv.initialized || !self.densityStatsNeeded || self.hasTooManyDensityRegions) return;
+			self.fetchDensityStats(self.densityKey);
+		}, {
+			name: "FeatureDensityFetchStats",
+			delay: 500
+		}));
+	} }));
+}
+//#endregion
 //#region src/LinearApolloDisplay/configSchema.ts
-const configSchema$2 = ConfigurationSchema("LinearApolloDisplay", {}, {
+const configSchema$2 = ConfigurationSchema("LinearApolloDisplay", featureDensityConfigSlots, {
 	explicitIdentifier: "displayId",
 	explicitlyTyped: true
 });
@@ -9519,9 +10177,9 @@ function handleFeatureEndChange(changeManager, feature, oldEnd, newEnd) {
 }
 //#endregion
 //#region src/TabularEditor/HybridGrid/Highlight.tsx
-const useStyles$6 = makeStyles()({ highlighted: { background: "orange" } });
+const useStyles$7 = makeStyles()({ highlighted: { background: "orange" } });
 const Highlight = ({ highlight, text }) => {
-	const { classes } = useStyles$6();
+	const { classes } = useStyles$7();
 	if (!highlight) return /* @__PURE__ */ jsx(Fragment, { children: text });
 	const split = text.split(highlight);
 	if (split.length === 1) return /* @__PURE__ */ jsx(Fragment, { children: text });
@@ -9550,7 +10208,7 @@ const FeatureAttributes = observer(function FeatureAttributes({ feature, filterT
 });
 //#endregion
 //#region src/TabularEditor/HybridGrid/NumberCell.tsx
-const useStyles$5 = makeStyles()((theme) => ({
+const useStyles$6 = makeStyles()((theme) => ({
 	inputWrapper: { position: "relative" },
 	hiddenWidthSpan: {
 		padding: theme.spacing(.5),
@@ -9569,7 +10227,7 @@ const NumberCell = observer(function NumberCell({ initialValue, notifyError, onC
 	const [value, setValue] = useState(initialValue);
 	const [blur, setBlur] = useState(false);
 	const [inputNode, setInputNode] = useState(null);
-	const { classes } = useStyles$5();
+	const { classes } = useStyles$6();
 	useEffect(() => {
 		if (initialValue !== value) setValue(initialValue);
 	}, [initialValue]);
@@ -9766,7 +10424,7 @@ function featureContextMenuItems(feature, region, getAssemblyId, selectedFeature
 }
 //#endregion
 //#region src/TabularEditor/HybridGrid/Feature.tsx
-const useStyles$4 = makeStyles()((theme) => ({
+const useStyles$5 = makeStyles()((theme) => ({
 	typeContent: {
 		display: "inline-block",
 		width: "174px",
@@ -9782,7 +10440,8 @@ const useStyles$4 = makeStyles()((theme) => ({
 		display: "inline-block",
 		width: "1.6em",
 		textAlign: "center",
-		cursor: "pointer"
+		cursor: "pointer",
+		userSelect: "none"
 	},
 	arrowExpanded: { transform: "rotate(90deg)" },
 	hoveredFeature: { backgroundColor: theme.palette.action.hover },
@@ -9799,11 +10458,15 @@ function makeContextMenuItems(display, feature) {
 function navigateHere(displayState, feature) {
 	displayState.lgv.navTo(navToFeatureCenter(feature, .1, displayState.lgv.totalBp));
 }
-const Feature = observer(function Feature({ depth, feature, isHovered, isSelected, model: displayState, selectedFeatureClass, setContextMenu }) {
-	const { classes } = useStyles$4();
-	const { changeManager, hoveredFeature, selectedFeature, session, tabularEditor: tabularEditorState } = displayState;
+const Feature = observer(function FeatureRow({ depth, feature, model: displayState, selectedFeatureClass, setContextMenu }) {
+	const { classes } = useStyles$5();
+	const { changeManager, session, tabularEditor: tabularEditorState } = displayState;
 	const { featureCollapsed, filterText } = tabularEditorState;
 	const { _id, children, max, min, strand, type } = feature;
+	const isHoveredComputed = useMemo(() => computed(() => displayState.hoveredFeature?.feature._id === _id), [displayState, _id]);
+	const isSelectedComputed = useMemo(() => computed(() => displayState.selectedFeature?._id === _id), [displayState, _id]);
+	const isHovered = isHoveredComputed.get();
+	const isSelected = isSelectedComputed.get();
 	const expanded = !featureCollapsed.get(_id);
 	const toggleExpanded = (e) => {
 		e.stopPropagation();
@@ -9847,6 +10510,9 @@ const Feature = observer(function Feature({ depth, feature, isHovered, isSelecte
 				},
 				children: [children?.size ? /* @__PURE__ */ jsx("div", {
 					onClick: toggleExpanded,
+					onDoubleClick: (e) => {
+						e.stopPropagation();
+					},
 					className: classes.arrow + (expanded ? ` ${classes.arrowExpanded}` : ""),
 					children: "❯"
 				}) : null, /* @__PURE__ */ jsx("div", {
@@ -9900,8 +10566,6 @@ const Feature = observer(function Feature({ depth, feature, isHovered, isSelecte
 		return JSON.stringify(childFeature).includes(filterText);
 	}).map(([featureId, childFeature]) => {
 		return /* @__PURE__ */ jsx(Feature, {
-			isHovered: hoveredFeature?.feature._id === childFeature._id,
-			isSelected: selectedFeature?._id === childFeature._id,
 			selectedFeatureClass,
 			depth: (depth || 0) + 1,
 			feature: childFeature,
@@ -9919,7 +10583,7 @@ async function fetchValidTypeTerms(feature, ontologyStore, _signal) {
 }
 //#endregion
 //#region src/TabularEditor/HybridGrid/HybridGrid.tsx
-const useStyles$3 = makeStyles()((theme) => ({
+const useStyles$4 = makeStyles()((theme) => ({
 	scrollableTable: {
 		width: "100%",
 		height: "100%",
@@ -9936,9 +10600,9 @@ const useStyles$3 = makeStyles()((theme) => ({
 	selectedFeature: { backgroundColor: theme.palette.action.selected }
 }));
 const HybridGrid = observer(function HybridGrid({ model }) {
-	const { hoveredFeature, seenFeatures, selectedFeature, tabularEditor } = model;
+	const { seenFeatures, selectedFeature, tabularEditor } = model;
 	const theme = useTheme();
-	const { classes } = useStyles$3();
+	const { classes } = useStyles$4();
 	const scrollContainerRef = useRef(null);
 	const [contextMenu, setContextMenu] = useState(null);
 	const { filterText } = tabularEditor;
@@ -9983,8 +10647,6 @@ const HybridGrid = observer(function HybridGrid({ model }) {
 				return a[1].min - b[1].min;
 			}).map(([featureId, feature]) => {
 				return /* @__PURE__ */ jsx(Feature, {
-					isSelected: selectedFeature?._id === featureId,
-					isHovered: hoveredFeature?.feature._id === featureId,
 					selectedFeatureClass: classes.selectedFeature,
 					feature,
 					model,
@@ -10013,7 +10675,7 @@ const HybridGrid = observer(function HybridGrid({ model }) {
 });
 //#endregion
 //#region src/TabularEditor/HybridGrid/ToolBar.tsx
-const useStyles$2 = makeStyles()({
+const useStyles$3 = makeStyles()({
 	toolbar: {
 		width: "100%",
 		display: "flex",
@@ -10027,7 +10689,7 @@ const useStyles$2 = makeStyles()({
 });
 const ToolBar = observer(function ToolBar({ model: displayState }) {
 	const model = displayState.tabularEditor;
-	const { classes } = useStyles$2();
+	const { classes } = useStyles$3();
 	return /* @__PURE__ */ jsxs("div", {
 		className: classes.toolbar,
 		children: [/* @__PURE__ */ jsx(Tooltip, {
@@ -10109,19 +10771,13 @@ const TabularEditorStateModelType = types.model("TabularEditor", {
 }));
 //#endregion
 //#region src/LinearApolloDisplay/glyphs/util.ts
-function getLeftPx$1(display, feature, block) {
-	const { lgv } = display;
-	const { bpPerPx, offsetPx } = lgv;
-	return block.offsetPx - offsetPx + (block.reversed ? block.end - feature.max : feature.min - block.start) / bpPerPx;
-}
 function getFeatureBox(display, feature, row, block) {
-	const { apolloRowHeight, lgv } = display;
-	const { bpPerPx } = lgv;
-	const left = Math.round(getLeftPx$1(display, feature, block));
+	const { apolloRowHeight } = display;
+	const { startPx: left, widthPx: width } = getFeaturePx(display, feature, block);
 	return [
 		row * apolloRowHeight,
 		left,
-		Math.round((feature.max - feature.min) / bpPerPx),
+		width,
 		apolloRowHeight
 	];
 }
@@ -10195,8 +10851,8 @@ function drawDragPreview$6(display, overlayCtx, feature, row, block) {
 	if (!apolloDragging) return;
 	const { current, start } = apolloDragging;
 	const [top, left, width, height] = getFeatureBox(display, {
-		min: Math.min(current.bp, start.bp),
-		max: Math.max(current.bp, start.bp)
+		min: Math.min(current.edgeBp, start.edgeBp),
+		max: Math.max(current.edgeBp, start.edgeBp)
 	}, row, block);
 	overlayCtx.fillStyle = alpha(theme.palette.info.main, .2);
 	overlayCtx.fillRect(left, top, width, height);
@@ -10423,7 +11079,7 @@ const exonGlyph = {
 //#endregion
 //#region src/LinearApolloDisplay/glyphs/GeneGlyph.ts
 function getRowCount$2(display, feature) {
-	return getLayout$2(display, feature).byRow.length;
+	return display.featureRowCounts.get(feature._id) ?? getLayout$2(display, feature).byRow.length;
 }
 function draw$3(display, ctx, gene, row, rowInFeature, block) {
 	if (rowInFeature > 0) return;
@@ -10486,7 +11142,7 @@ const geneGlyph$1 = {
 //#endregion
 //#region src/LinearApolloDisplay/glyphs/GenericChildGlyph.ts
 function getRowCount$1(display, feature) {
-	return getLayout$1(display, feature).byRow.length;
+	return display.featureRowCounts.get(feature._id) ?? getLayout$1(display, feature).byRow.length;
 }
 function draw$2(display, ctx, feature, row, rowInFeature, block) {
 	if (rowInFeature > 0) return;
@@ -10556,13 +11212,12 @@ function* range(start, stop, step = 1) {
 	for (let i = start; i > stop; i -= step) yield i;
 }
 function drawTranscriptLine(display, ctx, transcript, row, block) {
-	const { apolloRowHeight, lgv, theme } = display;
-	const { bpPerPx } = lgv;
+	const { apolloRowHeight, theme } = display;
 	const { reversed } = block;
-	const left = Math.round(getLeftPx$1(display, transcript, block));
-	const width = Math.round(transcript.length / bpPerPx);
-	const top = Math.round(apolloRowHeight / 2) + row * apolloRowHeight;
+	const { startPx: left, widthPx: width } = getFeaturePx(display, transcript, block);
+	const top = Math.round(apolloRowHeight / 2) + row * apolloRowHeight + .5;
 	ctx.strokeStyle = theme.palette.text.primary;
+	ctx.lineWidth = 1;
 	const { strand = 1 } = transcript;
 	ctx.beginPath();
 	const effectiveStrand = strand * (reversed ? -1 : 1);
@@ -10577,9 +11232,10 @@ function drawTranscriptLine(display, ctx, transcript, row, block) {
 	const offset = effectiveStrand === -1 ? 3 : -3;
 	const arrowRange = effectiveStrand === -1 ? range(arrowsStart, arrowsEnd, 20) : range(arrowsEnd, arrowsStart, 20);
 	for (const arrowLocation of arrowRange) {
-		ctx.moveTo(arrowLocation + offset, top + offset);
-		ctx.lineTo(arrowLocation, top);
-		ctx.lineTo(arrowLocation + offset, top - offset);
+		const arrowX = arrowLocation + .5;
+		ctx.moveTo(arrowX + offset, top + offset);
+		ctx.lineTo(arrowX, top);
+		ctx.lineTo(arrowX + offset, top - offset);
 	}
 	ctx.stroke();
 }
@@ -10596,7 +11252,7 @@ function getNonExonChildren(display, transcript) {
 	return [...children.values()].filter((child) => !isExonFeature(child, session));
 }
 function getRowCount(display, feature) {
-	return getLayout(display, feature).byRow.length;
+	return display.featureRowCounts.get(feature._id) ?? getLayout(display, feature).byRow.length;
 }
 function draw$1(display, ctx, transcript, row, rowInFeature, block) {
 	drawTranscriptLine(display, ctx, transcript, row, block);
@@ -10837,26 +11493,71 @@ const FilterFeatures = observer(function FilterFeatures({ featureTypes, handleCl
 	});
 });
 //#endregion
-//#region src/components/EditZoomThresholdDialog.tsx
-const EditZoomThresholdDialog = observer(function({ model, handleClose }) {
+//#region src/components/FeatureDisplayThresholdDialog.tsx
+function isPositiveNumber(value) {
+	return value.trim() !== "" && Number(value) > 0;
+}
+const FeatureDisplayThresholdDialog = observer(function({ model, handleClose }) {
+	const [mode, setMode] = useState(model.thresholdModeSetting);
+	const [maxFeatureCount, setMaxFeatureCount] = useState(`${model.maxFeatureCountSetting}`);
 	const [zoomThreshold, setZoomThreshold] = useState(`${model.zoomThresholdSetting}`);
+	const maxFeatureCountValid = isPositiveNumber(maxFeatureCount);
+	const zoomThresholdValid = isPositiveNumber(zoomThreshold);
 	return /* @__PURE__ */ jsx(Dialog$1, {
 		open: true,
 		onClose: handleClose,
-		title: "Edit zoom threshold setting",
+		title: "Feature display threshold",
 		children: /* @__PURE__ */ jsxs(DialogContent, { children: [
-			/* @__PURE__ */ jsx(Typography, { children: "The zoom level in base pairs (bp) per pixel at which features are rendered in this Annotations track. Increasing the value will allow features to render when zooming out, but might impact performance." }),
-			/* @__PURE__ */ jsx(TextField, {
-				label: "Threshold value (bpPerPx)",
-				value: zoomThreshold,
+			/* @__PURE__ */ jsx(Typography, { children: "When there are too many features in view, a histogram of feature density is shown instead of the features. Showing more features might impact performance." }),
+			/* @__PURE__ */ jsxs(RadioGroup, {
+				value: mode,
 				onChange: (event) => {
-					setZoomThreshold(event.target.value);
-				}
+					setMode(event.target.value);
+				},
+				children: [
+					/* @__PURE__ */ jsx(FormControlLabel, {
+						value: "auto",
+						control: /* @__PURE__ */ jsx(Radio, {}),
+						label: "Automatic: show features when the number in view is at most"
+					}),
+					/* @__PURE__ */ jsx(TextField, {
+						label: "Maximum features",
+						value: maxFeatureCount,
+						disabled: mode !== "auto",
+						error: mode === "auto" && !maxFeatureCountValid,
+						onChange: (event) => {
+							setMaxFeatureCount(event.target.value);
+						},
+						slotProps: { htmlInput: { "data-testid": "max-feature-count" } },
+						style: { marginLeft: 32 }
+					}),
+					/* @__PURE__ */ jsx(FormControlLabel, {
+						value: "fixed",
+						control: /* @__PURE__ */ jsx(Radio, {}),
+						label: "Fixed zoom level: show features when zoomed in to less than"
+					}),
+					/* @__PURE__ */ jsx(TextField, {
+						label: "Base pairs per pixel",
+						value: zoomThreshold,
+						disabled: mode !== "fixed",
+						error: mode === "fixed" && !zoomThresholdValid,
+						onChange: (event) => {
+							setZoomThreshold(event.target.value);
+						},
+						slotProps: { htmlInput: { "data-testid": "zoom-threshold" } },
+						style: { marginLeft: 32 }
+					})
+				]
 			}),
 			/* @__PURE__ */ jsxs(DialogActions, { children: [/* @__PURE__ */ jsx(Button, {
 				variant: "contained",
+				disabled: !(mode === "auto" ? maxFeatureCountValid : zoomThresholdValid),
 				onClick: () => {
-					model.setZoomThresholdSetting({ zoomThreshold: +zoomThreshold });
+					model.setFeatureDisplayThreshold({
+						mode,
+						maxFeatureCount: maxFeatureCountValid ? Number(maxFeatureCount) : model.maxFeatureCountSetting,
+						zoomThreshold: zoomThresholdValid ? Number(zoomThreshold) : model.zoomThresholdSetting
+					});
 					handleClose();
 				},
 				children: "Submit"
@@ -10873,7 +11574,7 @@ const EditZoomThresholdDialog = observer(function({ model, handleClose }) {
 });
 //#endregion
 //#region src/util/displayUtils.ts
-const useStyles$1 = makeStyles()((theme) => ({
+const useStyles$2 = makeStyles()((theme) => ({
 	canvasContainer: {
 		position: "relative",
 		left: 0
@@ -10982,13 +11683,12 @@ function colorCode(letter, theme) {
 //#region src/LinearApolloDisplay/stateModel/base.ts
 const minDisplayHeight$2 = 20;
 function baseModelFactory$2(_pluginManager, configSchema) {
-	return BaseDisplay.named("BaseLinearApolloDisplay").props({
+	return types.compose(BaseDisplay, FeatureDensityMixin()).named("BaseLinearApolloDisplay").props({
 		type: types.literal("LinearApolloDisplay"),
 		configuration: ConfigurationReference(configSchema),
 		graphical: true,
 		table: false,
 		showCheckResults: true,
-		zoomThreshold: 200,
 		heightPreConfig: types.maybe(types.refinement("displayHeight", types.number, (n) => n >= minDisplayHeight$2)),
 		filteredFeatureTypes: types.array(types.string),
 		loadingState: false
@@ -11013,9 +11713,6 @@ function baseModelFactory$2(_pluginManager, configSchema) {
 		},
 		get loading() {
 			return self.loadingState;
-		},
-		get zoomThresholdSetting() {
-			return self.zoomThreshold ?? getConf(self, "zoomThreshold");
 		}
 	})).views((self) => ({
 		get rendererTypeName() {
@@ -11033,7 +11730,11 @@ function baseModelFactory$2(_pluginManager, configSchema) {
 			}));
 		},
 		regionCannotBeRendered() {
-			if (self.lgv && self.lgv.bpPerPx >= self.zoomThreshold) return "Zoom in to see annotations";
+			return self.densityMessage;
+		},
+		/** The density only counts the feature types the display shows */
+		get densityFeatureTypes() {
+			return [...self.filteredFeatureTypes];
 		}
 	})).views((self) => ({
 		get apolloInternetAccount() {
@@ -11093,9 +11794,6 @@ function baseModelFactory$2(_pluginManager, configSchema) {
 		},
 		setLoading(loading) {
 			self.loadingState = loading;
-		},
-		setZoomThresholdSetting({ zoomThreshold }) {
-			self.zoomThreshold = zoomThreshold;
 		}
 	})).views((self) => {
 		const { filteredFeatureTypes, trackMenuItems: superTrackMenuItems } = self;
@@ -11143,9 +11841,9 @@ function baseModelFactory$2(_pluginManager, configSchema) {
 							}
 						},
 						{
-							label: "Change zoom threshold",
+							label: "Feature display threshold",
 							onClick: () => {
-								getSession(self).queueDialog((handleClose) => [EditZoomThresholdDialog, {
+								getSession(self).queueDialog((handleClose) => [FeatureDisplayThresholdDialog, {
 									model: self,
 									handleClose
 								}]);
@@ -11262,7 +11960,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
 		},
 		afterAttach() {
 			addDisposer(self, autorun(() => {
-				if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
+				if (!self.lgv.initialized || !self.canLoadFeatures) return;
 				self.setLoading(true);
 				self.session.apolloDataStore.loadFeatures(self.regions).catch((error) => {
 					console.error(error);
@@ -11280,7 +11978,7 @@ function baseModelFactory$2(_pluginManager, configSchema) {
 }
 //#endregion
 //#region src/LinearApolloDisplay/stateModel/layouts.ts
-function layoutsModelFactory$1(pluginManager, configSchema) {
+function layoutsModelFactory(pluginManager, configSchema) {
 	return baseModelFactory$2(pluginManager, configSchema).named("LinearApolloDisplayLayouts").props({ cleanupBoundary: 2e5 }).volatile(() => ({ seenFeatures: observable.map() })).views((self) => ({
 		getAnnotationFeatureById(id) {
 			return self.seenFeatures.get(id);
@@ -11391,16 +12089,45 @@ isFeatureDisplayed(feature) {
 			const layoutRow = layout.byRow.at(row);
 			if (!layoutRow) return [];
 			return layoutRow.filter(({ feature }) => {
-				return bp >= feature.min && bp <= feature.max;
+				return bp >= feature.min && bp < feature.max;
 			}).map((row) => row.feature);
 		}
-	})).views((self) => ({ highestRow(assemblyName) {
-		const assemblyLayouts = self.layouts.get(assemblyName);
-		if (!assemblyLayouts) return 0;
-		return Math.max(0, ...[...assemblyLayouts.values()].map((layout) => layout.byRow.length));
-	} })).actions((self) => ({ afterAttach() {
+	})).views((self) => ({
+		/**
+		* The number of layout rows each feature spans, by feature ID. Glyphs
+		* use this to size a feature instead of rebuilding its layout.
+		*/
+		get featureRowCounts() {
+			const rowCounts = /* @__PURE__ */ new Map();
+			for (const assemblyLayouts of self.layouts.values()) for (const layout of assemblyLayouts.values()) {
+				const lastRowSeen = /* @__PURE__ */ new Map();
+				for (const [row, layoutRow] of layout.byRow.entries()) for (const { feature } of layoutRow) {
+					const { _id } = feature;
+					if (lastRowSeen.get(_id) !== row) {
+						lastRowSeen.set(_id, row);
+						rowCounts.set(_id, (rowCounts.get(_id) ?? 0) + 1);
+					}
+				}
+			}
+			return rowCounts;
+		},
+		/**
+		* The glyph for each feature in the layouts, by feature ID, so drawing
+		* doesn't have to look up glyphs again until the layouts change.
+		*/
+		get featureGlyphs() {
+			const glyphs = /* @__PURE__ */ new Map();
+			for (const assemblyLayouts of self.layouts.values()) for (const layout of assemblyLayouts.values()) for (const layoutRow of layout.byRow) for (const { feature } of layoutRow) if (!glyphs.has(feature._id)) glyphs.set(feature._id, self.getGlyph(feature));
+			return glyphs;
+		},
+		highestRow(assemblyName) {
+			const assemblyLayouts = self.layouts.get(assemblyName);
+			if (!assemblyLayouts) return 0;
+			return Math.max(0, ...[...assemblyLayouts.values()].map((layout) => layout.byRow.length));
+		}
+	})).actions((self) => ({ afterAttach() {
 		addDisposer(self, autorun(() => {
-			if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
+			if (!self.lgv.initialized || self.displayMode !== "features") return;
 			for (const [id, feature] of self.seenFeatures.entries()) {
 				let shouldKeep = false;
 				for (const region of self.regions) {
@@ -11427,7 +12154,7 @@ isFeatureDisplayed(feature) {
 //#endregion
 //#region src/LinearApolloDisplay/stateModel/rendering.ts
 function renderingModelFactory$2(pluginManager, configSchema) {
-	return layoutsModelFactory$1(pluginManager, configSchema).named("LinearApolloDisplayRendering").props({
+	return layoutsModelFactory(pluginManager, configSchema).named("LinearApolloDisplayRendering").props({
 		apolloRowHeight: 20,
 		detailsMinHeight: 200,
 		detailsHeight: 200,
@@ -11493,10 +12220,12 @@ function renderingModelFactory$2(pluginManager, configSchema) {
 		}
 	})).actions((self) => ({ afterAttach() {
 		addDisposer(self, autorun(() => {
-			if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
-			const ctx = self.collaboratorCanvas?.getContext("2d");
-			if (!ctx) return;
-			ctx.clearRect(0, 0, self.lgv.dynamicBlocks.totalWidthPx, self.featuresHeight(self.lgv.assemblyNames[0]));
+			if (!self.lgv.initialized || self.displayMode !== "features") return;
+			const { collaboratorCanvas } = self;
+			const ctx = collaboratorCanvas?.getContext("2d");
+			if (!collaboratorCanvas || !ctx) return;
+			setCanvasSize(collaboratorCanvas, self.lgv.dynamicBlocks.totalWidthPx, self.featuresHeight(self.lgv.assemblyNames[0]));
+			ctx.clearRect(0, 0, collaboratorCanvas.width, collaboratorCanvas.height);
 			for (const collaborator of self.session.collaborators) {
 				const { locations } = collaborator;
 				if (locations.length === 0) continue;
@@ -11511,8 +12240,7 @@ function renderingModelFactory$2(pluginManager, configSchema) {
 							regionNumber: idx
 						});
 						if (!locationStartPxInfo) continue;
-						const locationStartPx = locationStartPxInfo.offsetPx - self.lgv.offsetPx;
-						const locationWidthPx = (end - start) / self.lgv.bpPerPx;
+						const { startPx: locationStartPx, widthPx: locationWidthPx } = roundPxSpan(locationStartPxInfo.offsetPx - self.lgv.offsetPx, (end - start) / self.lgv.bpPerPx);
 						ctx.fillStyle = "rgba(0,255,0,.2)";
 						ctx.fillRect(locationStartPx, 1, locationWidthPx, 100);
 						ctx.fillStyle = "black";
@@ -11524,32 +12252,41 @@ function renderingModelFactory$2(pluginManager, configSchema) {
 		}, { name: "LinearApolloDisplayRenderCollaborators" }));
 		addDisposer(self, autorun(() => {
 			const { canvas, layouts, lgv } = self;
-			if (!lgv.initialized || self.regionCannotBeRendered() || !canvas) return;
+			if (!lgv.initialized || self.displayMode !== "features" || !canvas) return;
 			const { dynamicBlocks, offsetPx } = lgv;
 			const ctx = canvas.getContext("2d");
 			if (!ctx) return;
+			setCanvasSize(canvas, dynamicBlocks.totalWidthPx, self.featuresHeight(lgv.assemblyNames[0]));
 			const featureLayouts = layouts.get(lgv.assemblyNames[0]);
-			if (!featureLayouts) return;
+			if (!featureLayouts) {
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				return;
+			}
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			const { featureGlyphs } = self;
 			for (const block of dynamicBlocks.contentBlocks) {
-				const blockLeftPx = block.offsetPx - offsetPx;
+				const layout = featureLayouts.get(block.refName);
+				if (!layout) continue;
+				const clip = roundPxSpan(block.offsetPx - offsetPx, block.widthPx);
 				ctx.save();
 				ctx.beginPath();
-				ctx.rect(blockLeftPx, 0, block.widthPx, canvas.height);
+				ctx.rect(clip.startPx, 0, clip.widthPx, canvas.height);
 				ctx.clip();
-				const layout = featureLayouts.get(block.refName);
-				if (!layout) return;
 				const { byRow } = layout;
+				const visible = [];
 				for (const [row, layoutRow] of byRow.entries()) for (const layoutFeature of layoutRow) {
 					const { feature, rowInFeature } = layoutFeature;
 					if (!doesIntersect2(block.start, block.end, feature.min, feature.max)) continue;
-					self.getGlyph(feature).draw(self, ctx, feature, row, rowInFeature, block);
+					const glyph = featureGlyphs.get(feature._id) ?? self.getGlyph(feature);
+					visible.push({
+						feature,
+						glyph,
+						row,
+						rowInFeature
+					});
+					glyph.draw(self, ctx, feature, row, rowInFeature, block);
 				}
-				for (const [row, layoutRow] of byRow.entries()) for (const layoutFeature of layoutRow) {
-					const { feature, rowInFeature } = layoutFeature;
-					if (!doesIntersect2(block.start, block.end, feature.min, feature.max)) continue;
-					self.getGlyph(feature).drawOverlay(self, ctx, feature, row, block, "highlight", rowInFeature);
-				}
+				for (const { feature, glyph, row, rowInFeature } of visible) glyph.drawOverlay(self, ctx, feature, row, block, "highlight", rowInFeature);
 				ctx.restore();
 			}
 		}, { name: "LinearApolloDisplayRenderFeatures" }));
@@ -11563,13 +12300,15 @@ function getMousePosition(event, lgv) {
 	const { left, top } = canvas.getBoundingClientRect();
 	const x = clientX - left;
 	const y = clientY - top;
-	const { coord: bp, index: regionNumber, assemblyName, refName } = lgv.pxToBp(x);
+	const pxToBpResult = lgv.pxToBp(x);
+	const { coord, index: regionNumber, assemblyName, refName } = pxToBpResult;
 	return {
 		x,
 		y,
 		assemblyName,
 		refName,
-		bp,
+		bp: coord - 1,
+		edgeBp: nearestBaseBoundary(pxToBpResult),
 		regionNumber
 	};
 }
@@ -11646,7 +12385,7 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
 				}
 				const { displayedRegions } = self.lgv;
 				const assembly = self.getAssemblyId(displayedRegions[start.regionNumber].assemblyName);
-				const changes = getPropagatedLocationChanges(feature, current.bp, edge, shrinkParent);
+				const changes = getPropagatedLocationChanges(feature, current.edgeBp, edge, shrinkParent, self.session);
 				const change = edge === "max" ? new LocationEndChange({
 					typeName: "LocationEndChange",
 					changedIds: changes.map((c) => c.featureId),
@@ -11732,10 +12471,11 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
 	})).actions((self) => ({ afterAttach() {
 		addDisposer(self, autorun(() => {
 			const { lgv, overlayCanvas } = self;
-			if (!lgv.initialized || self.regionCannotBeRendered() || !overlayCanvas) return;
+			if (!lgv.initialized || self.displayMode !== "features" || !overlayCanvas) return;
 			const { dynamicBlocks, offsetPx } = lgv;
 			const ctx = overlayCanvas.getContext("2d");
 			if (!ctx) return;
+			setCanvasSize(overlayCanvas, dynamicBlocks.totalWidthPx, self.featuresHeight(lgv.assemblyNames[0]));
 			ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 			const { apolloDragging, hoveredFeature } = self;
 			if (!hoveredFeature) return;
@@ -11743,16 +12483,17 @@ function mouseEventsModelFactory$1(pluginManager, configSchema) {
 			const glyph = self.getGlyph(feature);
 			const row = self.getRowForFeature(feature);
 			if (row === void 0) return;
+			const featureRefName = self.getCanonicalRefName(feature.assemblyId, feature.refSeq);
 			for (const block of dynamicBlocks.contentBlocks) {
-				const blockLeftPx = block.offsetPx - offsetPx;
+				const clip = roundPxSpan(block.offsetPx - offsetPx, block.widthPx);
 				ctx.save();
 				ctx.beginPath();
-				ctx.rect(blockLeftPx, 0, block.widthPx, overlayCanvas.height);
+				ctx.rect(clip.startPx, 0, clip.widthPx, overlayCanvas.height);
 				ctx.clip();
-				if (block.assemblyName === feature.assemblyId && doesIntersect2(block.start, block.end, feature.min, feature.max)) glyph.drawOverlay(self, ctx, feature, row, block, "hover");
+				if (block.assemblyName === feature.assemblyId && block.refName === featureRefName && doesIntersect2(block.start, block.end, feature.min, feature.max)) glyph.drawOverlay(self, ctx, feature, row, block, "hover");
 				if (apolloDragging) {
 					const { current, start, feature: dragFeature } = apolloDragging;
-					if (doesIntersect2(block.start, block.end, Math.min(current.bp, start.bp), Math.max(current.bp, start.bp))) {
+					if (block.refName === start.refName && doesIntersect2(block.start, block.end, Math.min(current.edgeBp, start.edgeBp), Math.max(current.edgeBp, start.edgeBp))) {
 						const dragGlyph = self.getGlyph(dragFeature);
 						const row = self.getRowForFeature(dragFeature);
 						if (row !== void 0) dragGlyph.drawDragPreview(self, ctx, dragFeature, row, block);
@@ -11930,8 +12671,8 @@ function drawCodon$1(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp
 		const left = Math.round(leftPx + index / bpPerPx);
 		const width = Math.round(leftPx + (index + 3) / bpPerPx) - left;
 		const codonCode = strand === 1 ? codon : revcom(codon);
-		const aminoAcidCode = defaultCodonTable[codonCode];
-		const fillColor = codonColorCode(aminoAcidCode, theme, highContrast);
+		const aminoAcidCode = codonTable[codonCode];
+		const fillColor = aminoAcidCode && codonColorCode(aminoAcidCode, theme, highContrast);
 		if (fillColor && (showStopCodons && aminoAcidCode == "*" || showStartCodons && aminoAcidCode != "*")) {
 			ctx.fillStyle = fillColor;
 			ctx.fillRect(left, top, width, rowHeight);
@@ -11939,7 +12680,7 @@ function drawCodon$1(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp
 		if (1 / bpPerPx >= 4) {
 			const strokeStyle = theme.palette.text.disabled;
 			strokeRectInner(ctx, left, top, width, rowHeight, strokeStyle);
-			drawLetter(ctx, left, top, width, aminoAcidCode);
+			if (aminoAcidCode) drawLetter(ctx, left, top, width, aminoAcidCode);
 		}
 	}
 }
@@ -12140,6 +12881,7 @@ function renderingModelFactory$1(pluginManager, configSchema) {
 				if (!lgv.initialized || self.regionCannotBeRendered() || !seqTrackCanvas) return;
 				if (3 / lgv.bpPerPx < 1) return;
 				const { bpPerPx, offsetPx, dynamicBlocks } = lgv;
+				setCanvasSize(seqTrackCanvas, dynamicBlocks.totalWidthPx, self.height);
 				drawSequenceTrack(seqTrackCanvas, theme, bpPerPx, offsetPx, dynamicBlocks, highContrast, showStartCodons, showStopCodons, sequenceRowHeight, session);
 			}, { name: "LinearApolloReferenceSequenceDisplayRenderSequence" }));
 			addDisposer(self, autorun(() => {
@@ -12147,7 +12889,8 @@ function renderingModelFactory$1(pluginManager, configSchema) {
 				if (!self.lgv.initialized || self.regionCannotBeRendered() || !seqTrackOverlayCanvas) return;
 				const seqTrackOverlayctx = seqTrackOverlayCanvas.getContext("2d");
 				if (!seqTrackOverlayctx) return;
-				seqTrackOverlayctx.clearRect(0, 0, self.lgv.dynamicBlocks.totalWidthPx, self.height);
+				setCanvasSize(seqTrackOverlayCanvas, self.lgv.dynamicBlocks.totalWidthPx, self.height);
+				seqTrackOverlayctx.clearRect(0, 0, seqTrackOverlayCanvas.width, seqTrackOverlayCanvas.height);
 				const { hoveredFeature, selectedFeature, lgv, sequenceRowHeight, session, theme } = self;
 				if (!(hoveredFeature || selectedFeature)) return;
 				const { bpPerPx, dynamicBlocks, offsetPx } = lgv;
@@ -12167,10 +12910,18 @@ const LinearApolloReferenceSequenceDisplay = observer(function LinearApolloRefer
 	const theme = useTheme();
 	const { model } = props;
 	const { height, regionCannotBeRendered, setSeqTrackCanvas, setSeqTrackOverlayCanvas, setTheme } = model;
-	const { classes } = useStyles$1();
+	const { classes } = useStyles$2();
 	useEffect(() => {
 		setTheme(theme);
 	}, [theme, setTheme]);
+	const seqTrackCanvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setSeqTrackCanvas(node);
+	}, [setSeqTrackCanvas]);
+	const seqTrackOverlayCanvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setSeqTrackOverlayCanvas(node);
+	}, [setSeqTrackOverlayCanvas]);
 	const lgv = getContainingView(model);
 	const message = regionCannotBeRendered();
 	if (message) return /* @__PURE__ */ jsx(Alert, {
@@ -12189,21 +12940,11 @@ const LinearApolloReferenceSequenceDisplay = observer(function LinearApolloRefer
 			height
 		},
 		children: [/* @__PURE__ */ jsx("canvas", {
-			ref: async (node) => {
-				await Promise.resolve();
-				setSeqTrackCanvas(node);
-			},
-			width: lgv.dynamicBlocks.totalWidthPx,
-			height,
+			ref: seqTrackCanvasRef,
 			className: classes.canvas,
 			"data-testid": "seqTrackCanvas"
 		}), /* @__PURE__ */ jsx("canvas", {
-			ref: async (node) => {
-				await Promise.resolve();
-				setSeqTrackOverlayCanvas(node);
-			},
-			width: lgv.dynamicBlocks.totalWidthPx,
-			height,
+			ref: seqTrackOverlayCanvasRef,
 			className: classes.canvas,
 			"data-testid": "seqTrackOverlayCanvas"
 		})]
@@ -12211,10 +12952,43 @@ const LinearApolloReferenceSequenceDisplay = observer(function LinearApolloRefer
 });
 //#endregion
 //#region src/LinearApolloSixFrameDisplay/configSchema.ts
-const configSchema = ConfigurationSchema("LinearApolloSixFrameDisplay", {}, {
+const configSchema = ConfigurationSchema("LinearApolloSixFrameDisplay", featureDensityConfigSlots, {
 	explicitIdentifier: "displayId",
 	explicitlyTyped: true
 });
+function labelSpacer(showFeatureLabels) {
+	return showFeatureLabels ? 2 : 1;
+}
+/** 0-based row a CDS in the given frame (from `getFrame`) is drawn in */
+function getCDSRow(frame, showFeatureLabels) {
+	return (frame > 0 ? 3 - frame : 4 - frame) * labelSpacer(showFeatureLabels);
+}
+/** 0-based row a gene or exon on the given strand is drawn in */
+function getStrandRow(strand, showFeatureLabels) {
+	return (strand === 1 ? 3 : 4) * labelSpacer(showFeatureLabels);
+}
+/** What is drawn in the given 0-based row, if anything */
+function getRowContents(row, showFeatureLabels) {
+	const spacer = labelSpacer(showFeatureLabels);
+	if (row < 0 || row % spacer !== 0) return;
+	const baseRow = row / spacer;
+	if (baseRow < 3) return {
+		type: "cds",
+		frame: 3 - baseRow
+	};
+	if (baseRow === 3) return {
+		type: "gene",
+		strand: 1
+	};
+	if (baseRow === 4) return {
+		type: "gene",
+		strand: -1
+	};
+	if (baseRow < 8) return {
+		type: "cds",
+		frame: 4 - baseRow
+	};
+}
 //#endregion
 //#region src/components/FilterTranscripts.tsx
 const FilterTranscripts = observer(function FilterTranscripts({ sourceFeature, filteredTranscripts, handleClose, onUpdate }) {
@@ -12296,7 +13070,7 @@ function drawTextLabels(ctx, labelArray, font = "10px sans-serif") {
 		ctx.fillStyle = label.color;
 		const labelRowX = label.x + 1;
 		const labelRowY = label.y + label.h;
-		const textWidth = measureText(label.text, 10);
+		const textWidth = Math.round(measureText(label.text, 10));
 		if (label.isSelected) ctx.font = "bold ".concat(font);
 		if (label.text) {
 			ctx.clearRect(labelRowX - 5, labelRowY, textWidth + 10, label.h);
@@ -12305,33 +13079,25 @@ function drawTextLabels(ctx, labelArray, font = "10px sans-serif") {
 		}
 	}
 }
-function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
-	const { apolloRowHeight, lgv, session, theme, highestRow, filteredTranscripts, selectedFeature, showFeatureLabels } = stateModel;
-	const { bpPerPx, displayedRegions, offsetPx } = lgv;
-	const { refName, reversed } = displayedRegions[displayedRegionIndex];
+function draw(stateModel, ctx, topLevelFeature, block) {
+	const { apolloRowHeight, session, theme, firstReverseFrameRow, filteredTranscripts, selectedFeature, showFeatureLabels } = stateModel;
+	const { reversed } = block;
 	const rowHeight = apolloRowHeight;
 	const exonHeight = rowHeight;
 	const cdsHeight = rowHeight;
 	const topLevelFeatureHeight = rowHeight;
-	const featureLabelSpacer = showFeatureLabels ? 2 : 1;
 	const textColor = theme.palette.text.primary;
-	const { attributes, children, min, strand } = topLevelFeature;
+	const { attributes, children, strand } = topLevelFeature;
 	if (!children) return;
 	const { apolloDataStore } = session;
 	const { featureTypeOntology } = apolloDataStore.ontologyManager;
 	if (!featureTypeOntology) throw new Error("featureTypeOntology is undefined");
 	const labelArray = [];
-	const topLevelFeatureMinX = (lgv.bpToPx({
-		refName,
-		coord: min,
-		regionNumber: displayedRegionIndex
-	})?.offsetPx ?? 0) - offsetPx;
-	const topLevelFeatureWidthPx = topLevelFeature.length / bpPerPx;
-	const topLevelFeatureStartPx = reversed ? topLevelFeatureMinX - topLevelFeatureWidthPx : topLevelFeatureMinX;
-	const topLevelFeatureTop = (strand == 1 ? 3 : 4) * featureLabelSpacer * rowHeight;
+	const { startPx: topLevelFeatureStartPx, widthPx: topLevelFeatureWidthPx } = getFeaturePx(stateModel, topLevelFeature, block);
+	const topLevelFeatureTop = getStrandRow(strand, showFeatureLabels) * rowHeight;
 	ctx.fillStyle = theme.palette.text.primary;
 	ctx.fillRect(topLevelFeatureStartPx, topLevelFeatureTop, topLevelFeatureWidthPx, topLevelFeatureHeight);
-	ctx.fillStyle = isSelectedFeature(topLevelFeature, selectedFeature) ? alpha("rgb(0,0,0)", .7) : alpha(theme.palette.background.paper, .7);
+	ctx.fillStyle = isSelectedFeature(topLevelFeature, selectedFeature) ? alpha("rgb(0,0,0)", .7) : readConfObject(session.getPluginConfiguration(), "geneBackgroundColor", { featureType: topLevelFeature.type }) ?? alpha(theme.palette.background.paper, .7);
 	ctx.fillRect(topLevelFeatureStartPx + 1, topLevelFeatureTop + 1, topLevelFeatureWidthPx - 2, topLevelFeatureHeight - 2);
 	const isSelected = isSelectedFeature(topLevelFeature, selectedFeature);
 	const label = {
@@ -12364,13 +13130,7 @@ function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
 		if (childID && filteredTranscripts.includes(childID)) continue;
 		for (const [, exon] of childrenOfmRNA) {
 			if (!featureTypeOntology.isTypeOf(exon.type, "exon")) continue;
-			const minX = (lgv.bpToPx({
-				refName,
-				coord: exon.min,
-				regionNumber: displayedRegionIndex
-			})?.offsetPx ?? 0) - offsetPx;
-			const widthPx = exon.length / bpPerPx;
-			const startPx = reversed ? minX - widthPx : minX;
+			const { startPx, widthPx } = getFeaturePx(stateModel, exon, block);
 			const exonTop = topLevelFeatureTop + (topLevelFeatureHeight - exonHeight) / 2;
 			const isSelected = isSelectedFeature(exon, selectedFeature);
 			ctx.fillStyle = theme.palette.text.primary;
@@ -12405,37 +13165,15 @@ function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
 			let prevCDSEndPx = 0;
 			let counter = 1;
 			for (const cds of cdsRow.toSorted((a, b) => a.max - b.max)) if (selectedFeature && isSelected && featureTypeOntology.isTypeOf(selectedFeature.type, "CDS") || !deepSetHas(renderedCDS, cds)) {
-				const cdsWidthPx = (cds.max - cds.min) / bpPerPx;
-				const minX = (lgv.bpToPx({
-					refName,
-					coord: cds.min,
-					regionNumber: displayedRegionIndex
-				})?.offsetPx ?? 0) - offsetPx;
-				cdsStartPx = reversed ? minX - cdsWidthPx : minX;
+				const cdsPx = getFeaturePx(stateModel, cds, block);
+				const cdsWidthPx = cdsPx.widthPx;
+				cdsStartPx = cdsPx.startPx;
 				ctx.fillStyle = theme.palette.text.primary;
 				const frame = getFrame(cds.min, cds.max, child.strand ?? 1, cds.phase);
-				const row = (showFeatureLabels ? [
-					0,
-					4,
-					2,
-					0,
-					14,
-					12,
-					10
-				] : [
-					0,
-					2,
-					1,
-					0,
-					7,
-					6,
-					5
-				]).at(frame);
-				if (row === void 0) continue;
-				cdsTop = row * rowHeight;
+				cdsTop = getCDSRow(frame, showFeatureLabels) * rowHeight;
 				ctx.fillRect(cdsStartPx, cdsTop, cdsWidthPx, cdsHeight);
 				if (counter > 1) {
-					const midPoint = [(cdsStartPx - prevCDSEndPx) / 2 + prevCDSEndPx, Math.max(frame < 0 ? rowHeight * featureLabelSpacer * highestRow + 1 : 1, Math.min(prevCDSTop, cdsTop) - rowHeight / 2)];
+					const midPoint = [Math.round((cdsStartPx - prevCDSEndPx) / 2 + prevCDSEndPx), Math.max(frame < 0 ? rowHeight * firstReverseFrameRow + 1 : 1, Math.min(prevCDSTop, cdsTop) - rowHeight / 2)];
 					ctx.strokeStyle = "rgb(0, 128, 128)";
 					ctx.beginPath();
 					ctx.moveTo(prevCDSEndPx, prevCDSTop);
@@ -12477,18 +13215,33 @@ function draw(ctx, topLevelFeature, _row, stateModel, displayedRegionIndex) {
 	}
 	if (showFeatureLabels) drawTextLabels(ctx, labelArray);
 }
+/** @returns the content blocks that show some part of the given feature */
+function getBlocksForFeature(display, feature) {
+	const { lgv, session } = display;
+	const { assemblyManager } = session;
+	return lgv.dynamicBlocks.contentBlocks.filter((block) => {
+		const assembly = assemblyManager.get(block.assemblyName);
+		return block.refName === assembly?.getCanonicalRefName(feature.refSeq) && doesIntersect2(block.start, block.end, feature.min, feature.max);
+	});
+}
 function drawDragPreview(stateModel, overlayCtx) {
 	const { apolloDragging, apolloRowHeight, lgv, theme } = stateModel;
-	const { bpPerPx, displayedRegions, offsetPx } = lgv;
+	const { offsetPx } = lgv;
 	if (!apolloDragging) return;
 	const { current, edge, feature, start } = apolloDragging;
 	const row = Math.floor(start.y / apolloRowHeight);
-	const region = displayedRegions[start.regionNumber];
 	const rowCount = 1;
-	const featureEdgePx = (region.reversed ? region.end - feature[edge] : feature[edge] - region.start) / bpPerPx - offsetPx;
-	const rectX = Math.min(current.x, featureEdgePx);
+	const featureEdgePxInfo = lgv.bpToPx({
+		refName: start.refName,
+		coord: feature[edge],
+		regionNumber: start.regionNumber
+	});
+	if (!featureEdgePxInfo) return;
+	const featureEdgePx = Math.round(featureEdgePxInfo.offsetPx - offsetPx);
+	const currentPx = Math.round(current.x);
+	const rectX = Math.min(currentPx, featureEdgePx);
 	const rectY = row * apolloRowHeight;
-	const rectWidth = Math.abs(current.x - featureEdgePx);
+	const rectWidth = Math.abs(currentPx - featureEdgePx);
 	const rectHeight = apolloRowHeight * rowCount;
 	overlayCtx.strokeStyle = theme.palette.info.main;
 	overlayCtx.setLineDash([6]);
@@ -12497,7 +13250,7 @@ function drawDragPreview(stateModel, overlayCtx) {
 	overlayCtx.fillRect(rectX, rectY, rectWidth, rectHeight);
 }
 function drawOverlay(stateModel, ctx) {
-	const { hoveredFeature, apolloRowHeight, filteredTranscripts, lgv, highestRow, session, showFeatureLabels } = stateModel;
+	const { hoveredFeature, apolloRowHeight, filteredTranscripts, lgv, firstReverseFrameRow, session, showFeatureLabels } = stateModel;
 	if (!hoveredFeature) return;
 	const { feature } = hoveredFeature;
 	const { apolloDataStore } = session;
@@ -12506,67 +13259,46 @@ function drawOverlay(stateModel, ctx) {
 	if (!featureTypeOntology.isTypeOf(feature.type, "transcript")) return;
 	const featureID = feature.attributes.get("gff_id")?.toString();
 	if (featureID && filteredTranscripts.includes(featureID)) return;
-	const position = stateModel.getFeatureLayoutPosition(feature);
-	if (!position) return;
-	const { bpPerPx, displayedRegions, offsetPx } = lgv;
-	const { layoutIndex } = position;
-	const { refName, reversed } = displayedRegions[layoutIndex];
+	const { offsetPx } = lgv;
 	const rowHeight = apolloRowHeight;
 	const cdsHeight = rowHeight;
-	const featureLabelSpacer = showFeatureLabels ? 2 : 1;
 	const { cdsLocations, strand } = feature;
-	for (const cdsRow of cdsLocations) {
-		let prevCDSTop = 0;
-		let prevCDSEndPx = 0;
-		let counter = 1;
-		for (const cds of cdsRow.toSorted((a, b) => a.max - b.max)) {
-			const cdsWidthPx = (cds.max - cds.min) / bpPerPx;
-			const minX = (lgv.bpToPx({
-				refName,
-				coord: cds.min,
-				regionNumber: layoutIndex
-			})?.offsetPx ?? 0) - offsetPx;
-			const cdsStartPx = reversed ? minX - cdsWidthPx : minX;
-			const frame = getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
-			const row = (showFeatureLabels ? [
-				0,
-				4,
-				2,
-				0,
-				14,
-				12,
-				10
-			] : [
-				0,
-				2,
-				1,
-				0,
-				7,
-				6,
-				5
-			]).at(frame);
-			if (row === void 0) continue;
-			const cdsTop = row * rowHeight;
-			if (counter > 1) {
-				const midPoint = [(cdsStartPx - prevCDSEndPx) / 2 + prevCDSEndPx, Math.max(frame < 0 ? rowHeight * featureLabelSpacer * highestRow + 1 : 1, Math.min(prevCDSTop, cdsTop) - rowHeight / 2)];
-				ctx.strokeStyle = "rgb(0, 0, 0)";
-				ctx.lineWidth = 2;
-				ctx.beginPath();
-				ctx.moveTo(prevCDSEndPx, prevCDSTop);
-				ctx.lineTo(...midPoint);
-				ctx.stroke();
-				ctx.moveTo(...midPoint);
-				ctx.lineTo(cdsStartPx, cdsTop + rowHeight / 2);
-				ctx.stroke();
-			}
-			prevCDSEndPx = cdsStartPx + cdsWidthPx;
-			prevCDSTop = cdsTop + rowHeight / 2;
-			counter += 1;
-			if (cdsWidthPx > 2) {
-				ctx.fillStyle = "rgba(255,0,0,0.6)";
-				ctx.fillRect(cdsStartPx, cdsTop, cdsWidthPx, cdsHeight);
+	for (const block of getBlocksForFeature(stateModel, feature)) {
+		const clip = roundPxSpan(block.offsetPx - offsetPx, block.widthPx);
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(clip.startPx, 0, clip.widthPx, ctx.canvas.height);
+		ctx.clip();
+		for (const cdsRow of cdsLocations) {
+			let prevCDSTop = 0;
+			let prevCDSEndPx = 0;
+			let counter = 1;
+			for (const cds of cdsRow.toSorted((a, b) => a.max - b.max)) {
+				const { startPx: cdsStartPx, widthPx: cdsWidthPx } = getFeaturePx(stateModel, cds, block);
+				const frame = getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
+				const cdsTop = getCDSRow(frame, showFeatureLabels) * rowHeight;
+				if (counter > 1) {
+					const midPoint = [Math.round((cdsStartPx - prevCDSEndPx) / 2 + prevCDSEndPx), Math.max(frame < 0 ? rowHeight * firstReverseFrameRow + 1 : 1, Math.min(prevCDSTop, cdsTop) - rowHeight / 2)];
+					ctx.strokeStyle = "rgb(0, 0, 0)";
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(prevCDSEndPx, prevCDSTop);
+					ctx.lineTo(...midPoint);
+					ctx.stroke();
+					ctx.moveTo(...midPoint);
+					ctx.lineTo(cdsStartPx, cdsTop + rowHeight / 2);
+					ctx.stroke();
+				}
+				prevCDSEndPx = cdsStartPx + cdsWidthPx;
+				prevCDSTop = cdsTop + rowHeight / 2;
+				counter += 1;
+				if (cdsWidthPx > 2) {
+					ctx.fillStyle = "rgba(255,0,0,0.6)";
+					ctx.fillRect(cdsStartPx, cdsTop, cdsWidthPx, cdsHeight);
+				}
 			}
 		}
+		ctx.restore();
 	}
 }
 function onMouseDown(stateModel, currentMousePosition, event) {
@@ -12656,81 +13388,27 @@ function getDraggableFeatureInfo(mousePosition, feature, stateModel) {
 		}
 	}
 }
-function drawTooltip(display, context) {
-	const { hoveredFeature, apolloRowHeight, filteredTranscripts, lgv, session, showFeatureLabels, theme } = display;
+function getTooltipLines(display) {
+	const { hoveredFeature, filteredTranscripts, session } = display;
 	if (!hoveredFeature) return;
 	const { feature, bp } = hoveredFeature;
 	const { featureTypeOntology } = session.apolloDataStore.ontologyManager;
 	if (!featureTypeOntology) throw new Error("featureTypeOntology is undefined");
 	if (!featureTypeOntology.isTypeOf(feature.type, "transcript")) return;
-	const { attributes, strand, type } = feature;
-	const position = display.getFeatureLayoutPosition(feature);
-	if (!position) return;
+	const { attributes, type } = feature;
 	const featureID = attributes.get("gff_id")?.toString();
 	if (featureID && filteredTranscripts.includes(featureID)) return;
-	const { layoutIndex } = position;
-	const { bpPerPx, displayedRegions, offsetPx } = lgv;
-	const { refName, reversed } = displayedRegions[layoutIndex];
-	const rowHeight = apolloRowHeight;
-	let location = "Loc: ";
 	let cds = void 0;
-	for (const loc of feature.cdsLocations) for (const cdsLoc of loc) if (bp >= cdsLoc.min && bp <= cdsLoc.max) {
+	for (const loc of feature.cdsLocations) for (const cdsLoc of loc) if (bp >= cdsLoc.min && bp < cdsLoc.max) {
 		cds = cdsLoc;
 		break;
 	}
 	if (!cds) return;
-	const { max, min, phase } = cds;
-	location += `${min + 1}–${max}`;
-	let startPx = (lgv.bpToPx({
-		refName,
-		coord: reversed ? max : min,
-		regionNumber: layoutIndex
-	})?.offsetPx ?? 0) - offsetPx;
-	const frame = getFrame(min, max, strand ?? 1, phase);
-	const row = (showFeatureLabels ? [
-		0,
-		4,
-		2,
-		0,
-		14,
-		12,
-		10
-	] : [
-		0,
-		2,
-		1,
-		0,
-		7,
-		6,
-		5
-	]).at(frame);
-	if (row === void 0) return;
-	const cdsTop = row * rowHeight;
-	const cdsWidthPx = (max - min) / bpPerPx;
-	const featureType = `Type: ${cds.type}`;
+	const lines = [`Type: ${cds.type}`];
 	const featureName = attributes.get("gff_name")?.find((name) => name !== "");
-	const textWidth = [context.measureText(featureType).width, context.measureText(location).width];
-	if (featureName) textWidth.push(context.measureText(`Parent Type: ${type}`).width, context.measureText(`Parent Name: ${featureName}`).width);
-	const maxWidth = Math.max(...textWidth);
-	startPx = startPx + cdsWidthPx + 5;
-	context.fillStyle = alpha(theme.palette.text.primary, .7);
-	context.fillRect(startPx, cdsTop, maxWidth + 4, textWidth.length === 4 ? 55 : 35);
-	context.beginPath();
-	context.moveTo(startPx, cdsTop);
-	context.lineTo(startPx - 5, cdsTop + 5);
-	context.lineTo(startPx, cdsTop + 10);
-	context.fill();
-	context.fillStyle = theme.palette.background.default;
-	let textTop = cdsTop + 12;
-	context.fillText(featureType, startPx + 2, textTop);
-	if (featureName) {
-		textTop = textTop + 12;
-		context.fillText(`Parent Type: ${type}`, startPx + 2, textTop);
-		textTop = textTop + 12;
-		context.fillText(`Parent Name: ${featureName}`, startPx + 2, textTop);
-	}
-	textTop = textTop + 12;
-	context.fillText(location, startPx + 2, textTop);
+	if (featureName) lines.push(`Parent Type: ${type}`, `Parent Name: ${featureName}`);
+	lines.push(`Loc: ${cds.min + 1}..${cds.max}`);
+	return lines;
 }
 function getContextMenuItems(display, mousePosition) {
 	const { apolloInternetAccount: internetAccount, hoveredFeature, changeManager, filteredTranscripts, regions, selectedFeature, session } = display;
@@ -12757,7 +13435,7 @@ function getContextMenuItems(display, mousePosition) {
 					const exon = adjacentExons.upstream;
 					contextMenuItemsForFeature.push({
 						label: "Go to upstream exon",
-						icon: getStreamIcon(feature.strand, true, lgv.displayedRegions.at(0)?.reversed),
+						icon: getStreamIcon(feature.strand, true, lgv.displayedRegions.at(mousePosition.regionNumber)?.reversed),
 						onClick: () => {
 							lgv.navTo(navToFeatureCenter(exon, .1, lgv.totalBp));
 							selectFeatureAndOpenWidget(display, exon);
@@ -12768,7 +13446,7 @@ function getContextMenuItems(display, mousePosition) {
 					const exon = adjacentExons.downstream;
 					contextMenuItemsForFeature.push({
 						label: "Go to downstream exon",
-						icon: getStreamIcon(feature.strand, false, lgv.displayedRegions.at(0)?.reversed),
+						icon: getStreamIcon(feature.strand, false, lgv.displayedRegions.at(mousePosition.regionNumber)?.reversed),
 						onClick: () => {
 							lgv.navTo(navToFeatureCenter(exon, .1, lgv.totalBp));
 							selectFeatureAndOpenWidget(display, exon);
@@ -12841,7 +13519,7 @@ const geneGlyph = {
 	draw,
 	drawDragPreview,
 	drawOverlay,
-	drawTooltip,
+	getTooltipLines,
 	getContextMenuItems,
 	getContextMenuItemsForFeature,
 	onMouseDown,
@@ -12852,8 +13530,10 @@ const geneGlyph = {
 //#endregion
 //#region src/LinearApolloSixFrameDisplay/stateModel/base.ts
 const minDisplayHeight = 20;
+/** Codons aren't legible when zoomed out further than this */
+const maxSequenceBpPerPx = 200;
 function baseModelFactory(_pluginManager, configSchema) {
-	return BaseDisplay.named("BaseLinearApolloSixFrameDisplay").props({
+	return types.compose(BaseDisplay, FeatureDensityMixin()).named("BaseLinearApolloSixFrameDisplay").props({
 		type: types.literal("LinearApolloSixFrameDisplay"),
 		configuration: ConfigurationReference(configSchema),
 		graphical: true,
@@ -12862,7 +13542,6 @@ function baseModelFactory(_pluginManager, configSchema) {
 		showStartCodons: false,
 		showStopCodons: true,
 		showCheckResults: true,
-		zoomThreshold: 200,
 		heightPreConfig: types.maybe(types.refinement("displayHeight", types.number, (n) => n >= minDisplayHeight)),
 		filteredFeatureTypes: types.array(types.string)
 	}).views((self) => {
@@ -12883,9 +13562,6 @@ function baseModelFactory(_pluginManager, configSchema) {
 			if (self.graphical && self.table) return 500;
 			if (self.graphical) return self.showFeatureLabels ? 400 : 200;
 			return 300;
-		},
-		get zoomThresholdSetting() {
-			return self.zoomThreshold ?? getConf(self, "zoomThreshold");
 		}
 	})).views((self) => ({
 		get rendererTypeName() {
@@ -12903,7 +13579,7 @@ function baseModelFactory(_pluginManager, configSchema) {
 			}));
 		},
 		regionCannotBeRendered() {
-			if (self.lgv && self.lgv.bpPerPx >= self.zoomThreshold) return "Zoom in to see annotations";
+			return self.densityMessage;
 		}
 	})).views((self) => ({
 		get apolloInternetAccount() {
@@ -12969,9 +13645,6 @@ function baseModelFactory(_pluginManager, configSchema) {
 		},
 		updateFilteredFeatureTypes(types) {
 			self.filteredFeatureTypes = cast(types);
-		},
-		setZoomThresholdSetting({ zoomThreshold }) {
-			self.zoomThreshold = zoomThreshold;
 		}
 	})).views((self) => {
 		const { filteredFeatureTypes, trackMenuItems: superTrackMenuItems } = self;
@@ -13040,9 +13713,9 @@ function baseModelFactory(_pluginManager, configSchema) {
 							}
 						},
 						{
-							label: "Change zoom threshold",
+							label: "Feature display threshold",
 							onClick: () => {
-								getSession(self).queueDialog((handleClose) => [EditZoomThresholdDialog, {
+								getSession(self).queueDialog((handleClose) => [FeatureDisplayThresholdDialog, {
 									model: self,
 									handleClose
 								}]);
@@ -13093,11 +13766,11 @@ function baseModelFactory(_pluginManager, configSchema) {
 		},
 		afterAttach() {
 			addDisposer(self, autorun(() => {
-				if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
+				if (!self.lgv.initialized || !self.canLoadFeatures) return;
 				self.session.apolloDataStore.loadFeatures(self.regions).catch((error) => {
 					console.error(error);
 				});
-				if (self.lgv.bpPerPx <= self.zoomThreshold) self.session.apolloDataStore.loadRefSeq(self.regions).catch((error) => {
+				if (self.lgv.bpPerPx <= maxSequenceBpPerPx) self.session.apolloDataStore.loadRefSeq(self.regions).catch((error) => {
 					console.error(error);
 				});
 			}, {
@@ -13108,161 +13781,16 @@ function baseModelFactory(_pluginManager, configSchema) {
 	}));
 }
 //#endregion
-//#region src/LinearApolloSixFrameDisplay/stateModel/layouts.ts
-function layoutsModelFactory(pluginManager, configSchema) {
-	return baseModelFactory(pluginManager, configSchema).named("LinearApolloSixFrameDisplayLayouts").props({ featuresMinMaxLimit: 5e5 }).volatile(() => ({ seenFeatures: observable.map() })).views((self) => ({
-		get featuresMinMax() {
-			const { assemblyManager } = self.session;
-			return self.lgv.displayedRegions.map((region) => {
-				const assembly = assemblyManager.get(region.assemblyName);
-				let min;
-				let max;
-				const { end, refName, start } = region;
-				for (const [, feature] of self.seenFeatures) {
-					if (refName !== assembly?.getCanonicalRefName(feature.refSeq) || !doesIntersect2(start, end, feature.min, feature.max) || feature.length > self.featuresMinMaxLimit) continue;
-					if (min === void 0) ({min} = feature);
-					if (max === void 0) ({max} = feature);
-					if (feature.minWithChildren < min) ({min} = feature);
-					if (feature.maxWithChildren > max) ({max} = feature);
-				}
-				if (min !== void 0 && max !== void 0) return [min, max];
-			});
-		},
-		getGlyph(_feature) {
-			return geneGlyph;
-		},
-		featureLabelSpacer(elem) {
-			return self.showFeatureLabels ? elem * 2 - 1 : elem;
-		}
-	})).actions((self) => ({
-		addSeenFeature(feature) {
-			self.seenFeatures.set(feature._id, feature);
-		},
-		deleteSeenFeature(featureId) {
-			self.seenFeatures.delete(featureId);
-		}
-	})).views((self) => ({ get geneTrackRowNums() {
-		return [4, 5].map((elem) => self.featureLabelSpacer(elem));
-	} })).views((self) => ({
-		get featureLayouts() {
-			const { assemblyManager } = self.session;
-			return self.lgv.displayedRegions.map((region, idx) => {
-				const assembly = assemblyManager.get(region.assemblyName);
-				const featureLayout = /* @__PURE__ */ new Map();
-				if (!self.featuresMinMax[idx]) return featureLayout;
-				const { end, refName, start } = region;
-				for (const [id, feature] of self.seenFeatures.entries()) {
-					if (!isAlive(feature)) {
-						self.deleteSeenFeature(id);
-						continue;
-					}
-					if (refName !== assembly?.getCanonicalRefName(feature.refSeq) || !doesIntersect2(start, end, feature.min, feature.max)) continue;
-					const { featureTypeOntology } = self.session.apolloDataStore.ontologyManager;
-					if (!featureTypeOntology) throw new Error("featureTypeOntology is undefined");
-					if (looksLikeGene(feature, self.session)) {
-						const rowNum = feature.strand == 1 ? self.geneTrackRowNums[0] : self.geneTrackRowNums[1];
-						if (!featureLayout.get(rowNum)) featureLayout.set(rowNum, []);
-						featureLayout.get(rowNum)?.push({
-							rowNum,
-							feature
-						});
-						const { children } = feature;
-						if (!children) continue;
-						for (const [, child] of children) if (featureTypeOntology.isTypeOf(child.type, "transcript")) {
-							const { cdsLocations, strand, children: childrenOfmRNA } = child;
-							if (childrenOfmRNA) for (const [, exon] of childrenOfmRNA) {
-								if (!featureTypeOntology.isTypeOf(exon.type, "exon")) continue;
-								const rowNum = exon.strand == 1 ? self.geneTrackRowNums[0] : self.geneTrackRowNums[1];
-								featureLayout.get(rowNum)?.push({
-									rowNum,
-									feature: exon
-								});
-							}
-							for (const cdsRow of cdsLocations) for (const cds of cdsRow) {
-								const frame = getFrame(cds.min, cds.max, strand ?? 1, cds.phase);
-								const rowNum = (self.showFeatureLabels ? [
-									0,
-									5,
-									3,
-									1,
-									15,
-									13,
-									11
-								] : [
-									0,
-									2,
-									1,
-									0,
-									8,
-									7,
-									6
-								]).at(frame);
-								if (rowNum === void 0) continue;
-								if (!featureLayout.get(rowNum)) featureLayout.set(rowNum, []);
-								featureLayout.get(rowNum)?.push({
-									rowNum,
-									feature: child
-								});
-							}
-						}
-					} else continue;
-				}
-				return featureLayout;
-			});
-		},
-		getFeatureLayoutPosition(feature) {
-			const { featureLayouts } = this;
-			for (const [idx, layout] of featureLayouts.entries()) for (const [, layoutRow] of layout) for (const { feature: layoutFeature } of layoutRow) if (feature._id === layoutFeature._id) return {
-				layoutIndex: idx,
-				layoutRow: 0,
-				featureRow: 0
-			};
-		}
-	})).views((_self) => ({ get highestRow() {
-		return 5;
-	} })).actions((self) => ({ afterAttach() {
-		addDisposer(self, autorun(() => {
-			if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
-			for (const region of self.regions) {
-				const features = (self.session.apolloDataStore.assemblies.get(region.assemblyName)?.getByRefName(region.refName))?.features;
-				if (!features) continue;
-				for (const [, feature] of features) if (doesIntersect2(region.start, region.end, feature.min, feature.max) && !self.seenFeatures.has(feature._id)) self.addSeenFeature(feature);
-			}
-		}, {
-			name: "LinearApolloSixFrameDisplaySetSeenFeatures",
-			delay: 1e3
-		}));
-	} }));
-}
-//#endregion
 //#region src/LinearApolloSixFrameDisplay/stateModel/rendering.ts
 function drawCodon(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp, rowHeight, showFeatureLabels, showStartCodons, showStopCodons) {
-	const frameOffsets = (showFeatureLabels ? [
-		0,
-		4,
-		2,
-		0,
-		14,
-		12,
-		10
-	] : [
-		0,
-		2,
-		1,
-		0,
-		7,
-		6,
-		5
-	]).map((b) => b * rowHeight);
 	for (const strand of [-1, 1]) {
-		const frame = getFrame(bp, bp + 3, strand, 0);
-		const top = frameOffsets.at(frame);
-		if (top === void 0) continue;
+		const top = getCDSRow(getFrame(bp, bp + 3, strand, 0), showFeatureLabels) * rowHeight;
 		const left = Math.round(leftPx + index / bpPerPx);
-		const width = Math.round(3 / bpPerPx) === 0 ? 1 : Math.round(3 / bpPerPx);
+		const right = Math.round(leftPx + (index + 3) / bpPerPx);
+		const width = Math.max(right - left, 1);
 		const codonCode = strand === 1 ? codon : revcom(codon);
-		const aminoAcidCode = defaultCodonTable[codonCode];
-		const fillColor = codonColorCode(aminoAcidCode, theme, highContrast);
+		const aminoAcidCode = codonTable[codonCode];
+		const fillColor = aminoAcidCode && codonColorCode(aminoAcidCode, theme, highContrast);
 		if (fillColor && (showStopCodons && aminoAcidCode == "*" || showStartCodons && aminoAcidCode != "*")) {
 			ctx.fillStyle = fillColor;
 			ctx.fillRect(left, top, width, rowHeight);
@@ -13270,21 +13798,63 @@ function drawCodon(ctx, codon, leftPx, index, theme, highContrast, bpPerPx, bp, 
 	}
 }
 function renderingModelFactory(pluginManager, configSchema) {
-	return layoutsModelFactory(pluginManager, configSchema).named("LinearApolloSixFrameDisplayRendering").props({
+	return baseModelFactory(pluginManager, configSchema).named("LinearApolloSixFrameDisplayRendering").props({
 		apolloRowHeight: 20,
 		detailsMinHeight: 200,
 		detailsHeight: 200,
-		lastRowTooltipBufferHeight: 120,
 		isShown: true,
 		filteredTranscripts: types.array(types.string)
 	}).volatile(() => ({
 		canvas: null,
 		overlayCanvas: null,
 		collaboratorCanvas: null,
-		theme: createTheme()
+		theme: createTheme(),
+		seenFeatures: observable.map()
+	})).views((self) => ({
+		getGlyph(_feature) {
+			return geneGlyph;
+		},
+		/** Top-level gene features that overlap the given region */
+		getGenesInRegion(region) {
+			const features = self.session.apolloDataStore.assemblies.get(region.assemblyName)?.getByRefName(region.refName)?.features;
+			const genes = [];
+			if (!features) return genes;
+			for (const [, feature] of features) if (doesIntersect2(region.start, region.end, feature.min, feature.max) && looksLikeGene(feature, self.session)) genes.push(feature);
+			return genes;
+		},
+		/**
+		* 0-based row the feature is drawn in. A transcript is drawn in a row for
+		* each of its CDS frames, so if `bp` is given, the row of the CDS
+		* containing it is used, otherwise the row of the first CDS.
+		*/
+		getRowForFeature(feature, bp) {
+			const { session, showFeatureLabels } = self;
+			if (isCDSFeature(feature, session)) {
+				const transcript = feature.parent;
+				if (!transcript) return;
+				for (const cds of transcript.cdsLocations.flat()) if (doesIntersect2(cds.min, cds.max, feature.min, feature.max)) return getCDSRow(getFrame(cds.min, cds.max, transcript.strand ?? 1, cds.phase), showFeatureLabels);
+				return;
+			}
+			if (isTranscriptFeature(feature, session)) {
+				const cdss = feature.cdsLocations.flat();
+				const cds = bp === void 0 ? cdss.at(0) : cdss.find((c) => bp >= c.min && bp < c.max);
+				if (cds) return getCDSRow(getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase), showFeatureLabels);
+			}
+			return getStrandRow(feature.strand, showFeatureLabels);
+		},
+		/** 0-based row of the first reverse-strand frame (frame -1) */
+		get firstReverseFrameRow() {
+			return getCDSRow(-1, self.showFeatureLabels);
+		}
 	})).views((self) => ({ get featuresHeight() {
-		return (self.showFeatureLabels ? 2 : 1) * ((self.highestRow + 1) * self.apolloRowHeight) + self.lastRowTooltipBufferHeight;
+		return (self.showFeatureLabels ? 2 : 1) * 8 * self.apolloRowHeight;
 	} })).actions((self) => ({
+		addSeenFeature(feature) {
+			self.seenFeatures.set(feature._id, feature);
+		},
+		deleteSeenFeature(featureId) {
+			self.seenFeatures.delete(featureId);
+		},
 		toggleShown() {
 			self.isShown = !self.isShown;
 		},
@@ -13305,10 +13875,24 @@ function renderingModelFactory(pluginManager, configSchema) {
 		}
 	})).actions((self) => ({ afterAttach() {
 		addDisposer(self, autorun(() => {
-			if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
-			const ctx = self.collaboratorCanvas?.getContext("2d");
-			if (!ctx) return;
-			ctx.clearRect(0, 0, self.lgv.dynamicBlocks.totalWidthPx, self.featuresHeight);
+			if (!self.lgv.initialized || self.displayMode !== "features") return;
+			for (const [id, feature] of self.seenFeatures.entries()) if (!isAlive(feature)) self.deleteSeenFeature(id);
+			for (const region of self.regions) {
+				const features = (self.session.apolloDataStore.assemblies.get(region.assemblyName)?.getByRefName(region.refName))?.features;
+				if (!features) continue;
+				for (const [, feature] of features) if (doesIntersect2(region.start, region.end, feature.min, feature.max) && !self.seenFeatures.has(feature._id)) self.addSeenFeature(feature);
+			}
+		}, {
+			name: "LinearApolloSixFrameDisplaySetSeenFeatures",
+			delay: 1e3
+		}));
+		addDisposer(self, autorun(() => {
+			if (!self.lgv.initialized || self.displayMode !== "features") return;
+			const { collaboratorCanvas } = self;
+			const ctx = collaboratorCanvas?.getContext("2d");
+			if (!collaboratorCanvas || !ctx) return;
+			setCanvasSize(collaboratorCanvas, self.lgv.dynamicBlocks.totalWidthPx, self.featuresHeight);
+			ctx.clearRect(0, 0, collaboratorCanvas.width, collaboratorCanvas.height);
 			for (const collaborator of self.session.collaborators) {
 				const { locations } = collaborator;
 				if (locations.length === 0) continue;
@@ -13323,8 +13907,7 @@ function renderingModelFactory(pluginManager, configSchema) {
 							regionNumber: idx
 						});
 						if (!locationStartPxInfo) continue;
-						const locationStartPx = locationStartPxInfo.offsetPx - self.lgv.offsetPx;
-						const locationWidthPx = (end - start) / self.lgv.bpPerPx;
+						const { startPx: locationStartPx, widthPx: locationWidthPx } = roundPxSpan(locationStartPxInfo.offsetPx - self.lgv.offsetPx, (end - start) / self.lgv.bpPerPx);
 						ctx.fillStyle = "rgba(0,255,0,.2)";
 						ctx.fillRect(locationStartPx, 1, locationWidthPx, 100);
 						ctx.fillStyle = "black";
@@ -13335,37 +13918,35 @@ function renderingModelFactory(pluginManager, configSchema) {
 			}
 		}, { name: "LinearApolloSixFrameDisplayRenderCollaborators" }));
 		addDisposer(self, autorun(() => {
-			const { apolloRowHeight, canvas, featureLayouts, featuresHeight, lgv, session, theme, showFeatureLabels, showStartCodons, showStopCodons } = self;
-			if (!lgv.initialized || self.regionCannotBeRendered()) return;
-			const { bpPerPx, offsetPx, displayedRegions, dynamicBlocks } = lgv;
-			const ctx = canvas?.getContext("2d");
+			const { apolloRowHeight, canvas, lgv, session, theme, showFeatureLabels, showStartCodons, showStopCodons } = self;
+			if (!lgv.initialized || self.displayMode !== "features" || !canvas) return;
+			const { bpPerPx, offsetPx, dynamicBlocks } = lgv;
+			const ctx = canvas.getContext("2d");
 			if (!ctx) return;
-			ctx.clearRect(0, 0, dynamicBlocks.totalWidthPx, featuresHeight);
-			for (const [idx, featureLayout] of featureLayouts.entries()) {
-				const displayedRegion = displayedRegions[idx];
-				for (const [row, featureLayoutRow] of featureLayout.entries()) for (const { feature } of featureLayoutRow) {
-					if (!looksLikeGene(feature, self.session)) continue;
-					if (!doesIntersect2(displayedRegion.start, displayedRegion.end, feature.min, feature.max)) continue;
-					const { topLevelFeature } = feature;
-					const glyph = self.getGlyph(topLevelFeature);
-					if (glyph !== void 0) glyph.draw(ctx, topLevelFeature, row, self, idx);
-				}
-			}
-			if (showStartCodons || showStopCodons) {
-				const { apolloDataStore } = session;
-				for (const block of dynamicBlocks.contentBlocks) {
+			setCanvasSize(canvas, dynamicBlocks.totalWidthPx, self.featuresHeight);
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			for (const block of dynamicBlocks.contentBlocks) {
+				const blockLeftPx = block.offsetPx - offsetPx;
+				const clip = roundPxSpan(blockLeftPx, block.widthPx);
+				ctx.save();
+				ctx.beginPath();
+				ctx.rect(clip.startPx, 0, clip.widthPx, canvas.height);
+				ctx.clip();
+				for (const gene of self.getGenesInRegion(block)) self.getGlyph(gene).draw(self, ctx, gene, block);
+				if (showStartCodons || showStopCodons) {
+					const { apolloDataStore } = session;
 					const ref = apolloDataStore.assemblies.get(block.assemblyName)?.getByRefName(block.refName);
 					const roundedStart = Math.floor(block.start);
-					let seq = ref?.getSequence(roundedStart, Math.ceil(block.end));
-					if (!seq) break;
-					seq = seq.toUpperCase();
-					const baseOffsetPx = (block.start - roundedStart) / bpPerPx;
-					const seqLeftPx = Math.round(block.offsetPx - offsetPx - baseOffsetPx);
-					for (let i = 0; i < seq.length; i++) {
-						const bp = roundedStart + i;
-						drawCodon(ctx, seq.slice(i, i + 3), seqLeftPx, i, theme, true, bpPerPx, bp, apolloRowHeight, showFeatureLabels, showStartCodons, showStopCodons);
+					const seq = ref?.getSequence(roundedStart, Math.ceil(block.end)).toUpperCase();
+					if (seq) {
+						const seqLeftPx = blockLeftPx - (block.start - roundedStart) / bpPerPx;
+						for (let i = 0; i < seq.length; i++) {
+							const bp = roundedStart + i;
+							drawCodon(ctx, seq.slice(i, i + 3), seqLeftPx, i, theme, true, bpPerPx, bp, apolloRowHeight, showFeatureLabels, showStartCodons, showStopCodons);
+						}
 					}
 				}
+				ctx.restore();
 			}
 		}, { name: "LinearApolloSixFrameDisplayRenderFeatures" }));
 	} }));
@@ -13379,40 +13960,26 @@ function mouseEventsModelIntermediateFactory(pluginManager, configSchema) {
 	})).views((self) => ({ getMousePosition(event) {
 		const mousePosition = getMousePosition$1(event, self.lgv);
 		const { bp, regionNumber, y } = mousePosition;
-		const row = Math.floor(y / self.apolloRowHeight) + 1;
-		const layoutRow = self.featureLayouts[regionNumber].get(row);
-		if (!layoutRow) return mousePosition;
+		const rowContents = getRowContents(Math.floor(y / self.apolloRowHeight), self.showFeatureLabels);
+		const region = self.lgv.displayedRegions.at(regionNumber);
+		if (!rowContents || !region) return mousePosition;
 		const { featureTypeOntology } = self.session.apolloDataStore.ontologyManager;
 		if (!featureTypeOntology) throw new Error("featureTypeOntology is undefined");
-		const foundFeature = self.geneTrackRowNums.includes(row) ? layoutRow.find((f) => f.feature.type == "exon" && bp >= f.feature.min && bp <= f.feature.max) ?? layoutRow.find((f) => bp >= f.feature.min && bp <= f.feature.max) : layoutRow.find((f) => {
-			const { feature } = f;
-			const featureID = feature.attributes.get("gff_id")?.toString();
-			if (!featureTypeOntology.isTypeOf(feature.type, "transcript")) return false;
-			for (const loc of feature.cdsLocations) for (const cds of loc) {
-				const frame = getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase);
-				const rowNum = (self.showFeatureLabels ? [
-					0,
-					5,
-					3,
-					1,
-					15,
-					13,
-					11
-				] : [
-					0,
-					2,
-					1,
-					0,
-					8,
-					7,
-					6
-				]).at(frame);
-				if (row === rowNum && bp >= cds.min && bp <= cds.max) return featureID === void 0 || !self.filteredTranscripts.includes(featureID);
-			}
-			return false;
-		});
-		if (!foundFeature) return mousePosition;
-		const { feature } = foundFeature;
+		const genes = self.getGenesInRegion(region).filter((gene) => bp >= gene.min && bp < gene.max);
+		const transcripts = genes.flatMap((gene) => [...gene.children?.values() ?? []].filter((child) => featureTypeOntology.isTypeOf(child.type, "transcript")));
+		let feature;
+		if (rowContents.type === "gene") {
+			const { strand } = rowContents;
+			feature = transcripts.flatMap((transcript) => [...transcript.children?.values() ?? []]).find((exon) => featureTypeOntology.isTypeOf(exon.type, "exon") && (exon.strand === 1 ? 1 : -1) === strand && bp >= exon.min && bp < exon.max) ?? genes.find((gene) => (gene.strand === 1 ? 1 : -1) === strand);
+		} else {
+			const { frame } = rowContents;
+			feature = transcripts.find((transcript) => {
+				const featureID = transcript.attributes.get("gff_id")?.toString();
+				if (featureID && self.filteredTranscripts.includes(featureID)) return false;
+				return transcript.cdsLocations.flat().some((cds) => bp >= cds.min && bp < cds.max && getFrame(cds.min, cds.max, transcript.strand ?? 1, cds.phase) === frame);
+			});
+		}
+		if (!feature) return mousePosition;
 		return {
 			...mousePosition,
 			feature
@@ -13467,7 +14034,7 @@ function mouseEventsModelFactory(pluginManager, configSchema) {
 			}
 			const { displayedRegions } = self.lgv;
 			const assembly = self.getAssemblyId(displayedRegions[start.regionNumber].assemblyName);
-			const changes = getPropagatedLocationChanges(feature, current.bp, edge, shrinkParent);
+			const changes = getPropagatedLocationChanges(feature, current.edgeBp, edge, shrinkParent, self.session);
 			const change = edge === "max" ? new LocationEndChange({
 				typeName: "LocationEndChange",
 				changedIds: changes.map((c) => c.featureId),
@@ -13523,15 +14090,15 @@ function mouseEventsModelFactory(pluginManager, configSchema) {
 		}
 	})).actions((self) => ({ afterAttach() {
 		addDisposer(self, autorun(() => {
-			if (!self.lgv.initialized || self.regionCannotBeRendered()) return;
-			const ctx = self.overlayCanvas?.getContext("2d");
-			if (!ctx) return;
-			ctx.clearRect(0, 0, self.lgv.dynamicBlocks.totalWidthPx, self.featuresHeight);
+			if (!self.lgv.initialized || self.displayMode !== "features") return;
+			const { overlayCanvas } = self;
+			const ctx = overlayCanvas?.getContext("2d");
+			if (!overlayCanvas || !ctx) return;
+			setCanvasSize(overlayCanvas, self.lgv.dynamicBlocks.totalWidthPx, self.featuresHeight);
+			ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 			const { apolloDragging, hoveredFeature } = self;
 			if (!hoveredFeature) return;
-			const glyph = self.getGlyph(hoveredFeature.feature);
-			glyph.drawOverlay(self, ctx);
-			glyph.drawTooltip(self, ctx);
+			self.getGlyph(hoveredFeature.feature).drawOverlay(self, ctx);
 			if (apolloDragging) self.getGlyph(apolloDragging.feature.topLevelFeature).drawDragPreview(self, ctx);
 		}, { name: "LinearApolloSixFrameDisplayRenderMouseoverAndDrag" }));
 	} }));
@@ -14247,9 +14814,438 @@ function annotationFromJBrowseFeature(pluggableElement) {
 	return pluggableElement;
 }
 //#endregion
+//#region src/components/FeatureDensityHistogram.tsx
+/** Same as JBrowse's alignments strand colors */
+const strandColors = {
+	forward: "#EC8B8B",
+	reverse: "#8F8FD8",
+	unstranded: "#999999"
+};
+const strandLabels = {
+	forward: "+",
+	reverse: "−",
+	unstranded: "no strand"
+};
+/** Space above the bars for the banner, in px */
+const bannerHeight = 24;
+/**
+* Height of the plot in SVG user units. The SVG is stretched vertically to
+* fill the track, so bar heights are fractions of this.
+*/
+const plotHeight = 100;
+const useStyles$1 = makeStyles()((theme) => ({
+	container: {
+		position: "relative",
+		height: "100%"
+	},
+	plot: {
+		position: "absolute",
+		left: 0,
+		top: bannerHeight,
+		bottom: 0
+	},
+	svg: {
+		position: "absolute",
+		left: 0,
+		top: 0,
+		height: "100%",
+		cursor: "zoom-in"
+	},
+	scale: {
+		position: "absolute",
+		right: 0,
+		top: 0,
+		bottom: 0,
+		borderRight: `1px solid ${theme.palette.text.secondary}`,
+		pointerEvents: "none"
+	},
+	tick: {
+		position: "absolute",
+		right: 0,
+		display: "flex",
+		alignItems: "center",
+		gap: 2,
+		fontSize: 10,
+		lineHeight: 1,
+		color: theme.palette.text.primary,
+		whiteSpace: "nowrap"
+	},
+	tickMark: {
+		width: 4,
+		borderTop: `1px solid ${theme.palette.text.secondary}`
+	},
+	legendSwatch: {
+		display: "inline-block",
+		width: 8,
+		height: 8,
+		marginRight: 2
+	},
+	tickLabel: {
+		padding: "0 2px",
+		background: theme.palette.background.paper,
+		opacity: .85
+	},
+	banner: {
+		position: "absolute",
+		top: 0,
+		right: 0,
+		display: "flex",
+		alignItems: "center",
+		gap: theme.spacing(1),
+		padding: theme.spacing(0, 1),
+		height: bannerHeight,
+		fontSize: theme.typography.caption.fontSize,
+		background: theme.palette.background.paper,
+		opacity: .9,
+		zIndex: 1,
+		whiteSpace: "nowrap"
+	}
+}));
+/**
+* Lay out the bins of each density over the content blocks of the view. The
+* densities may be from a slightly earlier view (e.g. while scrolling), so
+* they're matched to blocks by reference sequence instead of by index.
+*/
+function getDensityBars(lgv, densities, regions) {
+	const { bpPerPx, offsetPx } = lgv;
+	const bars = [];
+	for (const block of lgv.dynamicBlocks.contentBlocks) {
+		const blockLeftPx = block.offsetPx - offsetPx;
+		for (const [idx, density] of densities.entries()) {
+			const region = regions[idx];
+			if (region.assemblyName !== block.assemblyName || region.refName !== block.refName) continue;
+			for (const [binIdx, count] of density.bins.entries()) {
+				const binStart = density.start + binIdx * density.binSize;
+				const binEnd = binStart + density.binSize;
+				const start = Math.max(binStart, block.start);
+				const end = Math.min(binEnd, block.end);
+				if (end <= start) continue;
+				const leftBp = block.reversed ? block.end - end : start - block.start;
+				const { strandBins } = density;
+				bars.push({
+					key: `${block.key}-${idx}-${binIdx}`,
+					x: blockLeftPx + leftBp / bpPerPx,
+					width: (end - start) / bpPerPx,
+					count,
+					assemblyName: block.assemblyName,
+					refName: block.refName,
+					start: binStart,
+					end: binEnd,
+					strandCounts: strandBins && {
+						forward: strandBins.forward[binIdx],
+						reverse: strandBins.reverse[binIdx],
+						unstranded: strandBins.unstranded[binIdx]
+					}
+				});
+			}
+		}
+	}
+	return bars;
+}
+/**
+* Pick the top of the count scale and the tick values on it. The top is
+* rounded up to a whole number of "nice" (1/2/5 × 10ⁿ) steps, so it gets a
+* label too.
+*/
+function getScaleTicks(maxCount, divisions = 4) {
+	const step = niceBinSize(maxCount / divisions);
+	const scaleMax = Math.max(step, Math.ceil(maxCount / step) * step);
+	const ticks = [];
+	for (let tick = 0; tick <= scaleMax; tick += step) ticks.push(tick);
+	return {
+		scaleMax,
+		ticks
+	};
+}
+function tooltipText(bar) {
+	const { count, end, refName, start, strandCounts } = bar;
+	let text = `${`${refName}:${(start + 1).toLocaleString()}-${end.toLocaleString()}`}: ${count.toLocaleString()} feature${count === 1 ? "" : "s"}`;
+	if (strandCounts && count > 0) {
+		const byStrand = densityStrands.filter((strand) => strandCounts[strand] > 0).map((strand) => `${strandLabels[strand]} ${strandCounts[strand].toLocaleString()}`);
+		text += ` (${byStrand.join(", ")})`;
+	}
+	return `${text} (click to zoom in)`;
+}
+/**
+* How far a bar reaches from the baseline: the whole count, or when mirrored,
+* the larger of the + side and the − side (each with half the unstranded
+* features)
+*/
+function getBarExtent(bar, mirrored) {
+	if (!mirrored) return bar.count;
+	const { forward, reverse, unstranded } = getStrandCounts(bar);
+	return Math.max(forward, reverse) + unstranded / 2;
+}
+function getStrandCounts(bar) {
+	return bar.strandCounts ?? {
+		forward: 0,
+		reverse: 0,
+		unstranded: bar.count
+	};
+}
+/**
+* Split a bar into segments. Without strand information, a single segment
+* grows up from the bottom. Mirrored, + grows up and − grows down from the
+* middle, and each side ends with half of the unstranded features.
+* @returns segments with `y` (bottom edge, from the bottom of the plot) and
+* `height` as fractions of the plot height
+*/
+function getBarSegments(bar, scaleMax, mirrored, defaultColor) {
+	if (!mirrored) return [{
+		key: "all",
+		color: defaultColor,
+		y: 0,
+		height: bar.count / scaleMax
+	}];
+	const perCount = .5 / scaleMax;
+	const { forward, reverse, unstranded } = getStrandCounts(bar);
+	const forwardHeight = forward * perCount;
+	const reverseHeight = reverse * perCount;
+	const unstrandedHeight = unstranded / 2 * perCount;
+	const { forward: forwardColor, reverse: reverseColor } = strandColors;
+	return [
+		{
+			key: "forward",
+			color: forwardColor,
+			y: .5,
+			height: forwardHeight
+		},
+		{
+			key: "unstranded-up",
+			color: strandColors.unstranded,
+			y: .5 + forwardHeight,
+			height: unstrandedHeight
+		},
+		{
+			key: "reverse",
+			color: reverseColor,
+			y: .5 - reverseHeight,
+			height: reverseHeight
+		},
+		{
+			key: "unstranded-down",
+			color: strandColors.unstranded,
+			y: .5 - reverseHeight - unstrandedHeight,
+			height: unstrandedHeight
+		}
+	].filter((segment) => segment.height > 0);
+}
+/**
+* Place the scale's ticks. Mirrored, 0 is in the middle and the ticks repeat
+* above and below it.
+* @returns ticks with `position` as a fraction of the plot height from the
+* bottom
+*/
+function getTickPositions(ticks, scaleMax, mirrored) {
+	if (!mirrored) return ticks.map((value) => ({
+		key: String(value),
+		value,
+		position: value / scaleMax
+	}));
+	return ticks.flatMap((value) => {
+		const offset = value / scaleMax * .5;
+		const up = {
+			key: `+${value}`,
+			value,
+			position: .5 + offset
+		};
+		return value === 0 ? [up] : [up, {
+			key: `-${value}`,
+			value,
+			position: .5 - offset
+		}];
+	});
+}
+function bannerText(model) {
+	const { featureCountInView, thresholdModeSetting, zoomThresholdSetting } = model;
+	if (thresholdModeSetting === "fixed") return `Showing feature density when zoomed out past ${zoomThresholdSetting.toLocaleString()} bp/px`;
+	if (featureCountInView === void 0) return "Showing feature density";
+	return `Showing feature density: ${featureCountInView.toLocaleString()} features in view`;
+}
+const FeatureDensityHistogram = observer(function FeatureDensityHistogram({ model }) {
+	const { classes } = useStyles$1();
+	const theme = useTheme();
+	const [hovered, setHovered] = useState();
+	const { densityLgv: lgv, densityStats, displayMode } = model;
+	const { totalWidthPx } = lgv.dynamicBlocks;
+	if (displayMode === "pending" || !densityStats) return /* @__PURE__ */ jsx("div", {
+		className: classes.container,
+		style: { width: totalWidthPx },
+		children: /* @__PURE__ */ jsxs("div", {
+			className: classes.banner,
+			children: [/* @__PURE__ */ jsx(CircularProgress, { size: 12 }), "Counting features in view…"]
+		})
+	});
+	const bars = getDensityBars(lgv, densityStats.densities, densityStats.regions);
+	const hasStrands = bars.some((bar) => bar.strandCounts);
+	const { scaleMax, ticks } = getScaleTicks(Math.max(1, ...bars.map((bar) => getBarExtent(bar, hasStrands))), hasStrands ? 2 : 4);
+	return /* @__PURE__ */ jsxs("div", {
+		className: classes.container,
+		style: { width: totalWidthPx },
+		"data-testid": "feature-density-histogram",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: classes.banner,
+			children: [
+				/* @__PURE__ */ jsxs("span", { children: [bannerText(model), ". Zoom in to see features, or"] }),
+				/* @__PURE__ */ jsx(Button, {
+					size: "small",
+					variant: "outlined",
+					style: {
+						padding: "0 4px",
+						minWidth: 0,
+						fontSize: "inherit"
+					},
+					onClick: () => {
+						model.forceLoadFeatures();
+					},
+					children: "show them anyway"
+				}),
+				hasStrands ? densityStrands.map((strand) => /* @__PURE__ */ jsxs("span", { children: [/* @__PURE__ */ jsx("span", {
+					className: classes.legendSwatch,
+					style: { background: strandColors[strand] }
+				}), strandLabels[strand]] }, strand)) : null
+			]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: classes.plot,
+			style: { width: totalWidthPx },
+			children: [/* @__PURE__ */ jsx(Tooltip, {
+				followCursor: true,
+				title: hovered ? tooltipText(hovered) : "",
+				children: /* @__PURE__ */ jsxs("svg", {
+					className: classes.svg,
+					width: totalWidthPx,
+					viewBox: `0 0 ${totalWidthPx} ${plotHeight}`,
+					preserveAspectRatio: "none",
+					onMouseLeave: () => {
+						setHovered(void 0);
+					},
+					children: [bars.map((bar) => {
+						const width = Math.max(bar.width - .5, .5);
+						const segments = getBarSegments(bar, scaleMax, hasStrands, theme.palette.primary.main);
+						const bottom = Math.min(...segments.map(({ y }) => y));
+						const top = Math.max(...segments.map(({ height, y }) => y + height));
+						return /* @__PURE__ */ jsxs("g", {
+							"data-testid": "feature-density-bar",
+							"data-count": bar.count,
+							onMouseEnter: () => {
+								setHovered(bar);
+							},
+							onClick: () => {
+								const center = (bar.start + bar.end) / 2;
+								const halfWidth = lgv.bpPerPx * lgv.width / 20;
+								lgv.navTo({
+									assemblyName: bar.assemblyName,
+									refName: bar.refName,
+									start: Math.max(0, Math.round(center - halfWidth)),
+									end: Math.round(center + halfWidth)
+								});
+							},
+							children: [
+								/* @__PURE__ */ jsx("rect", {
+									x: bar.x,
+									y: 0,
+									width: bar.width,
+									height: plotHeight,
+									fill: "transparent"
+								}),
+								segments.map((segment) => /* @__PURE__ */ jsx("rect", {
+									x: bar.x,
+									y: plotHeight * (1 - segment.y - segment.height),
+									width,
+									height: plotHeight * segment.height,
+									fill: segment.color
+								}, segment.key)),
+								hovered?.key === bar.key ? /* @__PURE__ */ jsx("rect", {
+									x: bar.x,
+									y: plotHeight * (1 - top),
+									width,
+									height: plotHeight * (top - bottom),
+									fill: "none",
+									stroke: theme.palette.text.primary,
+									strokeWidth: 1.5,
+									vectorEffect: "non-scaling-stroke"
+								}) : null
+							]
+						}, bar.key);
+					}), hasStrands ? /* @__PURE__ */ jsx("line", {
+						x1: 0,
+						x2: totalWidthPx,
+						y1: plotHeight / 2,
+						y2: plotHeight / 2,
+						stroke: theme.palette.text.secondary,
+						strokeWidth: 1,
+						vectorEffect: "non-scaling-stroke",
+						pointerEvents: "none"
+					}) : null]
+				})
+			}), /* @__PURE__ */ jsx("div", {
+				className: classes.scale,
+				"data-testid": "feature-density-scale",
+				children: getTickPositions(ticks, scaleMax, hasStrands).map((tick) => {
+					let shift = "50%";
+					if (tick.position === 0) shift = "0%";
+					else if (tick.position === 1) shift = "100%";
+					return /* @__PURE__ */ jsxs("div", {
+						className: classes.tick,
+						style: {
+							bottom: `${tick.position * 100}%`,
+							transform: `translateY(${shift})`
+						},
+						children: [/* @__PURE__ */ jsx("span", {
+							className: classes.tickLabel,
+							children: tick.value.toLocaleString()
+						}), /* @__PURE__ */ jsx("span", { className: classes.tickMark })]
+					}, tick.key);
+				})
+			})]
+		})]
+	});
+});
+//#endregion
+//#region src/components/CheckResultIcon.tsx
+/**
+* The warning icon for a cluster of check results. It's memoized so moving the
+* icon while zooming or scrolling, which only changes the position of the
+* element around it, doesn't re-render its tooltip, badge, and avatar.
+*/
+const CheckResultIconContent = memo(function CheckResultIconContent({ message, count, start }) {
+	const { classes } = useStyles$2();
+	return /* @__PURE__ */ jsx(Tooltip, {
+		title: message,
+		children: /* @__PURE__ */ jsx(Badge, {
+			className: classes.badge,
+			badgeContent: count,
+			color: "primary",
+			overlap: "circular",
+			anchorOrigin: {
+				vertical: "bottom",
+				horizontal: "right"
+			},
+			invisible: count <= 1,
+			children: /* @__PURE__ */ jsx(Avatar, {
+				className: classes.avatar,
+				children: /* @__PURE__ */ jsx(ErrorIcon, { "data-testid": `ErrorIcon-${start}` })
+			})
+		})
+	});
+});
+function CheckResultIcon({ top, left, size, disablePointerEvents, ...contentProps }) {
+	return /* @__PURE__ */ jsx("div", {
+		style: {
+			position: "absolute",
+			overflow: "visible",
+			top,
+			left,
+			height: size,
+			width: size,
+			pointerEvents: disablePointerEvents ? "none" : "auto"
+		},
+		children: /* @__PURE__ */ jsx(CheckResultIconContent, { ...contentProps })
+	});
+}
+//#endregion
 //#region src/LinearApolloDisplay/components/CheckResultWarnings.tsx
 const CheckResultWarnings = observer(function CheckResultWarnings({ display }) {
-	const { classes } = useStyles$1();
 	const { apolloDragging, apolloRowHeight, lgv, session, showCheckResults } = display;
 	const { assemblyManager } = session;
 	if (!showCheckResults) return null;
@@ -14261,42 +15257,22 @@ const CheckResultWarnings = observer(function CheckResultWarnings({ display }) {
 			const left = Math.round(getLeftPx$1(display, checkResult.range, block));
 			const [feature] = checkResult.featureIds;
 			if (!feature) return null;
-			const top = (display.getRowForFeature(feature) ?? 0) * apolloRowHeight;
-			const height = apolloRowHeight;
-			return /* @__PURE__ */ jsx(Tooltip, {
-				title: checkResult.message,
-				children: /* @__PURE__ */ jsx(Box, {
-					className: classes.box,
-					style: {
-						top,
-						left,
-						height,
-						width: height,
-						pointerEvents: apolloDragging ? "none" : "auto"
-					},
-					children: /* @__PURE__ */ jsx(Badge, {
-						className: classes.badge,
-						badgeContent: checkResult.count,
-						color: "primary",
-						overlap: "circular",
-						anchorOrigin: {
-							vertical: "bottom",
-							horizontal: "right"
-						},
-						invisible: checkResult.count <= 1,
-						children: /* @__PURE__ */ jsx(Avatar, {
-							className: classes.avatar,
-							children: /* @__PURE__ */ jsx(ErrorIcon, { "data-testid": `ErrorIcon-${checkResult.start}` })
-						})
-					})
-				})
+			const row = display.getRowForFeature(feature) ?? 0;
+			return /* @__PURE__ */ jsx(CheckResultIcon, {
+				top: row * apolloRowHeight,
+				left,
+				size: apolloRowHeight,
+				disablePointerEvents: Boolean(apolloDragging),
+				message: checkResult.message,
+				count: checkResult.count,
+				start: checkResult.start
 			}, checkResult._id);
 		});
 	});
 });
 //#endregion
 //#region src/LinearApolloDisplay/components/Tooltip.tsx
-const Tooltip$1 = observer(function Tooltip(props) {
+const Tooltip$2 = observer(function Tooltip(props) {
 	const { mouseCooordinate, session, dragging } = props;
 	const { apolloHoveredFeature } = session;
 	if (!(mouseCooordinate && apolloHoveredFeature) || dragging) return;
@@ -14324,19 +15300,16 @@ const Tooltip$1 = observer(function Tooltip(props) {
 //#region src/LinearApolloDisplay/components/OverlayCanvas.tsx
 const OverlayCanvas = observer(function OverlayCanvas(props) {
 	const { model } = props;
-	const { apolloDragging, cursor, featuresHeight: getFeaturesHeight, isShown, onMouseDown, onMouseLeave, onMouseMove, onMouseUp, session, setOverlayCanvas } = model;
-	const { classes } = useStyles$1();
-	const lgv = getContainingView(model);
+	const { apolloDragging, cursor, isShown, onMouseDown, onMouseLeave, onMouseMove, onMouseUp, session, setOverlayCanvas } = model;
+	const { classes } = useStyles$2();
+	const overlayCanvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setOverlayCanvas(node);
+	}, [setOverlayCanvas]);
 	const [mouseCoord, setMouseCoord] = useState();
 	if (!isShown) return null;
-	const featuresHeight = getFeaturesHeight(lgv.assemblyNames[0]);
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx("canvas", {
-		ref: async (node) => {
-			await Promise.resolve();
-			setOverlayCanvas(node);
-		},
-		width: lgv.dynamicBlocks.totalWidthPx,
-		height: featuresHeight,
+		ref: overlayCanvasRef,
 		onMouseMove: (...args) => {
 			const [event] = args;
 			setMouseCoord([event.clientX, event.clientY]);
@@ -14351,7 +15324,7 @@ const OverlayCanvas = observer(function OverlayCanvas(props) {
 		className: classes.canvas,
 		style: { cursor: cursor ?? "default" },
 		"data-testid": "overlayCanvas"
-	}), /* @__PURE__ */ jsx(Tooltip$1, {
+	}), /* @__PURE__ */ jsx(Tooltip$2, {
 		mouseCooordinate: mouseCoord,
 		session,
 		dragging: Boolean(apolloDragging)
@@ -14362,22 +15335,31 @@ const OverlayCanvas = observer(function OverlayCanvas(props) {
 const LinearApolloDisplay = observer(function LinearApolloDisplay(props) {
 	const theme = useTheme();
 	const { model } = props;
-	const { loading, contextMenuItems: getContextMenuItems, featuresHeight: getFeaturesHeight, isShown, regionCannotBeRendered, session, setCanvas, setCollaboratorCanvas, setTheme } = model;
-	const { classes } = useStyles$1();
+	const { loading, contextMenuItems: getContextMenuItems, featuresHeight: getFeaturesHeight, isShown, densityMessage, displayMode, session, setCanvas, setCollaboratorCanvas, setTheme } = model;
+	const { classes } = useStyles$2();
 	const lgv = getContainingView(model);
 	useEffect(() => {
 		setTheme(theme);
 	}, [theme, setTheme]);
+	const collaboratorCanvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setCollaboratorCanvas(node);
+	}, [setCollaboratorCanvas]);
+	const canvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setCanvas(node);
+	}, [setCanvas]);
 	const [contextCoord, setContextCoord] = useState();
 	const [contextMenuItems, setContextMenuItems] = useState([]);
-	const message = regionCannotBeRendered();
+	const message = densityMessage;
+	const showHistogram = !message && displayMode !== "features";
 	if (!isShown) return null;
 	const featuresHeight = getFeaturesHeight(lgv.assemblyNames[0]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: classes.canvasContainer,
 		style: {
 			width: lgv.dynamicBlocks.totalWidthPx,
-			height: featuresHeight
+			height: showHistogram ? "100%" : featuresHeight
 		},
 		onContextMenu: (event) => {
 			event.preventDefault();
@@ -14405,24 +15387,16 @@ const LinearApolloDisplay = observer(function LinearApolloDisplay(props) {
 					title: message,
 					children: /* @__PURE__ */ jsx("div", { children: message })
 				})
-			}) : /* @__PURE__ */ jsxs(Fragment, { children: [
+			}) : null,
+			showHistogram ? /* @__PURE__ */ jsx(FeatureDensityHistogram, { model }) : null,
+			message || showHistogram ? null : /* @__PURE__ */ jsxs(Fragment, { children: [
 				/* @__PURE__ */ jsx("canvas", {
-					ref: async (node) => {
-						await Promise.resolve();
-						setCollaboratorCanvas(node);
-					},
-					width: lgv.dynamicBlocks.totalWidthPx,
-					height: featuresHeight,
+					ref: collaboratorCanvasRef,
 					className: classes.canvas,
 					"data-testid": "collaboratorCanvas"
 				}),
 				/* @__PURE__ */ jsx("canvas", {
-					ref: async (node) => {
-						await Promise.resolve();
-						setCanvas(node);
-					},
-					width: lgv.dynamicBlocks.totalWidthPx,
-					height: featuresHeight,
+					ref: canvasRef,
 					className: classes.canvas,
 					"data-testid": "canvas"
 				}),
@@ -14452,19 +15426,37 @@ const LinearApolloDisplay = observer(function LinearApolloDisplay(props) {
 	});
 });
 //#endregion
+//#region src/LinearApolloSixFrameDisplay/components/Tooltip.tsx
+const Tooltip$1 = observer(function Tooltip(props) {
+	const { mouseCoordinate, model } = props;
+	const { apolloDragging, hoveredFeature } = model;
+	if (!(mouseCoordinate && hoveredFeature) || apolloDragging) return;
+	const lines = model.getGlyph(hoveredFeature.feature).getTooltipLines(model);
+	if (!lines) return;
+	const [x, y] = mouseCoordinate;
+	return /* @__PURE__ */ jsx(BaseTooltip, {
+		clientPoint: {
+			x,
+			y
+		},
+		placement: "top-start",
+		children: lines.map((line, idx) => /* @__PURE__ */ jsxs(React.Fragment, { children: [idx > 0 ? /* @__PURE__ */ jsx("br", {}) : null, line] }, line))
+	});
+});
+//#endregion
 //#region src/LinearApolloSixFrameDisplay/components/TrackLines.tsx
 const TrackLines = observer(function TrackLines({ model, hrStyle = {
 	margin: 0,
 	top: 0,
 	color: "black"
 }, idx }) {
-	const { apolloRowHeight, highestRow, showFeatureLabels } = model;
+	const { apolloRowHeight, showFeatureLabels } = model;
 	const featureLabelSpacer = showFeatureLabels ? 2 : 1;
 	return /* @__PURE__ */ jsx("div", {
 		style: {
 			position: "absolute",
 			left: 0,
-			top: apolloRowHeight * featureLabelSpacer * (highestRow + 1) / 2 + idx * featureLabelSpacer * apolloRowHeight,
+			top: (getStrandRow(1, showFeatureLabels) + idx * featureLabelSpacer) * apolloRowHeight,
 			width: "100%"
 		},
 		children: /* @__PURE__ */ jsx("hr", { style: hrStyle })
@@ -14475,22 +15467,36 @@ const TrackLines = observer(function TrackLines({ model, hrStyle = {
 const LinearApolloSixFrameDisplay = observer(function LinearApolloSixFrameDisplay(props, apolloDragging) {
 	const theme = useTheme();
 	const { model } = props;
-	const { apolloRowHeight, contextMenuItems: getContextMenuItems, cursor, featuresHeight, geneTrackRowNums, isShown, onMouseDown, onMouseLeave, onMouseMove, onMouseUp, regionCannotBeRendered, session, setCanvas, setCollaboratorCanvas, setOverlayCanvas, setTheme, showCheckResults, showFeatureLabels } = model;
-	const { classes } = useStyles$1();
+	const { apolloRowHeight, contextMenuItems: getContextMenuItems, cursor, featuresHeight, getRowForFeature, isShown, onMouseDown, onMouseLeave, onMouseMove, onMouseUp, densityMessage, displayMode, session, setCanvas, setCollaboratorCanvas, setOverlayCanvas, setTheme, showCheckResults } = model;
+	const { classes } = useStyles$2();
 	const lgv = getContainingView(model);
 	useEffect(() => {
 		setTheme(theme);
 	}, [theme, setTheme]);
+	const collaboratorCanvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setCollaboratorCanvas(node);
+	}, [setCollaboratorCanvas]);
+	const canvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setCanvas(node);
+	}, [setCanvas]);
+	const overlayCanvasRef = useCallback(async (node) => {
+		await Promise.resolve();
+		setOverlayCanvas(node);
+	}, [setOverlayCanvas]);
 	const [contextCoord, setContextCoord] = useState();
 	const [contextMenuItems, setContextMenuItems] = useState([]);
-	const message = regionCannotBeRendered();
+	const [mouseCoord, setMouseCoord] = useState();
+	const message = densityMessage;
+	const showHistogram = !message && displayMode !== "features";
 	if (!isShown) return null;
 	const { assemblyManager } = session;
 	return /* @__PURE__ */ jsx(Fragment, { children: /* @__PURE__ */ jsxs("div", {
 		className: classes.canvasContainer,
 		style: {
 			width: lgv.dynamicBlocks.totalWidthPx,
-			height: featuresHeight
+			height: showHistogram ? "100%" : featuresHeight
 		},
 		onContextMenu: (event) => {
 			event.preventDefault();
@@ -14500,164 +15506,115 @@ const LinearApolloSixFrameDisplay = observer(function LinearApolloSixFrameDispla
 				setContextMenuItems(getContextMenuItems(event));
 			}
 		},
-		children: [session.isLocked ? /* @__PURE__ */ jsx("div", {
-			className: classes.locked,
-			"data-testid": "lock-icon",
-			children: /* @__PURE__ */ jsx(LockIcon, {})
-		}) : null, message ? /* @__PURE__ */ jsx(Alert, {
-			severity: "warning",
-			classes: { message: classes.ellipses },
-			slotProps: { root: { className: classes.center } },
-			children: /* @__PURE__ */ jsx(Tooltip, {
-				title: message,
-				children: /* @__PURE__ */ jsx("div", { children: message })
-			})
-		}) : /* @__PURE__ */ jsxs(Fragment, { children: [
-			/* @__PURE__ */ jsx(TrackLines, {
-				model,
-				idx: 0
-			}),
-			/* @__PURE__ */ jsx(TrackLines, {
-				model,
-				hrStyle: {
-					margin: 0,
-					top: 0,
-					color: "grey",
-					opacity: .4
-				},
-				idx: 1
-			}),
-			/* @__PURE__ */ jsx(TrackLines, {
-				model,
-				idx: 2
-			}),
-			/* @__PURE__ */ jsx("canvas", {
-				ref: async (node) => {
-					await Promise.resolve();
-					setCollaboratorCanvas(node);
-				},
-				width: lgv.dynamicBlocks.totalWidthPx,
-				height: featuresHeight,
-				className: classes.canvas,
-				"data-testid": "collaboratorCanvas"
-			}),
-			/* @__PURE__ */ jsx("canvas", {
-				ref: async (node) => {
-					await Promise.resolve();
-					setCanvas(node);
-				},
-				width: lgv.dynamicBlocks.totalWidthPx,
-				height: featuresHeight,
-				className: classes.canvas,
-				"data-testid": "canvas"
-			}),
-			/* @__PURE__ */ jsx("canvas", {
-				ref: async (node) => {
-					await Promise.resolve();
-					setOverlayCanvas(node);
-				},
-				width: lgv.dynamicBlocks.totalWidthPx,
-				height: featuresHeight,
-				onMouseMove,
-				onMouseLeave,
-				onMouseDown,
-				onMouseUp,
-				className: classes.canvas,
-				style: { cursor: cursor ?? "default" },
-				"data-testid": "overlayCanvas"
-			}),
-			lgv.displayedRegions.flatMap((region, idx) => {
-				const widthBp = lgv.bpPerPx * apolloRowHeight;
-				const assembly = assemblyManager.get(region.assemblyName);
-				if (showCheckResults) return clusterResultByMessage([...session.apolloDataStore.checkResults.values()].filter((checkResult) => assembly?.isValidRefName(checkResult.refSeq) && assembly.getCanonicalRefName(checkResult.refSeq) === region.refName && doesIntersect2(region.start, region.end, checkResult.start, checkResult.end)), widthBp, true).map((checkResult) => {
-					const left = (lgv.bpToPx({
-						refName: region.refName,
-						coord: checkResult.start,
-						regionNumber: idx
-					})?.offsetPx ?? 0) - lgv.offsetPx;
-					const [feature] = checkResult.featureIds;
-					if (!feature?.parent || !looksLikeGene(feature.parent, session)) return null;
-					let row;
-					for (const loc of feature.cdsLocations) for (const cds of loc) {
-						const frame = getFrame(cds.min, cds.max, feature.strand ?? 1, cds.phase);
-						const rowNum = (showFeatureLabels ? [
-							0,
-							5,
-							3,
-							1,
-							15,
-							13,
-							11
-						] : [
-							0,
-							2,
-							1,
-							0,
-							8,
-							7,
-							6
-						]).at(frame);
-						if (rowNum === void 0) continue;
-						if (checkResult.start >= cds.min && checkResult.start <= cds.max) {
-							row = rowNum - 1;
-							break;
-						}
-					}
-					if (row === void 0) row = (feature.strand == 1 ? geneTrackRowNums[0] : geneTrackRowNums[1]) - 1;
-					const top = row * apolloRowHeight;
-					const height = apolloRowHeight;
-					return /* @__PURE__ */ jsx(Tooltip, {
-						title: checkResult.message,
-						children: /* @__PURE__ */ jsx(Box, {
-							className: classes.box,
-							style: {
-								top,
-								left,
-								height,
-								width: height,
-								pointerEvents: apolloDragging ? "none" : "auto"
-							},
-							children: /* @__PURE__ */ jsx(Badge, {
-								className: classes.badge,
-								badgeContent: checkResult.count,
-								color: "primary",
-								overlap: "circular",
-								anchorOrigin: {
-									vertical: "bottom",
-									horizontal: "right"
-								},
-								invisible: checkResult.count <= 1,
-								children: /* @__PURE__ */ jsx(Avatar, {
-									className: classes.avatar,
-									children: /* @__PURE__ */ jsx(ErrorIcon, { "data-testid": `ErrorIcon-${checkResult.start}` })
-								})
-							})
-						})
-					}, checkResult._id);
-				});
-				return null;
-			}),
-			/* @__PURE__ */ jsx(Menu$1, {
-				open: contextMenuItems.length > 0,
-				onMenuItemClick: (_, callback) => {
-					callback();
-					setContextMenuItems([]);
-				},
-				onClose: () => {
-					setContextMenuItems([]);
-				},
-				slotProps: { transition: { onExit: () => {
-					setContextMenuItems([]);
-				} } },
-				anchorReference: "anchorPosition",
-				anchorPosition: contextCoord ? {
-					top: contextCoord[1],
-					left: contextCoord[0]
-				} : void 0,
-				style: { zIndex: theme.zIndex.tooltip },
-				menuItems: contextMenuItems
-			})
-		] })]
+		children: [
+			session.isLocked ? /* @__PURE__ */ jsx("div", {
+				className: classes.locked,
+				"data-testid": "lock-icon",
+				children: /* @__PURE__ */ jsx(LockIcon, {})
+			}) : null,
+			message ? /* @__PURE__ */ jsx(Alert, {
+				severity: "warning",
+				classes: { message: classes.ellipses },
+				slotProps: { root: { className: classes.center } },
+				children: /* @__PURE__ */ jsx(Tooltip, {
+					title: message,
+					children: /* @__PURE__ */ jsx("div", { children: message })
+				})
+			}) : null,
+			showHistogram ? /* @__PURE__ */ jsx(FeatureDensityHistogram, { model }) : null,
+			message || showHistogram ? null : /* @__PURE__ */ jsxs(Fragment, { children: [
+				/* @__PURE__ */ jsx(TrackLines, {
+					model,
+					idx: 0
+				}),
+				/* @__PURE__ */ jsx(TrackLines, {
+					model,
+					hrStyle: {
+						margin: 0,
+						top: 0,
+						color: "grey",
+						opacity: .4
+					},
+					idx: 1
+				}),
+				/* @__PURE__ */ jsx(TrackLines, {
+					model,
+					idx: 2
+				}),
+				/* @__PURE__ */ jsx("canvas", {
+					ref: collaboratorCanvasRef,
+					className: classes.canvas,
+					"data-testid": "collaboratorCanvas"
+				}),
+				/* @__PURE__ */ jsx("canvas", {
+					ref: canvasRef,
+					className: classes.canvas,
+					"data-testid": "canvas"
+				}),
+				/* @__PURE__ */ jsx("canvas", {
+					ref: overlayCanvasRef,
+					onMouseMove: (...args) => {
+						const [event] = args;
+						setMouseCoord([event.clientX, event.clientY]);
+						onMouseMove(...args);
+					},
+					onMouseLeave: (...args) => {
+						setMouseCoord(void 0);
+						onMouseLeave(...args);
+					},
+					onMouseDown,
+					onMouseUp,
+					className: classes.canvas,
+					style: { cursor: cursor ?? "default" },
+					"data-testid": "overlayCanvas"
+				}),
+				/* @__PURE__ */ jsx(Tooltip$1, {
+					mouseCoordinate: mouseCoord,
+					model
+				}),
+				lgv.dynamicBlocks.contentBlocks.flatMap((block) => {
+					const widthBp = lgv.bpPerPx * apolloRowHeight;
+					const assembly = assemblyManager.get(block.assemblyName);
+					if (showCheckResults) return clusterResultByMessage([...session.apolloDataStore.checkResults.values()].filter((checkResult) => assembly?.isValidRefName(checkResult.refSeq) && assembly.getCanonicalRefName(checkResult.refSeq) === block.refName && doesIntersect2(block.start, block.end, checkResult.start, checkResult.end)), widthBp, true).map((checkResult) => {
+						const left = Math.round(getLeftPx$1(model, checkResult.range, block));
+						const [feature] = checkResult.featureIds;
+						if (!feature?.parent || !looksLikeGene(feature.parent, session)) return null;
+						const row = getRowForFeature(feature, checkResult.start);
+						if (row === void 0) return null;
+						return /* @__PURE__ */ jsx(CheckResultIcon, {
+							top: row * apolloRowHeight,
+							left,
+							size: apolloRowHeight,
+							disablePointerEvents: Boolean(apolloDragging),
+							message: checkResult.message,
+							count: checkResult.count,
+							start: checkResult.start
+						}, `${block.key}-${checkResult._id}`);
+					});
+					return null;
+				}),
+				/* @__PURE__ */ jsx(Menu$1, {
+					open: contextMenuItems.length > 0,
+					onMenuItemClick: (_, callback) => {
+						callback();
+						setContextMenuItems([]);
+					},
+					onClose: () => {
+						setContextMenuItems([]);
+					},
+					slotProps: { transition: { onExit: () => {
+						setContextMenuItems([]);
+					} } },
+					anchorReference: "anchorPosition",
+					anchorPosition: contextCoord ? {
+						top: contextCoord[1],
+						left: contextCoord[0]
+					} : void 0,
+					style: { zIndex: theme.zIndex.tooltip },
+					menuItems: contextMenuItems
+				})
+			] })
+		]
 	}) });
 });
 //#endregion
@@ -14696,11 +15653,7 @@ const useStyles = makeStyles()((theme) => ({
 function scrollSelectedFeatureIntoView(model, scrollContainerRef) {
 	const { apolloRowHeight, selectedFeature } = model;
 	if (scrollContainerRef.current && selectedFeature) {
-		let row;
-		if ("getFeatureLayoutPosition" in model) {
-			const position = model.getFeatureLayoutPosition(selectedFeature);
-			if (position) row = position.layoutRow + position.featureRow;
-		} else row = model.getRowForFeature(selectedFeature);
+		const row = model.getRowForFeature(selectedFeature);
 		if (row !== void 0) {
 			const top = row * apolloRowHeight;
 			scrollContainerRef.current.scroll({
@@ -14915,6 +15868,14 @@ function addTopLevelMenus(rootModel) {
 			session.toggleLocked();
 		}
 	});
+	rootModel.appendToMenu("Apollo", {
+		label: "Help",
+		icon: HelpIcon,
+		onClick: (session) => {
+			const widget = session.addWidget("ApolloHelpWidget", "apolloHelpWidget");
+			session.showWidget(widget);
+		}
+	});
 	const { internetAccounts } = rootModel;
 	if (internetAccounts.some((ia) => isApolloInternetAccount(ia))) rootModel.appendToMenu("Apollo", {
 		label: "Log out",
@@ -15011,13 +15972,11 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
 		getFeature(featureId) {
 			return resolveIdentifier(AnnotationFeatureExtended, self.assemblies, featureId);
 		}
-	})).actions((self) => ({ addAssembly(assemblyId, backendDriverType) {
-		const assemblySnapshot = {
+	})).actions((self) => ({ addAssembly(assemblyId) {
+		return self.assemblies.put({
 			_id: assemblyId,
 			refSeqs: {}
-		};
-		if (backendDriverType) assemblySnapshot.backendDriverType = backendDriverType;
-		return self.assemblies.put(assemblySnapshot);
+		});
 	} })).actions((self) => ({
 		addFeature(assemblyId, feature) {
 			const { assemblyManager } = getSession(self);
@@ -15062,57 +16021,83 @@ function clientDataStoreFactory(AnnotationFeatureExtended) {
 	})).volatile((self) => ({
 		changeManager: new ChangeManager(self),
 		collaborationServerDriver: new CollaborationServerDriver(self),
-		localDriver: new LocalDriver(self)
-	})).actions((self) => ({ afterCreate() {
-		addDisposer(self, autorun(() => {
-			const { ontologyManager, pluginConfiguration } = self;
-			const configuredOntologies = pluginConfiguration.ontologies;
-			for (const ont of configuredOntologies || []) {
-				const [name, version, source, indexFields] = [
-					readConfObject(ont, "name"),
-					readConfObject(ont, "version"),
-					readConfObject(ont, "source"),
-					readConfObject(ont, "textIndexFields")
-				];
-				if (!ontologyManager.findOntology(name)) {
-					const { jobsManager } = getSession(self);
-					const controller = new AbortController();
-					const jobName = `Loading ontology "${name}"`;
-					const job = {
-						name: jobName,
-						statusMessage: `Loading ontology "${name}", version "${version}", this may take a while`,
-						progressPct: 0,
-						cancelCallback: () => {
-							controller.abort(new DOMException(`Canceling loading of ontology "${name}"`, "AbortError"));
-							jobsManager.abortJob(job.name);
-						}
-					};
-					const update = (message, progress) => {
-						if (progress === 0) {
-							jobsManager.runJob(job);
-							return;
-						}
-						if (progress === 100) {
-							jobsManager.done(job);
-							return;
-						}
-						jobsManager.update(jobName, message, progress);
-					};
-					ontologyManager.addOntology(name, version, source, {
-						textIndexing: { indexFields },
-						update
-					});
+		localDriver: new LocalDriver(self),
+		/**
+		* Incremented after each change is applied and saved, so that summaries
+		* of the data (like feature density) know to refresh
+		*/
+		changeCount: 0
+	})).actions((self) => ({
+		incrementChangeCount() {
+			self.changeCount++;
+		},
+		afterCreate() {
+			addDisposer(self, autorun(() => {
+				const { ontologyManager, pluginConfiguration } = self;
+				const configuredOntologies = pluginConfiguration.ontologies;
+				for (const ont of configuredOntologies || []) {
+					const [name, version, source, indexFields] = [
+						readConfObject(ont, "name"),
+						readConfObject(ont, "version"),
+						readConfObject(ont, "source"),
+						readConfObject(ont, "textIndexFields")
+					];
+					if (!ontologyManager.findOntology(name)) {
+						const { jobsManager } = getSession(self);
+						const controller = new AbortController();
+						const jobName = `Loading ontology "${name}"`;
+						const job = {
+							name: jobName,
+							statusMessage: `Loading ontology "${name}", version "${version}", this may take a while`,
+							progressPct: 0,
+							cancelCallback: () => {
+								controller.abort(new DOMException(`Canceling loading of ontology "${name}"`, "AbortError"));
+								jobsManager.abortJob(job.name);
+							}
+						};
+						const update = (message, progress) => {
+							if (progress === 0) {
+								jobsManager.runJob(job);
+								return;
+							}
+							if (progress === 100) {
+								jobsManager.done(job);
+								return;
+							}
+							jobsManager.update(jobName, message, progress);
+						};
+						ontologyManager.addOntology(name, version, source, {
+							textIndexing: { indexFields },
+							update
+						});
+					}
 				}
-			}
-		}));
+			}));
+		}
+	})).views((self) => ({ 
+	/**
+	* The config ID of the internet account for the collaboration server
+	* that hosts this assembly. `undefined` if the assembly isn't loaded or
+	* isn't on a collaboration server.
+	*/
+getInternetAccountConfigId(assemblyId) {
+		const { assemblyManager } = getSession(self);
+		const assembly = assemblyManager.get(assemblyId);
+		if (!assembly) return;
+		return getConf(assembly, ["sequence", "metadata"])?.internetAccountConfigId;
 	} })).views((self) => ({
 		getBackendDriver(assemblyId) {
 			const { assemblyManager } = getSession(self);
-			const assembly = assemblyManager.get(assemblyId);
-			if (!assembly) return;
-			const { internetAccountConfigId } = getConf(assembly, ["sequence", "metadata"]);
-			if (internetAccountConfigId) return self.collaborationServerDriver;
+			if (!assemblyManager.get(assemblyId)) return;
+			if (self.getInternetAccountConfigId(assemblyId)) return self.collaborationServerDriver;
 			return self.localDriver;
+		},
+		/**
+		* Summarize the features in a region without loading them. Resolves to
+		* `undefined` if the region's assembly has no Apollo backend.
+		*/
+		async getFeatureDensity(region, binSize, featureTypes) {
+			return this.getBackendDriver(region.assemblyName)?.getFeatureDensity(region, binSize, featureTypes);
 		},
 		getInternetAccount(assemblyName, internetAccountId) {
 			if (!(assemblyName ?? internetAccountId)) throw new Error("Must provide either assemblyName or internetAccountId");
@@ -15353,8 +16338,44 @@ function extendSession(pluginManager, sessionModel) {
 		changeInProgress: types.optional(types.boolean, false)
 	}).volatile(() => ({
 		apolloHoveredFeature: void 0,
-		abortController: new AbortController()
-	})).extend(() => {
+		abortController: new AbortController(),
+		/**
+		* The last locations posted to each collaboration server (serialized),
+		* keyed by internet account config ID
+		*/
+		lastPostedLocations: /* @__PURE__ */ new Map()
+	})).views((self) => ({ 
+	/**
+	* The regions shown in this session's linear genome views that are on
+	* collaboration-server assemblies, grouped by the config ID of the
+	* internet account for the server that hosts each assembly
+	*/
+get collaborationLocations() {
+		const { apolloDataStore } = self;
+		const locations = /* @__PURE__ */ new Map();
+		for (const view of self.views) {
+			if (view.type !== "LinearGenomeView") continue;
+			const lgv = view;
+			if (!lgv.initialized) continue;
+			for (const block of lgv.dynamicBlocks.contentBlocks) {
+				const { assemblyName, end, refName, start } = block;
+				const internetAccountConfigId = apolloDataStore.getInternetAccountConfigId(assemblyName);
+				if (!internetAccountConfigId) continue;
+				let accountLocations = locations.get(internetAccountConfigId);
+				if (!accountLocations) {
+					accountLocations = [];
+					locations.set(internetAccountConfigId, accountLocations);
+				}
+				accountLocations.push({
+					assemblyId: assemblyName,
+					refSeq: refName,
+					start,
+					end
+				});
+			}
+		}
+		return locations;
+	} })).extend(() => {
 		const collabs = observable.array([]);
 		return {
 			views: { get collaborators() {
@@ -15393,41 +16414,27 @@ function extendSession(pluginManager, sessionModel) {
 			const { jbrowse } = getRoot(self);
 			return jbrowse.configuration.ApolloPlugin;
 		},
-		broadcastLocations() {
+		/**
+		* Send each Apollo collaboration server the locations of this session's
+		* linear genome views that are on its assemblies. If `onlyIfChanged` is
+		* true, servers whose locations haven't changed since the last post are
+		* skipped.
+		*/
+		postCollaborationLocations(locations, onlyIfChanged = false) {
 			const { internetAccounts } = getRoot(self);
-			const locations = [];
-			for (const view of self.views) {
-				if (view.type !== "LinearGenomeView") return;
-				const lgv = view;
-				if (lgv.initialized) {
-					const { dynamicBlocks } = lgv;
-					for (const block of dynamicBlocks.contentBlocks) {
-						const { assemblyName, end, refName, start } = block;
-						if (self.apolloDataStore.assemblies.get(assemblyName)?.backendDriverType === "CollaborationServerDriver") locations.push({
-							assemblyName,
-							refName,
-							start,
-							end
-						});
-					}
-				}
-			}
-			if (locations.length === 0) {
-				for (const internetAccount of internetAccounts) if (isApolloInternetAccount(internetAccount)) internetAccount.postUserLocation([]);
-				return;
-			}
-			const allLocations = [];
-			for (const internetAccount of internetAccounts) if (isApolloInternetAccount(internetAccount)) {
-				for (const location of locations) allLocations.push({
-					assemblyId: location.assemblyName,
-					refSeq: location.refName,
-					start: location.start,
-					end: location.end
-				});
-				internetAccount.postUserLocation(allLocations);
+			for (const internetAccount of internetAccounts) {
+				if (!isApolloInternetAccount(internetAccount)) continue;
+				const { internetAccountId } = internetAccount;
+				const accountLocations = locations.get(internetAccountId) ?? [];
+				const serialized = JSON.stringify(accountLocations);
+				if (onlyIfChanged && self.lastPostedLocations.get(internetAccountId) === serialized) continue;
+				self.lastPostedLocations.set(internetAccountId, serialized);
+				internetAccount.postUserLocation(accountLocations);
 			}
 		}
-	})).actions((self) => ({ apolloSetEventualSelectedFeature: flow$1(function* apolloSetEventualSelectedFeature(featureId) {
+	})).actions((self) => ({ broadcastLocations() {
+		self.postCollaborationLocations(self.collaborationLocations);
+	} })).actions((self) => ({ apolloSetEventualSelectedFeature: flow$1(function* apolloSetEventualSelectedFeature(featureId) {
 		yield when(() => Boolean(self.apolloDataStore.getFeature(featureId)));
 		self.apolloSetSelectedFeature(featureId);
 	}) })).volatile((self) => ({ previousSnapshot: getSnapshot(self) })).actions((self) => ({
@@ -15438,37 +16445,7 @@ function extendSession(pluginManager, sessionModel) {
 			});
 			const { internetAccounts, jbrowse, reloadPluginManagerCallback } = getRoot(self);
 			addDisposer(self, autorun(() => {
-				const locations = [];
-				for (const view of self.views) {
-					if (view.type !== "LinearGenomeView") return;
-					const lgv = view;
-					if (lgv.initialized) {
-						const { dynamicBlocks } = lgv;
-						for (const block of dynamicBlocks.contentBlocks) {
-							const { assemblyName, end, refName, start } = block;
-							if (self.apolloDataStore.assemblies.get(assemblyName)?.backendDriverType === "CollaborationServerDriver") locations.push({
-								assemblyName,
-								refName,
-								start,
-								end
-							});
-						}
-					}
-				}
-				if (locations.length === 0) {
-					for (const internetAccount of internetAccounts) if (isApolloInternetAccount(internetAccount)) internetAccount.postUserLocation([]);
-					return;
-				}
-				const allLocations = [];
-				for (const internetAccount of internetAccounts) if (isApolloInternetAccount(internetAccount)) {
-					for (const location of locations) allLocations.push({
-						assemblyId: location.assemblyName,
-						refSeq: location.refName,
-						start: location.start,
-						end: location.end
-					});
-					internetAccount.postUserLocation(allLocations);
-				}
+				self.postCollaborationLocations(self.collaborationLocations, true);
 			}, { name: "ApolloSessionBroadcastLocations" }));
 			addDisposer(self, autorun(async (reaction) => {
 				const pluginConfiguration = jbrowse.configuration.ApolloPlugin;
@@ -15676,6 +16653,7 @@ var ApolloPlugin = class extends Plugin {
 		installApolloSequenceAdapter(pluginManager);
 		installApolloRefNameAliasAdapter(pluginManager);
 		installApolloTextSearchAdapter(pluginManager);
+		installApolloHelpWidget(pluginManager);
 		pluginManager.addWidgetType(() => {
 			const configSchema = ConfigurationSchema("ApolloFeatureDetailsWidget", {});
 			return new WidgetType({
@@ -15726,11 +16704,11 @@ var ApolloPlugin = class extends Plugin {
 			});
 		});
 		pluginManager.addDisplayType(() => {
-			const configSchema$3 = configSchema;
+			const configSchema$4 = configSchema;
 			return new DisplayType({
 				name: "LinearApolloSixFrameDisplay",
-				configSchema: configSchema$3,
-				stateModel: stateModelFactory(pluginManager, configSchema$3),
+				configSchema: configSchema$4,
+				stateModel: stateModelFactory(pluginManager, configSchema$4),
 				trackType: "ApolloTrack",
 				viewType: "LinearGenomeView",
 				ReactComponent: LinearApolloSixFrameDisplayComponent
@@ -15808,59 +16786,56 @@ var ApolloPlugin = class extends Plugin {
 			if (trackId?.startsWith("apollo_track_") && matchedFeature) session.apolloSetEventualSelectedFeature(matchedFeature._id);
 			return _;
 		});
-		if (!inWebWorker) pluginManager.addToExtensionPoint("Core-extendWorker", (handle) => {
-			if (!("on" in handle.client && handle.client.on)) return handle;
-			handle.client.on("apollo", async (event) => {
-				if (!isApolloMessageData(event)) return;
-				const { apollo, messageId, method } = event;
-				switch (method) {
+		if (!inWebWorker) {
+			const getBackendDriver = (assemblyName) => {
+				const dataStore = (pluginManager.rootModel?.session)?.apolloDataStore;
+				if (!dataStore) throw new Error("No Apollo data store found");
+				const backendDriver = dataStore.getBackendDriver(assemblyName);
+				if (!backendDriver) throw new Error(`No backend driver found for assembly "${assemblyName}"`);
+				return backendDriver;
+			};
+			const answerRequest = async (request) => {
+				switch (request.method) {
 					case "getSequence": {
-						const { region } = event;
-						const { assemblyName } = region;
-						const dataStore = (pluginManager.rootModel?.session)?.apolloDataStore;
-						if (!dataStore) break;
-						const backendDriver = dataStore.getBackendDriver(assemblyName);
-						if (!backendDriver) break;
-						const { seq: sequence } = await backendDriver.getSequence(region);
-						handle.worker.postMessage({
-							apollo,
-							messageId,
-							sequence
-						});
-						break;
+						const { region } = request;
+						const { seq } = await getBackendDriver(region.assemblyName).getSequence(region);
+						return { sequence: seq };
 					}
 					case "getRegions": {
-						const { assembly } = event;
-						const dataStore = (pluginManager.rootModel?.session)?.apolloDataStore;
-						if (!dataStore) break;
-						const backendDriver = dataStore.getBackendDriver(assembly);
-						if (!backendDriver) break;
-						const regions = await backendDriver.getRegions(assembly);
-						handle.worker.postMessage({
-							apollo,
-							messageId,
-							regions
-						});
-						break;
+						const { assembly } = request;
+						return { regions: await getBackendDriver(assembly).getRegions(assembly) };
 					}
 					case "getRefNameAliases": {
-						const { assembly } = event;
-						const dataStore = (pluginManager.rootModel?.session)?.apolloDataStore;
-						if (!dataStore) break;
-						const backendDriver = dataStore.getBackendDriver(assembly);
-						if (!backendDriver) break;
-						const refNameAliases = await backendDriver.getRefNameAliases(assembly);
-						handle.worker.postMessage({
+						const { assembly } = request;
+						return { refNameAliases: await getBackendDriver(assembly).getRefNameAliases(assembly) };
+					}
+					default: throw new Error(`Unknown Apollo request "${request.method}"`);
+				}
+			};
+			pluginManager.addToExtensionPoint("Core-extendWorker", (handle) => {
+				if (!("on" in handle.client && handle.client.on)) return handle;
+				handle.client.on("apollo", async (event) => {
+					if (!isApolloMessageData(event)) return;
+					const { apollo, messageId } = event;
+					let reply;
+					try {
+						reply = {
 							apollo,
 							messageId,
-							refNameAliases
-						});
-						break;
+							...await answerRequest(event)
+						};
+					} catch (error) {
+						reply = {
+							apollo,
+							messageId,
+							error: error instanceof Error ? error.message : String(error)
+						};
 					}
-				}
+					handle.worker.postMessage(reply);
+				});
+				return handle;
 			});
-			return handle;
-		});
+		}
 	}
 	configure(pluginManager) {
 		checkJBrowseVersion(pluginManager);

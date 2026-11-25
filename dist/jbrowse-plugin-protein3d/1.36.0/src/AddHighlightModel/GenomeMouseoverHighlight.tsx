@@ -1,0 +1,49 @@
+import React from 'react'
+
+import { getSession } from '@jbrowse/core/util'
+import { observer } from 'mobx-react'
+
+import { assemblyNaming, checkHovered } from '../ProteinView/util'
+import Highlight from './Highlight'
+import { getProteinViews, getStructuresConnectedTo } from './proteinViewLookup'
+
+import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
+
+// Marks the hovered base on a genome view that a structure is connected to, so
+// the residue lit in 3D can be traced back. Other genome views get nothing: a
+// protein view somewhere in the session says nothing about them.
+const GenomeMouseoverHighlight = observer(function GenomeMouseoverHighlight({
+  model,
+}: {
+  model: LinearGenomeViewModel
+}) {
+  const session = getSession(model)
+  const { hovered, assemblyManager } = session
+  const { assemblyNames, id } = model
+  const connected =
+    getStructuresConnectedTo(getProteinViews(session), id).length > 0
+  if (
+    connected &&
+    checkHovered(hovered) &&
+    assemblyNaming(assemblyManager, assemblyNames[0]).isAssembly(
+      hovered.hoverPosition.assemblyName,
+    )
+  ) {
+    const { coord, refName } = hovered.hoverPosition
+    return (
+      <Highlight
+        model={model}
+        kind="hover"
+        region={{
+          start: coord - 1,
+          end: coord,
+          refName,
+          assemblyName: assemblyNames[0]!,
+        }}
+      />
+    )
+  }
+  return null
+})
+
+export default GenomeMouseoverHighlight

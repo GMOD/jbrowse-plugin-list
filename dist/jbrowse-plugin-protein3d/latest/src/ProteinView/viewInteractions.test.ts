@@ -38,7 +38,6 @@ const TestStructure = types
     setHoveredPosition(arg?: { structureSeqPos?: number }) {
       self.hovered = arg
     },
-    addViewNotice(_e: unknown) {},
     // every structure of a view hears every interaction, so this is what says
     // whether one landed on this one
     interactionPosition(info: MolstarLocationInfo) {

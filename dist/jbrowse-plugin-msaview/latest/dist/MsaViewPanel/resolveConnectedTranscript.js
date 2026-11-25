@@ -83,6 +83,9 @@ async function translate(self, transcript, signal) {
 }
 /** the latest lookup per view; a newer one aborts it, so it writes nothing */
 const latestLookup = new WeakMap();
+export function abortTranscriptLookup(self) {
+    latestLookup.get(self)?.abort();
+}
 async function lookUp({ self, transcriptId, blastParams, orthologParams, signal, }) {
     const isCurrent = () => isAlive(self) && !signal.aborted;
     const searching = `Looking up ${transcriptId} in the genome view...`;

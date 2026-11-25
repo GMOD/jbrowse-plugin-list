@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 export const CHAR_WIDTH = 6
 export const ROW_HEIGHT = 12
 export const COMPACT_TRACK_HEIGHT = 8
@@ -7,6 +9,13 @@ export const NORMAL_TRACK_GAP = 2
 export const MIN_TRACK_HEIGHT = 2
 export const MAX_TRACK_HEIGHT = 40
 export const LABEL_WIDTH = 124
+// a gutter label cut short to LABEL_WIDTH, its tooltip naming it in full
+export const LABEL_ELLIPSIS: CSSProperties = {
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
 
 export function trackHeightOf({
   trackHeight,

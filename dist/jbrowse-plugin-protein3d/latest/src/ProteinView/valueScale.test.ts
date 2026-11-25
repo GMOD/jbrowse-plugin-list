@@ -17,6 +17,52 @@ test('equal scores still span a ramp', () => {
   expect(valueDomain([2, 2])).toEqual({ min: 2, max: 3 })
 })
 
+test('small scores keep a domain as fine as their spread', () => {
+  expect(valueDomain([0.00002, 0.001, 0.004])).toEqual({ min: 0, max: 0.004 })
+  expect(valueDomain([0.991, 0.992, 0.994])).toEqual({
+    min: 0.991,
+    max: 0.994,
+  })
+})
+
+test('equal small scores widen by their own magnitude', () => {
+  expect(valueDomain([0.003, 0.003])).toEqual({ min: 0.003, max: 0.004 })
+  expect(valueDomain([0, 0])).toEqual({ min: 0, max: 1 })
+})
+
+test('an end from the data past a small given end moves a step its size', () => {
+  const values = [0.002, 0.003]
+  expect(
+    paintedColor(
+      { field: 'values', values, domainMax: 0.001 },
+      { domain: valueDomain(values) },
+    ),
+  ).toMatchObject({ domainMin: 0, domainMax: 0.001 })
+  expect(
+    paintedColor(
+      { field: 'values', values, domainMin: 0.005 },
+      { domain: valueDomain(values) },
+    ),
+  ).toMatchObject({ domainMin: 0.005, domainMax: 0.006 })
+})
+
+test('an end nudged past a given end reads as the step, without a float tail', () => {
+  const high = [0.4, 0.5]
+  const low = [0.01, 0.02]
+  const domainMinOf = (domainMax: number) =>
+    paintedColor(
+      { field: 'values', values: high, domainMax },
+      { domain: valueDomain(high) },
+    ).domainMin
+  const domainMaxOf = (domainMin: number) =>
+    paintedColor(
+      { field: 'values', values: low, domainMin },
+      { domain: valueDomain(low) },
+    ).domainMax
+  expect([0.3, 0.15, 0.03].map(domainMinOf)).toEqual([0.2, 0.05, 0.02])
+  expect([0.7, 0.15, 0.03].map(domainMaxOf)).toEqual([0.8, 0.25, 0.04])
+})
+
 test('no scores have no domain', () => {
   expect(valueDomain([])).toBeUndefined()
   expect(valueDomain([Number.NaN])).toBeUndefined()

@@ -5,13 +5,14 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import { Button, ButtonGroup } from '@mui/material'
 import { observer } from 'mobx-react'
 
-import LaunchOptionsMenu from './LaunchOptionsMenu'
 import { useSafeLaunch } from '../hooks/useSafeLaunch'
+import { launchControls } from '../utils/launchHelpers'
 import {
   PROTEIN_LAUNCH_LABELS,
   getConditionalProteinLaunches,
   launch3DProteinView,
 } from '../utils/launchViewUtils'
+import LaunchOptionsMenu from './LaunchOptionsMenu'
 
 import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { StructureSource } from '../utils/launchViewUtils'
@@ -20,6 +21,7 @@ import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 const ProteinViewActions = observer(function ProteinViewActions({
   handleClose,
   ready,
+  ready1D,
   uniprotId,
   userSelectedProteinSequence,
   selectedTranscript,
@@ -31,8 +33,11 @@ const ProteinViewActions = observer(function ProteinViewActions({
   sideBySide,
 }: {
   handleClose: () => void
-  /** everything the launch needs has arrived */
+  /** everything the 3D launch needs has arrived */
   ready: boolean
+  /** the 1D annotation view's accession and transcript have arrived; it opens
+   * no structure */
+  ready1D: boolean
   uniprotId?: string
   userSelectedProteinSequence?: { seq: string }
   selectedTranscript?: Feature
@@ -51,8 +56,6 @@ const ProteinViewActions = observer(function ProteinViewActions({
     handleClose,
     closeMenu,
   )
-  const canLaunch = ready && !launching
-
   const handleLaunch3DView = runLaunch(() =>
     launch3DProteinView({
       session,
@@ -74,6 +77,12 @@ const ProteinViewActions = observer(function ProteinViewActions({
     uniprotId,
     confidenceUrl,
   })
+  const { can3D, can1D, canOpenOptions } = launchControls({
+    ready,
+    ready1D,
+    launching,
+    offers1D: !!launch1D,
+  })
 
   const launchOptions = [
     {
@@ -81,6 +90,7 @@ const ProteinViewActions = observer(function ProteinViewActions({
       title: PROTEIN_LAUNCH_LABELS['3d'],
       description:
         'View protein structure with genome-to-structure coordinate mapping',
+      disabled: !can3D,
       onClick: handleLaunch3DView,
     },
     ...(launch1D
@@ -90,6 +100,7 @@ const ProteinViewActions = observer(function ProteinViewActions({
             title: PROTEIN_LAUNCH_LABELS['1d'],
             description:
               'View protein features and annotations as a linear track',
+            disabled: !can1D,
             onClick: runLaunch(launch1D),
           },
         ]
@@ -115,14 +126,14 @@ const ProteinViewActions = observer(function ProteinViewActions({
             should be free to change without breaking callers. */}
         <Button
           data-testid="protein-launch-button"
-          disabled={!canLaunch}
+          disabled={!can3D}
           onClick={handleLaunch3DView}
         >
           Launch
         </Button>
         <Button
           data-testid="protein-launch-options-button"
-          disabled={!canLaunch}
+          disabled={!canOpenOptions}
           onClick={event => {
             setMenuAnchor(event.currentTarget)
           }}

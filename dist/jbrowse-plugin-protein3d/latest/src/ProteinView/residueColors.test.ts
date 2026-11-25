@@ -65,6 +65,33 @@ test('an off-center domainMid keeps both sides on one scale', () => {
   expect(ramp(-1)).toEqual([170, 170, 255])
 })
 
+test('a reversed domain scales both sides of domainMid by the farther end', () => {
+  const range = ['#0000ff', '#ffffff', '#ff0000']
+  const offCentre = rgbScaleOf({
+    field: 'x',
+    scale: 'linear',
+    domainMin: 3,
+    domainMax: -1,
+    domainMid: 0,
+    range,
+  })
+  expect(offCentre(0)).toEqual([255, 255, 255])
+  expect(offCentre(3)).toEqual([0, 0, 255])
+  expect(offCentre(1.5)).toEqual([128, 128, 255])
+  expect(offCentre(-1)).toEqual([255, 170, 170])
+  const midAtAnEnd = rgbScaleOf({
+    field: 'x',
+    scale: 'linear',
+    domainMin: 1,
+    domainMax: 0,
+    domainMid: 0,
+    range,
+  })
+  expect(midAtAnEnd(0)).toEqual([255, 255, 255])
+  expect(midAtAnEnd(0.5)).toEqual([128, 128, 255])
+  expect(midAtAnEnd(1)).toEqual([0, 0, 255])
+})
+
 test('the ClinVar count darkens per substitution and caps at four', () => {
   const clinvar = cssScaleOf(RESIDUE_COLORS.clinvarPathogenicCount)
   const steps = [0, 1, 2, 3, 4].map(clinvar)

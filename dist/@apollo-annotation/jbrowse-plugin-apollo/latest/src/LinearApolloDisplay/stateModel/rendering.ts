@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
+import type { AnnotationFeature } from '@apollo-annotation/mst'
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { AnyConfigurationSchemaType } from '@jbrowse/core/configuration'
 import { doesIntersect2 } from '@jbrowse/core/util'
 import { type Instance, addDisposer, types } from '@jbrowse/mobx-state-tree'
 import { type Theme, createTheme } from '@mui/material'
 import { autorun } from 'mobx'
+
+import { roundPxSpan, setCanvasSize } from '../../util/glyphUtils'
+import type { Glyph } from '../glyphs/Glyph'
 
 import { layoutsModelFactory } from './layouts'
 
@@ -110,18 +114,24 @@ export function renderingModelFactory(
           self,
           autorun(
             () => {
-              if (!self.lgv.initialized || self.regionCannotBeRendered()) {
+              if (!self.lgv.initialized || self.displayMode !== 'features') {
                 return
               }
-              const ctx = self.collaboratorCanvas?.getContext('2d')
-              if (!ctx) {
+              const { collaboratorCanvas } = self
+              const ctx = collaboratorCanvas?.getContext('2d')
+              if (!collaboratorCanvas || !ctx) {
                 return
               }
+              setCanvasSize(
+                collaboratorCanvas,
+                self.lgv.dynamicBlocks.totalWidthPx,
+                self.featuresHeight(self.lgv.assemblyNames[0]),
+              )
               ctx.clearRect(
                 0,
                 0,
-                self.lgv.dynamicBlocks.totalWidthPx,
-                self.featuresHeight(self.lgv.assemblyNames[0]),
+                collaboratorCanvas.width,
+                collaboratorCanvas.height,
               )
               for (const collaborator of self.session.collaborators) {
                 const { locations } = collaborator
@@ -143,9 +153,13 @@ export function renderingModelFactory(
                     if (!locationStartPxInfo) {
                       continue
                     }
-                    const locationStartPx =
-                      locationStartPxInfo.offsetPx - self.lgv.offsetPx
-                    const locationWidthPx = (end - start) / self.lgv.bpPerPx
+                    const {
+                      startPx: locationStartPx,
+                      widthPx: locationWidthPx,
+                    } = roundPxSpan(
+                      locationStartPxInfo.offsetPx - self.lgv.offsetPx,
+                      (end - start) / self.lgv.bpPerPx,
+                    )
                     ctx.fillStyle = 'rgba(0,255,0,.2)'
                     ctx.fillRect(locationStartPx, 1, locationWidthPx, 100)
                     ctx.fillStyle = 'black'
@@ -170,7 +184,7 @@ export function renderingModelFactory(
               const { canvas, layouts, lgv } = self
               if (
                 !lgv.initialized ||
-                self.regionCannotBeRendered() ||
+                self.displayMode !== 'features' ||
                 !canvas
               ) {
                 return
@@ -181,22 +195,38 @@ export function renderingModelFactory(
               if (!ctx) {
                 return
               }
+              setCanvasSize(
+                canvas,
+                dynamicBlocks.totalWidthPx,
+                self.featuresHeight(lgv.assemblyNames[0]),
+              )
               const featureLayouts = layouts.get(lgv.assemblyNames[0])
               if (!featureLayouts) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
                 return
               }
               ctx.clearRect(0, 0, canvas.width, canvas.height)
+              const { featureGlyphs } = self
               for (const block of dynamicBlocks.contentBlocks) {
-                const blockLeftPx = block.offsetPx - offsetPx
-                ctx.save()
-                ctx.beginPath()
-                ctx.rect(blockLeftPx, 0, block.widthPx, canvas.height)
-                ctx.clip()
                 const layout = featureLayouts.get(block.refName)
                 if (!layout) {
-                  return
+                  continue
                 }
+                const clip = roundPxSpan(
+                  block.offsetPx - offsetPx,
+                  block.widthPx,
+                )
+                ctx.save()
+                ctx.beginPath()
+                ctx.rect(clip.startPx, 0, clip.widthPx, canvas.height)
+                ctx.clip()
                 const { byRow } = layout
+                const visible: {
+                  feature: AnnotationFeature
+                  glyph: Glyph
+                  row: number
+                  rowInFeature: number
+                }[] = []
                 for (const [row, layoutRow] of byRow.entries()) {
                   for (const layoutFeature of layoutRow) {
                     const { feature, rowInFeature } = layoutFeature
@@ -210,36 +240,24 @@ export function renderingModelFactory(
                     ) {
                       continue
                     }
-                    self
-                      .getGlyph(feature)
-                      // @ts-expect-error ts doesn't understand mst extension
-                      .draw(self, ctx, feature, row, rowInFeature, block)
+                    const glyph =
+                      featureGlyphs.get(feature._id) ?? self.getGlyph(feature)
+                    visible.push({ feature, glyph, row, rowInFeature })
+                    // @ts-expect-error ts doesn't understand mst extension
+                    glyph.draw(self, ctx, feature, row, rowInFeature, block)
                   }
                 }
-                for (const [row, layoutRow] of byRow.entries()) {
-                  for (const layoutFeature of layoutRow) {
-                    const { feature, rowInFeature } = layoutFeature
-                    if (
-                      !doesIntersect2(
-                        block.start,
-                        block.end,
-                        feature.min,
-                        feature.max,
-                      )
-                    ) {
-                      continue
-                    }
-                    self.getGlyph(feature).drawOverlay(
-                      // @ts-expect-error ts doesn't understand mst extension
-                      self,
-                      ctx,
-                      feature,
-                      row,
-                      block,
-                      'highlight',
-                      rowInFeature,
-                    )
-                  }
+                for (const { feature, glyph, row, rowInFeature } of visible) {
+                  glyph.drawOverlay(
+                    // @ts-expect-error ts doesn't understand mst extension
+                    self,
+                    ctx,
+                    feature,
+                    row,
+                    block,
+                    'highlight',
+                    rowInFeature,
+                  )
                 }
                 ctx.restore()
               }

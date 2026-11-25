@@ -31,7 +31,7 @@ function partialCoverage({ identity, offset, }) {
  * itself in from the pasted alignment and offers that alignment's own row names
  * rather than a free text box the user can typo.
  */
-const QueryRowSelector = observer(function QueryRowSelector({ names, detected, querySeqName, setQuerySeqName, isAutoDetected, }) {
+const QueryRowSelector = observer(function QueryRowSelector({ names, detected, querySeqName, setQuerySeqName, isAutoDetected, sequenceStatus, }) {
     const { classes } = useStyles();
     return (React.createElement(React.Fragment, null,
         names.length > 0 ? (React.createElement(TextField2, { variant: "outlined", label: "MSA row matching the selected transcript", select: true, fullWidth: true, className: classes.field, value: names.includes(querySeqName) ? querySeqName : '', onChange: event => {
@@ -51,6 +51,11 @@ const QueryRowSelector = observer(function QueryRowSelector({ names, detected, q
             React.createElement("strong", null, detected.name),
             " to your protein sequence",
             detected.quality === 'exact' ? '' : partialCoverage(detected),
-            ". Clicking the alignment will navigate the genome view."))) : names.length > 0 && !querySeqName ? (React.createElement(Alert, { severity: "warning", className: classes.alert }, "No row matched your protein sequence \u2014 pick the one for your gene above. Without it the alignment still renders, but clicking it will not navigate the genome view.")) : null));
+            ". Clicking the alignment will navigate the genome view."))) : names.length > 0 && !querySeqName && sequenceStatus !== 'loading' ? (React.createElement(Alert, { severity: "warning", className: classes.alert },
+            sequenceStatus === 'ready'
+                ? 'No row matched your protein sequence'
+                : 'There is no protein sequence to match a row against',
+            ' ',
+            "\u2014 pick the one for your gene above. Without it the alignment still renders, but clicking it will not navigate the genome view.")) : null));
 });
 export default QueryRowSelector;

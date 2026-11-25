@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui'
 import {
@@ -13,30 +13,41 @@ import { observer } from 'mobx-react'
 import { isPdbId, stripStopCodon } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
-import PartialFailureNotice from './PartialFailureNotice'
-import ProteinViewActions from './ProteinViewActions'
-import SequenceMismatchNotice from './SequenceMismatchNotice'
-import StructureList from './StructureList'
-import TranscriptSelector from './TranscriptSelector'
-import UniProtSummaryBar from './UniProtSummaryBar'
-import useDebouncedValue from '../hooks/useDebouncedValue'
+import { errorMessage } from '../../ProteinView/util'
 import useGeneStructures from '../hooks/useGeneStructures'
+import usePdbEntrySummaries from '../hooks/usePdbEntrySummaries'
 import useStructureLaunch, {
   structureSource,
 } from '../hooks/useStructureLaunch'
 import useUniProtIdLookup from '../hooks/useUniProtIdLookup'
-import { getLaunchMissingReasons } from '../utils/launchHelpers'
+import { launchReadiness } from '../utils/launchHelpers'
 import { getLaunchSideBySide, setLaunchSideBySide } from '../utils/sideBySide'
 import {
+  addPdbId,
+  addedRows,
+  checkedKeys,
   defaultChecked,
   matchesFilter,
+  splitChecked,
   toggleStructure,
 } from '../utils/structureList'
 import { getTranscriptDisplayName } from '../utils/util'
+import IsoformMatchNotice from './IsoformMatchNotice'
+import NoticeLine from './NoticeLine'
+import ProteinViewActions from './ProteinViewActions'
+import StructureList from './StructureList'
+import TranscriptSelector from './TranscriptSelector'
+import UncodedTranscriptNotice from './UncodedTranscriptNotice'
+import UniProtSummaryBar from './UniProtSummaryBar'
 
-import type { LaunchStructure } from '../hooks/useStructureLaunch'
+import type { ListedStructure } from '../hooks/useStructureLaunch'
 import type { LaunchingGenomeView } from '../utils/genomeView'
-import type { StructureFilter, StructureRow } from '../utils/structureList'
+import type { Listing } from '../utils/launchHelpers'
+import type {
+  AddedEntry,
+  StructureFilter,
+  StructureRow,
+} from '../utils/structureList'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 
 const useStyles = makeStyles()(theme => ({
@@ -91,38 +102,36 @@ const FILTERS: { filter: StructureFilter; label: string }[] = [
   { filter: 'predicted', label: 'Predicted' },
 ]
 
-function launchStructure(row: StructureRow): LaunchStructure {
+function launchStructure(row: StructureRow): ListedStructure {
   return row.kind === 'alphafold'
     ? { key: row.key, kind: 'alphafold', model: row.model }
     : row.kind === 'pdb'
       ? { key: row.key, kind: 'pdb', pdbId: row.entry.pdbId }
-      : row.kind === 'dataset'
-        ? {
-            key: row.key,
-            kind: 'url',
-            url: row.match.structure.url,
-            uniprotId: row.match.structure.uniprotId,
-          }
-        : { key: row.key, kind: 'complex', entity: row.complex.entity }
+      : row.kind === 'added'
+        ? { key: row.key, kind: 'pdb', pdbId: row.pdbId }
+        : row.kind === 'dataset'
+          ? {
+              key: row.key,
+              kind: 'url',
+              url: row.match.structure.url,
+              uniprotId: row.match.structure.uniprotId,
+            }
+          : { key: row.key, kind: 'complex', entity: row.complex.entity }
 }
 
-function describeLaunch(
-  rows: readonly StructureRow[],
-  typedPdbId: string | undefined,
-  finding: boolean,
-) {
+function describeLaunch(rows: readonly StructureRow[], listing: Listing) {
   const [first, ...rest] = rows
-  return typedPdbId
-    ? `PDB ${typedPdbId.toUpperCase()}, typed above, in place of the checked rows`
-    : !first
-      ? finding
-        ? 'Finding structures…'
+  return !first
+    ? listing === 'finding'
+      ? 'Finding structures…'
+      : listing === 'empty'
+        ? 'No structure to open yet'
         : 'Check a structure to open it'
-      : rest.length > 0
-        ? `${rows.map(r => r.label).join(' + ')}, superposed onto ${first.label}`
-        : first.section === 'fragment'
-          ? `${first.label}, a short fragment, on its own`
-          : `${first.label}: ${first.title}`
+    : rest.length > 0
+      ? `${rows.map(r => r.label).join(' + ')}, superposed onto ${first.label}`
+      : first.section === 'fragment'
+        ? `${first.label}, a short fragment, on its own`
+        : `${first.label}: ${first.title}`
 }
 
 /**
@@ -156,38 +165,52 @@ const GeneStructures = observer(function GeneStructures({
     view,
     preferredTranscriptId,
   })
-  const { rows } = structures
+  // an id adds entries the accession's listing never offers: a structure of a
+  // complex filed under a partner, anything a paper names
+  const [addedEntries, setAddedEntries] = useState<AddedEntry[]>([])
+  // an added entry the listing holds is described there already
+  const addedIds = addedEntries
+    .map(a => a.pdbId)
+    .filter(id => !structures.rows.some(r => r.key === `pdb:${id}`))
+  const addedSummaries = usePdbEntrySummaries(addedIds)
+  const added = addedRows({
+    pdbIds: addedIds,
+    summaries: addedSummaries.summaries,
+    listed: structures.rows,
+    geneName,
+    uniprotId,
+  })
+  // listed first, so the first listed checked row stays the one the rest are
+  // superposed onto
+  const rows = [...structures.rows, ...added.rows]
   const [filter, setFilter] = useState<StructureFilter>('all')
-  // a pick belongs to the accession it was made from
+  // a pick of listed rows belongs to the accession it was made from
   const [picked, setPicked] = useState<{ uniprotId?: string; keys: string[] }>()
   const userPick =
     picked && picked.uniprotId === uniprotId ? picked.keys : undefined
   // nothing is checked until the default is known, or the first structure to
   // arrive would be ranked against and fetched for nothing
   const defaultPending = !structures.defaultSettled
-  const checked = userPick ?? (defaultPending ? [] : defaultChecked(rows))
+  const listedChecked =
+    userPick ?? (defaultPending ? [] : defaultChecked(structures.rows))
+  const checked = checkedKeys(listedChecked, addedEntries)
   const checkedRows = rows.filter(r => checked.includes(r.key))
 
   const [sideBySide, setSideBySide] = useState(() => getLaunchSideBySide())
 
-  // A typed id reaches entries the accession's listing never offers: a
-  // structure of a complex filed under a partner, anything a paper names.
-  // Debounced, so the three characters on the way to four are not three
-  // fetches.
   const [typedPdbId, setTypedPdbId] = useState('')
   const trimmedTypedPdbId = typedPdbId.trim()
-  const debouncedTypedPdbId = useDebouncedValue(trimmedTypedPdbId, 400)
+  const typedPdbIdValid = isPdbId(trimmedTypedPdbId)
+  // a short id is not wrong until Enter is pressed on it
+  const [enteredInvalid, setEnteredInvalid] = useState(false)
   const typedPdbIdInvalid =
-    trimmedTypedPdbId !== '' && !isPdbId(trimmedTypedPdbId)
-  const typedId = isPdbId(debouncedTypedPdbId)
-    ? debouncedTypedPdbId.toLowerCase()
-    : undefined
+    trimmedTypedPdbId !== '' &&
+    !typedPdbIdValid &&
+    (trimmedTypedPdbId.length >= 4 || enteredInvalid)
 
-  const launchStructures: LaunchStructure[] = typedId
-    ? [{ key: `typed:${typedId}`, kind: 'pdb', pdbId: typedId }]
-    : checkedRows.map(launchStructure)
+  const launchStructures = checkedRows.map(launchStructure)
   // a site's structure is mapped through the transcript it is listed under
-  const pivotRow = typedId ? undefined : checkedRows[0]
+  const pivotRow = checkedRows[0]
   const launch = useStructureLaunch({
     structures: launchStructures,
     uniprotId,
@@ -199,45 +222,79 @@ const GeneStructures = observer(function GeneStructures({
         : undefined) ?? preferredTranscriptId,
   })
 
-  // RCSB answering that it has no such entry, as opposed to failing to
-  // answer, means the launch would open a view on a 404
-  const typedIdUnknown =
-    !!typedId &&
-    launch.pdbEntryError instanceof Error &&
-    'status' in launch.pdbEntryError &&
-    launch.pdbEntryError.status === 404
-  const typedPending = trimmedTypedPdbId !== debouncedTypedPdbId
-  const isLoading =
-    launch.isLoading ||
-    typedPending ||
-    (!typedId && !userPick && defaultPending)
-  const error =
-    launch.error ?? (typedIdUnknown ? launch.pdbEntryError : undefined)
-  const missingReasons = getLaunchMissingReasons({
+  const isLoading = launch.isLoading || (!userPick && defaultPending)
+  const { error } = launch
+  const alphaFoldChecked = launchStructures.find(s => s.kind === 'alphafold')
+  const launchUniprotId =
+    launchStructures[0]?.kind === 'alphafold'
+      ? launchStructures[0].model.accession
+      : launchStructures[0]?.kind === 'url'
+        ? (launchStructures[0].uniprotId ?? uniprotId)
+        : uniprotId
+  const { listing, missingReasons, ready, ready1D } = launchReadiness({
+    rowCount: rows.length,
+    userPicked: !!userPick,
+    defaultPending,
+    addedPending:
+      addedSummaries.isLoading && checkedRows.some(r => r.kind === 'added'),
     structureCount: launchStructures.length,
+    loading: launch.isLoading,
+    failed: launch.failed,
     userSelectedProteinSequence: launch.selectedIsoform,
     selectedTranscript: launch.selectedTranscript,
+    uniprotId: launchUniprotId,
+    lookupLoading: lookup.isLookupLoading,
   })
-  const ready =
-    !isLoading && !error && !typedPdbIdInvalid && missingReasons.length === 0
-  const alphaFoldChecked = launchStructures.find(s => s.kind === 'alphafold')
-  // Loading or failed, the lookup can still hold the previous query's
-  // accession, which would name the view and its 1D entry
-  const launchUniprotId =
-    typedId && (lookup.isLookupLoading || lookup.lookupError)
-      ? undefined
-      : launchStructures[0]?.kind === 'alphafold'
-        ? launchStructures[0].model.accession
-        : launchStructures[0]?.kind === 'url'
-          ? (launchStructures[0].uniprotId ?? uniprotId)
-          : uniprotId
 
+  // the listed rows' pick changes only when they do, so adding an entry while
+  // the default is still being found leaves the default to come
+  const applyChecked = (next: {
+    listed: readonly string[]
+    added: AddedEntry[]
+  }) => {
+    setAddedEntries(next.added)
+    if (
+      next.listed.length !== listedChecked.length ||
+      next.listed.some(key => !listedChecked.includes(key))
+    ) {
+      setPicked({ uniprotId, keys: [...next.listed] })
+    }
+  }
   const toggle = (row: StructureRow) => {
-    setPicked({ uniprotId, keys: toggleStructure(checked, row, rows) })
+    applyChecked(
+      splitChecked(toggleStructure(checked, row, rows), addedEntries),
+    )
+  }
+
+  const rootRef = useRef<HTMLDivElement>(null)
+  const addTypedPdbId = () => {
+    setEnteredInvalid(!typedPdbIdValid)
+    if (typedPdbIdValid) {
+      const pdbId = trimmedTypedPdbId.toLowerCase()
+      applyChecked(
+        addPdbId({
+          pdbId,
+          added: addedEntries,
+          unknown: added.unknown,
+          checked,
+          rows,
+        }),
+      )
+      if (filter === 'predicted') {
+        setFilter('all')
+      }
+      setTypedPdbId('')
+      // the added group sits last, below the fold of a long list
+      requestAnimationFrame(() => {
+        rootRef.current
+          ?.querySelector(`[data-testid="structure-row-pdb:${pdbId}"]`)
+          ?.scrollIntoView({ block: 'nearest' })
+      })
+    }
   }
 
   return (
-    <div className={classes.root}>
+    <div className={classes.root} ref={rootRef}>
       <UniProtSummaryBar lookup={lookup} />
       <div className={classes.toolbar}>
         <div className={classes.chips} role="group" aria-label="Source">
@@ -257,20 +314,31 @@ const GeneStructures = observer(function GeneStructures({
         </div>
         <TextField
           size="small"
-          label="Open by PDB ID"
-          placeholder="e.g. 1TUP"
+          label="Add PDB ID"
+          placeholder="1TUP, then Enter"
           data-testid="pdb-id-input"
-          error={typedPdbIdInvalid || typedIdUnknown}
+          error={typedPdbIdInvalid || added.unknown.length > 0}
           helperText={
             typedPdbIdInvalid
               ? 'Four characters beginning with a digit'
-              : typedIdUnknown
-                ? `RCSB has no entry ${debouncedTypedPdbId.toUpperCase()}`
+              : added.unknown.length > 0
+                ? `RCSB has no entry ${added.unknown.map(id => id.toUpperCase()).join(', ')}`
                 : undefined
           }
           value={typedPdbId}
           onChange={event => {
             setTypedPdbId(event.target.value)
+            setEnteredInvalid(false)
+            if (added.unknown.length > 0) {
+              setAddedEntries(
+                addedEntries.filter(a => !added.unknown.includes(a.pdbId)),
+              )
+            }
+          }}
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              addTypedPdbId()
+            }
           }}
           slotProps={{ inputLabel: { shrink: true } }}
           sx={{ width: 200 }}
@@ -278,31 +346,51 @@ const GeneStructures = observer(function GeneStructures({
       </div>
       <StructureList
         rows={rows.filter(r => matchesFilter(r, filter))}
-        sections={structures.sections}
-        geneName={geneName}
-        checked={typedId ? [] : checked}
-        uniprotLength={structures.uniprotLength}
-        onToggle={row => {
-          setTypedPdbId('')
-          toggle(row)
+        sections={{
+          ...structures.sections,
+          added: {
+            loading:
+              addedSummaries.isLoading && addedSummaries.error === undefined
+                ? ['Asking RCSB for the added entries']
+                : [],
+            notices:
+              addedSummaries.error === undefined
+                ? []
+                : [
+                    {
+                      message: `RCSB did not describe the added entries, so their ids are unconfirmed:${errorMessage(addedSummaries.error)}`,
+                      retry: addedSummaries.retry,
+                      retrying: addedSummaries.isLoading,
+                    },
+                  ],
+          },
         }}
+        geneName={geneName}
+        empty={listing === 'empty'}
+        sourceFailed={structures.sourceFailed}
+        checked={checked}
+        uniprotLength={structures.uniprotLength}
+        onToggle={toggle}
       />
       <div className={classes.footer}>
         <div className={classes.summary}>
           <Typography variant="body2" data-testid="launch-summary">
-            <strong>
-              {describeLaunch(
-                checkedRows,
-                typedId,
-                !userPick && defaultPending,
-              )}
-            </strong>
+            <strong>{describeLaunch(checkedRows, listing)}</strong>
           </Typography>
           {error ? <ErrorMessage error={error} /> : null}
           {launch.loadingStatuses.map(status => (
             <LoadingEllipses key={status} variant="caption" message={status} />
           ))}
-          <PartialFailureNotice message={launch.partialFailure} />
+          <NoticeLine
+            message={launch.partialFailure}
+            onRetry={launch.retryIsoforms}
+            retrying={launch.isoformsRetrying}
+          />
+          <UncodedTranscriptNotice
+            feature={feature}
+            preferredTranscriptId={preferredTranscriptId}
+            selectedTranscript={launch.selectedTranscript}
+          />
           {launch.ranking && launch.selectedTranscript ? (
             <TranscriptSelector
               val={launch.selectedTranscriptId}
@@ -310,6 +398,7 @@ const GeneStructures = observer(function GeneStructures({
               structureSequence={launch.structureSequence}
               feature={feature}
               isoforms={launch.transcripts}
+              isoformSequences={launch.isoformSequences}
               ranking={launch.ranking}
               size="small"
             />
@@ -322,7 +411,12 @@ const GeneStructures = observer(function GeneStructures({
               {stripStopCodon(launch.selectedIsoform.seq).length} aa)
             </Typography>
           ) : null}
-          {launch.sequencesMatch === false ? <SequenceMismatchNotice /> : null}
+          <IsoformMatchNotice
+            ranking={launch.ranking}
+            selectedTranscript={launch.selectedTranscript}
+            structureSequence={launch.structureSequence}
+            feature={feature}
+          />
           {!isLoading && !error && missingReasons.length > 0 ? (
             <Typography variant="body2" color="error">
               {missingReasons.join('; ')}
@@ -351,6 +445,7 @@ const GeneStructures = observer(function GeneStructures({
           <ProteinViewActions
             handleClose={handleClose}
             ready={ready}
+            ready1D={ready1D}
             uniprotId={launchUniprotId}
             userSelectedProteinSequence={launch.selectedIsoform}
             selectedTranscript={launch.selectedTranscript}

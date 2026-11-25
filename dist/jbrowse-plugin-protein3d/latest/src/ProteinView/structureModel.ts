@@ -6,12 +6,10 @@ import {
   isAlive,
   types,
 } from '@jbrowse/mobx-state-tree'
-import { autorun, untracked, when } from 'mobx'
+import { autorun, when } from 'mobx'
 import {
-  alignTranscriptToEntity,
   alignmentCol,
   alignmentQuality,
-  chooseMappedEntity,
   entityAlignedTo,
   entityLabel,
   fetchUniProtStructureMappings,
@@ -21,7 +19,6 @@ import {
   getUniprotIdFromAlphaFoldTarget,
   locateStructureResidue,
   locateTranscriptResidue,
-  looksLikePlddt,
   makeCoordinateMapper,
   makeLabelSeqIdIndex,
   mappedStructureIdentity,
@@ -31,7 +28,6 @@ import {
   residueNumber,
   residueRuns,
   resolveStructureUrl,
-  sameProtein,
   stripStopCodon,
   structureDisplayLabel,
   structurePos,
@@ -41,14 +37,12 @@ import {
   unmapStructurePositions,
 } from 'p2s_mapper'
 
-import { alignOffThread } from './alignOffThread'
-import { decideAlignment } from './alignmentDecision'
+import { genomeToTranscriptSeqMapping } from '../mappings'
 import {
   alignmentDomainStatus,
   connectedAlignmentDomains,
   domainRows,
 } from './alignmentDomains'
-import { cssScaleOf, rampKeyOf } from './colorScale'
 import { connectedHoverTranscriptPos } from './connectedHover'
 import {
   CHAR_WIDTH,
@@ -66,19 +60,22 @@ import {
 import { complexMembersLabel, fileUniProtMappings } from './fileUniProt'
 import { frameResidues } from './frameSelection'
 import { codonLocus, hoverReadout } from './hoverReadout'
-import { resolvedColor } from './proteinColor'
 import {
   clickProteinToGenome,
   navigateToProteinPosition,
   structureRangesToGenomeRegions,
 } from './proteinToGenomeMapping'
-import { RESIDUE_COLORS } from './residueColors'
-import { kyteDoolittleScores, mapResidueValuesToColumns } from './residueTracks'
+import {
+  confidenceCells,
+  hydrophobicityCells,
+  hydrophobicityScale,
+} from './residueTracks'
 import { residueValuesStatus } from './residueValuesStatus'
 import {
   sessionHighlightResidues,
   withoutLabelledResidues,
 } from './sessionHighlights'
+import { makeStructureAligner } from './structureAligner'
 import { DEPOSITED_MODEL } from './structurePipeline'
 import { structureReport } from './structureReport'
 import { structureUniProt } from './structureUniProt'
@@ -92,15 +89,12 @@ import {
   genomeTrackAsk,
 } from './variantEffectSource'
 import { variantEffectStatus } from './variantEffectStatus'
-import { genomeToTranscriptSeqMapping } from '../mappings'
 
-import type { AlignmentMethod } from './alignOffThread'
 import type {
   AlignmentDomainStatus,
   ConnectedDomains,
   DomainRow,
 } from './alignmentDomains'
-import type { LinearColor } from './colorScale'
 import type { ExonStatus, ResidueExon, TranscriptExons } from './exons'
 import type {
   EntityConfidence,
@@ -117,8 +111,8 @@ import type {
   VariantEffectAsk,
   VariantEffectState,
 } from './variantEffectLoader'
+import type { StatusSeverity } from './variantEffectStatus'
 import type { PlacedValues } from './variantEffects'
-import type { RpcCallArgs, RpcCallReturn } from '@jbrowse/core/rpc/RpcRegistry'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { Region as IRegion } from '@jbrowse/core/util/types'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
@@ -144,6 +138,23 @@ function isGenomeView(view: { id: string }): view is LGV {
   return 'assemblyNames' in view
 }
 type MaybePairwiseAlignment = PairwiseAlignment | undefined
+
+function chainAgainstItself(seq: string): PairwiseAlignment {
+  const row = { id: 'structure', seq }
+  return { consensus: '|'.repeat(seq.length), alns: [row, row] }
+}
+
+interface StructureStatus {
+  message: string
+  severity: StatusSeverity
+}
+
+function note(
+  message: string | undefined,
+  severity: StatusSeverity = 'info',
+): StructureStatus | undefined {
+  return message === undefined ? undefined : { message, severity }
+}
 
 export interface ParentProteinView {
   zoomToBaseLevel: boolean
@@ -176,6 +187,11 @@ const Structure = types
      * #property
      */
     data: types.maybe(types.string),
+    /**
+     * #property
+     * The name of the file `data` was read from, which labels the structure
+     */
+    fileName: types.maybe(types.string),
     /**
      * #property
      * UniProt accession of the structure: the one a `{ uniprotId }` shorthand
@@ -353,7 +369,9 @@ const Structure = types
     entityChosen: false,
     /**
      * #volatile
-     * An alignment is running in the RPC worker
+     * An alignment is running in the RPC worker. Not one state with
+     * entityChosen and alignmentSkipped: a chain pick aligns after the entity
+     * is chosen, and a skipped structure keeps its reason until a pick lands.
      */
     aligning: false,
     /**
@@ -363,30 +381,14 @@ const Structure = types
     pendingEntityId: undefined as string | undefined,
     /**
      * #volatile
-     * Bumped to have the load autorun decide the alignment again, after a
-     * chain pick that superseded its request was cancelled or failed
-     */
-    alignmentRedecisions: 0,
-    /**
-     * #volatile
-     * Tracks whether this structure has been loaded into Molstar
-     */
-    loadedToMolstar: false,
-    /**
-     * #volatile
      * The Mol* structures this model's load produced, one per model of the
      * file, captured from the loader rather than looked up by position in
      * `hierarchy.current.structures` — that array is ordered by load
      * completion, so with two structures in flight index N can be another
-     * model's geometry.
+     * model's geometry. Empty until the load lands in the current plugin: a
+     * load that builds none throws.
      */
     molstarStructures: new Array<MolstarStructure>(),
-    /**
-     * #volatile
-     * Ids of every Mol* model that load produced, all of an ensemble's models
-     * included; see interactionPosition.
-     */
-    molstarModelIds: new Array<string>(),
     /**
      * #volatile
      * The biological assemblies the loaded entry lists
@@ -409,7 +411,8 @@ const Structure = types
      * Range of alignment positions to highlight (e.g., when hovering a protein feature)
      */
     alignmentHoverRange: undefined as
-      { start: number; end: number } | undefined,
+      | { start: number; end: number }
+      | undefined,
     /**
      * #volatile
      * The uniqueId of the currently selected protein feature (for persistent highlight)
@@ -436,7 +439,6 @@ const Structure = types
     /**
      * #volatile
      */
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     uniProtMappingsError: undefined as unknown,
     /**
      * #volatile
@@ -453,10 +455,33 @@ const Structure = types
      * `scripts/checkProteinLaunches.ts` asks each structure of a live session
      * whether it failed.
      */
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     error: undefined as unknown,
+    /**
+     * #volatile
+     * Whether `error` is the load's, which Retry loads again, rather than an
+     * alignment's
+     */
+    loadFailed: false,
+    /**
+     * #volatile
+     * Bumped by retryLoad; the loader leaves a failed load alone until it
+     * changes or the plugin does
+     */
+    loadAttempt: 0,
+    /**
+     * #volatile
+     * The AlphaFold file an attempt is loading, kept as `url` only once it
+     * loads, so a 404 is asked about again rather than saved
+     */
+    resolvedUrl: undefined as string | undefined,
   }))
   .actions(self => ({
+    /**
+     * #action
+     */
+    retryLoad() {
+      self.loadAttempt += 1
+    },
     /**
      * #action
      * The file the accession's structure lives in, once the loader has asked
@@ -464,12 +489,27 @@ const Structure = types
      */
     setUrl(url: string) {
       self.url = url
+      self.resolvedUrl = undefined
+    },
+    /**
+     * #action
+     */
+    setResolvedUrl(url: string | undefined) {
+      self.resolvedUrl = url
     },
     /**
      * #action
      */
     setError(error: unknown) {
       self.error = error
+      self.loadFailed = false
+    },
+    /**
+     * #action
+     */
+    setLoadError(error: unknown) {
+      self.error = error
+      self.loadFailed = true
     },
     setUniProtMappings(mappings?: UniProtStructureMapping[], error?: unknown) {
       self.uniProtMappings = mappings
@@ -482,7 +522,6 @@ const Structure = types
       self.entities = data.entities
       self.structureConfidence = data.confidence
       self.molstarStructures = data.molstarStructures ?? []
-      self.molstarModelIds = data.modelIds ?? new Array<string>()
       self.assemblies = data.assemblies ?? []
       self.loadedAssembly = data.assembly
     },
@@ -512,17 +551,30 @@ const Structure = types
     },
     /**
      * #action
+     * Drops the handles, which belong to the plugin the structure was
+     * unloaded from, so the loader loads it again.
      */
-    setLoadedToMolstar(val: boolean) {
-      self.loadedToMolstar = val
-      if (!val) {
-        // the handles belong to the plugin we were unloaded from
-        self.molstarStructures = []
-        self.molstarModelIds = new Array<string>()
-      }
+    clearMolstarStructures() {
+      self.molstarStructures = []
     },
   }))
   .views(self => ({
+    /**
+     * #getter
+     */
+    get loadedToMolstar() {
+      return self.molstarStructures.length > 0
+    },
+    /**
+     * #getter
+     * Ids of every Mol* model the load produced, all of an ensemble's models
+     * included; see interactionPosition.
+     */
+    get molstarModelIds() {
+      return self.molstarStructures.flatMap(s =>
+        s.models.map((m): string => m.id),
+      )
+    },
     /**
      * #getter
      * The load's first model, which stands for the whole load where Mol*
@@ -564,6 +616,9 @@ const Structure = types
      */
     setAlignmentHoverRange(range?: { start: number; end: number }) {
       self.alignmentHoverRange = range
+      if (range) {
+        self.hoverPosition = undefined
+      }
     },
     /**
      * #action
@@ -619,6 +674,9 @@ const Structure = types
       self.pairwiseAlignment = r
       self.alignmentImported = imported
       self.alignmentSkipped = undefined
+      if (r && !self.loadFailed) {
+        self.error = undefined
+      }
     },
     setAlignmentSkipped(reason?: string) {
       self.alignmentSkipped = reason
@@ -738,7 +796,8 @@ const Structure = types
         : undefined
       return members
         ? `AlphaFold complex ${members}`
-        : structureDisplayLabel(self)
+        : ((self.data === undefined ? undefined : self.fileName) ??
+            structureDisplayLabel(self))
     },
     /**
      * #getter
@@ -818,40 +877,33 @@ const Structure = types
     },
     /**
      * #getter
-     * Per-residue pLDDT of the mapped entity, mapped to alignment columns and
-     * shown only when the B-factor column actually looks like AlphaFold
-     * confidence. Values are looked up by label_seq_id through the entity's own
-     * seqIds, so an unobserved residue leaves a gap instead of shifting the
-     * rest of the track.
+     * The columns the sequence panel draws: the transcript alignment, or for
+     * a structure with no transcript its mapped protein chain against itself,
+     * so the chain's sequence, ruler and tracks still show. Only the panel
+     * reads it; whatever means the transcript reads `alignment`.
      */
-    get confidenceCells() {
+    get panelAlignment(): MaybePairwiseAlignment {
       const entity = this.mappedEntity
-      const confidence = self.structureConfidence?.find(
-        c => c.entityId === entity?.entityId,
+      return (
+        this.alignment ??
+        (!self.userProvidedTranscriptSequence &&
+        entity?.seq &&
+        !entity.nucleicAcid
+          ? chainAgainstItself(entity.seq)
+          : undefined)
       )
-      if (!entity || !confidence) {
-        return []
-      }
-      const values = entity.seqIds.map(id => confidence.byLabelSeqId.get(id))
-      return looksLikePlddt(values.filter(v => v !== undefined))
-        ? mapResidueValuesToColumns(
-            values,
-            this.coordinateMapper?.structureToAlignment,
-          )
-        : []
     },
     /**
      * #getter
-     * Per-residue Kyte-Doolittle hydrophobicity mapped to alignment columns.
+     * The panel's column conversions: `coordinateMapper` whenever there is a
+     * transcript alignment
      */
-    get hydrophobicityCells() {
-      const seq = this.mappedStructureSeq
-      return seq && !this.mappedEntity?.nucleicAcid
-        ? mapResidueValuesToColumns(
-            kyteDoolittleScores(stripStopCodon(seq)),
-            this.coordinateMapper?.structureToAlignment,
-          )
-        : []
+    get panelMapper(): CoordinateMapper | undefined {
+      const { coordinateMapper, panelAlignment } = this
+      return (
+        coordinateMapper ??
+        (panelAlignment ? makeCoordinateMapper(panelAlignment) : undefined)
+      )
     },
     /**
      * #getter
@@ -889,7 +941,7 @@ const Structure = types
       const pos = this.structureSeqHoverPos
       return pos === undefined
         ? undefined
-        : this.coordinateMapper?.structureToAlignment(structurePos(pos))
+        : this.panelMapper?.structureToAlignment(structurePos(pos))
     },
 
     /**
@@ -900,7 +952,7 @@ const Structure = types
      */
     get hoverStructureRange() {
       const { alignmentHoverRange } = self
-      const mapper = this.coordinateMapper
+      const mapper = this.panelMapper
       if (!alignmentHoverRange || !mapper) {
         return undefined
       }
@@ -976,7 +1028,7 @@ const Structure = types
      * run of clickedStructureRanges.
      */
     get clickAlignmentRanges() {
-      const mapper = this.coordinateMapper
+      const mapper = this.panelMapper
       return mapper
         ? self.clickedStructureRanges.flatMap(range => {
             const start = mapper.structureToAlignment(structurePos(range.start))
@@ -1055,7 +1107,10 @@ const Structure = types
         return undefined
       }
       if (!self.loadedToMolstar) {
-        const unresolved = self.url === undefined && self.data === undefined
+        const unresolved =
+          self.url === undefined &&
+          self.data === undefined &&
+          self.resolvedUrl === undefined
         return unresolved && self.alphaFoldComplexId
           ? `Resolving AlphaFold complex ${self.alphaFoldComplexId}`
           : unresolved && self.uniprotId
@@ -1220,20 +1275,32 @@ const Structure = types
   .views(self => ({
     /**
      * #getter
-     * The hydrophobicity row's color: the view's color object while the view
-     * colors by hydrophobicity, so a member it sets reaches the row too
+     * Per-residue pLDDT of the mapped entity on alignment columns; see
+     * confidenceCells
+     */
+    get confidenceCells() {
+      return confidenceCells(
+        self.mappedEntity,
+        self.structureConfidence,
+        self.panelMapper?.structureToAlignment,
+      )
+    },
+    /**
+     * #getter
+     * Per-residue Kyte-Doolittle hydrophobicity on alignment columns
+     */
+    get hydrophobicityCells() {
+      return hydrophobicityCells(
+        self.mappedEntity,
+        self.panelMapper?.structureToAlignment,
+      )
+    },
+    /**
+     * #getter
+     * The hydrophobicity row's color; see hydrophobicityScale
      */
     get hydrophobicityScale() {
-      const { color } = self.parentView
-      const scale =
-        (color.field === 'hydrophobicity'
-          ? (resolvedColor(color) as LinearColor | undefined)
-          : undefined) ?? RESIDUE_COLORS.hydrophobicity
-      return {
-        title: scale.title ?? '',
-        paint: cssScaleOf(scale),
-        key: rampKeyOf(scale),
-      }
+      return hydrophobicityScale(self.parentView.color)
     },
     /**
      * #getter
@@ -1532,7 +1599,8 @@ const Structure = types
      * #getter
      * What the view's placed-value field colors this structure's mapped
      * entity by, by label_seq_id: for the alignment domains, layer 1's
-     * cartoon
+     * cartoon. One getter switching on the field for all four statuses came
+     * out 14 lines longer, with a projection per status still read by name.
      */
     get placedValues(): PlacedValues | undefined {
       return (
@@ -1556,18 +1624,42 @@ const Structure = types
      * the header: a failed load, a structure with no chain the transcript
      * can be aligned to, or a color field that leaves it grey. One line per
      * structure, rather than a view-wide banner that names neither which
-     * structure nor what it was doing.
+     * structure nor what it was doing. Its severity says whether something
+     * failed, a load or a fetch, or the line only notes a fact.
+     */
+    get status(): StructureStatus | undefined {
+      const { error } = self
+      const variantEffects = self.variantEffectStatus
+      return error === undefined
+        ? (note(self.alignmentSkipped) ??
+            note(self.plddtMissing) ??
+            note(variantEffects.message, variantEffects.severity) ??
+            note(self.residueValuesStatus?.message) ??
+            note(self.exonStatus?.message) ??
+            note(self.alignmentDomainStatus?.message))
+        : { message: errorMessage(error), severity: 'error' }
+    },
+  }))
+  .views(self => ({
+    /**
+     * #getter
      */
     get statusMessage() {
-      const { error } = self
-      return error === undefined
-        ? (self.alignmentSkipped ??
-            self.plddtMissing ??
-            self.variantEffectStatus.message ??
-            self.residueValuesStatus?.message ??
-            self.exonStatus?.message ??
-            self.alignmentDomainStatus?.message)
-        : errorMessage(error)
+      return self.status?.message
+    },
+    /**
+     * #getter
+     * An alignment computed here that SIFTS has yet to answer for, and so may
+     * still lose a fusion partner's residues (see `alignment`)
+     */
+    get alignmentAwaitingSifts() {
+      return (
+        !!self.pdbId &&
+        !!self.pairwiseAlignment &&
+        !self.alignmentImported &&
+        self.uniProtMappings === undefined &&
+        self.uniProtMappingsError === undefined
+      )
     },
   }))
   .views(self => ({
@@ -1685,92 +1777,6 @@ const Structure = types
           : []
     },
   }))
-  .extend(self => {
-    // An answer is applied only if no alignment has started since it was
-    // asked for: a changed transcript or entity list, or another chain the
-    // user picked, supersedes whatever is still running in the worker. The
-    // worker finishes a superseded DP regardless; only its answer is dropped.
-    let latestRequest = 0
-    function supersedeAlignment() {
-      latestRequest++
-      self.setAligning(false)
-    }
-    return {
-      actions: {
-        supersedeAlignment,
-        redecideAlignment() {
-          latestRequest++
-          self.aligning = false
-          self.pendingEntityId = undefined
-          self.alignmentRedecisions++
-        },
-        /**
-         * #action
-         * Applies an identical sequence's free alignment at once, superseding
-         * whatever is still running, and sends any other to the worker.
-         */
-        runAlignment<M extends AlignmentMethod>({
-          identical,
-          name,
-          args,
-          inPlace,
-          apply,
-          fail,
-          pendingEntityId,
-        }: {
-          identical: boolean
-          name: M
-          args: RpcCallArgs<M>
-          inPlace: () => RpcCallReturn<M>
-          apply: (result: RpcCallReturn<M>) => void
-          fail: (e: unknown) => void
-          pendingEntityId?: string
-        }) {
-          if (identical) {
-            supersedeAlignment()
-            try {
-              apply(inPlace())
-            } catch (e) {
-              console.error(e)
-              self.setError(e)
-            }
-            return
-          }
-          const request = ++latestRequest
-          const current = () => request === latestRequest && isAlive(self)
-          self.setAligning(true, pendingEntityId)
-          alignOffThread({
-            rpcManager: getSession(self).rpcManager,
-            name,
-            args,
-            inPlace,
-            current,
-          }).then(
-            result => {
-              if (current()) {
-                try {
-                  self.settleAlignment(() => {
-                    apply(result)
-                  })
-                } catch (e) {
-                  console.error(e)
-                  self.setError(e)
-                }
-              }
-            },
-            (e: unknown) => {
-              if (current()) {
-                console.error(e)
-                self.settleAlignment(() => {
-                  fail(e)
-                })
-              }
-            },
-          )
-        },
-      },
-    }
-  })
   .actions(self => ({
     /**
      * #action
@@ -1827,39 +1833,8 @@ const Structure = types
       self.switchEntity(entityId)
       self.setAlignment(alignment)
     },
-    /**
-     * #action
-     * A user's own alignment, which no answer still running in the worker
-     * may replace. One spelling another chain switches to it as a pick would,
-     * so the old chain's selection does not land on the new chain's residues.
-     */
-    importAlignment(alignment: PairwiseAlignment) {
-      const { entities, mappedEntityId } = self
-      const fit = entities
-        ? entityAlignedTo(
-            alignment,
-            self.userProvidedTranscriptSequence,
-            entities,
-            mappedEntityId,
-          )
-        : undefined
-      if (fit && 'entityId' in fit && fit.entityId !== mappedEntityId) {
-        self.switchEntity(fit.entityId)
-      }
-      self.supersedeAlignment()
-      self.setAlignment(alignment, true)
-    },
   }))
   .actions(self => ({
-    /**
-     * #action
-     * Report on the view's dismissable banner rather than on this structure:
-     * a navigation or a chain choice the user asked for and that failed, as
-     * opposed to a structure that cannot be shown at all.
-     */
-    addViewNotice(e: unknown) {
-      self.parentView.addNotice(e)
-    },
     /**
      * #action
      */
@@ -1871,68 +1846,13 @@ const Structure = types
      */
     hoverAlignmentPosition(alignmentPos: number) {
       if (!self.alignmentHoverRange) {
-        const structureSeqPos = self.coordinateMapper?.alignmentToStructure(
+        const structureSeqPos = self.panelMapper?.alignmentToStructure(
           alignmentCol(alignmentPos),
         )
         self.setHoveredPosition(
           structureSeqPos !== undefined ? { structureSeqPos } : undefined,
         )
       }
-    },
-    /**
-     * #action
-     * The user's override of which chain the transcript maps to. The alignment
-     * is recomputed against that entity's sequence, and every highlight that
-     * derived from the old one is dropped, since its positions meant residues
-     * of another chain.
-     */
-    chooseEntity(entityId: string) {
-      const entity = self.entities?.find(e => e.entityId === entityId)
-      const shown = self.mappedEntity?.entityId
-      if (!entity || entityId === (self.pendingEntityId ?? shown)) {
-        return
-      }
-      if (!self.userProvidedTranscriptSequence) {
-        self.switchEntity(entityId)
-        return
-      }
-      if (self.pendingEntityId !== undefined && entityId === shown) {
-        // back to the chain on screen: the pick may have superseded the
-        // automatic alignment, so that decides again
-        self.redecideAlignment()
-        return
-      }
-      const transcript = self.userProvidedTranscriptSequence
-      const align = () =>
-        alignTranscriptToEntity(transcript, entity.seq, self.alignmentAlgorithm)
-      const apply = (scored: ScoredAlignment | undefined) => {
-        if (scored) {
-          self.applyChosenEntity(entityId, scored.alignment)
-        } else {
-          self.parentView.addNotice(
-            new Error(
-              `${entity.chains.join('/') || entity.entityId} is too long to align to this transcript`,
-            ),
-          )
-          self.redecideAlignment()
-        }
-      }
-      self.runAlignment({
-        identical: sameProtein(transcript, entity.seq),
-        name: 'ProteinAlignTranscriptToEntity',
-        args: {
-          transcript,
-          entitySeq: entity.seq,
-          algorithm: self.alignmentAlgorithm,
-        },
-        inPlace: align,
-        apply,
-        fail: e => {
-          self.parentView.addNotice(e)
-          self.redecideAlignment()
-        },
-        pendingEntityId: entityId,
-      })
     },
     /**
      * #action
@@ -1957,7 +1877,7 @@ const Structure = types
      * A gap puts the whole view's selection down, as Mol*'s background does.
      */
     clickAlignmentPosition(alignmentPos: number) {
-      const structureSeqPos = self.coordinateMapper?.alignmentToStructure(
+      const structureSeqPos = self.panelMapper?.alignmentToStructure(
         alignmentCol(alignmentPos),
       )
       if (structureSeqPos === undefined) {
@@ -2101,99 +2021,6 @@ const Structure = types
         )
       }
 
-      let realigning: string | undefined
-      addDisposer(
-        self,
-        autorun(() => {
-          try {
-            const { alignmentAlgorithm: algorithm } = self
-            // read only so that a redecision reruns this
-            // eslint-disable-next-line @typescript-eslint/no-meaningless-void-operator
-            void self.alignmentRedecisions
-            const decision = decideAlignment(self)
-            const reportStale = (problem: string) => {
-              self.addViewNotice(
-                new Error(
-                  `The alignment stored for ${self.label} no longer matches its chain and was recomputed: ${problem}`,
-                ),
-              )
-            }
-            switch (decision.kind) {
-              case 'nothingToAlign':
-                self.supersedeAlignment()
-                break
-              case 'keep':
-                self.setEntityChosen()
-                break
-              case 'adopt':
-                self.setMappedEntityId(decision.entityId)
-                self.setEntityChosen()
-                break
-              case 'discard':
-                reportStale(decision.problem)
-                self.supersedeAlignment()
-                self.applyRealignment(undefined)
-                break
-              case 'realign': {
-                const {
-                  transcript,
-                  entity: { seq },
-                } = decision
-                const key = `${algorithm}:${transcript}:${seq}`
-                // read untracked: the realign ending would rerun this, and a
-                // realign that keeps failing would start itself again forever
-                if (key === realigning && untracked(() => self.aligning)) {
-                  break
-                }
-                realigning = key
-                reportStale(decision.problem)
-                self.runAlignment({
-                  identical: decision.identical,
-                  name: 'ProteinAlignTranscriptToEntity',
-                  args: { transcript, entitySeq: seq, algorithm },
-                  inPlace: () =>
-                    alignTranscriptToEntity(transcript, seq, algorithm),
-                  apply: realigned => {
-                    self.applyRealignment(realigned)
-                  },
-                  fail: e => {
-                    self.setError(e)
-                  },
-                })
-                break
-              }
-              case 'choose': {
-                const { transcript, entities } = decision
-                self.runAlignment({
-                  identical: decision.identical,
-                  name: 'ProteinChooseMappedEntity',
-                  args: {
-                    transcript,
-                    entities: entities.map(({ seq, nucleicAcid }) => ({
-                      seq,
-                      nucleicAcid,
-                    })),
-                    algorithm,
-                  },
-                  inPlace: () =>
-                    chooseMappedEntity(transcript, entities, algorithm),
-                  apply: selection => {
-                    self.applyEntitySelection(selection)
-                  },
-                  fail: e => {
-                    self.setError(e)
-                  },
-                })
-                break
-              }
-            }
-          } catch (e) {
-            console.error(e)
-            self.setError(e)
-          }
-        }),
-      )
-
       addDisposer(
         self,
         autorun(() => {
@@ -2219,6 +2046,55 @@ const Structure = types
           }
         }),
       )
+    },
+  }))
+  .extend(self => {
+    const aligner = makeStructureAligner(self)
+    return {
+      actions: {
+        supersedeAlignment: aligner.supersede,
+        /**
+         * #action
+         * Applies an identical sequence's free alignment at once, superseding
+         * whatever is still running, and sends any other to the worker.
+         */
+        runAlignment: aligner.runAlignment,
+        /**
+         * #action
+         * The user's override of which chain the transcript maps to. The
+         * alignment is recomputed against that entity's sequence, and every
+         * highlight that derived from the old one is dropped, since its
+         * positions meant residues of another chain.
+         */
+        chooseEntity: aligner.chooseEntity,
+        afterAttach() {
+          addDisposer(self, autorun(aligner.decide))
+        },
+      },
+    }
+  })
+  .actions(self => ({
+    /**
+     * #action
+     * A user's own alignment, which no answer still running in the worker
+     * may replace. One spelling another chain switches to it as a pick would,
+     * so the old chain's selection does not land on the new chain's residues.
+     */
+    importAlignment(alignment: PairwiseAlignment) {
+      const { entities, mappedEntityId } = self
+      const fit = entities
+        ? entityAlignedTo(
+            alignment,
+            self.userProvidedTranscriptSequence,
+            entities,
+            mappedEntityId,
+          )
+        : undefined
+      if (fit && 'entityId' in fit && fit.entityId !== mappedEntityId) {
+        self.switchEntity(fit.entityId)
+      }
+      self.supersedeAlignment()
+      self.setAlignment(alignment, true)
     },
   }))
 

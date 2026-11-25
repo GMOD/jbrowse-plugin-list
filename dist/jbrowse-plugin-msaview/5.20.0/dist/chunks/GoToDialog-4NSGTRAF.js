@@ -1,0 +1,2 @@
+import{b as l}from"./chunk-6ZLRUWM2.js";import"./chunk-PFO3G4CM.js";import{a as e}from"./chunk-YX7QETL5.js";import{n as r}from"./chunk-EXFKF6XR.js";import{s as o}from"./chunk-GP2EFH2U.js";import"./chunk-KVMUXFPB.js";function n({model:m,onClose:t}){return o.createElement(e,{open:!0,onClose:t,title:"Go to row or column",maxWidth:"xs",fullWidth:!0},o.createElement(r,null,o.createElement(l,{model:m,onFound:t})))}export{n as default};
+//# sourceMappingURL=GoToDialog-4NSGTRAF.js.map

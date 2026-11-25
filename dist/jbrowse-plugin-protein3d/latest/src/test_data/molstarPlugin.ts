@@ -1,9 +1,9 @@
+import { loadStructure } from '../ProteinView/structurePipeline'
 import { caOnlyMmcif } from './molstarStructure'
 import { POCKET_MMCIF, shiftedPocket } from './pocketStructure'
-import { loadStructure } from '../ProteinView/structurePipeline'
 
-import type { TestAssembly, TestChain } from './molstarStructure'
 import type { StructureFilter } from '../ProteinView/residueFilter'
+import type { TestAssembly, TestChain } from './molstarStructure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 
 /** Load a CA-only mmCIF into a headless plugin the way the view loads one.

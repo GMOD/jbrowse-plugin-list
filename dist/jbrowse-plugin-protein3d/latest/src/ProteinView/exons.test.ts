@@ -2,6 +2,9 @@ import { SimpleFeature } from '@jbrowse/core/util'
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper'
 import { expect, test } from 'vitest'
 
+import { genomeToTranscriptSeqMapping as featureMapping } from '../mappings'
+import { feature as ttc39a } from '../test_data/gene'
+import { toStructure } from '../test_data/positionLookups'
 import {
   MAX_ALIGNMENT_GAP_BP,
   codonExon,
@@ -14,9 +17,6 @@ import {
   withExon,
 } from './exons'
 import { RESIDUE_COLORS } from './residueColors'
-import { genomeToTranscriptSeqMapping as featureMapping } from '../mappings'
-import { feature as ttc39a } from '../test_data/gene'
-import { toStructure } from '../test_data/positionLookups'
 
 const row = (type: string, start: number, end: number) => ({
   refName: 'chr1',

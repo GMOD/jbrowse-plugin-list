@@ -7,10 +7,6 @@ export declare function useFeatureSequence({ view, feature, }: {
     feature?: Feature;
 }): {
     proteinSequence: string;
-    sequence: {
-        seq: string;
-        assemblyGeneticCodeId: number;
-    } | undefined;
     error: unknown;
     isLoading: boolean;
 };

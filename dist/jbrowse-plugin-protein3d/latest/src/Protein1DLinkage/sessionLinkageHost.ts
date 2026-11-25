@@ -4,12 +4,12 @@ import {
   alignTranscriptToEntity,
 } from 'p2s_mapper'
 
-import { linkedGenomeAssemblyName } from './linkage'
 import {
   fetchProteinSeq,
   fetchRegionSequence,
 } from '../LaunchProteinView/utils/translateTranscripts'
 import { alignOffThread } from '../ProteinView/alignOffThread'
+import { linkedGenomeAssemblyName } from './linkage'
 
 import type { LinkageAlignmentHost, Protein1DLinkage } from './linkage'
 import type { AbstractSessionModel } from '@jbrowse/core/util'

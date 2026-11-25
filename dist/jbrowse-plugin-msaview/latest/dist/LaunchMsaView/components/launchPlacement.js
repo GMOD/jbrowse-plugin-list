@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
+import { getSession } from '@jbrowse/core/util';
 import { observer } from 'mobx-react';
-import { readLaunchPlacement } from '../../utils/workspaces';
+import { readLaunchPlacement, sessionSupportsPlacement, writeLaunchPlacement, } from '../../utils/workspaces';
 /**
  * Whether the launch opens beside the genome view — one answer for the whole
  * dialog, not one per tab.
@@ -23,4 +24,24 @@ export function useLaunchPlacement() {
     const shared = useContext(LaunchPlacementContext);
     const own = useState(() => readLaunchPlacement() === 'splitRight');
     return shared ?? own;
+}
+export function useSubmitPlacement(model) {
+    const [sideBySide, setSideBySide] = useLaunchPlacement();
+    const offerPlacement = !!model && sessionSupportsPlacement(getSession(model));
+    return {
+        offerPlacement,
+        sideBySide,
+        setSideBySide,
+        commitPlacement: () => {
+            const placement = offerPlacement
+                ? sideBySide
+                    ? 'splitRight'
+                    : 'stack'
+                : readLaunchPlacement();
+            if (offerPlacement) {
+                writeLaunchPlacement(placement);
+            }
+            return placement;
+        },
+    };
 }

@@ -81,6 +81,9 @@ export function colorChannel({
   }
 }
 
+/** The grey a placed-value theme paints a residue that has no value. */
+export const NO_VALUE_CSS = '#cccccc'
+
 export type Rgb = readonly [number, number, number]
 
 /** A CSS color as RGB. */
@@ -106,6 +109,10 @@ export function thresholdIndex(domain: readonly number[], value: number) {
   return i
 }
 
+function fartherOf(a: number, b: number) {
+  return Math.abs(a) >= Math.abs(b) ? a : b
+}
+
 function rampPosition(color: LinearColor, value: number) {
   const { domainMin, domainMax, domainMid } = color
   const p =
@@ -113,7 +120,7 @@ function rampPosition(color: LinearColor, value: number) {
       ? (value - domainMin) / (domainMax - domainMin)
       : 0.5 +
         (value - domainMid) /
-          (2 * Math.max(domainMid - domainMin, domainMax - domainMid))
+          (2 * fartherOf(domainMid - domainMin, domainMax - domainMid))
   // a zero-width domain gives NaN, which would index no stop
   return Number.isNaN(p) ? 0 : Math.max(0, Math.min(1, p))
 }

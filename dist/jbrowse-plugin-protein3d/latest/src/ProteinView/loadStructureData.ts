@@ -4,8 +4,8 @@ import loadMolstar from './loadMolstar'
 import { loadStructure } from './structurePipeline'
 
 import type { DrawnResidues } from './structurePipeline'
-import type { Model, Structure } from 'molstar/lib/mol-model/structure'
 import type { ModelFormat } from 'molstar/lib/mol-model-formats/format'
+import type { Model, Structure } from 'molstar/lib/mol-model/structure'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { Entity, EntityConfidence } from 'p2s_mapper'
 
@@ -28,9 +28,6 @@ export interface StructureData {
    * arbitrary order, so a position in `hierarchy.current.structures`
    * identifies nothing stable. */
   molstarStructures?: Structure[]
-  /** Ids of every Mol* model this load created, which is how an interaction
-   * on the shared plugin is told apart from one on another structure. */
-  modelIds?: string[]
   assemblies?: StructureAssembly[]
   /** The `assembly` this load was built with, so a change to it reloads. */
   assembly?: string
@@ -122,6 +119,7 @@ function structureAssemblies(model: Model, molstar: Molstar) {
 export async function loadStructureData({
   structure,
   plugin,
+  url = structure.url,
 }: {
   structure: {
     data?: string
@@ -129,13 +127,10 @@ export async function loadStructureData({
     assembly?: string
   } & DrawnResidues
   plugin: PluginContext
+  url?: string
 }): Promise<StructureData> {
-  const { data, url, assembly, chains, filter } = structure
-  const {
-    model,
-    structures: molstarStructures,
-    modelIds,
-  } = await loadStructure({
+  const { data, assembly, chains, filter } = structure
+  const { model, structures: molstarStructures } = await loadStructure({
     plugin,
     data: data || undefined,
     url,
@@ -155,7 +150,6 @@ export async function loadStructureData({
     confidence:
       model && !experimental ? extractPerResidueConfidence(model) : undefined,
     molstarStructures,
-    modelIds,
     assemblies: model?.obj ? structureAssemblies(model.obj.data, molstar) : [],
     assembly,
   }

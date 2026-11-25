@@ -7,6 +7,12 @@ function hostOf(url) {
         return url;
     }
 }
+function shortUrl(url) {
+    const withoutQuery = url.replace(/[?#].*$/, '');
+    return withoutQuery.length > 120
+        ? `${withoutQuery.slice(0, 120)}...`
+        : withoutQuery;
+}
 export class HttpError extends Error {
     constructor(message, status) {
         super(message);
@@ -23,14 +29,14 @@ export async function handleFetch(url, args) {
         // level failure, including a cross-origin response the browser refused to
         // hand over. That is not a hypothetical: NCBI's Blast.cgi stopped sending
         // Access-Control-Allow-Origin to third-party origins, and the raw TypeError
-        // told users nothing at all about why. See docs/blast.md.
+        // told users nothing at all about why. See agent-docs/blast-design.md.
         if (e instanceof TypeError) {
             throw new Error(`Could not reach ${hostOf(url)} — the request failed at the network level. This is usually a CORS restriction (the server refused to let this site read the response), an offline connection, or a blocked request.`, { cause: e });
         }
         throw e;
     }
     if (!response.ok) {
-        throw new HttpError(`HTTP ${response.status} fetching ${url} ${(await response.text()).slice(0, 500)}`, response.status);
+        throw new HttpError(`HTTP ${response.status} fetching ${shortUrl(url)} ${(await response.text()).slice(0, 500)}`, response.status);
     }
     return response;
 }

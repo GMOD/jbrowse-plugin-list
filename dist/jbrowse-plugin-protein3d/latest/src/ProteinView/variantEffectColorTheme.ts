@@ -12,10 +12,12 @@ import type { ThemeDataContext } from 'molstar/lib/mol-theme/theme'
 
 type ScoreScheme = VariantEffectScheme | 'residue-values'
 
-const STYLES: Record<
-  ScoreScheme,
-  { color: ScaledColor; noValueLabel?: string; description: string }
-> = {
+interface ScoreStyle {
+  color: ScaledColor
+  description: string
+}
+
+const STYLES: Record<ScoreScheme, ScoreStyle> = {
   alphamissense: {
     color: RESIDUE_COLORS.alphaMissense,
     description:
@@ -23,7 +25,6 @@ const STYLES: Record<
   },
   clinvar: {
     color: RESIDUE_COLORS.clinvarPathogenicCount,
-    noValueLabel: 'No value',
     description:
       'Colors residues by how many missense substitutions ClinVar calls pathogenic or likely pathogenic, read off the genome under the transcript. Residues the alignment to the transcript does not reach are grey.',
   },
@@ -52,7 +53,7 @@ function themeParams(color: ScaledColor) {
 type Params = ReturnType<typeof themeParams>
 
 function variantEffectTheme(scheme: ScoreScheme) {
-  const { noValueLabel, description } = STYLES[scheme]
+  const { description } = STYLES[scheme]
   return function VariantEffectColorTheme(
     ctx: ThemeDataContext,
     props: PD.Values<Params>,
@@ -66,10 +67,7 @@ function variantEffectTheme(scheme: ScoreScheme) {
       color: location => color(placedValue(location)),
       props,
       description,
-      legend: molstarLegendOf(
-        props.color,
-        noValueLabel ? [noValueLabel, NO_VALUE_COLOR] : undefined,
-      ),
+      legend: molstarLegendOf(props.color, ['No value', NO_VALUE_COLOR]),
     }
   }
 }

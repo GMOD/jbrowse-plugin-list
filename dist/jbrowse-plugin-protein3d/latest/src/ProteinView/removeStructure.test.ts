@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { expect, test } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
 import { removeMolstarStructure } from './removeStructure'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
 
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 

@@ -5,7 +5,7 @@ import type { AnyConfigurationSchemaType } from '@jbrowse/core/configuration'
 /**
  * #config AlphaFoldConfidenceAdapter
  */
-function x() {} // eslint-disable-line @typescript-eslint/no-unused-vars
+function x() {} // oxlint-disable-line no-unused-vars
 
 const AlphaFoldConfidenceAdapter: AnyConfigurationSchemaType =
   ConfigurationSchema(

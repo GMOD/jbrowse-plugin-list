@@ -14,6 +14,7 @@ import type { Entity, PairwiseAlignment } from 'p2s_mapper'
 export interface ReportedStructure {
   readonly label: string
   readonly url: string | undefined
+  readonly resolvedUrl: string | undefined
   readonly data: string | undefined
   readonly pdbId: string | undefined
   readonly uniProtEntry: { uniprotId: string | undefined }
@@ -77,7 +78,7 @@ export function structureReport(s: ReportedStructure) {
   return {
     label: s.label,
     source: sourceOf(s),
-    url: s.url,
+    url: s.url ?? s.resolvedUrl,
     pdbId: s.pdbId,
     uniprotId: s.uniProtEntry.uniprotId,
     transcript: text(s.feature?.name) ?? text(s.feature?.id),

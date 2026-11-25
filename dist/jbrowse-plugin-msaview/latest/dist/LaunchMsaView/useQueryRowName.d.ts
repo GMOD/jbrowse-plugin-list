@@ -23,6 +23,6 @@ export declare function useQueryRowName(msaText: string, proteinSequence: string
     names: string[];
     querySeqName: string;
     querySeqOffset: number;
-    setQuerySeqName: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
+    setQuerySeqName: (name: string) => void;
     isAutoDetected: boolean;
 };

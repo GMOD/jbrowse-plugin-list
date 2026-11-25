@@ -14,6 +14,7 @@ import { MSAModelF } from 'react-msaview'
 export type { MSAFormat } from 'msa-parsers'
 
 import {
+  abortDomainLoad,
   autoLoadProteinDomains,
   launchAwaitsTranscript,
   launchBlastIfNeeded,
@@ -34,7 +35,10 @@ import {
   msaCoordToGenomeCoord,
   msaCoordToGenomeRegions,
 } from './msaCoordToGenomeCoord'
-import { resolveConnectedTranscriptIfNeeded } from './resolveConnectedTranscript'
+import {
+  abortTranscriptLookup,
+  resolveConnectedTranscriptIfNeeded,
+} from './resolveConnectedTranscript'
 import { syncSessionHighlights } from './sessionHighlights'
 import { transcriptMapping } from './transcriptMap'
 import { errorMessage, hasQueryRow } from './util'
@@ -569,7 +573,7 @@ export default function stateModelFactory() {
     .views(self => ({
       /**
        * #getter
-       * what the view resolved to, as plain JSON. See docs/reading-the-view.md
+       * what the view resolved to, as plain JSON. See docs/launching.md
        */
       get report() {
         return viewReport(self)
@@ -859,6 +863,7 @@ export default function stateModelFactory() {
          */
         reset() {
           const { displayName, minimized, zoomToBaseLevel } = self
+          abortDomainLoad(self)
           superReset()
           if (displayName !== undefined) {
             self.setDisplayName(displayName)
@@ -866,6 +871,7 @@ export default function stateModelFactory() {
           self.setMinimized(minimized)
           self.setZoomToBaseLevel(zoomToBaseLevel)
           self.setDomainsRequested(false)
+          self.setLoadingDomains(false)
           self.setLastStoredData(undefined)
           self.setOwnsDataStoreRow(false)
           self.clearConnectionFailure()
@@ -932,6 +938,7 @@ export default function stateModelFactory() {
         // destroyed node, which surfaced as an unhandled rejection
         addDisposer(self, () => {
           self.launchController?.abort()
+          abortTranscriptLookup(self)
         })
         loadStoredData(self)
         for (const fn of [

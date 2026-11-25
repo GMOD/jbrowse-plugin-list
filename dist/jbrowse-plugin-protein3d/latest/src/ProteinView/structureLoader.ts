@@ -57,7 +57,20 @@ export function makeStructureLoader(
   fetchComplex: AlphaFoldComplexFetcher = fetchAlphaFoldComplexModel,
 ) {
   const loadingIn = new Map<StructureInstance, PluginContext>()
-  const failedIn = new WeakMap<StructureInstance, PluginContext>()
+  const failedIn = new WeakMap<
+    StructureInstance,
+    { plugin: PluginContext; attempt: number }
+  >()
+
+  /** A failure stands until the plugin changes or the structure asks to
+   * retry, which bumps its `loadAttempt`. That is read first, whatever the
+   * answer: a failure lands outside the autorun, so a run that skipped the
+   * read would leave a retry unheard. */
+  function failedInto(structure: StructureInstance, plugin: PluginContext) {
+    const { loadAttempt } = structure
+    const failed = failedIn.get(structure)
+    return failed?.plugin === plugin && failed.attempt === loadAttempt
+  }
 
   /** The AlphaFold id a structure still has to turn into a file, if any. */
   function unresolvedId(structure: StructureInstance) {
@@ -73,17 +86,12 @@ export function makeStructureLoader(
 
   /** A complex's file carries a model version that moves, so it is asked
    * for, like an accession's */
-  async function resolveComplexUrl(
-    structure: StructureInstance,
-    entity: string,
-  ) {
+  async function resolveComplexUrl(entity: string) {
     const model = await fetchComplex(entity)
     if (!model) {
       throw new Error(`AlphaFold DB has no complex ${entity}`)
     }
-    if (isAlive(structure)) {
-      structure.setUrl(model.url)
-    }
+    return model.url
   }
 
   /**
@@ -100,6 +108,9 @@ export function makeStructureLoader(
    * An API that answers with no models has told us there is nothing to open,
    * and spelling a filename anyway just turns that into a 404 the reader has
    * to diagnose.
+   *
+   * The resolved url is kept only once its file loads, so a spelled filename
+   * that 404s leaves the next attempt asking the API again.
    */
   async function resolveAlphaFoldUrl(
     structure: StructureInstance,
@@ -107,11 +118,10 @@ export function makeStructureLoader(
   ) {
     const models = await fetchModels(uniprotId).catch(() => undefined)
     if (!isAlive(structure)) {
-      return
+      return undefined
     }
     if (models === undefined) {
-      structure.setUrl(getAlphaFoldStructureUrl(uniprotId))
-      return
+      return getAlphaFoldStructureUrl(uniprotId)
     }
     const picked =
       models.find(m => m.accession === uniprotId) ??
@@ -121,7 +131,30 @@ export function makeStructureLoader(
     if (!picked) {
       throw new Error(`AlphaFold DB has no model for ${uniprotId}`)
     }
-    structure.setUrl(picked.url)
+    return picked.url
+  }
+
+  async function loadResolvedFile(
+    structure: StructureInstance,
+    plugin: PluginContext,
+    url: string,
+  ) {
+    structure.setResolvedUrl(url)
+    const data = await loadStructureData({ structure, plugin, url })
+    if (isAlive(structure)) {
+      structure.setUrl(url)
+    }
+    return data
+  }
+
+  function loadResolved(
+    structure: StructureInstance,
+    plugin: PluginContext,
+    url: string | undefined,
+  ) {
+    return url !== undefined && isAlive(structure)
+      ? loadResolvedFile(structure, plugin, url)
+      : undefined
   }
 
   function settle(structure: StructureInstance, plugin: PluginContext) {
@@ -138,10 +171,12 @@ export function makeStructureLoader(
 
   function loadInto(structure: StructureInstance, plugin: PluginContext) {
     loadingIn.set(structure, plugin)
+    const attempt = structure.loadAttempt
     // A retry — a plugin swap, a remount — starts over, so the last attempt's
     // failure goes with it. Left in place it also reported the structure as
     // settled for the whole of the retry, since `loading` reads it.
     structure.setError(undefined)
+    structure.setResolvedUrl(undefined)
     // a structure that already knows its file dispatches synchronously, so the
     // in-flight guard covers it before the autorun body returns
     const unresolved = unresolvedId(structure)
@@ -149,13 +184,9 @@ export function makeStructureLoader(
       unresolved === undefined
         ? loadStructureData({ structure, plugin })
         : (unresolved.kind === 'complex'
-            ? resolveComplexUrl(structure, unresolved.id)
+            ? resolveComplexUrl(unresolved.id)
             : resolveAlphaFoldUrl(structure, unresolved.id)
-          ).then(() =>
-            isAlive(structure)
-              ? loadStructureData({ structure, plugin })
-              : undefined,
-          )
+          ).then(url => loadResolved(structure, plugin, url))
     loaded
       .then(data => {
         if (!data) {
@@ -179,7 +210,6 @@ export function makeStructureLoader(
         const current = host.molstarPluginContext
         if (current === plugin) {
           structure.setStructureData(data)
-          structure.setLoadedToMolstar(true)
         }
         settle(structure, plugin)
         if (current && current !== plugin && !structure.loadedToMolstar) {
@@ -199,8 +229,8 @@ export function makeStructureLoader(
         } else {
           // the structure carries its own failure: a view-wide "Failed to
           // fetch" names neither which structure nor what it was fetching
-          failedIn.set(structure, plugin)
-          structure.setError(e)
+          failedIn.set(structure, { plugin, attempt })
+          structure.setLoadError(e)
           console.error(e)
         }
       })
@@ -211,7 +241,7 @@ export function makeStructureLoader(
     plugin: PluginContext,
   ) {
     const { molstarStructure } = structure
-    structure.setLoadedToMolstar(false)
+    structure.clearMolstarStructures()
     removeMolstarStructure({ plugin, molstarStructure }).catch((e: unknown) => {
       console.error(e)
     })
@@ -227,10 +257,11 @@ export function makeStructureLoader(
         ) {
           unloadOtherAssembly(structure, molstarPluginContext)
         }
+        const failed = failedInto(structure, molstarPluginContext)
         if (
           !structure.loadedToMolstar &&
           loadingIn.get(structure) !== molstarPluginContext &&
-          failedIn.get(structure) !== molstarPluginContext
+          !failed
         ) {
           loadInto(structure, molstarPluginContext)
         }

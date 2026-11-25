@@ -9,23 +9,24 @@ import {
   type AbstractSessionModel,
   doesIntersect2,
   getContainingView,
-  getFrame,
 } from '@jbrowse/core/util'
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
-import ErrorIcon from '@mui/icons-material/Error'
 import LockIcon from '@mui/icons-material/Lock'
-import { Alert, Avatar, Badge, Box, Tooltip, useTheme } from '@mui/material'
+import { Alert, Tooltip, useTheme } from '@mui/material'
 import { observer } from 'mobx-react'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
+import { CheckResultIcon } from '../../components/CheckResultIcon'
+import { FeatureDensityHistogram } from '../../components/FeatureDensityHistogram'
 import {
   type Coord,
   clusterResultByMessage,
   useStyles,
 } from '../../util/displayUtils'
-import { looksLikeGene } from '../../util/glyphUtils'
+import { getLeftPx, looksLikeGene } from '../../util/glyphUtils'
 import type { LinearApolloSixFrameDisplay as LinearApolloSixFrameDisplayI } from '../stateModel'
 
+import { Tooltip as LinearApolloSixFrameDisplayTooltip } from './Tooltip'
 import { TrackLines } from './TrackLines'
 
 interface LinearApolloSixFrameDisplayProps {
@@ -44,20 +45,20 @@ export const LinearApolloSixFrameDisplay = observer(
       contextMenuItems: getContextMenuItems,
       cursor,
       featuresHeight,
-      geneTrackRowNums,
+      getRowForFeature,
       isShown,
       onMouseDown,
       onMouseLeave,
       onMouseMove,
       onMouseUp,
-      regionCannotBeRendered,
+      densityMessage,
+      displayMode,
       session,
       setCanvas,
       setCollaboratorCanvas,
       setOverlayCanvas,
       setTheme,
       showCheckResults,
-      showFeatureLabels,
     } = model
     const { classes } = useStyles()
     const lgv = getContainingView(model) as unknown as LinearGenomeViewModel
@@ -65,10 +66,38 @@ export const LinearApolloSixFrameDisplay = observer(
     useEffect(() => {
       setTheme(theme)
     }, [theme, setTheme])
+    // Stable ref callbacks so React doesn't call them with null and then the
+    // node again on every render, which would set the canvas twice and redraw
+    // it.
+    // Promise.resolve() in these 3 callbacks is to avoid infinite rendering
+    // loop https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
+    const collaboratorCanvasRef = useCallback(
+      async (node: HTMLCanvasElement | null) => {
+        await Promise.resolve()
+        setCollaboratorCanvas(node)
+      },
+      [setCollaboratorCanvas],
+    )
+    const canvasRef = useCallback(
+      async (node: HTMLCanvasElement | null) => {
+        await Promise.resolve()
+        setCanvas(node)
+      },
+      [setCanvas],
+    )
+    const overlayCanvasRef = useCallback(
+      async (node: HTMLCanvasElement | null) => {
+        await Promise.resolve()
+        setOverlayCanvas(node)
+      },
+      [setOverlayCanvas],
+    )
     const [contextCoord, setContextCoord] = useState<Coord>()
     const [contextMenuItems, setContextMenuItems] = useState<MenuItem[]>([])
+    const [mouseCoord, setMouseCoord] = useState<Coord>()
 
-    const message = regionCannotBeRendered()
+    const message = densityMessage
+    const showHistogram = !message && displayMode !== 'features'
     if (!isShown) {
       return null
     }
@@ -79,7 +108,8 @@ export const LinearApolloSixFrameDisplay = observer(
           className={classes.canvasContainer}
           style={{
             width: lgv.dynamicBlocks.totalWidthPx,
-            height: featuresHeight,
+            // The histogram fills the track
+            height: showHistogram ? '100%' : featuresHeight,
           }}
           onContextMenu={(event) => {
             event.preventDefault()
@@ -98,8 +128,6 @@ export const LinearApolloSixFrameDisplay = observer(
               <LockIcon />
             </div>
           ) : null}
-          {/* This type is wrong in @jbrowse/core */}
-          {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
           {message ? (
             <Alert
               severity="warning"
@@ -110,9 +138,9 @@ export const LinearApolloSixFrameDisplay = observer(
                 <div>{message}</div>
               </Tooltip>
             </Alert>
-          ) : (
-            // Promise.resolve() in these 3 callbacks is to avoid infinite rendering loop
-            // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
+          ) : null}
+          {showHistogram ? <FeatureDensityHistogram model={model} /> : null}
+          {message || showHistogram ? null : (
             <>
               <TrackLines model={model} idx={0} />
               <TrackLines
@@ -122,43 +150,39 @@ export const LinearApolloSixFrameDisplay = observer(
               />
               <TrackLines model={model} idx={2} />
               <canvas
-                ref={async (node: HTMLCanvasElement) => {
-                  await Promise.resolve()
-                  setCollaboratorCanvas(node)
-                }}
-                width={lgv.dynamicBlocks.totalWidthPx}
-                height={featuresHeight}
+                ref={collaboratorCanvasRef}
                 className={classes.canvas}
                 data-testid="collaboratorCanvas"
               />
               <canvas
-                ref={async (node: HTMLCanvasElement) => {
-                  await Promise.resolve()
-                  setCanvas(node)
-                }}
-                width={lgv.dynamicBlocks.totalWidthPx}
-                height={featuresHeight}
+                ref={canvasRef}
                 className={classes.canvas}
                 data-testid="canvas"
               />
               <canvas
-                ref={async (node: HTMLCanvasElement) => {
-                  await Promise.resolve()
-                  setOverlayCanvas(node)
+                ref={overlayCanvasRef}
+                onMouseMove={(...args) => {
+                  const [event] = args
+                  setMouseCoord([event.clientX, event.clientY])
+                  onMouseMove(...args)
                 }}
-                width={lgv.dynamicBlocks.totalWidthPx}
-                height={featuresHeight}
-                onMouseMove={onMouseMove}
-                onMouseLeave={onMouseLeave}
+                onMouseLeave={(...args) => {
+                  setMouseCoord(undefined)
+                  onMouseLeave(...args)
+                }}
                 onMouseDown={onMouseDown}
                 onMouseUp={onMouseUp}
                 className={classes.canvas}
                 style={{ cursor: cursor ?? 'default' }}
                 data-testid="overlayCanvas"
               />
-              {lgv.displayedRegions.flatMap((region, idx) => {
+              <LinearApolloSixFrameDisplayTooltip
+                mouseCoordinate={mouseCoord}
+                model={model}
+              />
+              {lgv.dynamicBlocks.contentBlocks.flatMap((block) => {
                 const widthBp = lgv.bpPerPx * apolloRowHeight
-                const assembly = assemblyManager.get(region.assemblyName) as
+                const assembly = assemblyManager.get(block.assemblyName) as
                   | Assembly
                   | undefined
                 if (showCheckResults) {
@@ -168,10 +192,10 @@ export const LinearApolloSixFrameDisplay = observer(
                     (checkResult) =>
                       assembly?.isValidRefName(checkResult.refSeq) &&
                       assembly.getCanonicalRefName(checkResult.refSeq) ===
-                        region.refName &&
+                        block.refName &&
                       doesIntersect2(
-                        region.start,
-                        region.end,
+                        block.start,
+                        block.end,
                         checkResult.start,
                         checkResult.end,
                       ),
@@ -182,12 +206,9 @@ export const LinearApolloSixFrameDisplay = observer(
                     true,
                   )
                   return checkResults.map((checkResult) => {
-                    const left =
-                      (lgv.bpToPx({
-                        refName: region.refName,
-                        coord: checkResult.start,
-                        regionNumber: idx,
-                      })?.offsetPx ?? 0) - lgv.offsetPx
+                    const left = Math.round(
+                      getLeftPx(model, checkResult.range, block),
+                    )
                     const [feature] = checkResult.featureIds
                     if (
                       !feature?.parent ||
@@ -196,75 +217,22 @@ export const LinearApolloSixFrameDisplay = observer(
                       return null
                     }
 
-                    let row
-                    for (const loc of feature.cdsLocations) {
-                      for (const cds of loc) {
-                        const frame = getFrame(
-                          cds.min,
-                          cds.max,
-                          feature.strand ?? 1,
-                          cds.phase,
-                        )
-                        const frameOffsets = showFeatureLabels
-                          ? [0, 5, 3, 1, 15, 13, 11]
-                          : [0, 2, 1, 0, 8, 7, 6]
-                        const rowNum = frameOffsets.at(frame)
-                        if (rowNum === undefined) {
-                          continue
-                        }
-                        if (
-                          checkResult.start >= cds.min &&
-                          checkResult.start <= cds.max
-                        ) {
-                          row = rowNum - 1
-                          break
-                        }
-                      }
-                    }
+                    const row = getRowForFeature(feature, checkResult.start)
                     if (row === undefined) {
-                      const rowNum =
-                        feature.strand == 1
-                          ? geneTrackRowNums[0]
-                          : geneTrackRowNums[1]
-                      row = rowNum - 1
+                      return null
                     }
 
-                    const top = row * apolloRowHeight
-                    const height = apolloRowHeight
                     return (
-                      <Tooltip
-                        key={checkResult._id}
-                        title={checkResult.message}
-                      >
-                        <Box
-                          className={classes.box}
-                          style={{
-                            top,
-                            left,
-                            height,
-                            width: height,
-                            pointerEvents: apolloDragging ? 'none' : 'auto',
-                          }}
-                        >
-                          <Badge
-                            className={classes.badge}
-                            badgeContent={checkResult.count}
-                            color="primary"
-                            overlap="circular"
-                            anchorOrigin={{
-                              vertical: 'bottom',
-                              horizontal: 'right',
-                            }}
-                            invisible={checkResult.count <= 1}
-                          >
-                            <Avatar className={classes.avatar}>
-                              <ErrorIcon
-                                data-testid={`ErrorIcon-${checkResult.start}`}
-                              />
-                            </Avatar>
-                          </Badge>
-                        </Box>
-                      </Tooltip>
+                      <CheckResultIcon
+                        key={`${block.key}-${checkResult._id}`}
+                        top={row * apolloRowHeight}
+                        left={left}
+                        size={apolloRowHeight}
+                        disablePointerEvents={Boolean(apolloDragging)}
+                        message={checkResult.message}
+                        count={checkResult.count}
+                        start={checkResult.start}
+                      />
                     )
                   })
                 }

@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
@@ -23,11 +24,11 @@ import {
   uniprotEntryUrl,
 } from 'p2s_mapper'
 
-import ChainSelect from './ChainSelect'
 import {
   describeSuperposition,
   superpositionChip,
 } from '../superpositionOutcome'
+import ChainSelect from './ChainSelect'
 
 import type {
   JBrowsePluginProteinStructureModel,
@@ -127,17 +128,35 @@ const StructureRow = observer(function StructureRow({
           </span>
         </Tooltip>
       ) : null}
-      <Typography variant="caption" sx={{ fontWeight: 'bold', flexShrink: 0 }}>
+      <Typography
+        variant="caption"
+        noWrap
+        title={label}
+        sx={{ fontWeight: 'bold', flexShrink: 0, maxWidth: '50%' }}
+      >
         {label}
       </Typography>
       {statusMessage ? (
         <Typography
           variant="caption"
-          color="error"
+          color={
+            structure.status?.severity === 'error' ? 'error' : 'textSecondary'
+          }
           data-testid="structure-status"
         >
           {statusMessage}
         </Typography>
+      ) : null}
+      {structure.loadFailed ? (
+        <Button
+          size="small"
+          onClick={() => {
+            structure.retryLoad()
+          }}
+          sx={{ minWidth: 0, py: 0 }}
+        >
+          Retry
+        </Button>
       ) : null}
       {readout ? (
         <Typography
@@ -212,18 +231,20 @@ const StructureRow = observer(function StructureRow({
           </IconButton>
         </Tooltip>
       ) : null}
-      <Tooltip title={`Remove ${label}`}>
-        <IconButton
-          size="small"
-          aria-label={`Remove ${label}`}
-          onClick={() => {
-            model.removeStructure(structure)
-          }}
-          sx={{ p: 0.25 }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
+      {several ? (
+        <Tooltip title={`Remove ${label}`}>
+          <IconButton
+            size="small"
+            aria-label={`Remove ${label}`}
+            onClick={() => {
+              model.removeStructure(structure)
+            }}
+            sx={{ p: 0.25 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ) : null}
     </div>
   )
 })

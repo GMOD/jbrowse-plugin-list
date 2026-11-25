@@ -25,8 +25,9 @@ export function useQueryRowName(msaText, proteinSequence, preferredName) {
     // alignment of a few hundred rows is not free
     const { names, match } = useMemo(() => findQueryRow(msaText, proteinSequence, preferredName), [msaText, proteinSequence, preferredName]);
     // a row picked from one alignment says nothing about the next one pasted
-    const picked = override !== undefined && (names.length === 0 || names.includes(override))
-        ? override
+    const picked = override?.proteinSequence === proteinSequence &&
+        (names.length === 0 || names.includes(override.name))
+        ? override.name
         : undefined;
     const querySeqName = picked ?? match?.name ?? '';
     return {
@@ -36,7 +37,9 @@ export function useQueryRowName(msaText, proteinSequence, preferredName) {
         // only the detected row's offset is known; a row the user picked instead is
         // taken at face value, residue 1 to residue 1
         querySeqOffset: querySeqName === match?.name ? match.offset : 0,
-        setQuerySeqName: setOverride,
+        setQuerySeqName: (name) => {
+            setOverride(name === match?.name ? undefined : { name, proteinSequence });
+        },
         isAutoDetected: picked === undefined && !!match,
     };
 }

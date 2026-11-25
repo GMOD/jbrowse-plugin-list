@@ -1,3 +1,4 @@
+import { destroy } from '@jbrowse/mobx-state-tree';
 import { observable } from 'mobx';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import stateModelFactory from './model';
@@ -302,4 +303,16 @@ describe('two lookups in flight', () => {
         expect(written).toMatchObject({ id: 'NM_000546.6' });
         expect(model.connectedFeature).toBe(written);
     });
+});
+test('closing the view aborts a lookup still reading the genome', async () => {
+    let signal;
+    rpcCall.mockImplementation((_session, _method, args) => {
+        signal = args.signal;
+        return new Promise(() => { });
+    });
+    const model = connectedView();
+    await settle();
+    expect(signal?.aborted).toBe(false);
+    destroy(model);
+    expect(signal?.aborted).toBe(true);
 });

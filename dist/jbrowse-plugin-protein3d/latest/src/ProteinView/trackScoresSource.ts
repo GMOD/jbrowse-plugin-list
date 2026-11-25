@@ -1,6 +1,8 @@
 import { readConfObject } from '@jbrowse/core/configuration'
 import { codingSpans } from 'p2s_mapper'
 
+import { genomeToTranscriptSeqMapping } from '../mappings'
+import { trackConfigNode } from '../trackConfigNode'
 import {
   featureFilterLabel,
   numberOfField,
@@ -9,8 +11,6 @@ import {
 } from './featureFields'
 import { countByResidue, scoreByBase, scoreByResidue } from './trackScores'
 import { VariantEffectRefusal } from './variantEffects'
-import { genomeToTranscriptSeqMapping } from '../mappings'
-import { trackConfigNode } from '../trackConfigNode'
 
 import type { FeatureFilter } from './featureFields'
 import type { TrackStat } from './proteinColor'

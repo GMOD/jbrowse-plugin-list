@@ -1,11 +1,10 @@
-import React, { useState } from 'react'
+import React from 'react'
 
-import { Tooltip } from '@mui/material'
 import { observer } from 'mobx-react'
 
 import { cssScaleOf } from '../colorScale'
-import { HOVERED_BORDER, SELECTED_BORDER } from '../constants'
 import { UNIPROT_FEATURE_COLOR } from '../uniprotFeatureTypes'
+import RangeBar, { rangeText } from './RangeBar'
 
 import type { FeatureLayout } from '../hooks/useProteinFeatureTrackData'
 import type { UniProtFeature } from '../hooks/useUniProtFeatures'
@@ -33,12 +32,10 @@ const FeatureTooltipContent = observer(function FeatureTooltipContent({
       <div>
         <strong>{feature.type}</strong>
       </div>
-      <div>
-        UniProt position: {feature.start}-{feature.end}
-      </div>
+      <div>UniProt position: {rangeText(feature.start, feature.end)}</div>
       {differs ? (
         <div>
-          Structure residue: {first}-{last}
+          Structure residue: {rangeText(first, last)}
           {layout.clipped ? ' (the structure lacks the rest)' : ''}
         </div>
       ) : null}
@@ -55,73 +52,51 @@ const FeatureBar = observer(function FeatureBar({
   top,
   height,
   selected,
+  tabStop,
   model,
 }: {
   layout: FeatureLayout
   top: string
   height: string
   selected: boolean
+  tabStop: boolean
   model: JBrowsePluginProteinStructureModel
 }) {
-  const [isHovered, setIsHovered] = useState(false)
-  const { feature, alignmentStart, alignmentEnd } = layout
-  const { columnWidth } = model
-
+  const { feature } = layout
   return (
-    <Tooltip
-      title={
+    <RangeBar
+      alignmentStart={layout.alignmentStart}
+      alignmentEnd={layout.alignmentEnd}
+      top={top}
+      height={height}
+      color={featureTypeColor(feature.type)}
+      selected={selected}
+      tabStop={tabStop}
+      tooltip={
         <FeatureTooltipContent
           feature={feature}
           layout={layout}
           model={model}
         />
       }
-      followCursor
-    >
-      <div
-        data-testid={`protein-feature-${feature.type}`}
-        data-feature-id={feature.uniqueId}
-        data-feature-start={feature.start}
-        data-feature-end={feature.end}
-        onClick={() => {
-          if (selected) {
-            model.setSelectedFeatureId(undefined)
-            model.setClickedStructureRanges([])
-          } else {
-            model.selectResidues(layout.structureStart, layout.structureEnd)
-            model.setSelectedFeatureId(feature.uniqueId)
-          }
-        }}
-        onMouseEnter={() => {
-          setIsHovered(true)
-          model.setAlignmentHoverRange({
-            start: alignmentStart,
-            end: alignmentEnd,
-          })
-        }}
-        onMouseLeave={() => {
-          setIsHovered(false)
-          model.setAlignmentHoverRange(undefined)
-        }}
-        style={{
-          position: 'absolute',
-          left: alignmentStart * columnWidth,
-          top,
-          width: (alignmentEnd - alignmentStart + 1) * columnWidth,
-          height,
-          backgroundColor: featureTypeColor(feature.type),
-          opacity: isHovered || selected ? 0.9 : 0.6,
-          cursor: 'pointer',
-          borderRadius: 2,
-          border: selected
-            ? SELECTED_BORDER
-            : isHovered
-              ? HOVERED_BORDER
-              : 'none',
-          boxSizing: 'border-box',
-        }}
-      />
-    </Tooltip>
+      ariaLabel={`${feature.type} ${rangeText(feature.start, feature.end)}`}
+      dataAttributes={{
+        'data-testid': `protein-feature-${feature.type}`,
+        'data-feature-id': feature.uniqueId,
+        'data-feature-start': feature.start,
+        'data-feature-end': feature.end,
+      }}
+      onClick={() => {
+        if (selected) {
+          model.setSelectedFeatureId(undefined)
+          model.setClickedStructureRanges([])
+        } else {
+          model.selectResidues(layout.structureStart, layout.structureEnd)
+          model.setSelectedFeatureId(feature.uniqueId)
+        }
+      }}
+      model={model}
+    />
   )
 })
 

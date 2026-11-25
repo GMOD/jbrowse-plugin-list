@@ -1,24 +1,33 @@
+import { useState } from 'react'
+
 import { extractStructureSequences } from 'p2s_mapper'
 import useSWR from 'swr'
 
-import { STATIC_SWR_OPTIONS } from './swrOptions'
 import { parseStructureTrajectory } from '../../ProteinView/structurePipeline'
 import { withTemporaryMolstarPlugin } from '../../ProteinView/withTemporaryMolstarPlugin'
 import { readStructureFile } from '../utils/readStructureFile'
+import { STATIC_SWR_OPTIONS } from './swrOptions'
 
 // Only the model is built here, never a representation: the dialog wants the
 // sequences, and the format detection is the same one the view applies later.
-async function fetchSequences({ file, url }: { file?: File; url?: string }) {
-  const data = file ? await readStructureFile(file) : undefined
-  return withTemporaryMolstarPlugin(async plugin => {
+async function fetchSequences({ data, url }: { data?: string; url?: string }) {
+  const sequences = await withTemporaryMolstarPlugin(async plugin => {
     const trajectory = await parseStructureTrajectory({ plugin, data, url })
     const model = await plugin.builders.structure.createModel(trajectory)
     return extractStructureSequences(model)
   })
+  if (!sequences?.length) {
+    throw new Error('No protein sequence found in this structure')
+  }
+  return sequences
 }
 
-// Extract protein sequences from a structure given either a local File or a
-// remote URL (exactly one is expected).
+/**
+ * The protein sequences of a structure, from a local File or a remote URL
+ * (exactly one is expected). A file is read once, for its chains and for the
+ * launch, and its text is held by the dialog, not the page-wide cache, so a
+ * file picked and dropped goes when the dialog does.
+ */
 export default function useStructureFileSequence({
   file,
   url,
@@ -26,21 +35,34 @@ export default function useStructureFileSequence({
   file?: File
   url?: string
 }) {
+  const [texts] = useState(() => new WeakMap<File, Promise<string>>())
+  const readText = (picked: File) => {
+    const text = texts.get(picked) ?? readStructureFile(picked)
+    texts.set(picked, text)
+    return text
+  }
   const key = file
-    ? (['structure-file', file.name, file.size, file.lastModified] as const)
+    ? (['structure-file', file] as const)
     : url
       ? (['structure-url', url] as const)
       : null
-  const { data, error, isLoading } = useSWR<string[] | undefined>(
+  const { data, error, isLoading } = useSWR(
     key,
     async () => {
-      const seq = await fetchSequences({ file, url })
-      if (!seq?.length) {
-        throw new Error('No protein sequence found in this structure')
+      const text = file ? await readText(file) : undefined
+      return {
+        sequences: await fetchSequences({ data: text, url }),
+        textLength: text?.length,
       }
-      return seq
     },
     STATIC_SWR_OPTIONS,
   )
-  return { error, isLoading, sequences: data }
+  return {
+    error,
+    isLoading,
+    sequences: data?.sequences,
+    /** characters of the file's text, once read */
+    textLength: data?.textLength,
+    readText: file ? () => readText(file) : undefined,
+  }
 }

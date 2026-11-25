@@ -1,0 +1,24 @@
+import React from 'react';
+import type { CachedBlastResult } from '../../../utils/blastCache';
+import type { useLaunchSubmit } from '../launchConnectedView';
+import type { useCachedBlastResults } from './useCachedBlastResults';
+import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
+/**
+ * How the row was produced: `uniprotkb_swissprot / blastp / clustalo`, or
+ * `swissprot / phmmer` for a row phmmer aligned as it searched and that
+ * therefore ran no aligner. Each part is dropped when absent rather than
+ * printed empty — `msaAlgorithm` became optional when phmmer arrived, and a
+ * phmmer row read `(undefined)` until this stopped assuming one.
+ *
+ * `blastProgram` is the older field, written only while the plugin still
+ * queried NCBI directly and blastp/quick-blastp was a real choice.
+ */
+export declare function describeSearch(result: CachedBlastResult): string;
+declare const CachedBlastResults: ({ model, submit, feature, cached: { results, handleDelete, handleClearAll }, }: {
+    model: AbstractTrackModel;
+    submit: ReturnType<typeof useLaunchSubmit>["submit"];
+    feature: Feature;
+    /** the panel's own listing, so clearing it here empties it there too */
+    cached: ReturnType<typeof useCachedBlastResults>;
+}) => React.JSX.Element;
+export default CachedBlastResults;

@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 
 import useSWR from 'swr'
 
-import { STATIC_SWR_OPTIONS } from './swrOptions'
 import { errorMessage } from '../../ProteinView/util'
 import {
   datasetMatches,
@@ -10,6 +9,7 @@ import {
   loadStructureMapping,
   readStructureDatasets,
 } from '../utils/structureDatasets'
+import { STATIC_SWR_OPTIONS } from './swrOptions'
 
 import type { Feature } from '@jbrowse/core/util'
 
@@ -30,7 +30,7 @@ export default function useDatasetStructures({
 }) {
   const datasets = useMemo(() => readStructureDatasets(jbrowse), [jbrowse])
   const pluginManager = hostPluginManager(jbrowse)
-  const { data, isLoading } = useSWR(
+  const { data, isLoading, isValidating, mutate } = useSWR(
     datasets.length > 0
       ? [
           'structure-datasets',
@@ -73,5 +73,9 @@ export default function useDatasetStructures({
     notices,
     isLoading,
     loadingMessage: `Reading ${datasets.map(d => d.name).join(', ')}`,
+    retry: () => {
+      void mutate()
+    },
+    retrying: isValidating,
   }
 }

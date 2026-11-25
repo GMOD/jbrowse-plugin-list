@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Accordion, AccordionDetails, AccordionSummary, MenuItem, Typography, } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import TextField2 from '../../../components/TextField2';
-import { getBlastViewTitle, getGeneIdentifiers, getLinearGenomeView, } from '../../util';
+import { getBlastViewTitle, getLinearGenomeView } from '../../util';
 import LaunchPanelContent from '../LaunchPanelContent';
 import SequenceStatusMessage from '../SequenceStatus';
 import SubmitCancelActions from '../SubmitCancelActions';
@@ -13,7 +13,7 @@ import { builtAlignmentLook, launchConnectedView, useLaunchSubmit, } from '../la
 import { useTranscriptSelection } from '../useTranscriptSelection';
 import CachedBlastResults from './CachedBlastResults';
 import MsaAlgorithmSelect from './MsaAlgorithmSelect';
-import { databaseLabel, databaseOptionsFor, defaultMaxHits, defaultSearchFor, searchProgramLabels, searchPrograms, } from './consts';
+import { databaseLabel, databaseOptionsFor, defaultMaxHits, defaultSearchFor, searchProgramLabels, searchPrograms, snapBlastHitCount, } from './consts';
 import { useStoredMsaAlgorithm, useStoredSearchChoice, } from './searchChoiceStorage';
 import { useCachedBlastResults } from './useCachedBlastResults';
 const useStyles = makeStyles()({
@@ -45,8 +45,8 @@ const BlastAutomaticPanel = observer(function ({ handleClose, feature, model, ch
     const hitCount = Number(maxHits);
     const hitCountValid = Number.isInteger(hitCount) && hitCount >= 1;
     const isPhmmer = search.program === 'phmmer';
-    const geneIds = useMemo(() => getGeneIdentifiers(feature), [feature]);
-    const cached = useCachedBlastResults(geneIds);
+    const requestedHits = isPhmmer ? hitCount : snapBlastHitCount(hitCount);
+    const cached = useCachedBlastResults(feature);
     const transcriptSelection = useTranscriptSelection({
         feature,
         view,
@@ -72,7 +72,11 @@ const BlastAutomaticPanel = observer(function ({ handleClose, feature, model, ch
             isPhmmer ? null : (React.createElement(MsaAlgorithmSelect, { className: classes.selectField, value: selectedMsaAlgorithm, onChange: setSelectedMsaAlgorithm })),
             React.createElement(TextField2, { variant: "outlined", label: "Hits", className: classes.selectField, type: "number", value: maxHits, onChange: event => {
                     setMaxHits(event.target.value);
-                }, error: !hitCountValid, helperText: "best-scoring sequences to keep" }),
+                }, error: !hitCountValid, helperText: !hitCountValid
+                    ? 'a whole number, 1 or more'
+                    : requestedHits === hitCount
+                        ? 'best-scoring sequences to keep'
+                        : `EBI takes set counts, so ${requestedHits} will be requested` }),
             React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection }),
             React.createElement(Typography, { variant: "body2", className: classes.infoText },
                 isPhmmer
@@ -82,9 +86,9 @@ const BlastAutomaticPanel = observer(function ({ handleClose, feature, model, ch
                 "The EBI queue is the wait, and it runs from seconds to many minutes."),
             cached.results.length > 0 ? (React.createElement(Accordion, { className: classes.cachedResultsAccordion },
                 React.createElement(AccordionSummary, { expandIcon: React.createElement(ExpandMoreIcon, null) },
-                    React.createElement(Typography, null, "Previous BLAST Results")),
+                    React.createElement(Typography, null, "Previous searches")),
                 React.createElement(AccordionDetails, null,
-                    React.createElement(CachedBlastResults, { model: model, handleClose: handleClose, feature: feature, cached: cached })))) : null),
+                    React.createElement(CachedBlastResults, { model: model, submit: submit, feature: feature, cached: cached })))) : null),
         React.createElement(SubmitCancelActions, { model: model, hint: React.createElement(SequenceStatusMessage, { status: sequenceStatus }), submitDisabled: !proteinSequence || !hitCountValid, onSubmit: placement => {
                 if (selectedTranscript) {
                     const blastParams = search.program === 'phmmer'

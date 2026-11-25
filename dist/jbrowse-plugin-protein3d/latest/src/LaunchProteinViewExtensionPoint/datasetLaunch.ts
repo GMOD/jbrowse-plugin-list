@@ -1,10 +1,10 @@
-import { isRecord, isString } from './normalizeLaunch'
 import {
   hostPluginManager,
   loadStructureMapping,
   readStructureDatasets,
   structuresFor,
 } from '../LaunchProteinView/utils/structureDatasets'
+import { isRecord, isString } from './normalizeLaunch'
 
 function namesDataset(entry: unknown) {
   return isRecord(entry) && entry.datasetId !== undefined

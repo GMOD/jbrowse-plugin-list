@@ -41,6 +41,9 @@ const UNREADABLE_MESSAGE =
 const EXPIRED_EXTRAS_WARNING =
   'Part of this view is no longer in browser storage: annotations, a tree or row metadata too large for the session. Stored documents are kept for 7 days after they were last used, and are lost when site data is cleared.'
 
+const UNSAVED_WARNING =
+  'Part of this view could not be saved to browser storage, so reloading the page will lose it.'
+
 export function loadStoredData(self: JBrowsePluginMsaViewModel) {
   const { dataStoreId } = self
   if (!dataStoreId) {
@@ -50,7 +53,7 @@ export function loadStoredData(self: JBrowsePluginMsaViewModel) {
     try {
       self.setLoadingStoredData(true)
       const stored = await retrieveMsaData(dataStoreId)
-      if (self.dataStoreId !== dataStoreId) {
+      if (!isAlive(self) || self.dataStoreId !== dataStoreId) {
         return
       }
       transaction(() => {
@@ -96,7 +99,9 @@ export function loadStoredData(self: JBrowsePluginMsaViewModel) {
         )
       }
     } finally {
-      self.setLoadingStoredData(false)
+      if (isAlive(self)) {
+        self.setLoadingStoredData(false)
+      }
     }
   })()
 }
@@ -163,6 +168,8 @@ export function storeDataToIndexedDB(self: JBrowsePluginMsaViewModel) {
           self.setDataStoreId(id)
           self.setOwnsDataStoreRow(true)
         })
+      } else {
+        self.addWarning(UNSAVED_WARNING)
       }
     } catch (e) {
       console.error('Failed to store MSA data to IndexedDB:', e)
@@ -244,6 +251,13 @@ export function launchBlastIfNeeded(self: JBrowsePluginMsaViewModel) {
  * domains for them and overlay them. `domainsRequested` makes this once per
  * view, so NCBI returning no domains does not refire it.
  */
+const domainLoads = new WeakMap<object, AbortController>()
+
+export function abortDomainLoad(self: object) {
+  domainLoads.get(self)?.abort()
+  domainLoads.delete(self)
+}
+
 export function autoLoadProteinDomains(self: JBrowsePluginMsaViewModel) {
   const { rows, domainsRequested, annotations, rowData } = self
   if (
@@ -257,29 +271,32 @@ export function autoLoadProteinDomains(self: JBrowsePluginMsaViewModel) {
       controller.abort()
     }
     addDisposer(self, abort)
+    domainLoads.set(self, controller)
     self.setDomainsRequested(true)
     self.setLoadingDomains(true)
     self.setStatus({
       msg: 'Fetching protein domains from NCBI',
       onCancel: abort,
     })
+    const current = () => isAlive(self) && domainLoads.get(self) === controller
     void (async () => {
       try {
         const notice = await loadProteinDomains(self, controller.signal)
-        if (notice && isAlive(self)) {
+        if (notice && current()) {
           self.addWarning(notice)
         }
       } catch (e) {
         if (!isAbortError(e)) {
           console.error('[msaview-domains] auto-load failed:', e)
-          if (isAlive(self)) {
+          if (current()) {
             self.addWarning(
               `Protein domains did not load from NCBI: ${errorMessage(e)}`,
             )
           }
         }
       } finally {
-        if (isAlive(self)) {
+        if (current()) {
+          domainLoads.delete(self)
           self.setStatus(undefined)
           self.setLoadingDomains(false)
         }
@@ -310,6 +327,7 @@ export function processInit(self: JBrowsePluginMsaViewModel) {
     if (indexed && self.data.msa) {
       return
     }
+    const current = () => isAlive(self) && self.init === init
     void (async () => {
       try {
         self.setError(undefined)
@@ -332,20 +350,25 @@ export function processInit(self: JBrowsePluginMsaViewModel) {
             location: msaIndexedLocation,
             name: msaName,
           })
-          if (!fasta) {
-            throw new Error(
-              `No alignment named ${msaName} in ${msaIndexedLocation.uri}`,
-            )
+          if (current()) {
+            if (fasta) {
+              self.setMSA(fasta)
+            } else {
+              throw new Error(
+                `No alignment named ${msaName} in ${msaIndexedLocation.uri}`,
+              )
+            }
           }
-          self.setMSA(fasta)
         }
 
         if (!indexed) {
           self.setInit(undefined)
         }
       } catch (e) {
-        self.setError(e)
         console.error(e)
+        if (current()) {
+          self.setError(e)
+        }
       }
     })()
   }

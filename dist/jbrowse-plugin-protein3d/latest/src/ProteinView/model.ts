@@ -12,7 +12,11 @@ import {
 
 import { domainLegend } from './alignmentDomains'
 import { syncSiteSticks } from './alignmentSites'
-import { applyColorTheme, colorLegendOf } from './applyColorTheme'
+import {
+  applyColorTheme,
+  colorLegendOf,
+  rampNoValueEntry,
+} from './applyColorTheme'
 import {
   MAX_TRACK_HEIGHT,
   MIN_TRACK_HEIGHT,
@@ -23,8 +27,8 @@ import { applyFigureStyle } from './figureStyle'
 import { makeSelectionFramer, structuresSettled } from './frameSelection'
 import loadMolstar from './loadMolstar'
 import { makeLociChannel } from './lociChannel'
-import { checkedFigure, checkedFigureChange } from './markProblems'
-import { syncMeasurements } from './measurements'
+import { checkedFigureChange, checkedStoredFigure } from './markProblems'
+import { measurementNotices, syncMeasurements } from './measurements'
 import {
   checkedColor,
   colorOfScheme,
@@ -33,9 +37,13 @@ import {
 } from './proteinColor'
 import { defaultDisplayName } from './proteinViewSpec'
 import { removeMolstarStructure } from './removeStructure'
-import { reportPluginFailure } from './reportPluginFailure'
+import {
+  noFigureNotices,
+  reportFigureNotices,
+  reportPluginFailure,
+} from './reportPluginFailure'
 import { checkedStructureFilters } from './residueFilter'
-import { syncResidueMarks } from './residueMarks'
+import { syncResidueMarks, unmatchedMarkNotices } from './residueMarks'
 import { applySavedCamera, keepSavedCamera, liveCamera } from './savedCamera'
 import {
   highlightCameraSnapshot,
@@ -61,9 +69,11 @@ import { attachViewInteractions } from './viewInteractions'
 import type { DistanceMeasurement } from './measurements'
 import type { ProteinColor } from './proteinColor'
 import type { ProteinFigure, ProteinStructureSpec } from './proteinViewSpec'
+import type { FigureNoticeKind } from './reportPluginFailure'
 import type { ResidueMark } from './residueMarks'
 import type { SavedCamera } from './savedCamera'
 import type { JBrowsePluginProteinStructureModel } from './structureModel'
+import type { SuperpositionKey } from './structureSuperposer'
 import type { ProteinSurface } from './surface'
 import type { Instance } from '@jbrowse/mobx-state-tree'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -93,6 +103,7 @@ const AddStructureDialog = lazy(() => import('./components/AddStructureDialog'))
 const ManualAlignmentDialog = lazy(
   () => import('./components/ManualAlignmentDialog'),
 )
+const GoToResidueDialog = lazy(() => import('./components/GoToResidueDialog'))
 
 interface DisplaySetting {
   key: PersistedSetting
@@ -112,7 +123,7 @@ const DISPLAY_SETTINGS: readonly DisplaySetting[] = [
   },
   {
     key: 'showAllFeatureTracks',
-    label: 'Show all feature tracks',
+    label: 'Show minor features and hydrophobicity',
     requires: ['showAlignment', 'showProteinTracks'],
   },
   {
@@ -132,7 +143,7 @@ const DISPLAY_SETTINGS: readonly DisplaySetting[] = [
 // here rather than in storedSettings because the view deliberately does not
 // remember them for the next one.
 const BEHAVIOR_SETTINGS = [
-  ['showHighlight', 'Highlight aligned residues'],
+  ['showHighlight', 'Shade aligned residues (3D and panel)'],
   ['zoomToBaseLevel', 'Zoom to base level on click'],
 ] as const
 
@@ -315,7 +326,7 @@ function stateModelFactory() {
       } & Record<string, unknown>) =>
         withStoredSettings(
           {
-            ...checkedFigure(
+            ...checkedStoredFigure(
               snapshot,
               checkedStructureFilters(snapshot.structures),
             ),
@@ -335,7 +346,6 @@ function stateModelFactory() {
        * #volatile
        * the view cannot draw at all: Mol* failed to start
        */
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       error: undefined as unknown,
       /**
        * #volatile
@@ -346,13 +356,30 @@ function stateModelFactory() {
       notices: [] as unknown[],
       /**
        * #volatile
+       * the marks and distances that draw nothing on their loaded structure,
+       * one line each, as the last sync of each kind found them
+       */
+      figureNotices: noFigureNotices(),
+      /**
+       * #volatile
+       * the figure notices dismissed since marks or distances last changed
+       */
+      dismissedFigureNotices: new Array<string>(),
+      /**
+       * #volatile
        */
       molstarPluginContext: undefined as PluginContext | undefined,
       /**
        * #volatile
-       * how many loaded structures the last TM-align superposition covered
+       * the loads the last TM-align superposition covered, see
+       * makeStructureSuperposer
        */
-      superposedCount: 0,
+      superposedKeys: [] as readonly SuperpositionKey[],
+      /**
+       * #volatile
+       * a TM-align superposition is under way in the current plugin
+       */
+      superposing: false,
       /**
        * #volatile
        * color and surface runs queued or in flight; the ready marker waits
@@ -407,6 +434,20 @@ function stateModelFactory() {
        */
       dismissNotice(notice: unknown) {
         self.notices = self.notices.filter(n => n !== notice)
+        if (
+          typeof notice === 'string' &&
+          Object.values(self.figureNotices).some(lines =>
+            lines.includes(notice),
+          )
+        ) {
+          self.dismissedFigureNotices = [...self.dismissedFigureNotices, notice]
+        }
+      },
+      /**
+       * #action
+       */
+      setFigureNotices(kind: FigureNoticeKind, notices: readonly string[]) {
+        self.figureNotices = { ...self.figureNotices, [kind]: notices }
       },
 
       /**
@@ -419,17 +460,20 @@ function stateModelFactory() {
        * #action
        */
       setMolstarPluginContext(p?: PluginContext) {
-        // Reset loadedToMolstar for all structures when plugin context changes
-        // This ensures structures get reloaded when the view is moved/remounted
+        // The handles belong to the old plugin, so every structure is unloaded
+        // and the loader loads it again when the view is moved or remounted
         if (p !== self.molstarPluginContext) {
           for (const structure of self.structures) {
-            structure.setLoadedToMolstar(false)
+            structure.clearMolstarStructures()
           }
         }
         self.molstarPluginContext = p
       },
-      setSuperposedCount(count: number) {
-        self.superposedCount = count
+      setSuperposedKeys(keys: readonly SuperpositionKey[]) {
+        self.superposedKeys = keys
+      },
+      setSuperposing(superposing: boolean) {
+        self.superposing = superposing
       },
       /**
        * #action
@@ -462,7 +506,7 @@ function stateModelFactory() {
       /**
        * #action
        * Takes a structure out of the view and out of Mol*. The superposed
-       * count resets so the remaining structures are re-aligned against a
+       * keys reset so the remaining structures are re-aligned against a
        * pivot that still exists, and every derived highlight follows the
        * structures array, so nothing is left pointing at a removed model.
        */
@@ -479,7 +523,7 @@ function stateModelFactory() {
         self.distances =
           self.distances && withoutStructure(self.distances, removed)
         self.structures.remove(structure)
-        self.setSuperposedCount(0)
+        self.setSuperposedKeys([])
         if (plugin) {
           removeMolstarStructure({ plugin, molstarStructure }).catch(
             reportPluginFailure(self, plugin),
@@ -505,6 +549,12 @@ function stateModelFactory() {
         }
         if (Object.hasOwn(figure, 'distances')) {
           self.distances = figure.distances
+        }
+        if (
+          Object.hasOwn(figure, 'marks') ||
+          Object.hasOwn(figure, 'distances')
+        ) {
+          self.dismissedFigureNotices = []
         }
         if (Object.hasOwn(figure, 'silhouettes')) {
           self.silhouettes = figure.silhouettes === true
@@ -583,7 +633,7 @@ function stateModelFactory() {
     .actions(self => ({
       afterAttach() {
         // Apply the chosen color theme whenever it changes, a structure
-        // finishes loading (entities is set after its molstar
+        // finishes loading (its Mol* structures arrive once their
         // representation is built, so the theme has something to recolor),
         // the mapped chain changes, or a placed-value source answers; the
         // surface is built first so it takes the same theme.
@@ -596,16 +646,14 @@ function stateModelFactory() {
           autorun(() => {
             const { molstarPluginContext, paintColor: color, surface } = self
             const structures = self.structures.flatMap(s =>
-              s.entities
-                ? s.molstarStructures.map(molstarStructure => ({
-                    molstarStructure,
-                    entityId: s.mappedEntity?.entityId,
-                    placedValues: s.placedValues,
-                    placedSites: s.alignmentDomainStatus?.placedSites,
-                    domainColor: s.alignmentDomainStatus?.domains?.color,
-                    exonColor: s.exonStatus?.color,
-                  }))
-                : [],
+              s.molstarStructures.map(molstarStructure => ({
+                molstarStructure,
+                entityId: s.mappedEntity?.entityId,
+                placedValues: s.placedValues,
+                placedSites: s.alignmentDomainStatus?.placedSites,
+                domainColor: s.alignmentDomainStatus?.domains?.color,
+                exonColor: s.exonStatus?.color,
+              })),
             )
             if (molstarPluginContext && structures.length > 0) {
               const run = ++colorRun
@@ -642,15 +690,13 @@ function stateModelFactory() {
           autorun(() => {
             const plugin = self.molstarPluginContext
             const structures = self.structures.flatMap(s =>
-              s.entities
-                ? s.molstarStructures.map(molstarStructure => ({
-                    molstarStructure,
-                    sites: s.alignmentDomainStatus?.placedSites,
-                    color: s.alignmentDomainStatus?.domains?.color,
-                    chains: s.chains,
-                    filter: s.filter,
-                  }))
-                : [],
+              s.molstarStructures.map(molstarStructure => ({
+                molstarStructure,
+                sites: s.alignmentDomainStatus?.placedSites,
+                color: s.alignmentDomainStatus?.domains?.color,
+                chains: s.chains,
+                filter: s.filter,
+              })),
             )
             if (plugin && structures.length > 0) {
               syncSiteSticks({ plugin, structures }).catch(
@@ -669,14 +715,12 @@ function stateModelFactory() {
           autorun(() => {
             const plugin = self.molstarPluginContext
             const structures = self.structures.flatMap(s =>
-              s.entities
-                ? s.molstarStructures.map(molstarStructure => ({
-                    molstarStructure,
-                    marks: s.sessionHighlightMarks,
-                    chains: s.chains,
-                    filter: s.filter,
-                  }))
-                : [],
+              s.molstarStructures.map(molstarStructure => ({
+                molstarStructure,
+                marks: s.sessionHighlightMarks,
+                chains: s.chains,
+                filter: s.filter,
+              })),
             )
             const seeded = self.structures.some(s => s.seededSelection)
             if (plugin && structures.length > 0) {
@@ -784,32 +828,43 @@ function stateModelFactory() {
           autorun(() => {
             const plugin = self.molstarPluginContext
             const distances = self.distances ?? []
-            const structures = self.structures.map(s =>
-              s.entities ? s.molstarStructures[0] : undefined,
-            )
+            const structures = self.structures.map(s => s.molstarStructure)
             if (plugin && structures.some(Boolean)) {
               syncMeasurements({
                 plugin,
                 structures,
                 measurements: distances,
-              }).catch(reportPluginFailure(self, plugin))
+              })
+                .then(results => {
+                  reportFigureNotices(
+                    self,
+                    plugin,
+                    'distances',
+                  )(measurementNotices(results, structures.length))
+                })
+                .catch(reportPluginFailure(self, plugin))
             }
           }),
         )
 
-        // The declared residue marks, once their structures have loaded
+        // The declared residue marks, on the structures that have loaded. An
+        // unloaded structure still syncs, so its notices clear with it
         addDisposer(
           self,
           autorun(() => {
             const plugin = self.molstarPluginContext
             const marks = self.marks ?? []
-            const structures = self.structures.map(s =>
-              s.entities ? s.molstarStructures[0] : undefined,
-            )
-            if (plugin && structures.some(Boolean)) {
-              syncResidueMarks({ plugin, structures, marks }).catch(
-                reportPluginFailure(self, plugin),
-              )
+            const structures = self.structures.map(s => s.molstarStructures)
+            if (plugin && structures.length > 0) {
+              syncResidueMarks({ plugin, structures, marks })
+                .then(unmatched => {
+                  reportFigureNotices(
+                    self,
+                    plugin,
+                    'marks',
+                  )(unmatchedMarkNotices(unmatched, structures.length))
+                })
+                .catch(reportPluginFailure(self, plugin))
             }
           }),
         )
@@ -860,6 +915,22 @@ function stateModelFactory() {
       },
     }))
     .views(self => ({
+      /**
+       * #getter
+       * The banner's lines: the notices added, then the figure notices not
+       * dismissed.
+       */
+      get shownNotices() {
+        return [
+          ...self.notices,
+          ...[
+            ...self.figureNotices.marks,
+            ...self.figureNotices.distances,
+          ].filter(n => !self.dismissedFigureNotices.includes(n)),
+        ]
+      },
+    }))
+    .views(self => ({
       get primaryStructure() {
         return self.structures[0]
       },
@@ -879,6 +950,12 @@ function stateModelFactory() {
       },
       /**
        * #getter
+       */
+      get superposedCount() {
+        return self.superposedKeys.length
+      },
+      /**
+       * #getter
        * What the view resolved, as plain data: whether it is still loading,
        * what failed, the notices its banner lists, and each structure's
        * report. The header shows the same things to a reader.
@@ -888,7 +965,7 @@ function stateModelFactory() {
           loading: showLoading(self),
           error:
             self.error === undefined ? undefined : errorMessage(self.error),
-          notices: self.notices.map(n => errorMessage(n)),
+          notices: self.shownNotices.map(n => errorMessage(n)),
           structures: self.structures.map(s => s.report),
         }
       },
@@ -968,7 +1045,7 @@ function stateModelFactory() {
        */
       get colorLegend() {
         const plugin = self.molstarPluginContext
-        const loaded = self.structures.find(s => s.entities)
+        const loaded = self.structures.find(s => s.loadedToMolstar)
         const structure = loaded?.molstarStructures[0]
         return plugin && structure
           ? colorLegendOf({
@@ -980,6 +1057,22 @@ function stateModelFactory() {
               exonColor: loaded.exonStatus?.color,
             })
           : undefined
+      },
+      /**
+       * #getter
+       * The grey entry a ramp legend shows beside its gradient while a loaded
+       * structure has a residue the theme paints grey
+       */
+      get colorLegendNoValue() {
+        return rampNoValueEntry(
+          self.paintColor,
+          self.structures
+            .filter(s => s.loadedToMolstar)
+            .map(s => ({
+              placedValues: s.placedValues,
+              entity: s.mappedEntity,
+            })),
+        )
       },
       /**
        * #getter
@@ -995,14 +1088,41 @@ function stateModelFactory() {
       },
       /**
        * #getter
+       * Why the view can draw no sequence panel, once every structure has
+       * loaded or failed and none has a transcript or a protein chain of its
+       * own to draw; one with either can open its panel from its header row.
+       */
+      get noPanelReason() {
+        const { structures } = self
+        return structures.some(
+          s =>
+            s.panelAlignment ||
+            s.userProvidedTranscriptSequence ||
+            (s.entities === undefined && s.error === undefined),
+        )
+          ? undefined
+          : structures.some(s => s.mappedEntity?.nucleicAcid)
+            ? 'The sequence panel draws protein chains, and the chain shown is DNA or RNA'
+            : 'No structure in this view has a chain to show'
+      },
+    }))
+    .views(self => ({
+      /**
+       * #getter
        * What the header's Tune menu offers: the layout choices, remembered for
        * views opened later. The view menu carries actions instead, so a reader
        * looking for a toggle has one place to look. A toggle is disabled while
-       * a setting it requires is off, when it would change nothing on screen.
+       * a setting it requires is off, when it would change nothing on screen,
+       * and a panel toggle while the view has no panel to draw (see
+       * noPanelReason).
        */
       get displayToggles() {
         return DISPLAY_SETTINGS.map(({ key, label, requires = [] }) => {
-          const disabled = requires.some(required => !self[required])
+          const disabled =
+            (!!self.noPanelReason &&
+              (key === 'showAlignment' ||
+                requires.includes('showAlignment'))) ||
+            requires.some(required => !self[required])
           return {
             key,
             label,
@@ -1057,7 +1177,7 @@ function stateModelFactory() {
               ])
             },
           },
-          ...(self.structures.length > 0
+          ...(self.structures.length > 1
             ? [
                 {
                   label: 'Remove structure',
@@ -1072,13 +1192,29 @@ function stateModelFactory() {
             : []),
           ...assemblyMenu(self.structures),
           {
+            label: 'Go to residue...',
+            disabled: !self.alignmentStructure?.entities,
+            onClick: () => {
+              getSession(self).queueDialog(handleClose => [
+                GoToResidueDialog,
+                { model: self, handleClose },
+              ])
+            },
+          },
+          {
             label: 'Clear selection',
+            disabled: !self.structures.some(
+              s =>
+                s.clickedStructureRanges.length > 0 ||
+                s.selectedFeatureId !== undefined,
+            ),
             onClick: () => {
               self.clearSelection()
             },
           },
           {
             label: 'Import manual alignment...',
+            disabled: !self.alignmentStructure?.userProvidedTranscriptSequence,
             onClick: () => {
               getSession(self).queueDialog(handleClose => [
                 ManualAlignmentDialog,
@@ -1087,13 +1223,15 @@ function stateModelFactory() {
             },
           },
           {
-            label: 'Re-align structures (TM-align)',
+            label: 'Re-superpose structures (TM-align)',
+            disabled: self.structures.length < 2,
             onClick: () => {
-              self.setSuperposedCount(0)
+              self.setSuperposedKeys([])
             },
           },
           {
             label: 'Restore hidden feature tracks',
+            disabled: !self.structures.some(s => s.hiddenFeatureTypes.size > 0),
             onClick: () => {
               for (const structure of self.structures) {
                 structure.showAllFeatureTypes()

@@ -2,11 +2,6 @@ import { readConfObject } from '@jbrowse/core/configuration'
 import { parseLocString } from '@jbrowse/core/util'
 
 import {
-  featureTrackConfig,
-  getTrackId,
-  transcriptMatches,
-} from './resolveShortLaunch'
-import {
   codingTranscripts,
   isCodingFeature,
 } from '../LaunchProteinView/codingFeature'
@@ -15,7 +10,11 @@ import {
   sessionGeneLaunchHost,
 } from '../LaunchProteinView/resolveGeneLaunch'
 import { formatViewName } from '../LaunchProteinView/utils/launchViewUtils'
-import { viewAssemblyName } from '../ProteinView/util'
+import {
+  featureTrackConfig,
+  getTrackId,
+  transcriptMatches,
+} from './resolveShortLaunch'
 
 import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
@@ -58,7 +57,7 @@ export async function resolveGeneNameLaunch({
   uniprotId,
   findStructure,
   connectedView,
-  connectedViewId,
+  assemblyName,
 }: {
   session: AbstractSessionModel
   gene: string
@@ -66,15 +65,8 @@ export async function resolveGeneNameLaunch({
   uniprotId?: string
   findStructure?: boolean
   connectedView?: ConnectedViewSpec
-  /** the genome view the launch connects to, whose assembly the gene is on */
-  connectedViewId?: string
+  assemblyName: string | undefined
 }) {
-  const assemblyName =
-    (connectedViewId
-      ? viewAssemblyName(session, connectedViewId)
-      : undefined) ??
-    connectedView?.assembly ??
-    session.assemblyNames[0]
   if (!assemblyName) {
     throw new Error('no assembly to look the gene up on')
   }
@@ -85,6 +77,7 @@ export async function resolveGeneNameLaunch({
     trackIds: (connectedView?.tracks ?? [])
       .map(getTrackId)
       .filter(t => t !== undefined),
+    preferredLoc: connectedView?.loc,
   })
   const preferred = transcriptId
     ? codingTranscripts(feature).find(t => transcriptMatches(t, transcriptId))
@@ -122,6 +115,120 @@ export async function resolveGeneNameLaunch({
   }
 }
 
+interface HitAssembly {
+  isValidRefName: (refName: string) => boolean
+  getCanonicalRefName: (refName: string) => string | undefined
+}
+
+interface SearchHit {
+  getLocation: () => string | undefined
+  getTrackId: () => string | undefined
+}
+
+interface HitRegion {
+  refName: string
+  start: number
+  end: number
+}
+
+function parsedLoc(loc: string, assembly: HitAssembly) {
+  try {
+    const parsed = parseLocString(loc, refName =>
+      assembly.isValidRefName(refName),
+    )
+    return {
+      ...parsed,
+      refName: assembly.getCanonicalRefName(parsed.refName) ?? parsed.refName,
+    }
+  } catch {
+    return undefined
+  }
+}
+
+function hitRegion(hit: SearchHit, assembly: HitAssembly) {
+  const loc = hit.getLocation()
+  const parsed = loc ? parsedLoc(loc, assembly) : undefined
+  return parsed?.start !== undefined && parsed.end !== undefined
+    ? { refName: parsed.refName, start: parsed.start, end: parsed.end }
+    : undefined
+}
+
+function hitTrackIds(hit: SearchHit, trackIds: readonly string[]) {
+  const hitTrackId = hit.getTrackId()
+  return new Set([...(hitTrackId ? [hitTrackId] : []), ...trackIds])
+}
+
+/**
+ * The gene under the search hits: the first found on the refName of
+ * `preferredLoc`, the genome view the launch names, else the first found. A
+ * hit whose location the assembly cannot parse is passed over. Once a gene is
+ * found, only hits on the preferred refName are fetched, and one of those
+ * failing leaves the gene already found.
+ */
+export async function geneUnderHits<F>({
+  hits,
+  assembly,
+  trackIds,
+  preferredLoc,
+  geneIn,
+}: {
+  hits: readonly SearchHit[]
+  assembly: HitAssembly
+  trackIds: readonly string[]
+  preferredLoc?: string
+  geneIn: (region: HitRegion, trackId: string) => Promise<F | undefined>
+}) {
+  const preferredRefName = preferredLoc
+    ? parsedLoc(preferredLoc, assembly)?.refName
+    : undefined
+  let first: { feature: F; trackId: string } | undefined
+  for (const hit of hits) {
+    const region = hitRegion(hit, assembly)
+    const preferred =
+      preferredRefName === undefined || region?.refName === preferredRefName
+    if (region) {
+      for (const trackId of hitTrackIds(hit, trackIds)) {
+        if (first === undefined || preferred) {
+          const feature =
+            first === undefined
+              ? await geneIn(region, trackId)
+              : await geneIn(region, trackId).catch(() => undefined)
+          if (feature && preferred) {
+            return { feature, trackId }
+          }
+          first ??= feature ? { feature, trackId } : undefined
+        }
+      }
+    }
+  }
+  return first
+}
+
+/** Why no gene was found, naming the hits the assembly could not place. */
+export function noGeneFound({
+  gene,
+  assemblyName,
+  hits,
+  assembly,
+}: {
+  gene: string
+  assemblyName: string
+  hits: readonly SearchHit[]
+  assembly: HitAssembly
+}) {
+  const unplaced = hits.flatMap(hit => {
+    const loc = hit.getLocation()
+    return loc && !hitRegion(hit, assembly) ? [loc] : []
+  })
+  const unplacedNote =
+    unplaced.length > 0
+      ? `; ${unplaced.length} of the ${hits.length} search hits name a location ${assemblyName} cannot place, such as "${unplaced[0]}"; an index written with other reference names (chr17 for 17) needs refName aliases on the assembly`
+      : ''
+  return hits.length > 0
+    ? `no coding gene named "${gene}" in the tracks the ${assemblyName} search index names${unplacedNote}`
+    : `no search result for "${gene}" on ${assemblyName}; the assembly needs a text search index covering a gene track`
+}
+
 /**
  * The coding gene a name means on an assembly, through the host's text search
  * index: the same lookup the genome view's search box runs, followed by a
@@ -133,11 +240,13 @@ export async function findGeneByName({
   gene,
   assemblyName,
   trackIds = [],
+  preferredLoc,
 }: {
   session: AbstractSessionModel
   gene: string
   assemblyName: string
   trackIds?: string[]
+  preferredLoc?: string
 }): Promise<FoundGene> {
   const { textSearchManager, assemblyManager, rpcManager } = session
   if (!textSearchManager) {
@@ -152,47 +261,27 @@ export async function findGeneByName({
     assemblyName,
   )
   const name = gene.toLowerCase()
-  for (const hit of hits) {
-    const loc = hit.getLocation()
-    const hitTrackId = hit.getTrackId()
-    if (loc) {
-      const parsed = parseLocString(loc, refName =>
-        assembly.isValidRefName(refName),
-      )
-      const { start, end } = parsed
-      if (start !== undefined && end !== undefined) {
-        const region = {
-          assemblyName,
-          refName:
-            assembly.getCanonicalRefName(parsed.refName) ?? parsed.refName,
-          start,
-          end,
-        }
-        for (const trackId of new Set([
-          ...(hitTrackId ? [hitTrackId] : []),
-          ...trackIds,
-        ])) {
-          const conf = featureTrackConfig(session, trackId)
-          if (conf) {
-            const feature = geneNamed(
-              // eslint-disable-next-line no-restricted-syntax -- a declarative launch's lookup has no dialog to cancel it or report into
-              await rpcManager.call('getFeatures', 'CoreGetFeatures', {
-                adapterConfig: readConfObject(conf, 'adapter'),
-                regions: [region],
-              }),
-              name,
-            )
-            if (feature) {
-              return { feature, trackId }
-            }
-          }
-        }
-      }
-    }
+  const found = await geneUnderHits({
+    hits,
+    assembly,
+    trackIds,
+    preferredLoc,
+    geneIn: async (region, trackId) => {
+      const conf = featureTrackConfig(session, trackId)
+      return conf
+        ? geneNamed(
+            // eslint-disable-next-line no-restricted-syntax -- a declarative launch's lookup has no dialog to cancel it or report into
+            await rpcManager.call('getFeatures', 'CoreGetFeatures', {
+              adapterConfig: readConfObject(conf, 'adapter'),
+              regions: [{ assemblyName, ...region }],
+            }),
+            name,
+          )
+        : undefined
+    },
+  })
+  if (!found) {
+    throw new Error(noGeneFound({ gene, assemblyName, hits, assembly }))
   }
-  throw new Error(
-    hits.length > 0
-      ? `no coding gene named "${gene}" in the tracks the ${assemblyName} search index names`
-      : `no search result for "${gene}" on ${assemblyName}; the assembly needs a text search index covering a gene track`,
-  )
+  return found
 }

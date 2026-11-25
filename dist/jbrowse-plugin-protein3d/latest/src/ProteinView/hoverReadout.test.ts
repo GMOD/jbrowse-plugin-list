@@ -1,8 +1,8 @@
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper'
 import { expect, test } from 'vitest'
 
-import { codonLocus, hoverReadout } from './hoverReadout'
 import { toTranscript } from '../test_data/positionLookups'
+import { codonLocus, hoverReadout } from './hoverReadout'
 
 import type { Entity } from 'p2s_mapper'
 
@@ -26,6 +26,27 @@ test('names a codon as a 1-based locString on the transcript refName', () => {
 test('a codon split by an intron spans it', () => {
   expect(minus.p2gCodon[1]).toEqual([21, 20, 13])
   expect(codonLocus(minus, 1)).toBe('chr17:14-22')
+})
+
+test('keeps the locus in plain digits, for whatever parses it', () => {
+  expect(
+    codonLocus(
+      { refName: 'chr17', p2gCodon: { 0: [7674221, 7674220, 7674219] } },
+      0,
+    ),
+  ).toBe('chr17:7674220-7674222')
+})
+
+test("writes the readout's locus with thousands separators", () => {
+  expect(
+    hoverReadout({
+      hover: {},
+      entity: undefined,
+      structureToTranscript: undefined,
+      transcript: '',
+      locus: 'chr17:7674220-7674222',
+    }),
+  ).toBe('chr17:7,674,220-7,674,222')
 })
 
 test('names no locus without a mapping or a mapped residue', () => {
@@ -52,7 +73,7 @@ test('reads the author number, letter, chain and locus of a hovered residue', ()
       transcript: 'PPMKAA',
       locus: 'chr1:10-12',
     }),
-  ).toBe('4, Structure: K, Chain: A, chr1:10-12')
+  ).toBe('K4 · chain A · chr1:10-12')
 })
 
 test('adds the transcript residue where the numbering disagrees with it', () => {
@@ -64,10 +85,10 @@ test('adds the transcript residue where the numbering disagrees with it', () => 
       transcript: 'PPPPPPPKAA',
       locus: undefined,
     }),
-  ).toBe('4, Transcript residue: 8, Structure: K')
+  ).toBe('K4 (transcript K8)')
 })
 
-test('names the genome letter only where it differs from the structure', () => {
+test('adds the transcript residue where its letter differs from the structure', () => {
   expect(
     hoverReadout({
       hover: { structureSeqPos: 1 },
@@ -76,7 +97,7 @@ test('names the genome letter only where it differs from the structure', () => {
       transcript: 'PPMRAA',
       locus: undefined,
     }),
-  ).toBe('4, Structure: K, Genome: R')
+  ).toBe('K4 (transcript R4)')
 })
 
 test('counts from one when the entity is unknown', () => {
@@ -100,7 +121,7 @@ test('a hover naming only a chain reads out the chain', () => {
       transcript: 'PPMKAA',
       locus: undefined,
     }),
-  ).toBe('Chain: B')
+  ).toBe('chain B')
 })
 
 test('ends with the exon when one is given', () => {
@@ -113,5 +134,5 @@ test('ends with the exon when one is given', () => {
       locus: 'chr1:10-12',
       exon: 'Exon 4',
     }),
-  ).toBe('4, Structure: K, chr1:10-12, Exon 4')
+  ).toBe('K4 · chr1:10-12 · Exon 4')
 })

@@ -106,6 +106,20 @@ test('a value the structure model would throw on is dropped by name', () => {
   ])
 })
 
+// a file name labels an uploaded file, and would rename a PDB entry
+test('a fileName is kept only beside data', () => {
+  const { requested, warnings } = accepted({
+    structures: [
+      { data: 'ATOM', fileName: 'kras.pdb' },
+      { pdbId: '1TUP', fileName: 'x.cif' },
+    ],
+  })
+  expect(requested.map(s => s.fileName)).toEqual(['kras.pdb', undefined])
+  expect(warnings).toEqual([
+    '`structures[1].fileName` is not a string beside `data` and was ignored',
+  ])
+})
+
 test('every structure key written on the launch reaches its one structure', () => {
   const shorthand = {
     pdbId: '1TUP',
@@ -180,7 +194,10 @@ test('a uniprotId beside structures is reported unless it steers a gene lookup',
       gene: 'TP53',
       userProvidedTranscriptSequence: 'MEE',
     }).warnings,
-  ).toHaveLength(1)
+  ).toEqual([
+    '`uniprotId` beside `structures` names no structure; add it as an entry of `structures`',
+    '`gene` is not looked up beside `userProvidedTranscriptSequence`; give `feature` (the transcript that maps the structure to the genome) and a `connectedView` or `connectedViewId` (the genome view it links to)',
+  ])
 })
 
 test('an unknown key of a structure is reported and dropped', () => {
@@ -243,6 +260,30 @@ test('a gene supplies the model a launch does not name', () => {
   ]) {
     expect(accepted({ gene: 'TP53', ...named }).geneModel).toBeUndefined()
   }
+})
+
+test('a feature the launch gives is its transcript, and no gene is looked up beside it', () => {
+  const feature = { uniqueId: 't1', refName: 'chr17', start: 0, end: 10 }
+  expect(rejected({ gene: 'TP53', feature }).error).toMatch(
+    /`gene` is not looked up beside `feature`/,
+  )
+  expect(
+    accepted({ gene: 'TP53', feature, uniprotId: 'P04637' }).geneModel,
+  ).toBeUndefined()
+  const withPdb = accepted({ gene: 'TP53', feature, pdbId: '1TUP' })
+  expect(withPdb.linkage.feature).toEqual(feature)
+  expect(withPdb.warnings).toEqual([
+    '`gene` is not looked up beside `feature`; give `userProvidedTranscriptSequence` (the translation the structure is aligned to) and a `connectedView` or `connectedViewId` (the genome view it links to)',
+  ])
+  expect(
+    accepted({
+      gene: 'TP53',
+      feature,
+      userProvidedTranscriptSequence: 'MEE',
+      connectedViewId: 'lgv',
+      pdbId: '1TUP',
+    }).warnings,
+  ).toEqual(['`gene` is not looked up beside `feature`'])
 })
 
 test('two sources on one structure keep their precedence and say nothing', () => {
@@ -359,7 +400,11 @@ test('an unknown key of the launch is reported', () => {
       feature: {},
       connectedViewId: 'genome',
     }).warnings,
-  ).toEqual(['ignored unknown key(s): hieght'])
+  ).toEqual([
+    'ignored unknown key(s): hieght',
+    '`gene` is not looked up beside `feature`; give `userProvidedTranscriptSequence` (the translation the structure is aligned to)',
+    '`transcriptId` is not looked up beside `feature`; give `userProvidedTranscriptSequence` (the translation the structure is aligned to)',
+  ])
   expect(rejected({ colour: 'red' }).warnings).toEqual([
     'ignored unknown key(s): colour',
   ])

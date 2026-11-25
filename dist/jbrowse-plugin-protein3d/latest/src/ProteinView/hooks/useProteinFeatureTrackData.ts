@@ -4,8 +4,8 @@ import { structurePos as toStructurePos } from 'p2s_mapper'
 
 import useUniProtFeatures from './useUniProtFeatures'
 
-import type { UniProtFeature } from './useUniProtFeatures'
 import type { JBrowsePluginProteinStructureModel } from '../model'
+import type { UniProtFeature } from './useUniProtFeatures'
 import type { CoordinateMapper, MapUniProtPosition } from 'p2s_mapper'
 
 /** A UniProt feature placed in alignment columns; drawing it is the view's
@@ -130,8 +130,8 @@ export default function useProteinFeatureTrackData(
   error: unknown
 } {
   const { features, isLoading, error } = useUniProtFeatures(uniprotId)
-  const { omittedFeatureTypes, coordinateMapper } = model
-  const structureToAlignment = coordinateMapper?.structureToAlignment
+  const { omittedFeatureTypes, panelMapper } = model
+  const structureToAlignment = panelMapper?.structureToAlignment
 
   const groups = useMemo(() => {
     if (!features || !structureToAlignment) {

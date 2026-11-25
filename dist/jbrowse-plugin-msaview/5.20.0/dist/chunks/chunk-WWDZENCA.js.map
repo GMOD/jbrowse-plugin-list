@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/LaunchMsaView/codingFeature.ts"],
+  "sourcesContent": ["import type { Feature } from '@jbrowse/core/util'\n\nexport function isCDS(feature: Feature) {\n  return feature.get('type')?.toLowerCase() === 'cds'\n}\n\n// The feature itself counts: a viral polyprotein hangs its cleavage products\n// off its CDS rather than off further CDSs.\nexport function isCodingFeature(feature: Feature): boolean {\n  return isCDS(feature) || !!feature.get('subfeatures')?.some(isCodingFeature)\n}\n"],
+  "mappings": "AAEO,SAASA,EAAMC,EAAkB,CACtC,OAAOA,EAAQ,IAAI,MAAM,GAAG,YAAY,IAAM,KAChD,CAIO,SAASC,EAAgBD,EAA2B,CACzD,OAAOD,EAAMC,CAAO,GAAK,CAAC,CAACA,EAAQ,IAAI,aAAa,GAAG,KAAKC,CAAe,CAC7E",
+  "names": ["isCDS", "feature", "isCodingFeature"]
+}

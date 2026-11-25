@@ -1,4 +1,4 @@
-function isCDS(feature) {
+export function isCDS(feature) {
     return feature.get('type')?.toLowerCase() === 'cds';
 }
 // The feature itself counts: a viral polyprotein hangs its cleavage products

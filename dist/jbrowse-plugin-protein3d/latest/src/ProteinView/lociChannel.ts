@@ -12,7 +12,8 @@ interface ChannelStructure {
 
 export interface LociChannelHost {
   readonly molstarPluginContext:
-    { managers: { interactivity: LociMarks } } | undefined
+    | { managers: { interactivity: LociMarks } }
+    | undefined
   readonly structures: readonly ChannelStructure[]
 }
 

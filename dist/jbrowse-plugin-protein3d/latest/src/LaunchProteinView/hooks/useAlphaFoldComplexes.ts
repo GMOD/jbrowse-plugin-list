@@ -20,7 +20,7 @@ export function rankAlphaFoldComplexes(complexes: readonly AlphaFoldComplex[]) {
  * An isoform's complexes are its entry's. */
 export function useAlphaFoldComplexes(uniprotId: string | undefined) {
   const entry = uniprotId?.replace(/-\d+$/, '')
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     entry ? (['alphafold-complexes', entry] as const) : null,
     ([, id]) => fetchAlphaFoldComplexes(id),
     STATIC_SWR_OPTIONS,
@@ -30,7 +30,14 @@ export function useAlphaFoldComplexes(uniprotId: string | undefined) {
     [data],
   )
   const complexesError: unknown = error
-  return { complexes, error: complexesError, isLoading }
+  return {
+    complexes,
+    error: complexesError,
+    isLoading,
+    retry: () => {
+      void mutate()
+    },
+  }
 }
 
 /** One complex's file and the protein of each of its chains, asked for once

@@ -49,11 +49,8 @@ describe('createDbOpener', () => {
         const db = fakeDb();
         opens[0].resolve(db);
         await pending;
-        const target = { close: vi.fn() };
-        opens[0].callbacks.blocking(1, 2, {
-            target,
-        });
-        expect(target.close).toHaveBeenCalled();
+        opens[0].callbacks.blocking(1, 2, {});
+        expect(db.close).toHaveBeenCalled();
         void getDB();
         expect(opens.length).toBe(2);
     });

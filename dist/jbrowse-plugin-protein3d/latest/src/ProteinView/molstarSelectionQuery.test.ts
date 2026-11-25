@@ -7,8 +7,8 @@ import {
 import { Script } from 'molstar/lib/mol-script/script'
 import { beforeAll, expect, test } from 'vitest'
 
-import { residueLoci } from './applyLociInteractivity'
 import { parseStructure } from '../test_data/molstarStructure'
+import { residueLoci } from './applyLociInteractivity'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
 

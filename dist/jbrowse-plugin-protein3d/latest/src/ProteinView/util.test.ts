@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
-import { assemblyNaming, genomeHoverToTranscriptPos } from './util'
 import { literalNaming } from '../test_data/naming'
+import { assemblyNaming, genomeHoverToTranscriptPos } from './util'
 
 // g2p is keyed by 0-based genome position; hovered.coord is 1-based display
 const mapping = { refName: 'chr17', g2p: { 999: 4, 1002: 5 } }

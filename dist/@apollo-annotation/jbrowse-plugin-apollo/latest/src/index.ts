@@ -50,6 +50,7 @@ import {
   ApolloTranscriptDetailsModel,
   ApolloTranscriptDetailsWidget,
 } from './FeatureDetailsWidget'
+import { installApolloHelpWidget } from './HelpWidget'
 import {
   configSchema as linearApolloDisplayConfigSchema,
   stateModelFactory as LinearApolloDisplayStateModelFactory,
@@ -69,6 +70,7 @@ import {
   annotationFromJBrowseFeature,
   annotationFromPileup,
 } from './extensions'
+import type { MainThreadReply } from './mainThreadRequest'
 import {
   LinearApolloDisplayComponent,
   LinearApolloSixFrameDisplayComponent,
@@ -160,6 +162,7 @@ export default class ApolloPlugin extends Plugin {
     installApolloSequenceAdapter(pluginManager)
     installApolloRefNameAliasAdapter(pluginManager)
     installApolloTextSearchAdapter(pluginManager)
+    installApolloHelpWidget(pluginManager)
 
     pluginManager.addWidgetType(() => {
       const configSchema = ConfigurationSchema('ApolloFeatureDetailsWidget', {})
@@ -382,6 +385,47 @@ export default class ApolloPlugin extends Plugin {
     )
 
     if (!inWebWorker) {
+      const getBackendDriver = (assemblyName: string) => {
+        const dataStore = (
+          pluginManager.rootModel?.session as ApolloSessionModel | undefined
+        )?.apolloDataStore
+        if (!dataStore) {
+          throw new Error('No Apollo data store found')
+        }
+        const backendDriver = dataStore.getBackendDriver(assemblyName)
+        if (!backendDriver) {
+          throw new Error(
+            `No backend driver found for assembly "${assemblyName}"`,
+          )
+        }
+        return backendDriver
+      }
+      const answerRequest = async (request: ApolloMessageData) => {
+        switch (request.method) {
+          case 'getSequence': {
+            const { region } = request
+            const { seq } = await getBackendDriver(
+              region.assemblyName,
+            ).getSequence(region)
+            return { sequence: seq }
+          }
+          case 'getRegions': {
+            const { assembly } = request
+            const regions =
+              await getBackendDriver(assembly).getRegions(assembly)
+            return { regions }
+          }
+          case 'getRefNameAliases': {
+            const { assembly } = request
+            const refNameAliases =
+              await getBackendDriver(assembly).getRefNameAliases(assembly)
+            return { refNameAliases }
+          }
+          default: {
+            throw new Error(`Unknown Apollo request "${request.method}"`)
+          }
+        }
+      }
       pluginManager.addToExtensionPoint(
         'Core-extendWorker',
         (handle: RpcHandle) => {
@@ -392,81 +436,20 @@ export default class ApolloPlugin extends Plugin {
             if (!isApolloMessageData(event)) {
               return
             }
-            const { apollo, messageId, method } = event
-            switch (method) {
-              case 'getSequence': {
-                const { region } = event
-                const { assemblyName } = region
-                const dataStore = (
-                  pluginManager.rootModel?.session as
-                    | ApolloSessionModel
-                    | undefined
-                )?.apolloDataStore
-                if (!dataStore) {
-                  break
-                }
-                const backendDriver = dataStore.getBackendDriver(assemblyName)
-                if (!backendDriver) {
-                  break
-                }
-                const { seq: sequence } =
-                  await backendDriver.getSequence(region)
-                handle.worker.postMessage({
-                  apollo,
-                  messageId,
-                  sequence,
-                })
-                break
-              }
-              case 'getRegions': {
-                const { assembly } = event
-                const dataStore = (
-                  pluginManager.rootModel?.session as
-                    | ApolloSessionModel
-                    | undefined
-                )?.apolloDataStore
-                if (!dataStore) {
-                  break
-                }
-                const backendDriver = dataStore.getBackendDriver(assembly)
-                if (!backendDriver) {
-                  break
-                }
-                const regions = await backendDriver.getRegions(assembly)
-                handle.worker.postMessage({
-                  apollo,
-                  messageId,
-                  regions,
-                })
-                break
-              }
-              case 'getRefNameAliases': {
-                const { assembly } = event
-                const dataStore = (
-                  pluginManager.rootModel?.session as
-                    | ApolloSessionModel
-                    | undefined
-                )?.apolloDataStore
-                if (!dataStore) {
-                  break
-                }
-                const backendDriver = dataStore.getBackendDriver(assembly)
-                if (!backendDriver) {
-                  break
-                }
-                const refNameAliases =
-                  await backendDriver.getRefNameAliases(assembly)
-                handle.worker.postMessage({
-                  apollo,
-                  messageId,
-                  refNameAliases,
-                })
-                break
-              }
-              default: {
-                break
+            const { apollo, messageId } = event
+            // Always reply, even with an error, so the worker doesn't wait
+            // for its request to time out
+            let reply: MainThreadReply
+            try {
+              reply = { apollo, messageId, ...(await answerRequest(event)) }
+            } catch (error) {
+              reply = {
+                apollo,
+                messageId,
+                error: error instanceof Error ? error.message : String(error),
               }
             }
+            handle.worker.postMessage(reply)
           })
           return handle
         },

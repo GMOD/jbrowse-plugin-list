@@ -8,6 +8,8 @@ import { StateSelection } from 'molstar/lib/mol-state'
 import { Color } from 'molstar/lib/mol-util/color'
 import { expect, test } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
+import { parseStructure } from '../test_data/molstarStructure'
 import { applyColorTheme, colorLegendOf } from './applyColorTheme'
 import { rgbScaleOf } from './colorScale'
 import { registerColorThemes } from './colorThemes'
@@ -18,8 +20,6 @@ import {
   ClinVarColorThemeProvider,
 } from './variantEffectColorTheme'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
-import { parseStructure } from '../test_data/molstarStructure'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
 
@@ -190,5 +190,28 @@ test('the legends are the scales the themes paint with', async () => {
     expect(
       clinvar?.kind === 'table-legend' ? clinvar.table.map(([n]) => n) : [],
     ).toEqual(['0', '1', '2', '3', '4 or more', 'No value'])
+    for (const field of ['track', 'values'] as const) {
+      const threshold = colorLegendOf({
+        plugin,
+        color: {
+          field,
+          trackId: 't',
+          values: [1],
+          scale: 'threshold',
+          domain: [1],
+          range: ['#2c7bb6', '#d7191c'],
+        },
+        structure,
+      })
+      expect(
+        threshold?.kind === 'table-legend'
+          ? threshold.table.map(([n, c]) => [n, c])
+          : [],
+      ).toEqual([
+        ['< 1', Color.fromHexStyle('#2c7bb6')],
+        ['≥ 1', Color.fromHexStyle('#d7191c')],
+        ['No value', NO_VALUE_COLOR],
+      ])
+    }
   })
 })

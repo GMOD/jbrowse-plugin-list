@@ -29,7 +29,7 @@ const CHAIN = /^([^:@\s]+):\*$/
  * `<auth_asym_id>:<auth_seq_id>`, an insertion code after the number
  * (`A:52B`) and an atom after `@` (`A:248@NH2`): the numbering a paper cites.
  */
-export function parseResidue(text: string): ResidueSite | undefined {
+function parseResidue(text: string): ResidueSite | undefined {
   const match = RESIDUE.exec(text.trim())
   return match
     ? {
@@ -58,14 +58,6 @@ export function parseSite(text: string): Site | undefined {
         ? { kind: 'component', compId: trimmed.toUpperCase() }
         : undefined)
   )
-}
-
-export function formatSite(site: Site) {
-  return site.kind === 'component'
-    ? site.compId
-    : site.kind === 'chain'
-      ? `${site.chain}:*`
-      : `${site.chain}:${site.seq}${site.insertion}${site.atom ? `@${site.atom}` : ''}`
 }
 
 type Builder = typeof MolScriptBuilder

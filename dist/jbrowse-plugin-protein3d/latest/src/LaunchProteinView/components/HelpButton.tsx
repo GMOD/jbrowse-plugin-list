@@ -13,6 +13,7 @@ const HelpButton = observer(function HelpButton() {
   return (
     <>
       <IconButton
+        aria-label="Help"
         onClick={() => {
           setShow(true)
         }}

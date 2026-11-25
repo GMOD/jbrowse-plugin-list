@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/mappings.ts"],
+  "sourcesContent": ["import { genomeToTranscriptSeqMapping as g2p } from 'g2p_mapper'\n\nimport type { Feature } from '@jbrowse/core/util'\nimport type { Feat } from 'g2p_mapper'\n\n// The alignment and coordinate machinery this used to hold lives in p2s_mapper;\n// what stays is the one step that needs a JBrowse feature. See the similar\n// function in the msaview plugin.\nexport function genomeToTranscriptSeqMapping(feature: Feature) {\n  return g2p(feature.toJSON() as Feat)\n}\n"],
+  "mappings": "yCAQO,SAASA,EAA6BC,EAAkB,CAC7D,OAAOD,EAAIC,EAAQ,OAAO,CAAS,CACrC",
+  "names": ["genomeToTranscriptSeqMapping", "feature"]
+}

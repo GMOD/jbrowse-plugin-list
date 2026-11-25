@@ -1,104 +1,59 @@
 # jbrowse-plugin-protein3d
 
 A 3-D protein structure viewer for JBrowse 2, linked residue by residue to the
-genome.
+genome. The plugin aligns each structure to the transcript's translation, so
+hovering a residue highlights its codon and hovering a codon highlights its
+residue.
 
-![TP53 beside PDB 1TUP, p53's core domain bound to DNA, with the R248 hotspot selected](https://raw.githubusercontent.com/GMOD/jbrowse-plugin-protein3d/readme-figure/readme.png)
+## Gallery
 
-TP53 beside PDB 1TUP, p53's core domain bound to DNA. R248, a cancer hotspot, is
-selected in magenta on the structure, and its codon is marked on the gene.
-[Open this session](https://jbrowse.org/code/jb2/main/?config=test_data/protein3d_config.json&session=spec-%7B%22views%22%3A%5B%7B%22type%22%3A%22ProteinView%22%2C%22structures%22%3A%5B%7B%22pdbId%22%3A%221TUP%22%2C%22initialResidues%22%3A%7B%22start%22%3A248%2C%22end%22%3A248%7D%7D%5D%2C%22transcriptId%22%3A%22NM_000546.6%22%2C%22sideBySide%22%3Atrue%2C%22zoomToBaseLevel%22%3Afalse%2C%22color%22%3A%7B%22field%22%3A%22mappedChain%22%7D%2C%22connectedView%22%3A%7B%22assembly%22%3A%22hg38%22%2C%22loc%22%3A%22chr17%3A7%2C673%2C700-7%2C674%2C700%22%2C%22tracks%22%3A%5B%7B%22trackId%22%3A%22hg38-ncbiRefSeq%22%2C%22geneGlyphMode%22%3A%22longestCoding%22%7D%2C%22clinvar_ncbi_hg38%22%5D%7D%7D%5D%7D).
-CI re-renders the figure from `main` every hour
-([scripts/readme-figure.mjs](scripts/readme-figure.mjs)).
+Click a picture to open it live. CI re-renders the figures from `main` every
+hour ([scripts/readme-figure.mjs](scripts/readme-figure.mjs)).
 
-Right-click a gene and choose **Launch › Protein view...** for the dialog that
-offers every choice. The dialog looks the gene up in UniProt and lists every
-structure found for it in one list: the AlphaFold model, the experimental PDB
-entries RCSB maps to that UniProt entry with their partner proteins and ligands,
-and the complexes AlphaFold DB predicted, grouped by what each shows, led by any
-structures the site lists for the gene in a dataset of its own. Check several to
-open them superposed in one view. It can also search Foldseek for related
-structures, or open your own file. The plugin aligns each structure to the
-transcript's translation, so hovering a residue highlights its codon and
-hovering a codon highlights its residue.
+<table>
+<tr><td width="50%"><a href="https://jbrowse.org/code/jb2/main/?config=%2Fucsc%2Fhg38%2Fconfig.json&amp;session=spec-%7B%22views%22%3A%5B%7B%22type%22%3A%22ProteinView%22%2C%22structures%22%3A%5B%7B%22pdbId%22%3A%221TUP%22%2C%22initialResidues%22%3A%7B%22start%22%3A248%2C%22end%22%3A248%7D%7D%5D%2C%22transcriptId%22%3A%22NM_000546.6%22%2C%22sideBySide%22%3Atrue%2C%22color%22%3A%7B%22field%22%3A%22mappedChain%22%7D%2C%22connectedView%22%3A%7B%22assembly%22%3A%22hg38%22%2C%22loc%22%3A%22chr17%3A7%2C673%2C700-7%2C674%2C700%22%2C%22tracks%22%3A%5B%22hg38-ncbiRefSeqCurated%22%2C%22hg38-clinvarMain%22%5D%7D%7D%5D%7D"><img src="https://raw.githubusercontent.com/GMOD/jbrowse-plugin-protein3d/readme-figure/tp53-1tup.png" alt="TP53 beside PDB 1TUP, p53 core domain bound to DNA, with the R248 hotspot selected on the structure and its codon marked on the gene" width="100%"></a><br>R248 on the structure, its codon on the gene</td><td width="50%"><a href="https://jbrowse.org/code/jb2/main/?config=%2Fucsc%2Fhg38%2Fconfig.json&amp;session=spec-%7B%22views%22%3A%5B%7B%22type%22%3A%22ProteinView%22%2C%22structures%22%3A%5B%7B%22pdbId%22%3A%222HBS%22%7D%5D%2C%22transcriptId%22%3A%22NM_000518.5%22%2C%22sideBySide%22%3Atrue%2C%22color%22%3A%7B%22field%22%3A%22mappedChain%22%7D%2C%22marks%22%3A%5B%7B%22site%22%3A%22B%3A6%22%2C%22mark%22%3A%22spheres%22%2C%22encoding%22%3A%7B%22color%22%3A%7B%22value%22%3A%22%23f28e2b%22%7D%7D%2C%22label%22%3A%22Val6%22%7D%2C%7B%22site%22%3A%22D%3A6%22%2C%22mark%22%3A%22spheres%22%2C%22encoding%22%3A%7B%22color%22%3A%7B%22value%22%3A%22%23f28e2b%22%7D%7D%7D%5D%2C%22connectedView%22%3A%7B%22assembly%22%3A%22hg38%22%2C%22loc%22%3A%22chr11%3A5%2C226%2C900-5%2C227%2C100%22%2C%22tracks%22%3A%5B%7B%22trackId%22%3A%22hg38-ncbiRefSeqCurated%22%2C%22geneGlyphMode%22%3A%22longestCoding%22%7D%5D%7D%7D%5D%7D"><img src="https://raw.githubusercontent.com/GMOD/jbrowse-plugin-protein3d/readme-figure/sickle.png" alt="Sickle haemoglobin: Val6 on the deoxy tetramer, beside HBB codon 7" width="100%"></a><br>Sickle-cell Glu6Val on haemoglobin 2HBS</td></tr>
+<tr><td width="50%"><a href="https://jbrowse.org/code/jb2/main/?config=%2Fucsc%2Fhg38%2Fconfig.json&amp;session=spec-%7B%22views%22%3A%5B%7B%22type%22%3A%22ProteinView%22%2C%22structures%22%3A%5B%7B%22pdbId%22%3A%226OIM%22%7D%5D%2C%22transcriptId%22%3A%22NM_004985.5%22%2C%22sideBySide%22%3Atrue%2C%22marks%22%3A%5B%7B%22site%22%3A%22A%3A12%22%2C%22mark%22%3A%22spheres%22%2C%22encoding%22%3A%7B%22color%22%3A%7B%22value%22%3A%22%23f28e2b%22%7D%7D%2C%22label%22%3A%22G12%22%7D%2C%7B%22site%22%3A%22A%3A13%22%2C%22mark%22%3A%22spheres%22%2C%22encoding%22%3A%7B%22color%22%3A%7B%22value%22%3A%22%23f28e2b%22%7D%7D%2C%22label%22%3A%22G13%22%7D%2C%7B%22site%22%3A%22A%3A61%22%2C%22mark%22%3A%22spheres%22%2C%22encoding%22%3A%7B%22color%22%3A%7B%22value%22%3A%22%23f28e2b%22%7D%7D%2C%22label%22%3A%22Q61%22%7D%5D%2C%22connectedView%22%3A%7B%22assembly%22%3A%22hg38%22%2C%22loc%22%3A%22chr12%3A25%2C245%2C270-25%2C245%2C400%22%2C%22tracks%22%3A%5B%7B%22trackId%22%3A%22hg38-ncbiRefSeqCurated%22%2C%22geneGlyphMode%22%3A%22longestCoding%22%7D%5D%7D%7D%5D%7D"><img src="https://raw.githubusercontent.com/GMOD/jbrowse-plugin-protein3d/readme-figure/kras.png" alt="KRAS bound to sotorasib with hotspots G12, G13 and Q61 drawn as spheres" width="100%"></a><br>KRAS G12C with sotorasib, hotspots as spheres</td><td width="50%"><a href="https://jbrowse.org/code/jb2/main/?config=%2Fucsc%2Fhg38%2Fconfig.json&amp;session=spec-%7B%22views%22%3A%5B%7B%22type%22%3A%22ProteinAnnotationView%22%2C%22uniprotId%22%3A%22P01116%22%2C%22transcriptId%22%3A%22NM_004985.5%22%2C%22connectedView%22%3A%7B%22assembly%22%3A%22hg38%22%2C%22loc%22%3A%22chr12%3A25%2C225%2C000-25%2C250%2C000%22%2C%22tracks%22%3A%5B%7B%22trackId%22%3A%22hg38-ncbiRefSeqCurated%22%2C%22geneGlyphMode%22%3A%22longestCoding%22%7D%5D%7D%7D%5D%7D"><img src="https://raw.githubusercontent.com/GMOD/jbrowse-plugin-protein3d/readme-figure/features.png" alt="UniProt features of KRAS P01116 in the 1D protein view" width="100%"></a><br>UniProt features of KRAS, 1D</td></tr>
+</table>
 
-## Try it
+## Use it
 
-The [protein browser](https://staging.genomes.jbrowse.org/protein-browser/)
-takes a gene name and opens it in JBrowse with its structure linked to the
-genome. The plugin is also installed by default on
-[genomes.jbrowse.org](https://genomes.jbrowse.org), so it works for any species
-there.
+- Right-click a gene and choose **Launch › Protein view...**. The dialog looks
+  the gene up in UniProt and lists every structure it finds: the AlphaFold
+  model, the PDB entries RCSB maps to that entry with their partners and
+  ligands, and AlphaFold DB's predicted complexes. Check several to open them
+  superposed.
+- It can also search Foldseek for related structures, or open your own file.
+- Or try the
+  [protein browser](https://staging.genomes.jbrowse.org/protein-browser/), which
+  opens a gene by name. The plugin is installed by default on
+  [genomes.jbrowse.org](https://genomes.jbrowse.org).
 
 ## Documentation
 
-Using the plugin:
+Using it:
 
-- Tutorials on jbrowse.org:
-  [TP53 from prediction to crystal](https://jbrowse.org/jb2/docs/tutorials/tp53_structures/)
-  opens an AlphaFold model and two crystal structures superposed beside the
-  gene, and reads the R248 hotspot back to its codon;
-  [Proteins on genomes.jbrowse.org](https://jbrowse.org/jb2/docs/tutorials/genomes_proteins/)
-  launches a structure and an MSA from any gene's right-click menu.
-- [Demos](docs/demos.md): one link each. Genes opened by name alone in human,
-  mouse, yeast, bacteria, fungi and viruses (E. coli recA, M. tuberculosis katG,
-  the SARS-CoV-2 spike, the HIV-1 capsid), then the structures that are easy to
-  map wrong — a peptide bound to a larger partner, a protein bound to DNA, a
-  receptor with another protein fused into it, a phosphorylated residue, and a
-  mitochondrial protein.
-- [Your own structures](docs/your-own-structures.md): opening models you folded
-  yourself (ColabFold, AlphaFold 3, Boltz…) beside or instead of AlphaFold DB's:
-  a whole genome's worth from one mapping file named in the config, offered in
-  the right-click dialog, or one from a file, a URL or a generated link per
-  gene, and which features carry over.
+- [TP53 tutorial][tp53]: AlphaFold model to crystal structure
+- [Genomes tutorial][genomes]: proteins on genomes.jbrowse.org
+- [Demos](docs/demos.md): live links, including tricky mappings
+- [Your own structures](docs/your-own-structures.md): ColabFold, AF3, Boltz
+- [Launching](docs/launching.md): open a view from a URL or code
+- [Sessions](docs/sessions.md): saved views and reproducible figures
+- [Per-residue values](docs/per-residue-values.md): color by a track or data
 
-Linking and embedding:
+How it works:
 
-- [Launching from a URL or code](docs/launching.md): worked session-spec links,
-  the short `uniprotId`/`pdbId` + `transcriptId` form, several structures in one
-  view, the 1D protein view, and the `LaunchView-ProteinView` and
-  `LaunchView-ProteinAnnotationView` extension points.
-- [Launch parameters](docs/launch-parameters.md): every argument, the
-  `connectedView` settings, and the transcript `feature` shape.
-- [Session snapshots](docs/session-snapshots.md): the saved view's shape, the
-  structure shorthands, and which chain maps.
-- [Reading what a view resolved](docs/reading-the-view.md): the view's `report`
-  (chain, identity, coverage, notices) and locating a residue or a codon in
-  every numbering, for scripts and agents.
+- [Alignment](docs/genome-to-structure-alignment.md): codon to residue mapping
+- [UniProt feature tracks](docs/uniprot-feature-tracks.md): features as tracks
+- [Secret sauce](docs/secret-sauce.md): how the views stay linked
+- [Residue numbering](docs/residue-numbering.md): why a residue has four numbers
 
-How it works, for someone extending the plugin or checking what a number on
-screen means:
+[tp53]: https://jbrowse.org/jb2/docs/tutorials/tp53_structures/
+[genomes]: https://jbrowse.org/jb2/docs/tutorials/genomes_proteins/
 
-- [Genome to structure alignment](docs/genome-to-structure-alignment.md): why
-  the plugin aligns the transcript's translation to the structure on the fly,
-  the precedent for that in SIFTS and G2S, how it picks the chain and isoform,
-  and what sequence alignment cannot decide.
-- [UniProt feature tracks](docs/uniprot-feature-tracks.md): where the accession
-  and the UniProt-to-structure offset come from for AlphaFold models, PDB
-  entries and your own models.
-- [The secret sauce](docs/secret-sauce.md): one variable drawn with one scale in
-  the 3D view, the alignment strip and the genome track, and the ideas that
-  build on it, such as painting any genome track onto the structure.
-- [Residue numbering](docs/residue-numbering.md): how a paper's R248 becomes
-  position 154 in the file, `label_seq_id` 155 for Mol\*, and the codon on
-  chr17, and how a session spec names a residue the literature's way.
-
-Working on the plugin:
-
-- [DEVELOPERS.md](DEVELOPERS.md): running it locally and publishing.
-- [Testing](docs/testing.md): the unit, e2e, documentation and demo checks.
-- [Host compatibility](docs/host-compatibility.md): which JBrowse hosts load the
-  published bundle, and the gate that boots it on one.
-- [Live checks](docs/live-checks.md): serving a local build to a session on
-  jbrowse.org.
-
-## Publication
-
-If you find this tool useful please cite our work
+## Citation
 
 Diesh, C., Stevens, G., Bridge, C., Hogue, G., Buels, R., Cain, S., Stein, L., &
 Holmes, I. (2026). Proteins in the Genome Browser: Integration of Phylogenies,
 Alignments, and Structures With Nucleotide-level Evidence in JBrowse 2. Journal
-of Molecular Biology, 169645. https://doi.org/10.1016/j.jmb.2026.169645
-
-See also https://github.com/GMOD/proteinbrowser for overview
+of Molecular Biology, 169645. https://doi.org/10.1016/j.jmb.2026.169645. See
+also https://github.com/GMOD/proteinbrowser.

@@ -1,4 +1,5 @@
 import { EMPTY_DOMAIN_COLOR, domainMarkOf } from './alignmentDomains'
+import { NO_VALUE_CSS } from './colorScale'
 import { EMPTY_EXON_COLOR } from './exons'
 import loadMolstar from './loadMolstar'
 import { molstarThemeOf, resolvedColor } from './proteinColor'
@@ -150,6 +151,36 @@ async function recolor({
 
 export function applyColorTheme(args: Parameters<typeof recolor>[0]) {
   return serialPerPlugin(args.plugin, () => recolor(args))
+}
+
+function hasUnvaluedResidue({
+  placedValues,
+  entity,
+}: {
+  placedValues?: PlacedValues
+  entity?: { entityId: string; seqIds: readonly number[] }
+}) {
+  return (
+    !entity ||
+    placedValues?.entityId !== entity.entityId ||
+    entity.seqIds.some(id => !placedValues.byLabelSeqId.has(id))
+  )
+}
+
+/**
+ * The grey a ramp's key needs beside it, which Mol*'s scale legend has no slot
+ * for: a linear placed-value theme paints it on a residue with no value, so
+ * the entry is there while some structure's mapped entity has such a residue.
+ */
+export function rampNoValueEntry(
+  color: ProteinColor,
+  structures: readonly Parameters<typeof hasUnvaluedResidue>[0][],
+) {
+  return isPlacedValueScheme(molstarThemeOf(color)) &&
+    resolvedColor(color)?.scale === 'linear' &&
+    structures.some(hasUnvaluedResidue)
+    ? { label: 'No value', color: NO_VALUE_CSS }
+    : undefined
 }
 
 /**

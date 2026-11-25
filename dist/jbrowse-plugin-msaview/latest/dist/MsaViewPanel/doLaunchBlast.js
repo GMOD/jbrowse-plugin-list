@@ -16,8 +16,7 @@ import { str, transcriptFields, transcriptName } from './util';
  * (`P53_HUMAN_query`), since a search of swissprot returns the entry itself
  * as a hit and two rows called the same thing collapse into one.
  */
-async function resolveQuery(self, scope) {
-    const params = self.blastParams;
+async function resolveQuery(self, params, scope) {
     if (params.proteinSequence) {
         return {
             sequence: cleanProteinSequence(params.proteinSequence),
@@ -38,8 +37,7 @@ async function resolveQuery(self, scope) {
     }
     throw new Error('No query: a search needs a proteinSequence, a UniProt accession, or a connectedTranscript to translate');
 }
-async function search({ self, scope, query, querySeqName, maxHits, key, }) {
-    const params = self.blastParams;
+async function search({ params, scope, query, querySeqName, maxHits, key, }) {
     const { onProgress, onRid, signal } = scope;
     const { hits, queryRow, rid } = await searchBackends[params.searchProgram ?? 'blastp']({
         query,
@@ -66,14 +64,15 @@ async function search({ self, scope, query, querySeqName, maxHits, key, }) {
     });
     // rows named without NCBI's answer are not worth reusing for a week
     const namesFailed = nameFailures.length > 0;
-    if (!queryRow && !namesFailed) {
-        await saveSearch({ id: key, fasta, treeMetadata, rid });
+    const aligned = queryRow !== undefined;
+    if (!namesFailed) {
+        await saveSearch({ id: key, fasta, treeMetadata, rid, aligned });
     }
     return {
         fasta,
         treeMetadata,
         rid,
-        queryRow,
+        aligned,
         warnings: namesFailed
             ? [
                 'NCBI did not answer for some species names, so those rows are named by scientific name alone.',
@@ -93,7 +92,7 @@ export async function doLaunchBlast({ self, scope, }) {
     const params = self.blastParams;
     const { selectedTranscript, maxHits = defaultMaxHits, searchProgram = 'blastp', } = params;
     const msaAlgorithm = params.msaAlgorithm ?? 'browser';
-    const { sequence: query, name: querySeqName } = await resolveQuery(self, scope);
+    const { sequence: query, name: querySeqName } = await resolveQuery(self, params, scope);
     if (searchProgram === 'blastp' && msaAlgorithm === 'browser') {
         checkPairSize(querySeqName, query.length, query.length);
     }
@@ -109,8 +108,9 @@ export async function doLaunchBlast({ self, scope, }) {
     if (found) {
         onProgress(`Reusing the ${searchProgram} search from ${new Date(found.timestamp).toLocaleString()}...`);
     }
-    const { fasta, treeMetadata, rid, queryRow, warnings } = found ?? (await search({ self, scope, query, querySeqName, maxHits, key }));
-    const { msa, tree } = queryRow
+    const { fasta, treeMetadata, rid, aligned, warnings } = found ??
+        (await search({ params, scope, query, querySeqName, maxHits, key }));
+    const { msa, tree } = aligned
         ? { msa: fasta, tree: '' }
         : await launchMSA({
             algorithm: msaAlgorithm,
@@ -123,7 +123,7 @@ export async function doLaunchBlast({ self, scope, }) {
     await saveBlastResult({
         proteinSequence: query,
         blastDatabase: params.blastDatabase,
-        msaAlgorithm: queryRow ? undefined : msaAlgorithm,
+        msaAlgorithm: aligned ? undefined : msaAlgorithm,
         searchProgram: params.searchProgram,
         maxHits,
         msa,

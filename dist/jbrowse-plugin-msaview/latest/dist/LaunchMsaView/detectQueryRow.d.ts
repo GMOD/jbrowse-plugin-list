@@ -12,7 +12,7 @@
  * `Query_1`, EBI's aligners carry the accession -- so the name is no help. The
  * residues are, and they survive every rename.
  */
-export type MatchQuality = 'exact' | 'partial' | 'similar';
+type MatchQuality = 'exact' | 'partial' | 'similar';
 export interface QueryRowMatch {
     name: string;
     quality: MatchQuality;
@@ -30,7 +30,7 @@ export interface QueryRowMatch {
      */
     offset: number;
 }
-export interface MsaQueryRow {
+interface MsaQueryRow {
     /** every row name, in file order, for the picker to offer */
     names: string[];
     /** the row whose residues are the query's, if one of them is */
@@ -45,3 +45,4 @@ export interface MsaQueryRow {
  * few-hundred-row alignment twice per character.
  */
 export declare function findQueryRow(msaText: string, proteinSequence: string, preferredName?: string): MsaQueryRow;
+export {};

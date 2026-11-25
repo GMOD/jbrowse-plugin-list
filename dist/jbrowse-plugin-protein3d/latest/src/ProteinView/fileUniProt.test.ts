@@ -4,8 +4,8 @@ import { Task } from 'molstar/lib/mol-task'
 import { chooseUniProtMappingForEntity, extractEntities } from 'p2s_mapper'
 import { expect, test } from 'vitest'
 
-import { complexMembersLabel, fileUniProtMappings } from './fileUniProt'
 import { caOnlyMmcif } from '../test_data/molstarStructure'
+import { complexMembersLabel, fileUniProtMappings } from './fileUniProt'
 
 // AF-0000000210612662's own rows, spans cut to the test chains' length. Mol*'s
 // schema for the category has no gene_name, so a reader of its `db` table

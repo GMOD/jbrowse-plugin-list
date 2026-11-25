@@ -33,14 +33,13 @@ interface SessionWithWorkspaces {
   setPendingMove: (move: { type: 'splitRight'; viewId: string }) => void
 }
 
-const hasAction = (session: AbstractSessionModel, name: string) =>
-  name in session &&
-  typeof (session as unknown as Record<string, unknown>)[name] === 'function'
-
 function isSessionWithMoves(
   session: AbstractSessionModel,
 ): session is AbstractSessionModel & SessionWithMoves {
-  return hasAction(session, 'moveViewToSplit')
+  return (
+    'moveViewToSplit' in session &&
+    typeof session.moveViewToSplit === 'function'
+  )
 }
 
 // Warned at most once: this is a property of the host, so it is the same answer
@@ -50,8 +49,11 @@ let warnedPartial = false
 function isSessionWithWorkspaces(
   session: AbstractSessionModel,
 ): session is AbstractSessionModel & SessionWithWorkspaces {
-  const canEnable = hasAction(session, 'setUseWorkspaces')
-  const canPlace = hasAction(session, 'setPendingMove')
+  const canEnable =
+    'setUseWorkspaces' in session &&
+    typeof session.setUseWorkspaces === 'function'
+  const canPlace =
+    'setPendingMove' in session && typeof session.setPendingMove === 'function'
 
   // Missing BOTH is an embedded session, with no workspaces to ask for. Missing
   // ONE means the host moved the action out from under us: jbrowse-web once

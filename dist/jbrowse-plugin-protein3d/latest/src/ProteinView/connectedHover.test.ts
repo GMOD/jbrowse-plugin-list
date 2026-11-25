@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
-import { connectedHoverTranscriptPos } from './connectedHover'
 import { literalNaming } from '../test_data/naming'
+import { connectedHoverTranscriptPos } from './connectedHover'
 
 // residues 0 and 1 of a minus-strand transcript on chr17
 const mapping = {

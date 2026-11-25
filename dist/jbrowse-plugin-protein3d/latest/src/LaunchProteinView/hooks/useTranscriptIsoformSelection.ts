@@ -1,8 +1,8 @@
+import { codingTranscripts } from '../codingFeature'
+import { rankableIsoforms } from '../utils/util'
 import useIsoformProteinSequences from './useIsoformProteinSequences'
 import useIsoformRanking from './useIsoformRanking'
 import useTranscriptSelection from './useTranscriptSelection'
-import { codingTranscripts } from '../codingFeature'
-import { rankableIsoforms } from '../utils/util'
 
 import type { Feature } from '@jbrowse/core/util'
 
@@ -27,11 +27,17 @@ export default function useTranscriptIsoformSelection({
   resetKey?: string
 }) {
   const transcripts = codingTranscripts(feature)
-  const { isoformSequences, isLoading, error, partialFailure } =
-    useIsoformProteinSequences({
-      feature,
-      view,
-    })
+  const {
+    isoformSequences,
+    isLoading,
+    error,
+    partialFailure,
+    retry: retryIsoforms,
+    retrying: isoformsRetrying,
+  } = useIsoformProteinSequences({
+    feature,
+    view,
+  })
   const { ranking, error: rankingError } = useIsoformRanking({
     view,
     isoforms: rankableIsoforms(transcripts, isoformSequences),
@@ -60,7 +66,10 @@ export default function useTranscriptIsoformSelection({
     isRanking:
       !!isoformSequences && !ranking && !rankingError && !userSelection,
     error: error ?? rankingError,
+    rankingError,
     partialFailure,
+    retryIsoforms,
+    isoformsRetrying,
     selectedTranscriptId: userSelection,
     setSelectedTranscriptId: setUserSelection,
     selectedTranscript,

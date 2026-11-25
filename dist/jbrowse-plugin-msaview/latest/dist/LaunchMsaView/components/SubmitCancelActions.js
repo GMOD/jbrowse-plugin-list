@@ -1,9 +1,7 @@
 import React from 'react';
-import { getSession } from '@jbrowse/core/util';
 import { Button, Checkbox, DialogActions, FormControlLabel, } from '@mui/material';
 import { observer } from 'mobx-react';
-import { readLaunchPlacement, sessionSupportsPlacement, writeLaunchPlacement, } from '../../utils/workspaces';
-import { useLaunchPlacement } from './launchPlacement';
+import { useSubmitPlacement } from './launchPlacement';
 /**
  * Where the launch puts the view, offered wherever a launch is submitted.
  *
@@ -21,11 +19,10 @@ const PlacementToggle = observer(function PlacementToggle({ checked, onChange, }
             } }) }));
 });
 const SubmitCancelActions = observer(function SubmitCancelActions({ onSubmit, onCancel, submitDisabled, hint, submitLabel = 'Submit', model, }) {
-    const [sideBySide, setSideBySide] = useLaunchPlacement();
     // The stored value is what the next dialog opens on, so it is written on
     // submit rather than on the click: a dialog the user backed out of must not
     // move where every future launch lands.
-    const offerPlacement = !!model && sessionSupportsPlacement(getSession(model));
+    const { offerPlacement, sideBySide, setSideBySide, commitPlacement } = useSubmitPlacement(model);
     return (React.createElement(DialogActions, { sx: { flexWrap: 'wrap', rowGap: 1 } },
         offerPlacement ? (React.createElement(PlacementToggle, { checked: sideBySide, onChange: setSideBySide })) : null,
         React.createElement("div", { style: {
@@ -36,14 +33,7 @@ const SubmitCancelActions = observer(function SubmitCancelActions({ onSubmit, on
             } },
             hint,
             React.createElement(Button, { sx: { flexShrink: 0 }, color: "primary", variant: "contained", disabled: submitDisabled, onClick: () => {
-                    if (offerPlacement) {
-                        const placement = sideBySide ? 'splitRight' : 'stack';
-                        writeLaunchPlacement(placement);
-                        onSubmit(placement);
-                    }
-                    else {
-                        onSubmit(readLaunchPlacement());
-                    }
+                    onSubmit(commitPlacement());
                 } }, submitLabel),
             React.createElement(Button, { sx: { flexShrink: 0 }, color: "secondary", variant: "contained", onClick: () => {
                     onCancel();

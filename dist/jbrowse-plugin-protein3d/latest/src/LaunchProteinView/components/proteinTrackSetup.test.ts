@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest'
 
-import { proteinTrackConfs } from './proteinTrackSetup'
 import { colorChannel, cssScaleOf } from '../../ProteinView/colorScale'
 import { UNIPROT_FEATURE_COLOR } from '../../ProteinView/uniprotFeatureTypes'
+import { proteinTrackConfs } from './proteinTrackSetup'
 
 const GFF = 'https://rest.uniprot.org/uniprotkb/P04637.gff'
 

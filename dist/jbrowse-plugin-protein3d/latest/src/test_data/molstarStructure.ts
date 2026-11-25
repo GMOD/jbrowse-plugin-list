@@ -1,11 +1,11 @@
 import { OrderedSet } from 'molstar/lib/mol-data/int'
 import { CIF } from 'molstar/lib/mol-io/reader/cif'
+import { trajectoryFromMmCIF } from 'molstar/lib/mol-model-formats/structure/mmcif'
 import {
   Structure,
   StructureElement,
   StructureProperties,
 } from 'molstar/lib/mol-model/structure'
-import { trajectoryFromMmCIF } from 'molstar/lib/mol-model-formats/structure/mmcif'
 import { Task } from 'molstar/lib/mol-task'
 
 export interface TestChain {

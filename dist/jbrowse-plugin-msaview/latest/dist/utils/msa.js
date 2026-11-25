@@ -1,5 +1,6 @@
 import { alignInBrowser, parseFastaRecords } from './browserAlign';
 import { runEbiJob } from './ebiJobDispatcher';
+import { isAbortError } from './fetch';
 const algorithms = {
     clustalo: {
         params: {},
@@ -48,7 +49,13 @@ export async function launchMSA({ algorithm, sequence, onProgress, signal, }) {
     });
     const [msa, tree] = await Promise.all([
         job.result(config.msaResult),
-        job.result(config.treeResult),
+        job.result(config.treeResult, { retry: false }).catch((e) => {
+            if (isAbortError(e)) {
+                throw e;
+            }
+            console.warn('[msaview] EBI returned no tree, building one here:', e);
+            return '';
+        }),
     ]);
     return { msa, tree };
 }

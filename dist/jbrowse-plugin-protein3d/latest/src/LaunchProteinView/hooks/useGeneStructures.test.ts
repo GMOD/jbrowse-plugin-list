@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { SimpleFeature } from '@jbrowse/core/util'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 
 import useGeneStructures from './useGeneStructures'
 
 import type * as StructureDatasets from '../utils/structureDatasets'
 import type { StructureDataset } from '../utils/structureDatasets'
+import type { SectionStatus } from './useGeneStructures'
 import type * as P2sMapper from 'p2s_mapper'
 
 // each test asks its own accession, and the second its own entry, so SWR's
@@ -47,6 +48,8 @@ vi.mock('../utils/structureDatasets', async importActual => {
   }
 })
 
+// P00006's listing fails the first time it is asked, as RCSB does under load
+const askedOnce = new Set<string>()
 vi.mock('p2s_mapper', async importActual => ({
   ...(await importActual<typeof P2sMapper>()),
   fetchAlphaFoldModels: async (accession: string) => [
@@ -63,7 +66,11 @@ vi.mock('p2s_mapper', async importActual => ({
     return []
   },
   fetchExperimentalStructures: async (accession: string) => {
-    if (accession === 'P00003') {
+    if (
+      accession === 'P00003' ||
+      (accession === 'P00006' && !askedOnce.has(accession))
+    ) {
+      askedOnce.add(accession)
       throw new Error('HTTP 503 from sequence-coordinates.rcsb.org')
     }
     return [
@@ -145,6 +152,10 @@ function configWith(datasets: StructureDataset[]) {
   return jbrowse
 }
 
+function messages(section: SectionStatus) {
+  return section.notices.map(n => n.message)
+}
+
 function render(uniprotId: string) {
   return renderHook(() =>
     useGeneStructures({
@@ -171,6 +182,7 @@ test('lists the model, then an entry once RCSB has named its partners', async ()
     loading: [],
     notices: [],
   })
+  expect(result.current.sourceFailed).toBe(false)
 })
 
 test('a failed partner lookup places entries by coverage and says so', async () => {
@@ -181,28 +193,67 @@ test('a failed partner lookup places entries by coverage and says so', async () 
       ['pdb:8bad', 'alone'],
     ])
   })
-  expect(result.current.sections.alone.notices).toEqual([
+  expect(messages(result.current.sections.alone)).toEqual([
     expect.stringMatching(/^RCSB did not describe the PDB entries.*503/),
   ])
   expect(result.current.sections.fragment.notices).toEqual([])
+  expect(result.current.sections.partner.notices).toEqual([])
 })
 
-test('RCSB failing leaves the AlphaFold model listed and a line in each section', async () => {
+test('a Retry leaves the rows and the default where they are while it runs', async () => {
+  const { result } = render('P00002')
+  await waitFor(() => {
+    expect(result.current.sections.alone.notices).toHaveLength(1)
+  })
+  const rows = result.current.rows.map(r => r.key)
+  act(() => {
+    result.current.sections.alone.notices[0]?.retry?.()
+  })
+  expect(result.current.sections.alone.notices[0]?.retrying).toBe(true)
+  expect(result.current.rows.map(r => r.key)).toEqual(rows)
+  expect(result.current.defaultSettled).toBe(true)
+  await waitFor(() => {
+    expect(result.current.sections.alone.notices[0]?.retrying).toBe(false)
+  })
+  expect(result.current.rows.map(r => r.key)).toEqual(rows)
+})
+
+test('RCSB failing leaves the AlphaFold model listed and one line to retry', async () => {
   const { result } = render('P00003')
   await waitFor(() => {
-    expect(result.current.sections.fragment.notices).toEqual([
+    expect(messages(result.current.sections.alone)).toEqual([
       expect.stringMatching(/^RCSB did not list the PDB entries/),
     ])
   })
   expect(result.current.rows.map(r => r.key)).toEqual(['alphafold'])
-  expect(result.current.sections.alone.notices).toHaveLength(1)
-  expect(result.current.sections.partner.notices).toHaveLength(1)
+  expect(result.current.sections.partner.notices).toEqual([])
+  expect(result.current.sections.fragment.notices).toEqual([])
+  expect(result.current.sourceFailed).toBe(true)
+})
+
+test('Retry asks RCSB again and lists what it answers', async () => {
+  const { result } = render('P00006')
+  await waitFor(() => {
+    expect(messages(result.current.sections.alone)).toEqual([
+      expect.stringMatching(/^RCSB did not list the PDB entries/),
+    ])
+  })
+  act(() => {
+    result.current.sections.alone.notices[0]?.retry?.()
+  })
+  await waitFor(() => {
+    expect(result.current.rows.map(r => r.key)).toEqual([
+      'alphafold',
+      'pdb:9btm',
+    ])
+  })
+  expect(result.current.sections.alone.notices).toEqual([])
 })
 
 test('the complex list failing costs only its own section a line', async () => {
   const { result } = render('P00004')
   await waitFor(() => {
-    expect(result.current.sections.partner.notices).toEqual([
+    expect(messages(result.current.sections.partner)).toEqual([
       expect.stringMatching(/complex list did not answer/),
     ])
   })
@@ -249,7 +300,7 @@ test('a dataset that fails to load costs a line, not the list', async () => {
     }),
   )
   await waitFor(() => {
-    expect(result.current.sections.alone.notices).toEqual([
+    expect(messages(result.current.sections.alone)).toEqual([
       "offline folds's structure list did not load: HTTP 404",
     ])
   })

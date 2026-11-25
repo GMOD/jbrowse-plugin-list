@@ -26,7 +26,11 @@ export interface VariantEffectStatus {
   placed?: PlacedValues
   /** why the scheme leaves this structure grey, once that is settled */
   message?: string
+  /** whether that is a failure rather than a fact about the structure */
+  severity?: StatusSeverity
 }
+
+export type StatusSeverity = 'error' | 'info'
 
 /**
  * Where a structure's variant-effect request stands, and its answer placed on
@@ -53,7 +57,8 @@ export function variantEffectStatus({
   ask: VariantEffectAsk | undefined
   state: VariantEffectState | undefined
   entity:
-    { entityId: string; seq: string; seqIds: readonly number[] } | undefined
+    | { entityId: string; seq: string; seqIds: readonly number[] }
+    | undefined
   pdbId: string | undefined
   mapUniProtPosition: MapUniProtPosition
   transcriptToStructure: CoordinateMapper['transcriptToStructure'] | undefined
@@ -69,13 +74,13 @@ export function variantEffectStatus({
   const source = VARIANT_EFFECT_SOURCE_NAMES[request.scheme]
   const { error } = answer ?? {}
   if (error !== undefined) {
-    return {
-      pending: false,
-      message:
-        error instanceof VariantEffectRefusal
-          ? error.message
-          : `Could not fetch ${source} for ${request.label}: ${errorMessage(error)}`,
-    }
+    return error instanceof VariantEffectRefusal
+      ? { pending: false, message: error.message }
+      : {
+          pending: false,
+          message: `Could not fetch ${source} for ${request.label}: ${errorMessage(error)}`,
+          severity: 'error',
+        }
   }
   const values = answer?.values
   if (!values) {

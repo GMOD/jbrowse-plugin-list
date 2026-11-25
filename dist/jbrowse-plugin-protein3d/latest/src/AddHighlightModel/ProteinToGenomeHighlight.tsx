@@ -35,6 +35,7 @@ const ProteinToGenomeHighlight = observer(function ProteinToGenomeHighlight({
           <Highlight
             key={`${r.refName}-${r.start}-${r.end}-${idx}-${idx2}`}
             model={model}
+            kind={field === 'clickGenomeHighlights' ? 'selection' : 'hover'}
             region={{
               start: r.start,
               end: r.end,

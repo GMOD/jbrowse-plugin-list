@@ -8,10 +8,17 @@ import { STATIC_SWR_OPTIONS } from './swrOptions'
 export default function useExperimentalStructures(
   uniprotId: string | undefined,
 ) {
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     uniprotId ? (['experimental-structures', uniprotId] as const) : null,
     ([, id]) => fetchExperimentalStructures(id),
     STATIC_SWR_OPTIONS,
   )
-  return { entries: data, error, isLoading }
+  return {
+    entries: data,
+    error,
+    isLoading,
+    retry: () => {
+      void mutate()
+    },
+  }
 }

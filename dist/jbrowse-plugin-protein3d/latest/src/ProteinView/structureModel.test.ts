@@ -1,15 +1,19 @@
 import { getSession } from '@jbrowse/core/util'
 import { destroy, getSnapshot, types } from '@jbrowse/mobx-state-tree'
 import { observable, reaction } from 'mobx'
-import { structurePos } from 'p2s_mapper'
+import { alignmentLength, structureAlignedSeq, structurePos } from 'p2s_mapper'
 import { beforeEach, expect, test, vi } from 'vitest'
 
-import { structuresSettled } from './frameSelection'
-import Structure from './structureModel'
 import { parseStructure } from '../test_data/molstarStructure'
+import { rulerTicks } from './components/AlignmentRuler'
+import { structuresSettled } from './frameSelection'
+import { layoutFeature } from './hooks/useProteinFeatureTrackData'
+import Structure from './structureModel'
+import { superpositionKeys } from './structureSuperposer'
 
 import type { StructureAssembly } from './loadStructureData'
 import type { ProteinColor } from './proteinColor'
+import type { SuperpositionKey } from './structureSuperposer'
 import type * as JBrowseCoreUtil from '@jbrowse/core/util'
 import type { AlignmentAlgorithm, PairwiseAlignment } from 'p2s_mapper'
 
@@ -68,7 +72,11 @@ const TestParent = types
       return undefined
     },
   }))
-  .volatile(() => ({ viewNotices: new Array<unknown>(), superposedCount: 0 }))
+  .volatile(() => ({
+    viewNotices: new Array<unknown>(),
+    superposedKeys: new Array<SuperpositionKey>(),
+    superposing: false,
+  }))
   .views(self => ({
     get settled() {
       return structuresSettled(self)
@@ -78,8 +86,8 @@ const TestParent = types
     addNotice(e: unknown) {
       self.viewNotices.push(e)
     },
-    setSuperposedCount(n: number) {
-      self.superposedCount = n
+    markSuperposed() {
+      self.superposedKeys = superpositionKeys(self.structures)
     },
     clearSelection() {
       for (const structure of self.structures) {
@@ -88,6 +96,10 @@ const TestParent = types
       }
     },
   }))
+
+const LOADED_STRUCTURES = [
+  await parseStructure([{ asym: 'A', entity: '1', residues: ['MET'] }]),
+]
 
 const pairwiseAlignment: PairwiseAlignment = {
   consensus: '||||',
@@ -187,7 +199,7 @@ test('names the step it is on while it settles', () => {
 
   // an RCSB entry is still settling until SIFTS answers: that is what unmaps a
   // fusion partner and places the UniProt tracks
-  pdb!.setLoadedToMolstar(true)
+  pdb!.setStructureData({ molstarStructures: LOADED_STRUCTURES })
   expect(pdb!.loadingMessage).toBe('Mapping 1TUP to UniProt')
   pdb!.setUniProtMappings([])
   expect(pdb!.loading).toBe(false)
@@ -268,6 +280,43 @@ test('resolves a pdbId shorthand to an RCSB url at hydration', () => {
   )
 })
 
+// a stalled download read as a stalled API lookup, and a 404 reported no file
+test('an AlphaFold file being loaded is named by the loading text and the report', () => {
+  const parent = TestParent.create({ structures: [{ uniprotId: 'P04637' }] })
+  const [s] = parent.structures
+  expect(s!.loadingMessage).toBe('Resolving AlphaFold model for P04637')
+  s!.setResolvedUrl('https://alphafold.ebi.ac.uk/files/AF-P04637-F1.cif')
+  expect(s!.loadingMessage).toMatch(/^Loading /)
+  s!.setError(new Error('404'))
+  expect(s!.report.url).toBe(
+    'https://alphafold.ebi.ac.uk/files/AF-P04637-F1.cif',
+  )
+})
+
+// two standalone PDB entries superposed at once before the superposer gated
+// on loading, which waits on SIFTS for every PDB entry
+test('only an aligned PDB entry has an alignment awaiting SIFTS', () => {
+  const parent = TestParent.create({
+    structures: [
+      { pdbId: '1CRN' },
+      { pdbId: '1CRN', userProvidedTranscriptSequence: 'MKAA' },
+    ],
+  })
+  const [standalone, aligned] = parent.structures
+  for (const s of parent.structures) {
+    s.setStructureData({
+      entities: NUMBERED_FROM_94,
+      molstarStructures: LOADED_STRUCTURES,
+    })
+  }
+  expect(standalone!.loading).toBe(true)
+  expect(standalone!.alignmentAwaitingSifts).toBe(false)
+  expect(aligned!.pairwiseAlignment).toBeDefined()
+  expect(aligned!.alignmentAwaitingSifts).toBe(true)
+  aligned!.setUniProtMappings([])
+  expect(aligned!.alignmentAwaitingSifts).toBe(false)
+})
+
 test('an explicit url wins over a uniprotId shorthand', () => {
   const parent = TestParent.create({
     structures: [{ url: 'https://example.com/x.cif', uniprotId: 'P04637' }],
@@ -282,12 +331,16 @@ test('hoverAlignmentPosition updates hoverPosition when no feature is hovered', 
   expect(model.hoverPosition?.structureSeqPos).toBe(0)
 })
 
-test('hoverAlignmentPosition is blocked when alignmentHoverRange is set', () => {
+// the residue hovered before the feature bar stayed lit beside the range, and
+// the header kept naming it
+test('a feature range hover replaces the residue hover and blocks the next', () => {
   const model = makeModel()
   model.setHoveredPosition({ structureSeqPos: 42 })
   model.setAlignmentHoverRange({ start: 5, end: 15 })
+  expect(model.hoverPosition).toBeUndefined()
+  expect(model.alignmentHoverPos).toBeUndefined()
   model.hoverAlignmentPosition(0)
-  expect(model.hoverPosition?.structureSeqPos).toBe(42)
+  expect(model.hoverPosition).toBeUndefined()
 })
 
 test('hoverAlignmentPosition resumes after alignmentHoverRange is cleared', () => {
@@ -757,8 +810,7 @@ test('a structure is loading until it is in Mol*, aligned, and SIFTS has answere
     { entityId: '1', seq: 'MKAA', seqIds: [1, 2, 3, 4], chains: ['A'] },
   ]
   for (const s of [model!, entry!]) {
-    s.setStructureData({ entities })
-    s.setLoadedToMolstar(true)
+    s.setStructureData({ entities, molstarStructures: LOADED_STRUCTURES })
   }
   expect(model!.pairwiseAlignment).toBeDefined()
   expect(model!.loading).toBe(false)
@@ -787,16 +839,15 @@ test('a Mol* interaction on another structure of the view names no position here
   const [human, mouse] = parent.structures
   const humanStructure = await parseStructure([chain])
   const mouseStructure = await parseStructure([chain])
+  const humanSecondModel = await parseStructure([chain])
   // the human entry as an NMR ensemble: a hover on its second model is its own
   human!.setStructureData({
     entities,
-    molstarStructures: [humanStructure],
-    modelIds: [humanStructure.model.id, 'human-model-2'],
+    molstarStructures: [humanStructure, humanSecondModel],
   })
   mouse!.setStructureData({
     entities,
     molstarStructures: [mouseStructure],
-    modelIds: [mouseStructure.model.id],
   })
 
   const hover = (s: typeof humanStructure) => ({
@@ -810,7 +861,7 @@ test('a Mol* interaction on another structure of the view names no position here
   expect(
     human!.interactionPosition({
       ...hover(humanStructure),
-      modelId: 'human-model-2',
+      modelId: humanSecondModel.model.id,
     }),
   ).toBe(2)
   expect(human!.interactionPosition(hover(mouseStructure))).toBeUndefined()
@@ -835,7 +886,6 @@ test('an unmapped structure answers hovers on its first chain only', async () =>
       { entityId: '2', seq: 'GGG', seqIds: [1, 2, 3], chains: ['B'] },
     ],
     molstarStructures: [molstarStructure],
-    modelIds: [molstarStructure.model.id],
   })
   const hover = (entityId: string, chain: string) => ({
     labelSeqId: 3,
@@ -869,12 +919,20 @@ test('an unmapped structure reads hovers from its first protein chain', () => {
 
 test('label names the structure by id so stacked panels can be told apart', () => {
   const parent = TestParent.create({
-    structures: [{ pdbId: '1TUP' }, { uniprotId: 'P04637' }, { data: 'ATOM' }],
+    structures: [
+      { pdbId: '1TUP' },
+      { uniprotId: 'P04637' },
+      { data: 'ATOM' },
+      { data: 'ATOM', fileName: 'kras_g12c.pdb' },
+      { pdbId: '1YCR', fileName: 'renamed.cif' },
+    ],
   })
   expect(parent.structures.map(s => s.label)).toEqual([
     '1TUP',
     'AlphaFold P04637',
     'Uploaded structure',
+    'kras_g12c.pdb',
+    '1YCR',
   ])
 })
 
@@ -895,7 +953,7 @@ test('hoverString reads out the aligned transcript residue beside the structure 
   })
   const model = parent.structures[0]!
   model.setHoveredPosition({ structureSeqPos: 1 })
-  expect(model.hoverString).toBe('2, Transcript residue: 4')
+  expect(model.hoverString).toBe('2 (transcript K4)')
 })
 
 test('hoverString uses the author number and drops the transcript residue when they agree', () => {
@@ -929,7 +987,7 @@ test('hoverString uses the author number and drops the transcript residue when t
   })
   model.setHoveredPosition({ structureSeqPos: 1 })
   expect(model.residueNumber(1)).toBe(4)
-  expect(model.hoverString).toBe('4, Structure: K')
+  expect(model.hoverString).toBe('K4')
 })
 
 test('initialTranscriptResidues seeds the selection through the alignment once the structure settles', async () => {
@@ -960,7 +1018,10 @@ test('initialTranscriptResidues seeds the selection through the alignment once t
     expect(model.alignment).toBeDefined()
   })
   expect(model.clickedStructureRanges).toEqual([])
-  model.setLoadedToMolstar(true)
+  model.setStructureData({
+    entities: model.entities,
+    molstarStructures: LOADED_STRUCTURES,
+  })
   // L and A are positions 1 and 2; the V between them is not modeled
   expect(model.clickedStructureRanges).toEqual([{ start: 1, end: 3 }])
   model.setClickedStructureRanges([])
@@ -974,7 +1035,10 @@ test('initialTranscriptResidues across a fusion selects the receptor either side
     alignmentImported: false,
     initialTranscriptResidues: { start: 3, end: 10 },
   })
-  model.setLoadedToMolstar(true)
+  model.setStructureData({
+    entities: model.entities,
+    molstarStructures: LOADED_STRUCTURES,
+  })
   expect(model.clickedStructureRanges).toEqual([
     { start: 2, end: 4 },
     { start: 8, end: 10 },
@@ -1041,10 +1105,12 @@ function twoNumberedStructures() {
 
 function settle(parent: ReturnType<typeof twoNumberedStructures>) {
   for (const s of parent.structures) {
-    s.setStructureData({ entities: NUMBERED_FROM_94 })
-    s.setLoadedToMolstar(true)
+    s.setStructureData({
+      entities: NUMBERED_FROM_94,
+      molstarStructures: LOADED_STRUCTURES,
+    })
   }
-  parent.setSuperposedCount(parent.structures.length)
+  parent.markSuperposed()
 }
 
 test('focusResidues waits for the view to settle, superposition included', async () => {
@@ -1054,15 +1120,37 @@ test('focusResidues waits for the view to settle, superposition included', async
   const pending = a!.focusResidues({ residues: { start: 95, end: 95 } })
   pending.then(r => (runs = r)).catch(() => {})
   for (const s of parent.structures) {
-    s.setStructureData({ entities: NUMBERED_FROM_94 })
-    s.setLoadedToMolstar(true)
+    s.setStructureData({
+      entities: NUMBERED_FROM_94,
+      molstarStructures: LOADED_STRUCTURES,
+    })
   }
   await Promise.resolve()
   expect(runs).toBeUndefined()
   expect(a!.clickedStructureRanges).toEqual([])
-  parent.setSuperposedCount(2)
+  parent.markSuperposed()
   expect(await pending).toEqual([{ start: 1, end: 2 }])
   expect(b!.clickedStructureRanges).toEqual([])
+})
+
+// an imported alignment re-superposes, and the camera reset that ends the run
+// undid a framing done while the count of loads still matched
+test('focusResidues waits for a re-superposition an imported alignment started', async () => {
+  const parent = twoNumberedStructures()
+  const [a, b] = parent.structures
+  settle(parent)
+  b!.setAlignment({ ...pairwiseAlignment }, true)
+  let runs: unknown
+  a!
+    .focusResidues({ residues: { start: 95, end: 95 } })
+    .then(r => (runs = r))
+    .catch(() => {})
+  await new Promise(resolve => setTimeout(resolve, 0))
+  expect(runs).toBeUndefined()
+  parent.markSuperposed()
+  await vi.waitFor(() => {
+    expect(runs).toEqual([{ start: 1, end: 2 }])
+  })
 })
 
 test('focusResidues rejects when the structure never settles', async () => {
@@ -1091,11 +1179,46 @@ test('focusResidues stops waiting as soon as its structure is destroyed', async 
 test('focusResidues works on a structure opened without a transcript', async () => {
   const parent = TestParent.create({ structures: [{ url: 'x.cif' }] })
   const [s] = parent.structures
-  s!.setStructureData({ entities: NUMBERED_FROM_94 })
-  s!.setLoadedToMolstar(true)
+  s!.setStructureData({
+    entities: NUMBERED_FROM_94,
+    molstarStructures: LOADED_STRUCTURES,
+  })
   expect(await s!.focusResidues({ residues: { start: 95, end: 95 } })).toEqual([
     { start: 1, end: 2 },
   ])
+})
+
+test('focusResidues settles on a structure with a transcript and no chain', async () => {
+  const parent = TestParent.create({
+    structures: [{ url: 'x.cif', userProvidedTranscriptSequence: 'MKAA' }],
+  })
+  const [s] = parent.structures
+  s!.setStructureData({ entities: [], molstarStructures: LOADED_STRUCTURES })
+  expect(s!.statusMessage).toBe('This structure has no chain to align')
+  expect(
+    await s!.focusResidues(
+      { residues: { start: 95, end: 95 } },
+      { timeout: 1000 },
+    ),
+  ).toEqual([])
+})
+
+// the maps kept reading the stored alignment beside "no chain to align"
+test('a stored alignment goes when its file yields no chain', () => {
+  const parent = TestParent.create({
+    structures: [
+      {
+        url: 'x.cif',
+        userProvidedTranscriptSequence: 'MKAA',
+        pairwiseAlignment,
+      },
+    ],
+  })
+  const [s] = parent.structures
+  s!.setStructureData({ entities: [], molstarStructures: LOADED_STRUCTURES })
+  expect(s!.alignmentSkipped).toBe('This structure has no chain to align')
+  expect(s!.alignment).toBeUndefined()
+  expect(s!.coordinateMapper).toBeUndefined()
 })
 
 // nothing will ever align such a structure, and a transcript range used to
@@ -1103,8 +1226,10 @@ test('focusResidues works on a structure opened without a transcript', async () 
 test('focusResidues names no residue for a transcript range on a structure without a transcript', async () => {
   const parent = TestParent.create({ structures: [{ url: 'x.cif' }] })
   const [s] = parent.structures
-  s!.setStructureData({ entities: NUMBERED_FROM_94 })
-  s!.setLoadedToMolstar(true)
+  s!.setStructureData({
+    entities: NUMBERED_FROM_94,
+    molstarStructures: LOADED_STRUCTURES,
+  })
   expect(
     await s!.focusResidues(
       { transcriptResidues: { start: 1, end: 2 } },
@@ -1122,8 +1247,8 @@ test('focusResidues resolves author numbers when no chain could be aligned', asy
   const [s] = parent.structures
   s!.setStructureData({
     entities: NUMBERED_FROM_94.map(e => ({ ...e, nucleicAcid: true })),
+    molstarStructures: LOADED_STRUCTURES,
   })
-  s!.setLoadedToMolstar(true)
   expect(
     await s!.focusResidues(
       { residues: { start: 95, end: 95 } },
@@ -1467,4 +1592,231 @@ test('a pLDDT color on an experimental structure says it shows no confidence', (
   })
   expect(crystal!.plddtMissing).toMatch(/experimental/)
   expect(model!.plddtMissing).toBeUndefined()
+})
+
+test('an alignment that lands clears the failure of the alignment before it', () => {
+  const s = makeModel()
+  s.setStructureData({
+    entities: NUMBERED_FROM_94,
+    molstarStructures: LOADED_STRUCTURES,
+  })
+  s.setError(new Error('worker died'))
+  expect(s.loadFailed).toBe(false)
+  s.setAlignment(pairwiseAlignment)
+  expect(s.error).toBeUndefined()
+})
+
+// a minimized view unloads every structure, and an alignment's error then
+// read as the load's and offered Retry
+test('an alignment failure stays one when its structure is unloaded', () => {
+  const s = makeModel()
+  s.setStructureData({
+    entities: NUMBERED_FROM_94,
+    molstarStructures: LOADED_STRUCTURES,
+  })
+  s.setError(new Error('worker died'))
+  s.clearMolstarStructures()
+  expect(s.loadFailed).toBe(false)
+})
+
+test('an alignment leaves a failed load failed', () => {
+  const s = makeModel()
+  s.setLoadError(new Error('404'))
+  expect(s.loadFailed).toBe(true)
+  s.setAlignment(pairwiseAlignment)
+  expect(s.error).toEqual(new Error('404'))
+})
+
+// with a second protein entity for the chain picker
+const STANDALONE_1TUP = [
+  ...ONE_TUP_ENTITIES,
+  { entityId: '4', seq: 'MKAA', seqIds: [1, 2, 3, 4], chains: ['D'] },
+]
+
+async function standalone1tup() {
+  const parent = TestParent.create({ structures: [{ pdbId: '1TUP' }] })
+  const opened = getSnapshot(parent)
+  const s = parent.structures[0]!
+  s.setStructureData({
+    entities: STANDALONE_1TUP,
+    molstarStructures: LOADED_STRUCTURES,
+  })
+  await vi.waitFor(() => {
+    expect(s.uniProtMappings).toBeDefined()
+  })
+  return { parent, opened, s }
+}
+
+test('a structure with no transcript draws its chain against itself, and nothing else reads it as aligned', async () => {
+  const { s } = await standalone1tup()
+  expect(s.mappedEntity?.entityId).toBe('3')
+  expect(s.panelAlignment && alignmentLength(s.panelAlignment)).toBe(
+    P53_CORE.length,
+  )
+  expect(s.panelAlignment && structureAlignedSeq(s.panelAlignment)).toBe(
+    P53_CORE,
+  )
+  expect(s.alignment).toBeUndefined()
+  expect(s.coordinateMapper).toBeUndefined()
+  expect(s.alignmentQuality).toBeUndefined()
+  expect(s.alignmentPending).toBe(false)
+  expect(s.alignmentSkipped).toBeUndefined()
+  expect(s.alignmentMatchSet).toBeUndefined()
+  expect(s.report.mapping).toBeUndefined()
+  expect(s.clickGenomeHighlights).toEqual([])
+})
+
+test("the ruler numbers a transcript-less chain by its authors' numbering", async () => {
+  const { s } = await standalone1tup()
+  const ticks = rulerTicks(
+    s.panelMapper?.alignmentToStructure,
+    P53_CORE.length,
+    pos => s.residueNumber(pos),
+  )
+  expect(ticks.slice(0, 3)).toEqual([
+    { col: 1 },
+    { col: 6, label: '100' },
+    { col: 11 },
+  ])
+  expect(ticks.at(-1)).toEqual({ col: 216, label: '310' })
+})
+
+test('a hover and a click in a transcript-less panel light the residue in Mol*, and save nothing', async () => {
+  const { parent, opened, s } = await standalone1tup()
+  s.hoverAlignmentPosition(6)
+  expect(s.structureSeqHoverPos).toBe(6)
+  expect(s.alignmentHoverPos).toBe(6)
+  expect(s.hoverLabelSeqIds).toEqual([7])
+  expect(s.hoverGenomeHighlights).toEqual([])
+
+  s.setHoveredPosition(undefined)
+  s.setAlignmentHoverRange({ start: 2, end: 4 })
+  expect(s.hoverLabelSeqIds).toEqual([3, 4, 5])
+  s.setAlignmentHoverRange(undefined)
+
+  s.clickAlignmentPosition(10)
+  expect(s.clickedStructureRanges).toEqual([{ start: 10, end: 11 }])
+  expect(s.clickAlignmentRanges).toEqual([{ start: 10, end: 10 }])
+  expect(s.selectLabelSeqIds).toEqual([11])
+
+  s.hoverAlignmentPosition(6)
+  expect(getSnapshot(parent)).toEqual(opened)
+})
+
+// SEQRES-less, with residue 97 unobserved: Mol* numbers by author residue and
+// the hole carries into label_seq_id
+test('a transcript-less panel addresses Mol* through the entity seqIds', () => {
+  const parent = TestParent.create({ structures: [{ url: 'x.pdb' }] })
+  const s = parent.structures[0]!
+  s.setStructureData({
+    entities: [
+      {
+        entityId: '1',
+        seq: 'SSSPSQ',
+        seqIds: [94, 95, 96, 98, 99, 100],
+        authSeqIds: [94, 95, 96, 98, 99, 100],
+        chains: ['A'],
+      },
+    ],
+  })
+  s.hoverAlignmentPosition(3)
+  expect(s.hoverLabelSeqIds).toEqual([98])
+  expect(
+    rulerTicks(s.panelMapper?.alignmentToStructure, 6, pos =>
+      s.residueNumber(pos),
+    ),
+  ).toEqual([{ col: 1 }, { col: 5, label: '100' }])
+})
+
+test("a UniProt feature lands on a transcript-less entity's columns through SIFTS", async () => {
+  const { s } = await standalone1tup()
+  s.setUniProtMappings([
+    {
+      accession: 'P04637',
+      segments: [
+        {
+          entityId: '3',
+          unpStart: 94,
+          unpEnd: 312,
+          structStart: 0,
+          structEnd: 218,
+        },
+      ],
+    },
+  ])
+  const { uniprotId, mapUniProtPosition } = s.uniProtEntry
+  expect(uniprotId).toBe('P04637')
+  const layout = layoutFeature(
+    {
+      type: 'Region',
+      start: 245,
+      end: 250,
+      description: '',
+      uniqueId: 'r',
+    },
+    s.panelMapper!.structureToAlignment,
+    mapUniProtPosition,
+  )
+  expect(layout).toMatchObject({
+    structureStart: 151,
+    structureEnd: 157,
+    alignmentStart: 151,
+    alignmentEnd: 156,
+    clipped: false,
+  })
+  expect(s.residueNumber(154)).toBe(248)
+})
+
+test('the chain picker switches a transcript-less panel to the picked entity', async () => {
+  const { s } = await standalone1tup()
+  s.clickAlignmentPosition(2)
+  s.chooseEntity('4')
+  expect(s.mappedEntity?.entityId).toBe('4')
+  expect(s.panelAlignment && structureAlignedSeq(s.panelAlignment)).toBe('MKAA')
+  expect(s.clickedStructureRanges).toEqual([])
+  expect(s.alignment).toBeUndefined()
+
+  // a DNA strand is not drawn as a protein
+  s.chooseEntity('1')
+  expect(s.mappedEntity?.nucleicAcid).toBe(true)
+  expect(s.panelAlignment).toBeUndefined()
+  expect(s.panelMapper).toBeUndefined()
+  expect(s.confidenceCells).toEqual([])
+})
+
+test('a transcript-less pLDDT model draws its confidence on its own columns', () => {
+  const parent = TestParent.create({ structures: [{ uniprotId: 'P04637' }] })
+  const s = parent.structures[0]!
+  s.setStructureData({
+    entities: [
+      { entityId: '1', seq: 'MEEP', seqIds: [1, 2, 3, 4], chains: ['A'] },
+    ],
+    confidence: [
+      {
+        entityId: '1',
+        byLabelSeqId: new Map([
+          [1, 30],
+          [2, 60],
+          [3, 80],
+          [4, 95],
+        ]),
+      },
+    ],
+  })
+  expect(s.confidenceCells).toEqual([
+    { col: 0, value: 30 },
+    { col: 1, value: 60 },
+    { col: 2, value: 80 },
+    { col: 3, value: 95 },
+  ])
+})
+
+test('a structure with a transcript has no panel until it is aligned, then the alignment', () => {
+  const parent = TestParent.create({
+    structures: [{ userProvidedTranscriptSequence: 'MKAA' }],
+  })
+  const s = parent.structures[0]!
+  expect(s.panelAlignment).toBeUndefined()
+  s.setAlignment(pairwiseAlignment)
+  expect(s.panelAlignment).toBe(s.alignment)
 })

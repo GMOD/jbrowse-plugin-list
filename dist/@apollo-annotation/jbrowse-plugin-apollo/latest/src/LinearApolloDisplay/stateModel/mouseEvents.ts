@@ -18,7 +18,10 @@ import {
   getPropagatedLocationChanges,
   isCDSFeature,
   isExonFeature,
+  nearestBaseBoundary,
+  roundPxSpan,
   selectFeatureAndOpenWidget,
+  setCanvasSize,
 } from '../../util'
 import { isMouseOnFeatureEdge } from '../glyphs/util'
 import type { CanvasMouseEvent } from '../types'
@@ -30,7 +33,13 @@ export interface MousePosition {
   y: number
   assemblyName: string
   refName: string
+  /** 0-based coordinate of the base under the mouse */
   bp: number
+  /**
+   * 0-based coordinate of the base boundary nearest the mouse, i.e. where a
+   * dragged feature edge (which sits between bases) should go
+   */
+  edgeBp: number
   regionNumber: number
 }
 
@@ -43,13 +52,12 @@ export function getMousePosition(
   const { left, top } = canvas.getBoundingClientRect()
   const x = clientX - left
   const y = clientY - top
-  const {
-    coord: bp,
-    index: regionNumber,
-    assemblyName,
-    refName,
-  } = lgv.pxToBp(x)
-  return { x, y, assemblyName, refName, bp, regionNumber }
+  const pxToBpResult = lgv.pxToBp(x)
+  const { coord, index: regionNumber, assemblyName, refName } = pxToBpResult
+  // pxToBp's `coord` is 1-based, but Apollo feature coordinates are 0-based
+  const bp = coord - 1
+  const edgeBp = nearestBaseBoundary(pxToBpResult)
+  return { x, y, assemblyName, refName, bp, edgeBp, regionNumber }
 }
 
 export function mouseEventsModelIntermediateFactory(
@@ -192,9 +200,10 @@ export function mouseEventsModelFactory(
           const assembly = self.getAssemblyId(region.assemblyName) as string
           const changes = getPropagatedLocationChanges(
             feature,
-            current.bp,
+            current.edgeBp,
             edge,
             shrinkParent,
+            self.session,
           )
 
           const change: LocationEndChange | LocationStartChange =
@@ -312,9 +321,7 @@ export function mouseEventsModelFactory(
               const { lgv, overlayCanvas } = self
               if (
                 !lgv.initialized ||
-                // This type is wrong in @jbrowse/core
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                self.regionCannotBeRendered() ||
+                self.displayMode !== 'features' ||
                 !overlayCanvas
               ) {
                 return
@@ -324,6 +331,11 @@ export function mouseEventsModelFactory(
               if (!ctx) {
                 return
               }
+              setCanvasSize(
+                overlayCanvas,
+                dynamicBlocks.totalWidthPx,
+                self.featuresHeight(lgv.assemblyNames[0]),
+              )
               ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height)
               const { apolloDragging, hoveredFeature } = self
               if (!hoveredFeature) {
@@ -335,15 +347,23 @@ export function mouseEventsModelFactory(
               if (row === undefined) {
                 return
               }
+              const featureRefName = self.getCanonicalRefName(
+                feature.assemblyId,
+                feature.refSeq,
+              )
 
               for (const block of dynamicBlocks.contentBlocks) {
-                const blockLeftPx = block.offsetPx - offsetPx
+                const clip = roundPxSpan(
+                  block.offsetPx - offsetPx,
+                  block.widthPx,
+                )
                 ctx.save()
                 ctx.beginPath()
-                ctx.rect(blockLeftPx, 0, block.widthPx, overlayCanvas.height)
+                ctx.rect(clip.startPx, 0, clip.widthPx, overlayCanvas.height)
                 ctx.clip()
                 if (
                   block.assemblyName === feature.assemblyId &&
+                  block.refName === featureRefName &&
                   doesIntersect2(
                     block.start,
                     block.end,
@@ -368,9 +388,10 @@ export function mouseEventsModelFactory(
                     start,
                     feature: dragFeature,
                   } = apolloDragging
-                  const dragMin = Math.min(current.bp, start.bp)
-                  const dragMax = Math.max(current.bp, start.bp)
+                  const dragMin = Math.min(current.edgeBp, start.edgeBp)
+                  const dragMax = Math.max(current.edgeBp, start.edgeBp)
                   if (
+                    block.refName === start.refName &&
                     doesIntersect2(block.start, block.end, dragMin, dragMax)
                   ) {
                     const dragGlyph = self.getGlyph(dragFeature)

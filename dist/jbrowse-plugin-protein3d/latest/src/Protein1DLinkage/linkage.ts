@@ -180,7 +180,8 @@ export interface LinkageAlignmentHost {
 }
 
 export type LinkageAlignment =
-  { alignment: PairwiseAlignment } | { problem: string }
+  | { alignment: PairwiseAlignment }
+  | { problem: string }
 
 /**
  * Align the linked transcript's translation to the sequence the 1D view

@@ -45,7 +45,7 @@ const AlignmentRuler = observer(function AlignmentRuler({
 }) {
   const { columnWidth } = model
   const ticks = rulerTicks(
-    model.coordinateMapper?.alignmentToStructure,
+    model.panelMapper?.alignmentToStructure,
     columns,
     pos => model.residueNumber(pos),
   )

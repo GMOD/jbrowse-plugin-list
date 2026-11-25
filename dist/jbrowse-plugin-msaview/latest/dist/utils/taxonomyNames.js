@@ -1,6 +1,6 @@
 import { decodeXmlEntities, efetchUrl, eutilsText } from './eutils';
 import { isAbortError } from './fetch';
-import { bestEffort, createDbOpener } from './idb';
+import { createDbOpener, getMany, putMany } from './idb';
 const DB_NAME = 'jbrowse-msaview-taxonomy-cache';
 const STORE_NAME = 'common-names';
 const DB_VERSION = 2;
@@ -11,23 +11,10 @@ const getDB = createDbOpener(DB_NAME, DB_VERSION, db => {
     db.createObjectStore(STORE_NAME, { keyPath: 'taxid' });
 });
 function getCachedTaxonomies(taxids) {
-    return bestEffort('taxonomy cache read', async () => {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const results = await Promise.all(taxids.map(taxid => tx.store.get(taxid)));
-        await tx.done;
-        return results;
-    }, []);
+    return getMany('taxonomy cache', getDB, STORE_NAME, taxids);
 }
 function saveTaxonomyCache(entries) {
-    return bestEffort('taxonomy cache write', async () => {
-        const db = await getDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        for (const entry of entries) {
-            await tx.store.put(entry);
-        }
-        await tx.done;
-    }, undefined);
+    return putMany('taxonomy cache', getDB, STORE_NAME, entries);
 }
 /**
  * Names are a nicety, so a batch NCBI refuses leaves its taxa out of the

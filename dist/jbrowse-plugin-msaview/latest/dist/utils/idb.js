@@ -24,15 +24,15 @@ export function createDbOpener(name, version, upgrade) {
     return () => {
         dbPromise ??= new Promise((resolve, reject) => {
             let gaveUp = false;
+            let opened;
             openDB(name, version, {
                 upgrade,
                 blocked(currentVersion) {
                     gaveUp = true;
                     reject(new Error(`${name} is held open at version ${currentVersion} by another tab`));
                 },
-                blocking(_currentVersion, _blockedVersion, event) {
-                    ;
-                    event.target.close();
+                blocking() {
+                    opened?.close();
                     forget();
                 },
                 terminated: forget,
@@ -41,6 +41,7 @@ export function createDbOpener(name, version, upgrade) {
                     db.close();
                 }
                 else {
+                    opened = db;
                     resolve(db);
                 }
             }, reject);
@@ -64,4 +65,21 @@ export async function bestEffort(what, operation, fallback) {
         console.warn(`[msaview] ${what} failed, continuing without it:`, e);
         return fallback;
     }
+}
+export function getMany(what, getDB, store, keys) {
+    return bestEffort(`${what} read`, async () => {
+        const tx = (await getDB()).transaction(store, 'readonly');
+        const results = await Promise.all(keys.map(key => tx.store.get(key)));
+        await tx.done;
+        return results;
+    }, []);
+}
+export function putMany(what, getDB, store, values) {
+    return bestEffort(`${what} write`, async () => {
+        const tx = (await getDB()).transaction(store, 'readwrite');
+        for (const value of values) {
+            await tx.store.put(value);
+        }
+        await tx.done;
+    }, undefined);
 }

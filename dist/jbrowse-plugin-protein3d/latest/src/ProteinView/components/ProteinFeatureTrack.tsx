@@ -3,6 +3,7 @@ import React from 'react'
 import { observer } from 'mobx-react'
 
 import FeatureBar from './FeatureBar'
+import { RangeBarTrack } from './RangeBar'
 
 import type { FeatureGroup } from '../hooks/useProteinFeatureTrackData'
 import type { JBrowsePluginProteinStructureModel } from '../model'
@@ -20,16 +21,25 @@ const ProteinFeatureTrack = observer(function ProteinFeatureTrack({
   const { selectedFeatureId, trackGap } = model
   const lanes = model.expandedFeatureTypes.has(group.type) ? group.laneCount : 1
   const height = `calc(${100 / lanes}% - ${trackGap}px)`
-  return group.layouts.map(layout => (
-    <FeatureBar
-      key={layout.feature.uniqueId}
-      layout={layout}
-      top={`${(Math.min(layout.lane, lanes - 1) / lanes) * 100}%`}
-      height={height}
-      selected={selectedFeatureId === layout.feature.uniqueId}
-      model={model}
-    />
-  ))
+  const tabStop = (
+    group.layouts.find(l => l.feature.uniqueId === selectedFeatureId) ??
+    group.layouts.toSorted((a, b) => a.alignmentStart - b.alignmentStart)[0]
+  )?.feature.uniqueId
+  return (
+    <RangeBarTrack>
+      {group.layouts.map(layout => (
+        <FeatureBar
+          key={layout.feature.uniqueId}
+          layout={layout}
+          top={`${(Math.min(layout.lane, lanes - 1) / lanes) * 100}%`}
+          height={height}
+          selected={selectedFeatureId === layout.feature.uniqueId}
+          tabStop={tabStop === layout.feature.uniqueId}
+          model={model}
+        />
+      ))}
+    </RangeBarTrack>
+  )
 })
 
 export default ProteinFeatureTrack

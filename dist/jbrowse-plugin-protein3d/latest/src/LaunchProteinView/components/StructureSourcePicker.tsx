@@ -11,8 +11,11 @@ import {
 } from '@mui/material'
 import { observer } from 'mobx-react'
 
+import {
+  STRUCTURE_FILE_ACCEPT,
+  formatFileSize,
+} from '../utils/readStructureFile'
 import HelpButton from './HelpButton'
-import { STRUCTURE_FILE_ACCEPT } from '../utils/readStructureFile'
 
 const StructureSourcePicker = observer(function StructureSourcePicker({
   choice,
@@ -79,7 +82,11 @@ const StructureSourcePicker = observer(function StructureSourcePicker({
               }}
             />
           </Button>
-          {file ? <Typography variant="body2">{file.name}</Typography> : null}
+          {file ? (
+            <Typography variant="body2">
+              {file.name} · {formatFileSize(file.size)}
+            </Typography>
+          ) : null}
         </div>
       )}
     </div>

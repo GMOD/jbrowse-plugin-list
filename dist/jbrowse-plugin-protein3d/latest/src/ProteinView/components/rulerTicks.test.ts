@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
-import { rulerTicks } from './AlignmentRuler'
 import { alignmentToStructure } from '../../test_data/positionLookups'
+import { rulerTicks } from './AlignmentRuler'
 
 test('labels every tenth residue and ticks every fifth, in alignment columns', () => {
   // a gap at column 3 shifts structure positions right by one

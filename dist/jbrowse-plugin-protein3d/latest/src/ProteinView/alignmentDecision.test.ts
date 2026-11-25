@@ -48,10 +48,19 @@ test('nothing to align without a transcript or entities', () => {
   for (const s of [
     state({ userProvidedTranscriptSequence: '' }),
     state({ entities: undefined }),
-    state({ entities: [] }),
+    state({ userProvidedTranscriptSequence: '', entities: [] }),
   ]) {
     expect(decideAlignment(s)).toEqual({ kind: 'nothingToAlign' })
   }
+})
+
+// a load with no polymer entity is finished, and nothing would ever choose
+// one, so a wait for the chosen chain ran to its timeout
+test('a transcript against a structure with no chain skips the alignment', () => {
+  expect(decideAlignment(state({ entities: [] }))).toEqual({
+    kind: 'skip',
+    reason: 'This structure has no chain to align',
+  })
 })
 
 test('keeps an alignment computed here, whatever chain is stored', () => {

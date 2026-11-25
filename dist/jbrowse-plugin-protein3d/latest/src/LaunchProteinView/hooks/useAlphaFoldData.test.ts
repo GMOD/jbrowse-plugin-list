@@ -36,8 +36,8 @@ const feature = new SimpleFeature({
   end: 10,
 })
 
-// SWR's keepPreviousData returns the last key's data after the key turns
-// null, and the tab's Launch read it as this accession's structure
+// a model left over from the last accession would be what the tab's Launch
+// opens
 test('clearing the accession clears the model', async () => {
   const initialProps: { uniprotId?: string } = { uniprotId: 'P04637' }
   const { result, rerender } = renderHook(
@@ -49,6 +49,26 @@ test('clearing the accession clears the model', async () => {
   })
   rerender({ uniprotId: undefined })
   expect(result.current.model).toBeUndefined()
+})
+
+test("a failed list after a good one reads none of the last accession's models", async () => {
+  const initialProps = { uniprotId: 'P38398' }
+  const { result, rerender } = renderHook(
+    ({ uniprotId }) => useAlphaFoldData({ uniprotId, feature }),
+    { initialProps },
+  )
+  await waitFor(() => {
+    expect(result.current.entryLength).toBe(4)
+  })
+  rerender({ uniprotId: 'UNREACHABLE' })
+  await waitFor(() => {
+    expect(result.current.model?.url).toBe(
+      getAlphaFoldStructureUrl('UNREACHABLE'),
+    )
+  })
+  expect(result.current.model?.sequence).toBeUndefined()
+  expect(result.current.entryLength).toBeUndefined()
+  expect(result.current.noModel).toBe(false)
 })
 
 test('an unreachable API falls back to the canonical file, as the quick launch does', async () => {

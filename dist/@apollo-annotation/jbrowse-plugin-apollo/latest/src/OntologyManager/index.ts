@@ -23,7 +23,11 @@ import type ApolloPluginConfigurationSchema from '../config'
 import type { ApolloRootModel } from '../types'
 
 import OntologyStore, { type OntologyStoreOptions } from './OntologyStore'
-import { applyPrefixes, expandPrefixes } from './OntologyStore/prefixes'
+import {
+  applyPrefixes,
+  defaultPrefixes,
+  expandPrefixes,
+} from './OntologyStore/prefixes'
 import {
   type OntologyTerm,
   defaultTextIndexFields,
@@ -42,6 +46,9 @@ export const OntologyRecordType = types
   .volatile((_self) => ({
     dataStore: undefined as undefined | OntologyStore,
     equivalentTypeRequests: new Map<string, Promise<void>>(),
+    // Keyed by the equivalent types' snapshot, which is replaced whenever the
+    // types change, so a cached set never goes stale
+    equivalentTypeSets: new WeakMap<readonly string[], Set<string>>(),
   }))
   .actions((self) => ({
     /** does nothing, just used to access the model to force its lifecycle hooks to run */
@@ -136,7 +143,15 @@ export const OntologyRecordType = types
         void self.loadEquivalentTypes(typeOf)
         return false
       }
-      return equivalents.includes(queryType)
+      // This is called for every feature drawn, and searching the MST array
+      // directly is slow for types with many equivalents (e.g. "transcript")
+      const snapshot = getSnapshot(equivalents)
+      let equivalentSet = self.equivalentTypeSets.get(snapshot)
+      if (!equivalentSet) {
+        equivalentSet = new Set(snapshot)
+        self.equivalentTypeSets.set(snapshot, equivalentSet)
+      }
+      return equivalentSet.has(queryType)
     },
   }))
 
@@ -144,10 +159,7 @@ export const OntologyManagerType = types
   .model('OntologyManager', {
     // create, update, and delete ontologies
     ontologies: types.array(OntologyRecordType),
-    prefixes: types.optional(types.map(types.string), {
-      'GO:': 'http://purl.obolibrary.org/obo/GO_',
-      'SO:': 'http://purl.obolibrary.org/obo/SO_',
-    }),
+    prefixes: types.optional(types.map(types.string), { ...defaultPrefixes }),
   })
   .views((self) => ({
     get featureTypeOntologyName(): string {

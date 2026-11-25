@@ -8,8 +8,9 @@ import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 import LockIcon from '@mui/icons-material/Lock'
 import { Alert, CircularProgress, Tooltip, useTheme } from '@mui/material'
 import { observer } from 'mobx-react'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
+import { FeatureDensityHistogram } from '../../components/FeatureDensityHistogram'
 import { type Coord, useStyles } from '../../util/displayUtils'
 import type { LinearApolloDisplay as LinearApolloDisplayI } from '../stateModel'
 
@@ -32,7 +33,8 @@ export const LinearApolloDisplay = observer(function LinearApolloDisplay(
     contextMenuItems: getContextMenuItems,
     featuresHeight: getFeaturesHeight,
     isShown,
-    regionCannotBeRendered,
+    densityMessage,
+    displayMode,
     session,
     setCanvas,
     setCollaboratorCanvas,
@@ -44,9 +46,28 @@ export const LinearApolloDisplay = observer(function LinearApolloDisplay(
   useEffect(() => {
     setTheme(theme)
   }, [theme, setTheme])
+  // Stable ref callbacks so React doesn't call them with null and then the node
+  // again on every render, which would set the canvas twice and redraw it.
+  // Promise.resolve() in these 2 callbacks is to avoid infinite rendering loop
+  // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
+  const collaboratorCanvasRef = useCallback(
+    async (node: HTMLCanvasElement | null) => {
+      await Promise.resolve()
+      setCollaboratorCanvas(node)
+    },
+    [setCollaboratorCanvas],
+  )
+  const canvasRef = useCallback(
+    async (node: HTMLCanvasElement | null) => {
+      await Promise.resolve()
+      setCanvas(node)
+    },
+    [setCanvas],
+  )
   const [contextCoord, setContextCoord] = useState<Coord>()
   const [contextMenuItems, setContextMenuItems] = useState<MenuItem[]>([])
-  const message = regionCannotBeRendered()
+  const message = densityMessage
+  const showHistogram = !message && displayMode !== 'features'
   if (!isShown) {
     return null
   }
@@ -56,7 +77,8 @@ export const LinearApolloDisplay = observer(function LinearApolloDisplay(
       className={classes.canvasContainer}
       style={{
         width: lgv.dynamicBlocks.totalWidthPx,
-        height: featuresHeight,
+        // The histogram fills the track
+        height: showHistogram ? '100%' : featuresHeight,
       }}
       onContextMenu={(event) => {
         event.preventDefault()
@@ -80,8 +102,6 @@ export const LinearApolloDisplay = observer(function LinearApolloDisplay(
           <CircularProgress size="18px" />
         </div>
       ) : null}
-      {/* This type is wrong in @jbrowse/core */}
-      {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
       {message ? (
         <Alert
           severity="warning"
@@ -92,27 +112,17 @@ export const LinearApolloDisplay = observer(function LinearApolloDisplay(
             <div>{message}</div>
           </Tooltip>
         </Alert>
-      ) : (
-        // Promise.resolve() in these 2 callbacks is to avoid infinite rendering loop
-        // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
+      ) : null}
+      {showHistogram ? <FeatureDensityHistogram model={model} /> : null}
+      {message || showHistogram ? null : (
         <>
           <canvas
-            ref={async (node: HTMLCanvasElement) => {
-              await Promise.resolve()
-              setCollaboratorCanvas(node)
-            }}
-            width={lgv.dynamicBlocks.totalWidthPx}
-            height={featuresHeight}
+            ref={collaboratorCanvasRef}
             className={classes.canvas}
             data-testid="collaboratorCanvas"
           />
           <canvas
-            ref={async (node: HTMLCanvasElement) => {
-              await Promise.resolve()
-              setCanvas(node)
-            }}
-            width={lgv.dynamicBlocks.totalWidthPx}
-            height={featuresHeight}
+            ref={canvasRef}
             className={classes.canvas}
             data-testid="canvas"
           />

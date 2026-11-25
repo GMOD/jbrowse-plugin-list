@@ -6,7 +6,7 @@ import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
 import { featureMatchesId, getLinearGenomeView, getSortedTranscriptFeatures, } from '../../util';
 import { builtAlignmentLook, launchConnectedView } from '../launchConnectedView';
-import { useLaunchPlacement } from '../launchPlacement';
+import { useSubmitPlacement } from '../launchPlacement';
 const useStyles = makeStyles()({
     header: {
         display: 'flex',
@@ -49,34 +49,31 @@ export function describeSearch(result) {
         .filter(Boolean)
         .join(' / ');
 }
-const CachedBlastResults = observer(function ({ model, handleClose, feature, cached: { results, handleDelete, handleClearAll }, }) {
+const CachedBlastResults = observer(function ({ model, submit, feature, cached: { results, handleDelete, handleClearAll }, }) {
     const { classes } = useStyles();
     const view = getLinearGenomeView(model);
     const [operationError, setOperationError] = useState();
-    const [sideBySide] = useLaunchPlacement();
+    const { commitPlacement } = useSubmitPlacement(model);
     const handleUseCached = (cached) => {
         // the cached query row is the plugin's default `QUERY`, translated from
         // the transcript stored as transcriptId, so that transcript relinks it
         const { transcriptId, msa, tree, treeMetadata } = cached;
-        launchConnectedView({
+        submit(() => launchConnectedView({
             view,
             feature: transcriptId
                 ? getSortedTranscriptFeatures(feature).find(t => featureMatchesId(t, transcriptId))
                 : undefined,
-            placement: sideBySide ? 'splitRight' : 'stack',
+            placement: commitPlacement(),
             displayName: `BLAST - ${getResultDisplayName(cached)}`,
             ...builtAlignmentLook,
             data: { msa, tree, treeMetadata },
-        }).then(handleClose, (e) => {
-            console.error(e);
-            setOperationError(e);
-        });
+        }));
     };
     return (React.createElement("div", null,
         operationError ? React.createElement(ErrorMessage, { error: operationError }) : null,
         React.createElement("div", { className: classes.header },
             React.createElement(Typography, { variant: "subtitle1" },
-                "Cached BLAST Results (",
+                "Cached searches (",
                 results.length,
                 ")"),
             React.createElement(Button, { size: "small", color: "error", onClick: async () => {
@@ -88,7 +85,7 @@ const CachedBlastResults = observer(function ({ model, handleClose, feature, cac
                         setOperationError(e);
                     }
                 } }, "Clear results for this gene")),
-        React.createElement(List, { dense: true, className: classes.resultList }, results.map(result => (React.createElement(ListItem, { key: result.id, disablePadding: true, secondaryAction: React.createElement(IconButton, { edge: "end", size: "small", onClick: async (e) => {
+        React.createElement(List, { dense: true, className: classes.resultList }, results.map(result => (React.createElement(ListItem, { key: result.id, disablePadding: true, secondaryAction: React.createElement(IconButton, { edge: "end", size: "small", "aria-label": `Delete ${getResultDisplayName(result)} - ${describeSearch(result)}`, onClick: async (e) => {
                     e.stopPropagation();
                     try {
                         setOperationError(undefined);

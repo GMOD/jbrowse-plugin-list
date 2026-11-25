@@ -1,6 +1,7 @@
 import { types } from '@jbrowse/mobx-state-tree'
 import { beforeEach, expect, test, vi } from 'vitest'
 
+import { parseStructure } from '../test_data/molstarStructure'
 import Structure from './structureModel'
 
 import type { ProteinColor } from './proteinColor'
@@ -107,6 +108,10 @@ const TestParent = types
     },
   }))
 
+const LOADED_STRUCTURES = [
+  await parseStructure([{ asym: 'A', entity: '1', residues: ['MET'] }]),
+]
+
 function loaded(
   snapshot: {
     uniprotId?: string
@@ -130,8 +135,8 @@ function loaded(
         chains: ['A'],
       },
     ],
+    molstarStructures: LOADED_STRUCTURES,
   })
-  structure.setLoadedToMolstar(true)
   return { parent, structure }
 }
 
@@ -207,9 +212,11 @@ test('a source that fails says so beside the structure, and is asked again once 
   await vi.waitFor(() => {
     expect(structure.variantEffectsPending).toBe(false)
   })
-  expect(structure.statusMessage).toBe(
-    'Could not fetch AlphaMissense scores for P0LATE: AlphaFold DB publishes none for this entry',
-  )
+  expect(structure.status).toEqual({
+    message:
+      'Could not fetch AlphaMissense scores for P0LATE: AlphaFold DB publishes none for this entry',
+    severity: 'error',
+  })
   expect(structure.error).toBeUndefined()
   expect(structure.placedVariantEffects).toBeUndefined()
   const asked = () => vi.mocked(fetch).mock.calls.filter(([u]) => u === url)
@@ -240,9 +247,11 @@ test('a model folded from another revision of the entry stays grey', async () =>
     expect(structure.variantEffectsPending).toBe(false)
   })
   expect(structure.placedVariantEffects).toBeUndefined()
-  expect(structure.statusMessage).toBe(
-    "AlphaMissense scores for P0OLD1 number a sequence that differs from this model's",
-  )
+  expect(structure.status).toEqual({
+    message:
+      "AlphaMissense scores for P0OLD1 number a sequence that differs from this model's",
+    severity: 'info',
+  })
 })
 
 test('a structure with no UniProt entry asks nothing and says why', () => {

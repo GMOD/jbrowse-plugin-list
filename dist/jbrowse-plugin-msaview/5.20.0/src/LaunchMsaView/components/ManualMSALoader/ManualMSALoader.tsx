@@ -1,0 +1,180 @@
+import React, { useState } from 'react'
+
+import { FileSelector } from '@jbrowse/core/ui'
+import { openLocation } from '@jbrowse/core/util/io'
+import { FormControl, FormControlLabel, Radio, RadioGroup } from '@mui/material'
+import { observer } from 'mobx-react'
+import { makeStyles } from 'tss-react/mui'
+
+import { useDebounced, useFetch } from '../../../utils/useFetch'
+import { useQueryRowName } from '../../useQueryRowName'
+import { getLinearGenomeView, getViewTitle } from '../../util'
+import LaunchPanelContent from '../LaunchPanelContent'
+import PastedAlignmentFields from '../PastedAlignmentFields'
+import QueryRowSelector from '../QueryRowSelector'
+import SequenceStatusMessage from '../SequenceStatus'
+import SubmitCancelActions from '../SubmitCancelActions'
+import TranscriptSelector from '../TranscriptSelector'
+import { launchConnectedView, useLaunchSubmit } from '../launchConnectedView'
+import { useTranscriptSelection } from '../useTranscriptSelection'
+
+import type {
+  AbstractTrackModel,
+  Feature,
+  FileLocation,
+} from '@jbrowse/core/util'
+
+/**
+ * The chosen file's text, so its query row is found by sequence the way a
+ * pasted alignment's is; without it a file launch named no row and never
+ * linked to the genome. Debounced because a URL arrives a keystroke at a time.
+ */
+function useMsaFileText(location: FileLocation | undefined) {
+  const debounced = useDebounced(location, 500)
+  const { data, error, isLoading } = useFetch(
+    debounced ? [JSON.stringify(debounced), 'msa-file-text'] : null,
+    () => openLocation(debounced!).readFile('utf8'),
+  )
+  return {
+    text: data ?? '',
+    error,
+    isLoading: isLoading || debounced !== location,
+  }
+}
+
+const useStyles = makeStyles()({
+  inputContainer: {
+    marginBottom: 30,
+  },
+  fileContainer: {
+    maxWidth: 500,
+  },
+})
+
+const ManualMSALoader = observer(function ManualMSALoader({
+  model,
+  feature,
+  handleClose,
+  preferredTranscriptId,
+}: {
+  model: AbstractTrackModel
+  feature: Feature
+  handleClose: () => void
+  /** the isoform the user right-clicked, preselected in the picker */
+  preferredTranscriptId?: string
+}) {
+  const view = getLinearGenomeView(model)
+  const { classes } = useStyles()
+  const { launchError, submit } = useLaunchSubmit(handleClose)
+  const [inputMethod, setInputMethod] = useState<'file' | 'text'>('file')
+  const [msaText, setMsaText] = useState('')
+  const [treeText, setTreeText] = useState('')
+  const [msaFileLocation, setMsaFileLocation] = useState<FileLocation>()
+  const [treeFileLocation, setTreeFileLocation] = useState<FileLocation>()
+  const transcriptSelection = useTranscriptSelection({
+    feature,
+    view,
+    preferredTranscriptId,
+  })
+  const { selectedTranscript, proteinSequence, error, sequenceStatus } =
+    transcriptSelection
+  const msaFile = useMsaFileText(
+    inputMethod === 'file' ? msaFileLocation : undefined,
+  )
+  const queryRow = useQueryRowName(
+    inputMethod === 'file' ? msaFile.text : msaText,
+    proteinSequence,
+  )
+
+  const e = launchError ?? error ?? msaFile.error
+  return (
+    <>
+      <LaunchPanelContent error={e}>
+        <FormControl component="fieldset">
+          <RadioGroup
+            row
+            value={inputMethod}
+            onChange={event => {
+              setInputMethod(event.target.value as 'file' | 'text')
+            }}
+          >
+            <FormControlLabel
+              value="file"
+              control={<Radio />}
+              label="Open files"
+            />
+            <FormControlLabel
+              value="text"
+              control={<Radio />}
+              label="Paste text"
+            />
+          </RadioGroup>
+        </FormControl>
+
+        <div className={classes.inputContainer}>
+          {inputMethod === 'file' ? (
+            <div className={classes.fileContainer}>
+              <FileSelector
+                name="MSA File .aln (Clustal), .fa/.mfa (aligned FASTA), .stock (Stockholm), etc)"
+                inline
+                location={msaFileLocation}
+                setLocation={setMsaFileLocation}
+              />
+              <FileSelector
+                name="Tree file .nh (Newick) or .asn (NCBI COBALT ASN.1)"
+                inline
+                location={treeFileLocation}
+                setLocation={setTreeFileLocation}
+              />
+            </div>
+          ) : (
+            <PastedAlignmentFields
+              msaText={msaText}
+              setMsaText={setMsaText}
+              treeText={treeText}
+              setTreeText={setTreeText}
+            />
+          )}
+        </div>
+
+        <TranscriptSelector feature={feature} {...transcriptSelection} />
+
+        <QueryRowSelector {...queryRow} sequenceStatus={sequenceStatus} />
+      </LaunchPanelContent>
+
+      <SubmitCancelActions
+        model={model}
+        hint={<SequenceStatusMessage status={sequenceStatus} />}
+        submitDisabled={
+          !selectedTranscript ||
+          sequenceStatus === 'loading' ||
+          (inputMethod === 'file' && (!msaFileLocation || msaFile.isLoading)) ||
+          (inputMethod === 'text' && !msaText.trim())
+        }
+        onSubmit={placement => {
+          if (selectedTranscript) {
+            submit(() =>
+              launchConnectedView({
+                view,
+                feature: selectedTranscript,
+                placement,
+                displayName: getViewTitle(feature, selectedTranscript),
+                querySeqName: queryRow.querySeqName,
+                querySeqOffset: queryRow.querySeqOffset,
+                ...(inputMethod === 'file'
+                  ? {
+                      msaFilehandle: msaFileLocation,
+                      treeFilehandle: treeFileLocation,
+                    }
+                  : { data: { msa: msaText, tree: treeText } }),
+              }),
+            )
+          }
+        }}
+        onCancel={handleClose}
+      />
+    </>
+  )
+})
+
+export default ManualMSALoader

@@ -2,7 +2,7 @@ import { entityUniProtMappings } from 'p2s_mapper'
 
 import type { Entity } from 'p2s_mapper'
 
-const ISOFORM_SUFFIX = /-\d+$/
+export const ISOFORM_SUFFIX = /-\d+$/
 
 /**
  * The UniProt mappings a model file states for its entities, as SIFTS would

@@ -12,6 +12,7 @@ export declare function featureMatchesId(feature: Feature, id: string): boolean;
 export declare function findDatasetId(transcript: Feature, gene: Feature, ids: ReadonlySet<string>): string | undefined;
 export declare function getTranscriptDisplayName(val?: Feature): string;
 export declare function getGeneDisplayName(val?: Feature): string;
+export declare function getViewTitle(feature: Feature, transcript: Feature): string;
 export declare function getBlastViewTitle(feature: Feature, transcript: Feature): string;
 export declare function getSortedTranscriptFeatures(feature: Feature): Feature[];
 /**

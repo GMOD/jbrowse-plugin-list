@@ -69,7 +69,8 @@ const HighlightLabels = observer(function HighlightLabels({
       return [...labelAnchors(plugin)].map(([ref, anchor]) => {
         const loci = (
           plugin.state.data.cells.get(ref)?.obj?.data as
-            { loci: StructureElement.Loci }[] | undefined
+            | { loci: StructureElement.Loci }[]
+            | undefined
         )?.[0]?.loci
         const copies = (loci && molstar ? copyCenters(molstar, loci) : []).map(
           ({ chain, center }) => {

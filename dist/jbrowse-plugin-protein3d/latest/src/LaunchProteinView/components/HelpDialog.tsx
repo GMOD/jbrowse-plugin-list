@@ -39,9 +39,10 @@ const HelpDialog = observer(function HelpDialog({
               grouped by what each structure shows: the protein on its own, the
               protein with another protein, and short fragments. Check several
               rows to open them in one view, superposed onto the first; a short
-              fragment opens on its own. <i>Open by PDB ID</i> opens any entry
-              instead. When this site lists its own structures for the gene, in
-              a dataset its configuration names, they lead the list under the
+              fragment opens on its own. <i>Add PDB ID</i> adds any entry to the
+              list, checked, such as a complex RCSB files under its partner.
+              When this site lists its own structures for the gene, in a dataset
+              its configuration names, they lead the list under the
               dataset&apos;s name and the first is checked, mapped through the
               transcript it was folded from.
             </li>

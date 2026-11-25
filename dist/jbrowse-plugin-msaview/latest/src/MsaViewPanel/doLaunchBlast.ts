@@ -10,7 +10,7 @@ import { fetchTaxonomyInfo } from '../utils/taxonomyNames'
 import { resolveUniProtEntry } from '../utils/unirefHomologs'
 import { str, transcriptFields, transcriptName } from './util'
 
-import type { JBrowsePluginMsaViewModel } from './model'
+import type { BlastParams, JBrowsePluginMsaViewModel } from './model'
 import type { LaunchScope, LaunchedData } from './runLaunch'
 
 /**
@@ -22,9 +22,9 @@ import type { LaunchScope, LaunchedData } from './runLaunch'
  */
 async function resolveQuery(
   self: JBrowsePluginMsaViewModel,
+  params: BlastParams,
   scope: LaunchScope,
 ) {
-  const params = self.blastParams!
   if (params.proteinSequence) {
     return {
       sequence: cleanProteinSequence(params.proteinSequence),
@@ -52,26 +52,25 @@ interface SearchOutcome {
   fasta: string
   treeMetadata: Record<string, Record<string, string>>
   rid?: string
-  queryRow?: string
+  aligned?: boolean
   warnings?: string[]
 }
 
 async function search({
-  self,
+  params,
   scope,
   query,
   querySeqName,
   maxHits,
   key,
 }: {
-  self: JBrowsePluginMsaViewModel
+  params: BlastParams
   scope: LaunchScope
   query: string
   querySeqName: string
   maxHits: number
   key: string
 }): Promise<SearchOutcome> {
-  const params = self.blastParams!
   const { onProgress, onRid, signal } = scope
   const { hits, queryRow, rid } = await searchBackends[
     params.searchProgram ?? 'blastp'
@@ -105,14 +104,15 @@ async function search({
   })
   // rows named without NCBI's answer are not worth reusing for a week
   const namesFailed = nameFailures.length > 0
-  if (!queryRow && !namesFailed) {
-    await saveSearch({ id: key, fasta, treeMetadata, rid })
+  const aligned = queryRow !== undefined
+  if (!namesFailed) {
+    await saveSearch({ id: key, fasta, treeMetadata, rid, aligned })
   }
   return {
     fasta,
     treeMetadata,
     rid,
-    queryRow,
+    aligned,
     warnings: namesFailed
       ? [
           'NCBI did not answer for some species names, so those rows are named by scientific name alone.',
@@ -145,6 +145,7 @@ export async function doLaunchBlast({
   const msaAlgorithm = params.msaAlgorithm ?? 'browser'
   const { sequence: query, name: querySeqName } = await resolveQuery(
     self,
+    params,
     scope,
   )
   if (searchProgram === 'blastp' && msaAlgorithm === 'browser') {
@@ -164,9 +165,10 @@ export async function doLaunchBlast({
       `Reusing the ${searchProgram} search from ${new Date(found.timestamp).toLocaleString()}...`,
     )
   }
-  const { fasta, treeMetadata, rid, queryRow, warnings }: SearchOutcome =
-    found ?? (await search({ self, scope, query, querySeqName, maxHits, key }))
-  const { msa, tree } = queryRow
+  const { fasta, treeMetadata, rid, aligned, warnings }: SearchOutcome =
+    found ??
+    (await search({ params, scope, query, querySeqName, maxHits, key }))
+  const { msa, tree } = aligned
     ? { msa: fasta, tree: '' }
     : await launchMSA({
         algorithm: msaAlgorithm,
@@ -180,7 +182,7 @@ export async function doLaunchBlast({
   await saveBlastResult({
     proteinSequence: query,
     blastDatabase: params.blastDatabase,
-    msaAlgorithm: queryRow ? undefined : msaAlgorithm,
+    msaAlgorithm: aligned ? undefined : msaAlgorithm,
     searchProgram: params.searchProgram,
     maxHits,
     msa,

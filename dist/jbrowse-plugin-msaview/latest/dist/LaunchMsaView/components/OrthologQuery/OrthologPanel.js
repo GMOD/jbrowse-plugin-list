@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { LoadingEllipses } from '@jbrowse/core/ui';
 import { Typography } from '@mui/material';
 import { observer } from 'mobx-react';
 import { makeStyles } from 'tss-react/mui';
@@ -14,7 +15,7 @@ import TranscriptSelector from '../TranscriptSelector';
 import { builtAlignmentLook, launchConnectedView, useLaunchSubmit, } from '../launchConnectedView';
 import { useTranscriptSelection } from '../useTranscriptSelection';
 import OrthologSourceSelect, { useStoredOrthologSource, } from './OrthologSourceSelect';
-import QuerySpeciesSelect from './QuerySpeciesSelect';
+import QuerySpeciesSelect, { useQuerySpecies } from './QuerySpeciesSelect';
 const useStyles = makeStyles()({
     selectField: {
         width: 180,
@@ -31,10 +32,11 @@ const OrthologPanel = observer(function ({ handleClose, feature, model, preferre
     const { classes } = useStyles();
     const view = getLinearGenomeView(model);
     const { launchError, submit } = useLaunchSubmit(handleClose);
-    const [taxId, setTaxId] = useState(9606);
     const [source, setSource] = useStoredOrthologSource();
     const [msaAlgorithm, setMsaAlgorithm] = useStoredMsaAlgorithm();
     const [maxSpecies, setMaxSpecies] = useState(String(defaultMaxSpecies));
+    const species = useQuerySpecies(view.assemblyNames[0]);
+    const { taxId } = species;
     const geneCandidates = useMemo(() => getGeneIdentifiers(feature), [feature]);
     const transcriptSelection = useTranscriptSelection({
         feature,
@@ -50,7 +52,7 @@ const OrthologPanel = observer(function ({ handleClose, feature, model, preferre
             React.createElement(Typography, { variant: "body2" }, "Precomputed orthologs, one gene per species, looked up rather than searched for. No BLAST job to queue, and with the in-browser aligner no job at all."),
             React.createElement("div", null,
                 React.createElement(OrthologSourceSelect, { className: classes.selectField, value: source, onChange: setSource }),
-                React.createElement(QuerySpeciesSelect, { className: classes.selectField, value: taxId, assemblyName: view.assemblyNames[0], onChange: setTaxId }),
+                React.createElement(QuerySpeciesSelect, { className: classes.selectField, species: species }),
                 React.createElement(MsaAlgorithmSelect, { className: classes.selectField, value: msaAlgorithm, onChange: setMsaAlgorithm }),
                 React.createElement(TextField2, { variant: "outlined", label: "Rows to align", className: classes.selectField, type: "number", value: maxSpecies, onChange: event => {
                         setMaxSpecies(event.target.value);
@@ -58,8 +60,8 @@ const OrthologPanel = observer(function ({ handleClose, feature, model, preferre
                         ? rowsHint[source](rowCount)
                         : 'a whole number, 2 or more' })),
             React.createElement(TranscriptSelector, { feature: feature, ...transcriptSelection })),
-        React.createElement(SubmitCancelActions, { model: model, hint: React.createElement(SequenceStatusMessage, { status: sequenceStatus }), submitDisabled: !proteinSequence || !rowCountValid, onSubmit: placement => {
-                if (selectedTranscript) {
+        React.createElement(SubmitCancelActions, { model: model, hint: sequenceStatus !== 'ready' ? (React.createElement(SequenceStatusMessage, { status: sequenceStatus })) : taxId !== undefined ? null : species.resolving ? (React.createElement(LoadingEllipses, { message: "Looking up the query species" })) : (React.createElement(Typography, { color: "textSecondary", variant: "body2" }, "name a query species NCBI knows")), submitDisabled: !proteinSequence || !rowCountValid || taxId === undefined, onSubmit: placement => {
+                if (selectedTranscript && taxId !== undefined) {
                     submit(() => launchConnectedView({
                         view,
                         feature: selectedTranscript,

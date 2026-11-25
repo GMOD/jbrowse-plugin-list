@@ -7,7 +7,10 @@ export function parseMsaIndex(text) {
             : [];
     });
 }
-export async function readMsaBlock({ entry, ...filehandles }) {
-    const bytes = await new BgzfFilehandle(filehandles).read(entry.length, entry.offset);
+export async function readMsaEntry(bgzf, entry) {
+    const bytes = await bgzf.read(entry.length, entry.offset);
     return new TextDecoder().decode(bytes).trim();
+}
+export function readMsaBlock({ entry, ...filehandles }) {
+    return readMsaEntry(new BgzfFilehandle(filehandles), entry);
 }

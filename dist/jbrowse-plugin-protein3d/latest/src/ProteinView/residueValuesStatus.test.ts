@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
-import { residueValuesStatus, valuesByPosition } from './residueValuesStatus'
 import { toStructure } from '../test_data/positionLookups'
+import { residueValuesStatus, valuesByPosition } from './residueValuesStatus'
 
 const entity = { entityId: '1', seqIds: [1, 2, 3, 4] }
 

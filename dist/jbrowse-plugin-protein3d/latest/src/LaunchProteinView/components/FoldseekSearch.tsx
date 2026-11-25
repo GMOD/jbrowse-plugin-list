@@ -18,12 +18,14 @@ import {
 } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
-import FoldseekDatabaseSelector from './FoldseekDatabaseSelector'
-import FoldseekResultsTable from './FoldseekResultsTable'
-import PartialFailureNotice from './PartialFailureNotice'
-import TranscriptSelector from './TranscriptSelector'
+import { hasInternalStop } from '../codingFeature'
 import useFoldseekSearch from '../hooks/useFoldseekSearch'
 import useTranscriptIsoformSelection from '../hooks/useTranscriptIsoformSelection'
+import FoldseekDatabaseSelector from './FoldseekDatabaseSelector'
+import FoldseekResultsTable from './FoldseekResultsTable'
+import NoticeLine from './NoticeLine'
+import TranscriptSelector from './TranscriptSelector'
+import UncodedTranscriptNotice from './UncodedTranscriptNotice'
 
 import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
@@ -90,6 +92,8 @@ const FoldseekSearch = observer(function FoldseekSearch({
     isLoading: isLoadingIsoforms,
     error: isoformError,
     partialFailure: isoformPartialFailure,
+    retryIsoforms,
+    isoformsRetrying,
     selectedTranscriptId: effectiveSelectedTranscriptId,
     setSelectedTranscriptId: setUserSelection,
     selectedTranscript,
@@ -156,21 +160,40 @@ const FoldseekSearch = observer(function FoldseekSearch({
         {isLoadingIsoforms ? (
           <LoadingEllipses
             variant="subtitle2"
-            message="Loading transcript sequences"
+            message="Loading protein sequences from transcript isoforms"
           />
         ) : null}
 
-        <PartialFailureNotice message={isoformPartialFailure} />
+        <NoticeLine
+          message={isoformPartialFailure}
+          onRetry={retryIsoforms}
+          retrying={isoformsRetrying}
+        />
 
         {isoformSequences && ranking ? (
           <>
+            <UncodedTranscriptNotice
+              feature={feature}
+              preferredTranscriptId={preferredTranscriptId}
+              selectedTranscript={selectedTranscript}
+            />
             <TranscriptSelector
               val={effectiveSelectedTranscriptId}
               setVal={setUserSelectionWithReset}
               isoforms={transcripts}
+              isoformSequences={isoformSequences}
               ranking={ranking}
               feature={feature}
               disabled={isBusy}
+            />
+            <NoticeLine
+              message={
+                userEditedSequence === undefined &&
+                selectedIsoformData &&
+                hasInternalStop(selectedIsoformData.seq, selectedTranscript)
+                  ? 'This translation has a stop codon inside it; Foldseek searches it with the stop removed, as a read-through protein'
+                  : undefined
+              }
             />
             <TextField
               label="Protein sequence (amino acids)"

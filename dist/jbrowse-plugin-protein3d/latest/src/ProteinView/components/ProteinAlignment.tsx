@@ -11,6 +11,12 @@ import {
 } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
+import { followHover, offScreenCenterTarget } from '../autoScroll'
+import { cssScaleOf, keyEntriesOf } from '../colorScale'
+import { LABEL_ELLIPSIS, LABEL_WIDTH, ROW_HEIGHT } from '../constants'
+import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData'
+import { RESIDUE_COLORS } from '../residueColors'
+import { errorMessage } from '../util'
 import AlignmentRuler from './AlignmentRuler'
 import { ColorKey, GradientKey } from './ColorKey'
 import ColumnOverlays, { SelectionBackdrop } from './ColumnOverlays'
@@ -20,12 +26,6 @@ import MismatchShading from './MismatchShading'
 import ProteinFeatureTrack from './ProteinFeatureTrack'
 import ResidueValueTrack from './ResidueValueTrack'
 import SplitString from './SplitString'
-import { followHover, offScreenCenterTarget } from '../autoScroll'
-import { cssScaleOf, keyEntriesOf } from '../colorScale'
-import { LABEL_WIDTH, ROW_HEIGHT } from '../constants'
-import useProteinFeatureTrackData from '../hooks/useProteinFeatureTrackData'
-import { RESIDUE_COLORS } from '../residueColors'
-import { errorMessage } from '../util'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
 
@@ -87,7 +87,7 @@ const GutterLabel = observer(function GutterLabel({
           justifyContent: 'flex-end',
         }}
       >
-        {label}
+        <span style={LABEL_ELLIPSIS}>{label}</span>
       </div>
     </Tooltip>
   )
@@ -100,6 +100,7 @@ const ProteinAlignment = observer(function ProteinAlignment({
 }) {
   const {
     alignment,
+    panelAlignment,
     showProteinTracks,
     showAllFeatureTracks,
     label,
@@ -179,11 +180,11 @@ const ProteinAlignment = observer(function ProteinAlignment({
     [model],
   )
 
-  if (!alignment) {
+  if (!panelAlignment) {
     return null
   }
 
-  const columns = alignmentLength(alignment)
+  const columns = alignmentLength(panelAlignment)
   const sequenceRow = (
     key: string,
     rowLabel: string,
@@ -214,17 +215,23 @@ const ProteinAlignment = observer(function ProteinAlignment({
   // the residues agree is shaded onto the structure's own letters, so it costs
   // no height and a mismatch stands out instead of being a missing bar.
   const sequenceRows = [
-    sequenceRow(
-      'transcript',
-      'GENOME',
-      "The protein as the reference genome's transcript translates",
-      transcriptAlignedSeq(alignment),
-    ),
+    ...(alignment
+      ? [
+          sequenceRow(
+            'transcript',
+            'GENOME',
+            "The protein as the reference genome's transcript translates",
+            transcriptAlignedSeq(alignment),
+          ),
+        ]
+      : []),
     sequenceRow(
       'structure',
       'STRUCT',
-      "The protein as the structure file spells it. Shaded where it differs from the transcript's: amber for a similar amino acid, red for a different one.",
-      structureAlignedSeq(alignment),
+      alignment
+        ? "The protein as the structure file spells it. Shaded where it differs from the transcript's: amber for a similar amino acid, red for a different one."
+        : 'The protein as the structure file spells it',
+      structureAlignedSeq(panelAlignment),
       <MismatchShading model={model} />,
     ),
   ]
@@ -381,7 +388,7 @@ const ProteinAlignment = observer(function ProteinAlignment({
         <div
           style={{
             flexShrink: 0,
-            minWidth: LABEL_WIDTH,
+            width: LABEL_WIDTH,
             paddingRight: 4,
             whiteSpace: 'nowrap',
             lineHeight: 1,

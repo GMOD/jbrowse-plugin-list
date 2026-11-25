@@ -1,6 +1,66 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 
-import { withConnectedGenomeView } from './transcriptLinkage'
+import {
+  launchAssemblyName,
+  resolveTranscriptLinkage,
+  withConnectedGenomeView,
+} from './transcriptLinkage'
+
+import type { AbstractSessionModel } from '@jbrowse/core/util'
+
+// the members a linkage reaches before its lookups, and the two a gene lookup
+// reaches first
+function isLinkageSession(value: object): value is AbstractSessionModel {
+  return (
+    'views' in value &&
+    'assemblyNames' in value &&
+    'assemblyManager' in value &&
+    'textSearchManager' in value
+  )
+}
+
+function searchRefusingSession() {
+  const search = vi.fn(() => {
+    throw new Error('the gene was looked up')
+  })
+  const session = {
+    views: [],
+    assemblyNames: ['hg38'],
+    assemblyManager: {
+      waitForAssembly: () =>
+        Promise.resolve({
+          isValidRefName: () => true,
+          getCanonicalRefName: (refName: string) => refName,
+        }),
+    },
+    textSearchManager: { search },
+  }
+  if (!isLinkageSession(session)) {
+    throw new Error('the fake session lacks a member the linkage reads')
+  }
+  return { session, search }
+}
+
+const transcript = { uniqueId: 't1', refName: 'chr17', start: 0, end: 10 }
+
+test('a launch-level feature skips the gene lookup', async () => {
+  const { session, search } = searchRefusingSession()
+  expect(
+    await resolveTranscriptLinkage(
+      session,
+      { gene: 'TP53', transcriptId: 'NM_000546.6', feature: transcript },
+      { findStructure: true },
+    ),
+  ).toMatchObject({ named: undefined, resolved: undefined })
+  expect(search).not.toHaveBeenCalled()
+  await expect(
+    resolveTranscriptLinkage(
+      session,
+      { gene: 'TP53' },
+      { findStructure: true },
+    ),
+  ).rejects.toThrow('the gene was looked up')
+})
 
 interface FakeView {
   id: string
@@ -68,4 +128,34 @@ test('a launch that opens hands its view the genome view and says it owns it', a
         Promise.resolve({ connectedViewId, ownsConnectedView }),
     ),
   ).toEqual({ connectedViewId: 'existing', ownsConnectedView: false })
+})
+
+test('a genome view still navigating gives the launch the assembly it is launching on', () => {
+  const session = {
+    assemblyNames: ['hg38', 'hg19'],
+    views: [
+      { id: 'navigating', assemblyNames: [], launchAssemblyName: 'hg19' },
+      { id: 'shown', assemblyNames: ['hg19'] },
+    ],
+  }
+  expect(launchAssemblyName(session, { connectedViewId: 'navigating' })).toBe(
+    'hg19',
+  )
+  expect(launchAssemblyName(session, { connectedViewId: 'shown' })).toBe('hg19')
+})
+
+test("a launch's assembly is its view's, then the one it names, then the session's only one", () => {
+  const session = {
+    assemblyNames: ['hg38', 'hg19'],
+    views: [{ id: 'shown', assemblyNames: ['hg19'] }],
+  }
+  const connectedView = { assembly: 'mm39' }
+  expect(
+    launchAssemblyName(session, { connectedViewId: 'shown', connectedView }),
+  ).toBe('hg19')
+  expect(launchAssemblyName(session, { connectedView })).toBe('mm39')
+  expect(launchAssemblyName(session, {})).toBeUndefined()
+  expect(launchAssemblyName({ assemblyNames: ['hg38'], views: [] }, {})).toBe(
+    'hg38',
+  )
 })

@@ -1,17 +1,23 @@
 // @vitest-environment jsdom
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
+import { Color } from 'molstar/lib/mol-util/color'
 import { expect, test } from 'vitest'
 
-import { applyColorTheme, colorLegendOf } from './applyColorTheme'
+import { loadCaOnly } from '../test_data/molstarPlugin'
+import {
+  applyColorTheme,
+  colorLegendOf,
+  rampNoValueEntry,
+} from './applyColorTheme'
 import { registerColorThemes } from './colorThemes'
 import {
   LIGAND_COLOR,
   MAPPED_CHAIN_COLOR,
   OTHER_CHAIN_COLOR,
 } from './mappedChainColorTheme'
+import { NO_VALUE_COLOR } from './placedValueRegistry'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
 
 import type { ProteinColor } from './proteinColor'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
@@ -174,4 +180,35 @@ test("each field's legend is the key of the theme that draws it", async () => {
       ],
     })
   })
+})
+
+test('a ramp of placed values keys its grey while a drawn residue has no value', () => {
+  const entity = { entityId: '1', seqIds: [1, 2, 3] }
+  const placed = (labelSeqIds: number[]) => ({
+    entityId: '1',
+    byLabelSeqId: new Map(labelSeqIds.map(id => [id, 0.5])),
+  })
+  const gap = [{ entity, placedValues: placed([1, 3]) }]
+  const noValue = { label: 'No value', color: Color.toHexStyle(NO_VALUE_COLOR) }
+  for (const color of [
+    { field: 'alphaMissense' },
+    { field: 'track', trackId: 't' },
+    { field: 'values', values: [1] },
+  ] satisfies ProteinColor[]) {
+    expect(rampNoValueEntry(color, gap)).toEqual(noValue)
+  }
+  expect(
+    rampNoValueEntry({ field: 'alphaMissense' }, [
+      { entity, placedValues: placed([1, 2, 3]) },
+    ]),
+  ).toBeUndefined()
+  expect(rampNoValueEntry({ field: 'alphaMissense' }, [{ entity }])).toEqual(
+    noValue,
+  )
+  for (const field of ['plddt', 'hydrophobicity', 'domain', 'exon'] as const) {
+    expect(rampNoValueEntry({ field }, gap)).toBeUndefined()
+  }
+  expect(
+    rampNoValueEntry({ field: 'clinvarPathogenicCount' }, gap),
+  ).toBeUndefined()
 })

@@ -1,15 +1,16 @@
 import React, { useState } from 'react'
 
-import { ErrorMessage } from '@jbrowse/core/ui'
 import { Chip, Link, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 import { uniprotEntryUrl } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
-import UniProtLookupControls from './UniProtLookupControls'
-import UniProtLookupResults from './UniProtLookupResults'
+import { errorMessage } from '../../ProteinView/util'
 import ExternalLink from '../../components/ExternalLink'
 import { unambiguousEntry } from '../resolveGeneLaunch'
+import NoticeLine from './NoticeLine'
+import UniProtLookupControls from './UniProtLookupControls'
+import UniProtLookupResults from './UniProtLookupResults'
 
 import type { UniProtIdLookup } from '../hooks/useUniProtIdLookup'
 
@@ -64,9 +65,11 @@ const useStyles = makeStyles()(theme => ({
  * one. Anything else opens the chooser by itself.
  */
 function needsChoice(lookup: UniProtIdLookup) {
+  // a failed search keeps its error while a Retry runs, so the chooser
+  // holding its Retry stays open through it
   return lookup.isAutoMode
-    ? !lookup.isLookupLoading &&
-        (!!lookup.lookupError || !unambiguousEntry(lookup.uniprotEntries))
+    ? !!lookup.lookupError ||
+        (!lookup.isLookupLoading && !unambiguousEntry(lookup.uniprotEntries))
     : !lookup.uniprotId
 }
 
@@ -157,7 +160,12 @@ const UniProtSummaryBar = observer(function UniProtSummaryBar({
       {open ? (
         <div className={classes.panel} data-testid="uniprot-chooser">
           {lookup.lookupError ? (
-            <ErrorMessage error={lookup.lookupError} />
+            <NoticeLine
+              color="error"
+              message={`UniProt lookup failed: ${errorMessage(lookup.lookupError)}`}
+              onRetry={lookup.retryLookup}
+              retrying={lookup.lookupRetrying}
+            />
           ) : null}
           <UniProtLookupControls lookup={lookup} />
           <UniProtLookupResults lookup={lookup} />

@@ -3,14 +3,21 @@ import { useState } from 'react'
 import { readConfObject } from '@jbrowse/core/configuration'
 import { getSession } from '@jbrowse/core/util'
 
-import useDebouncedValue from './useDebouncedValue'
-import useUniProtSearch from './useUniProtSearch'
 import getSearchDescription from '../utils/getSearchDescription'
 import { isUniProtAccession } from '../utils/uniprotAccession'
 import { extractFeatureIdentifiers, extractTaxonId } from '../utils/util'
+import useDebouncedValue from './useDebouncedValue'
+import useUniProtSearch from './useUniProtSearch'
 
-import type { LookupMode } from '../components/UniProtIdInput'
 import type { Feature } from '@jbrowse/core/util'
+
+export type LookupMode = 'auto' | 'manual' | 'feature'
+
+const LOOKUP_MODES: readonly LookupMode[] = ['auto', 'manual', 'feature']
+
+export function isLookupMode(value: string): value is LookupMode {
+  return LOOKUP_MODES.some(mode => mode === value)
+}
 
 export function describeOrganism(
   taxonId: number | undefined,
@@ -87,6 +94,8 @@ export default function useUniProtIdLookup({
     isLoading: isSearchLoading,
     error: lookupError,
     partialFailure: lookupPartialFailure,
+    retry: retryLookup,
+    retrying: lookupRetrying,
   } = useUniProtSearch({
     recognizedIds: geneIds.recognizedIds,
     geneId: geneIds.geneId,
@@ -144,6 +153,8 @@ export default function useUniProtIdLookup({
     isLookupLoading,
     lookupError,
     lookupPartialFailure,
+    retryLookup,
+    lookupRetrying,
     uniprotId,
     featureUniprotId,
     recognizedIds: geneIds.recognizedIds,

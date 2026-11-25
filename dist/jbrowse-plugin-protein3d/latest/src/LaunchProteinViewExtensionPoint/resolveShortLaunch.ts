@@ -114,9 +114,14 @@ export async function resolveShortLaunch({
   const assemblyName = connectedView?.assembly
   const loc = connectedView?.loc
   const trackSpecs = connectedView?.tracks ?? []
-  if (!assemblyName || !loc) {
+  if (!loc) {
     throw new Error(
-      '`transcriptId` is looked up through `connectedView: { assembly, loc, tracks }`, and this launch gives no `connectedView` with an assembly and loc; a `connectedViewId` alone does not supply them',
+      '`transcriptId` is looked up through `connectedView: { assembly, loc, tracks }`, and this launch gives no `connectedView` with a loc; a `connectedViewId` alone does not supply one',
+    )
+  }
+  if (!assemblyName) {
+    throw new Error(
+      '`transcriptId` is looked up on one assembly, and this launch names none while the session holds several; give `connectedView.assembly` or a `connectedViewId`',
     )
   }
 

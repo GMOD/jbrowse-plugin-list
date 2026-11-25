@@ -19,7 +19,6 @@ export type StructureInteractionHost = ClickProteinToGenomeModel & {
     chain?: string
   }) => void
   setSelectedFeatureId: (uniqueId?: string) => void
-  addViewNotice: (e: unknown) => void
 }
 
 export type ViewInteractionHost = IAnyStateTreeNode & {
@@ -39,6 +38,7 @@ function forStructure(
 }
 
 function onClick(
+  view: ViewInteractionHost,
   structure: StructureInteractionHost,
   info?: MolstarLocationInfo,
 ) {
@@ -51,7 +51,7 @@ function onClick(
       structureSeqPos: hit.structureSeqPos,
     }).catch((e: unknown) => {
       console.error(e)
-      structure.addViewNotice(e)
+      view.addNotice(e)
     })
   } else {
     structure.setClickedStructureRanges([])
@@ -114,7 +114,7 @@ export function attachViewInteractions(view: ViewInteractionHost) {
 
   listen('click', info => {
     for (const structure of view.structures) {
-      onClick(structure, info)
+      onClick(view, structure, info)
     }
   })
   listen('hover', info => {

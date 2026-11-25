@@ -12,10 +12,10 @@ import { serialPerPlugin } from './serialPerPlugin'
 
 import type { StructureFilter } from './residueFilter'
 import type { Structure } from 'molstar/lib/mol-model/structure'
-import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { BuiltInTrajectoryFormat } from 'molstar/lib/mol-plugin-state/formats/trajectory'
 import type { RootStructureDefinition } from 'molstar/lib/mol-plugin-state/helpers/root-structure'
 import type { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
+import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { StateBuilder, StateObjectSelector } from 'molstar/lib/mol-state'
 
 type RawStructure = StateObjectSelector<
@@ -329,11 +329,7 @@ async function collectPreset(
       `No structure could be built from ${source} by Mol*'s all-models preset`,
     )
   }
-  return {
-    model: models[0],
-    structures: loaded,
-    modelIds: loaded.flatMap(s => s.models.map(m => m.id)),
-  }
+  return { model: models[0], structures: loaded }
 }
 
 /**

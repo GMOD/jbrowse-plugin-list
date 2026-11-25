@@ -1,4 +1,5 @@
 import { getContainingView, sum } from '@jbrowse/core/util';
+import { isCDS } from './codingFeature';
 export function getLinearGenomeView(model) {
     return getContainingView(model);
 }
@@ -12,24 +13,13 @@ function joinDefined(sep, parts) {
     return parts.filter(isNonEmptyString).join(sep);
 }
 export function getTranscriptFeatures(feature) {
-    // check if we are looking at a 'two-level' or 'three-level' feature by
-    // finding exon/CDS subfeatures. we want to select from transcript names
-    const subfeatures = feature.get('subfeatures') ?? [];
-    // Check for mRNA/transcript subfeatures (three-level: gene → mRNA → CDS)
-    // Filter to only those that have CDS subfeatures (i.e. are coding)
-    const transcripts = subfeatures.filter((f) => (f.get('type') === 'mRNA' || f.get('type') === 'transcript') &&
-        f.get('subfeatures')?.some((s) => s.get('type') === 'CDS'));
-    if (transcripts.length > 0) {
-        return transcripts;
-    }
-    // Has direct CDS children, treat feature itself as the transcript
-    // (two-level: gene → CDS or mRNA → CDS)
-    return [feature];
+    const transcripts = (feature.get('subfeatures') ?? []).filter(f => f.get('subfeatures')?.some(isCDS));
+    return transcripts.length > 0 ? transcripts : [feature];
 }
 export function getTranscriptLength(feature) {
     const cdsLen = sum(feature
         .get('subfeatures')
-        ?.filter(f => f.get('type') === 'CDS')
+        ?.filter(isCDS)
         .map(s => s.get('end') - s.get('start')) ?? []);
     return {
         len: Math.floor(cdsLen / 3),
@@ -43,7 +33,7 @@ export function getId(val) {
 // protein_id rather than by its transcript
 function getCdsProteinIds(transcript) {
     return (transcript.get('subfeatures') ?? [])
-        .filter(f => f.get('type') === 'CDS')
+        .filter(isCDS)
         .map(f => f.get('protein_id'));
 }
 function getMatchableIds(val) {
@@ -101,8 +91,11 @@ export function getGeneDisplayName(val) {
         ])
         : '';
 }
+export function getViewTitle(feature, transcript) {
+    return `${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(transcript)}`;
+}
 export function getBlastViewTitle(feature, transcript) {
-    return `BLAST - ${getGeneDisplayName(feature)} - ${getTranscriptDisplayName(transcript)}`;
+    return `BLAST - ${getViewTitle(feature, transcript)}`;
 }
 export function getSortedTranscriptFeatures(feature) {
     const transcripts = getTranscriptFeatures(feature);

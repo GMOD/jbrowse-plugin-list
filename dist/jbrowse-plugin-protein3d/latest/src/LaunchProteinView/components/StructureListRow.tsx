@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Checkbox, Link, Typography } from '@mui/material'
+import { Checkbox, Link, Tooltip, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
@@ -8,7 +8,7 @@ import { RESIDUE_COLORS } from '../../ProteinView/residueColors'
 
 import type { StructureRow, StructureTag } from '../utils/structureList'
 
-export const ROW_COLUMNS = '32px 150px minmax(0, 1fr) 170px 150px'
+const ROW_COLUMNS = '32px 150px minmax(0, 1fr) 170px 150px'
 
 const useStyles = makeStyles()(theme => {
   const dark = theme.palette.mode === 'dark'
@@ -163,7 +163,7 @@ const Quality = observer(function Quality({ row }: { row: StructureRow }) {
           )}
           <Plddt value={row.complex.meanPlddt} />
         </>
-      ) : (
+      ) : row.kind === 'added' ? null : (
         <>
           <Typography variant="body2">
             {row.entry.method}
@@ -220,15 +220,25 @@ const Tags = observer(function Tags({
   const { classes, cx } = useStyles()
   return (
     <>
-      {tags.map(tag => (
-        <span
-          key={tag.label}
-          className={cx(classes.tag, className)}
-          title={tag.title}
-        >
-          {tag.label}
-        </span>
-      ))}
+      {tags.map(tag =>
+        tag.title ? (
+          <Tooltip
+            key={tag.label}
+            title={<span style={{ whiteSpace: 'pre-line' }}>{tag.title}</span>}
+          >
+            <span
+              className={cx(classes.tag, className)}
+              aria-label={`${tag.label}: ${tag.title}`}
+            >
+              {tag.label}
+            </span>
+          </Tooltip>
+        ) : (
+          <span key={tag.label} className={cx(classes.tag, className)}>
+            {tag.label}
+          </span>
+        ),
+      )}
     </>
   )
 })
@@ -301,7 +311,7 @@ const StructureListRow = observer(function StructureListRow({
         <Typography variant="caption" color="textSecondary">
           listed as {row.match.structure.id}
         </Typography>
-      ) : (
+      ) : row.kind === 'added' ? null : (
         <Coverage start={row.start} end={row.end} length={uniprotLength} />
       )}
     </div>

@@ -31,6 +31,32 @@ describe('useQueryRowName', () => {
         expect(result.current.querySeqName).toBe('aligned_query');
         expect(result.current.isAutoDetected).toBe(true);
     });
+    test('picking the detected row again hands the choice back to detection', () => {
+        const { result, rerender } = renderHook(({ msa }) => useQueryRowName(msa, protein), { initialProps: { msa: trimmed } });
+        act(() => {
+            result.current.setQuerySeqName('other');
+        });
+        act(() => {
+            result.current.setQuerySeqName('aligned_query');
+        });
+        expect(result.current.isAutoDetected).toBe(true);
+        const swapped = trimmed
+            .replace('>aligned_query', '>tmp')
+            .replace('>other', '>aligned_query')
+            .replace('>tmp', '>other');
+        rerender({ msa: swapped });
+        expect(result.current.querySeqName).toBe('other');
+    });
+    test('a picked row is dropped once the query is another isoform', () => {
+        const isoform = protein.slice(0, 50);
+        const { result, rerender } = renderHook(({ query }) => useQueryRowName(trimmed, query), { initialProps: { query: protein } });
+        act(() => {
+            result.current.setQuerySeqName('other');
+        });
+        rerender({ query: isoform });
+        expect(result.current.querySeqName).toBe('aligned_query');
+        expect(result.current.isAutoDetected).toBe(true);
+    });
 });
 // a pre-loaded dataset names its rows by a convention of its own, and the
 // residues can be too diverged for detection to find the row that is right

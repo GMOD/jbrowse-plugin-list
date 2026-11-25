@@ -6,8 +6,8 @@ import { fetchAndMaybeUnzipText, isUriLocation } from '@jbrowse/core/util'
 import { openLocation } from '@jbrowse/core/util/io'
 import { getEnv, isStateTreeNode } from '@jbrowse/mobx-state-tree'
 
-import { isRecord } from './isRecord'
 import { codingTranscripts, flaggedTranscriptId } from '../codingFeature'
+import { isRecord } from './isRecord'
 
 import type PluginManager from '@jbrowse/core/PluginManager'
 import type { Feature, FileLocation } from '@jbrowse/core/util'
@@ -226,7 +226,7 @@ export function datasetMatches({
 }
 
 /** Where the mapping file is, which its relative urls are read against */
-export function mappingUrl(location: FileLocation) {
+function mappingUrl(location: FileLocation) {
   return isUriLocation(location)
     ? new URL(location.uri, location.baseUri ?? window.location.href).href
     : window.location.href

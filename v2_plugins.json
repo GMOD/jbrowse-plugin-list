@@ -14,12 +14,12 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/msaview-screenshot-fs8.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/5.19.0/dist/jbrowse-plugin-msaview.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/5.20.0/dist/jbrowse-plugin-msaview.esm.js",
       "versions": [
         {
-          "pluginVersion": "5.19.0",
+          "pluginVersion": "5.20.0",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/5.19.0/dist/jbrowse-plugin-msaview.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/5.20.0/dist/jbrowse-plugin-msaview.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-msaview/latest/dist/jbrowse-plugin-msaview.esm.js"
@@ -226,12 +226,12 @@
       ],
       "license": "MIT",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/protein3d-fs8.png",
-      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.35.0/dist/jbrowse-plugin-protein3d.esm.js",
+      "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.36.0/dist/jbrowse-plugin-protein3d.esm.js",
       "versions": [
         {
-          "pluginVersion": "1.35.0",
+          "pluginVersion": "1.36.0",
           "jbrowseRange": ">=5.0.0",
-          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.35.0/dist/jbrowse-plugin-protein3d.esm.js"
+          "esmUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/1.36.0/dist/jbrowse-plugin-protein3d.esm.js"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/jbrowse-plugin-protein3d/latest/dist/jbrowse-plugin-protein3d.esm.js"
@@ -279,14 +279,14 @@
       ],
       "license": "Apache License 2.0",
       "image": "https://raw.githubusercontent.com/GMOD/jbrowse-plugin-list/main/img/apollo-screenshot-800x200.png",
-      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.2.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
-      "integrity": "sha384-Tu8DtNjaIsIEenkC6UNEpOjhZO53tAqGE4PEHqITDRdjAS/vLI7MWgHgbX6Uno3u",
+      "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.3.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
+      "integrity": "sha384-isOd3ooPhpzxPlSxcWPFwd5AKrXYhBYAxuoWv8LjmYnMxp8I0Oq5gDYlkRvWYLQz",
       "versions": [
         {
-          "pluginVersion": "1.2.0",
+          "pluginVersion": "1.3.0",
           "jbrowseRange": "*",
-          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.2.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
-          "integrity": "sha384-Tu8DtNjaIsIEenkC6UNEpOjhZO53tAqGE4PEHqITDRdjAS/vLI7MWgHgbX6Uno3u"
+          "url": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/1.3.0/dist/jbrowse-plugin-apollo.umd.production.min.js",
+          "integrity": "sha384-isOd3ooPhpzxPlSxcWPFwd5AKrXYhBYAxuoWv8LjmYnMxp8I0Oq5gDYlkRvWYLQz"
         }
       ],
       "latestUrl": "https://jbrowse.org/plugins/@apollo-annotation/jbrowse-plugin-apollo/latest/dist/jbrowse-plugin-apollo.umd.production.min.js"

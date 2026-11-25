@@ -4,6 +4,8 @@ import {
   makeUniProtPositionMap,
 } from 'p2s_mapper'
 
+import { ISOFORM_SUFFIX } from './fileUniProt'
+
 import type {
   MapUniProtPosition,
   SegmentEntity,
@@ -22,8 +24,6 @@ export interface StructureUniProt {
   /** the AlphaFold isoform model opened, whose numbering is not the entry's */
   isoformAccession?: string
 }
-
-const ISOFORM_SUFFIX = /-\d+$/
 
 /**
  * Which UniProt entry a loaded structure represents, and how UniProt positions

@@ -35,6 +35,7 @@ export declare function transcriptTracks<T extends {
     type: string;
     configuration: AnyConfigurationModel;
 }>(tracks: readonly T[]): T[];
+export declare function abortTranscriptLookup(self: object): void;
 interface ConnectableView {
     initialized: boolean;
     pendingLaunch?: unknown;

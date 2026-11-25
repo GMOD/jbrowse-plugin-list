@@ -1,3 +1,6 @@
+import { isCssColor } from '@jbrowse/core/util/colorBits'
+import { colord } from '@jbrowse/core/util/colord'
+
 import {
   featureFilterLabel,
   featureFilterProblems,
@@ -174,8 +177,24 @@ function isScaledField(field: ColorField): field is ScaledField {
   return SCALED_FIELDS.some(f => f === field)
 }
 
-function isStrings(value: unknown) {
+function isStrings(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every(v => typeof v === 'string')
+}
+
+function rangeColorProblem(c: string) {
+  return !isCssColor(c)
+    ? [`color.range is a list of CSS colors; ${JSON.stringify(c)} is not one`]
+    : colord(c).alpha() < 1
+      ? [
+          `color.range is a list of opaque colors; ${JSON.stringify(c)} is see-through, and the scale would paint it opaque`,
+        ]
+      : []
+}
+
+function rangeProblems(value: unknown) {
+  return isStrings(value)
+    ? [...new Set(value)].flatMap(rangeColorProblem)
+    : ['color.range is a list of CSS colors']
 }
 
 function isNumbers(value: unknown) {
@@ -206,7 +225,6 @@ function isResidueValues(value: unknown) {
 
 const MEMBER_TYPES: Record<string, [(value: unknown) => boolean, string]> = {
   domain: [isNumbers, 'a list of numbers'],
-  range: [isStrings, 'a list of CSS colors'],
   labels: [isStrings, 'a list of strings'],
   title: [v => typeof v === 'string', 'a string'],
   trackId: [v => typeof v === 'string' && v !== '', 'a track id'],
@@ -291,6 +309,9 @@ export function colorProblems(color: unknown): string[] {
     if (key === 'filter') {
       return featureFilterProblems(value, 'color.filter')
     }
+    if (key === 'range') {
+      return rangeProblems(value)
+    }
     const [accepts, kind] = MEMBER_TYPES[key]!
     return accepts(value) ? [] : [`color.${key} is ${kind}`]
   })
@@ -372,7 +393,8 @@ export function resolvedColor(
   const { field, trackId, stat, scoreField, filter, values, ...members } = color
   return field && isScaledField(field)
     ? ({ ...presetOf(field, members.scale), ...members } as
-        LinearColor | ThresholdColor)
+        | LinearColor
+        | ThresholdColor)
     : undefined
 }
 

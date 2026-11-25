@@ -146,3 +146,14 @@ test('a transcriptId without a connectedView says what the lookup needs, whateve
   )
   await expect(failure).rejects.not.toThrow(/uniprotId/)
 })
+
+test('a transcriptId on no named assembly says how to name one', async () => {
+  const { session } = fakeSession({}, {})
+  await expect(
+    resolveShortLaunch({
+      session,
+      transcriptId: 'NM_000546.6',
+      connectedView: { loc: '17:1-1000', tracks: ['ensembl'] },
+    }),
+  ).rejects.toThrow(/`connectedView.assembly` or a `connectedViewId`/)
+})

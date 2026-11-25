@@ -3,6 +3,9 @@ import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
+import { residuesOf } from '../test_data/molstarStructure'
+import { toStructure } from '../test_data/positionLookups'
 import loadMolstar from './loadMolstar'
 import { RESIDUE_MARKS_TAG, syncResidueMarks } from './residueMarks'
 import {
@@ -19,9 +22,6 @@ import {
 } from './sessionHighlights'
 import { setStructuresHidden } from './structureVisibility'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
-import { residuesOf } from '../test_data/molstarStructure'
-import { toStructure } from '../test_data/positionLookups'
 
 import type { StructureFilter } from './residueFilter'
 import type { GenomeHighlight } from './sessionHighlights'
@@ -213,7 +213,8 @@ test('a homo-oligomer draws a highlighted residue on every chain, and its anchor
       new Set(
         (
           cell?.obj?.data as
-            { sourceData: { units: { chainGroupId: number }[] } } | undefined
+            | { sourceData: { units: { chainGroupId: number }[] } }
+            | undefined
         )?.sourceData.units.map(u => u.chainGroupId),
       ).size
     await syncSessionHighlightMarks({
@@ -230,7 +231,8 @@ test('a homo-oligomer draws a highlighted residue on every chain, and its anchor
     const molstar = await loadMolstar()
     const loci = (
       anchors[0]?.obj?.data as
-        { loci: Parameters<typeof copyCenters>[1] }[] | undefined
+        | { loci: Parameters<typeof copyCenters>[1] }[]
+        | undefined
     )?.[0]?.loci
     const centers = copyCenters(molstar, loci!)
     expect(centers).toHaveLength(2)
@@ -318,7 +320,7 @@ test("the fade leaves a spec's residue mark opaque, whichever was drawn first", 
     const molstarStructure = await helix(plugin)
     await syncResidueMarks({
       plugin,
-      structures: [molstarStructure],
+      structures: [[molstarStructure]],
       marks: [{ site: 'A:7', mark: 'sticks' }],
     })
     await syncSessionHighlightMarks({

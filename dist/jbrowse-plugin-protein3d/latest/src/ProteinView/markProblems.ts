@@ -35,6 +35,18 @@ function siteProblems(where: string, key: string, site: unknown) {
       ]
 }
 
+function structureProblems(where: string, structure: unknown, count: number) {
+  return structure === undefined ||
+    (typeof structure === 'number' &&
+      Number.isInteger(structure) &&
+      structure >= 0 &&
+      structure < count)
+    ? []
+    : [
+        `${where}.structure is the index of one of the view's ${count} structures, not ${JSON.stringify(structure)}`,
+      ]
+}
+
 /** What a structure draws, as the checks read it. */
 interface DrawnBy {
   chains?: string[]
@@ -43,13 +55,14 @@ interface DrawnBy {
 
 /**
  * Why `marks` would draw something other than what it says: a site or mark
- * type that does not parse, a color that is not #rrggbb, or a cartoon over a
- * chain the structure already draws whole. `structures` are the view's, whose
- * `chains` and `filter` say what is drawn.
+ * type that does not parse, a structure index the view does not have, a color
+ * that is not #rrggbb, or a cartoon over a chain the structure already draws
+ * whole. `structures` are the view's, whose `chains` and `filter` say what is
+ * drawn.
  */
 export function markProblems(
   marks: unknown,
-  structures: readonly DrawnBy[] = [],
+  structures: readonly DrawnBy[],
 ): string[] {
   if (marks === undefined) {
     return []
@@ -69,6 +82,7 @@ export function markProblems(
     const drawn = structure?.chains
     return [
       ...siteProblems(where, 'site', mark.site),
+      ...structureProblems(where, mark.structure, structures.length),
       ...(mark.mark !== undefined && !MARK_TYPES.includes(mark.mark as string)
         ? [
             `${where}.mark is one of ${MARK_TYPES.join(', ')}, not ${JSON.stringify(mark.mark)}`,
@@ -93,8 +107,14 @@ export function markProblems(
   })
 }
 
-/** The same check for `distances`: two sites and a constant encoding. */
-export function distanceProblems(distances: unknown): string[] {
+/**
+ * The same check for `distances`: two sites, a structure the view has and a
+ * constant encoding.
+ */
+export function distanceProblems(
+  distances: unknown,
+  structures: readonly DrawnBy[],
+): string[] {
   if (distances === undefined) {
     return []
   }
@@ -107,6 +127,7 @@ export function distanceProblems(distances: unknown): string[] {
       ? [
           ...siteProblems(where, 'a', d.a),
           ...siteProblems(where, 'b', d.b),
+          ...structureProblems(where, d.structure, structures.length),
           ...encodingProblems(where, d),
         ]
       : [`${where} is an object such as { a: 'A:46@NZ', b: 'A:80@NZ' }`]
@@ -240,7 +261,7 @@ const FIGURE_KEY_SET: ReadonlySet<string> = new Set(FIGURE_KEYS)
  */
 export function checkedFigure<T extends Record<string, unknown>>(
   snapshot: T,
-  structures: readonly DrawnBy[] = [],
+  structures: readonly DrawnBy[],
 ): T {
   const migrated = {
     ...snapshot,
@@ -253,7 +274,7 @@ export function checkedFigure<T extends Record<string, unknown>>(
   }
   const problems = [
     ...markProblems(migrated.marks, structures),
-    ...distanceProblems(migrated.distances),
+    ...distanceProblems(migrated.distances, structures),
     ...cameraProblems(migrated.camera),
     ...surfaceProblems(migrated.surface),
     ...flagProblems(migrated),
@@ -262,6 +283,47 @@ export function checkedFigure<T extends Record<string, unknown>>(
     throw new Error(problems.join('; '))
   }
   return migrated
+}
+
+function pastStructures(entry: unknown, count: number) {
+  return (
+    isRecord(entry) &&
+    typeof entry.structure === 'number' &&
+    Number.isInteger(entry.structure) &&
+    (entry.structure < 0 || entry.structure >= count)
+  )
+}
+
+function withinStructures(list: unknown, count: number) {
+  return Array.isArray(list)
+    ? list.filter(entry => !pastStructures(entry, count))
+    : list
+}
+
+/**
+ * checkedFigure for a saved session, less each mark or distance whose
+ * structure index is past the view's structures: before 1.26.1 removing a
+ * structure left the later ones' indices as they were, so a session saved
+ * then may carry one, and a view that refused it would not open at all.
+ */
+export function checkedStoredFigure<T extends Record<string, unknown>>(
+  snapshot: T,
+  structures: readonly DrawnBy[],
+): T {
+  return checkedFigure(
+    {
+      ...snapshot,
+      ...(snapshot.marks === undefined
+        ? {}
+        : { marks: withinStructures(snapshot.marks, structures.length) }),
+      ...(snapshot.distances === undefined
+        ? {}
+        : {
+            distances: withinStructures(snapshot.distances, structures.length),
+          }),
+    },
+    structures,
+  )
 }
 
 /**

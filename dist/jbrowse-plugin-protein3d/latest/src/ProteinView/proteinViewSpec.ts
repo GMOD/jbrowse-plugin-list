@@ -1,5 +1,7 @@
 import { resolveStructureUrl, structureDisplayLabel } from 'p2s_mapper'
 
+import { checkedFigure } from './markProblems'
+
 import type { FIGURE_KEYS } from './markProblems'
 import type { DistanceMeasurement } from './measurements'
 import type { ProteinColor } from './proteinColor'
@@ -22,6 +24,8 @@ import type {
 export interface ProteinStructureSpec {
   url?: string
   data?: string
+  // the name of the file `data` was read from, which labels the structure
+  fileName?: string
   // shorthands resolved to `url` at hydration when neither url nor data is set:
   // uniprotId -> AlphaFold model, alphaFoldComplexId -> AlphaFold DB's
   // predicted complex, pdbId -> RCSB mmCIF
@@ -106,13 +110,15 @@ export function defaultDisplayName(structures: ProteinStructureSpec[]) {
   return [
     'Protein view',
     typeof featureName === 'string' ? featureName : undefined,
-    ...structures.map(s =>
-      structureDisplayLabel({
-        url: resolveStructureUrl(s),
-        data: s.data,
-        uniprotId: s.uniprotId,
-        alphaFoldComplexId: s.alphaFoldComplexId,
-      }),
+    ...structures.map(
+      s =>
+        (s.data === undefined ? undefined : s.fileName) ??
+        structureDisplayLabel({
+          url: resolveStructureUrl(s),
+          data: s.data,
+          uniprotId: s.uniprotId,
+          alphaFoldComplexId: s.alphaFoldComplexId,
+        }),
     ),
   ]
     .filter(s => !!s)
@@ -123,9 +129,12 @@ export function defaultDisplayName(structures: ProteinStructureSpec[]) {
  * The single source of truth for turning a ProteinViewSpec into the snapshot
  * handed to `session.addView('ProteinView', ...)`. Every launch path funnels
  * through here so they can't drift into different subsets of the same view.
+ * Throws on a mark or distance the spec's own structures cannot carry, which a
+ * saved session's snapshot would only drop.
  */
 export function proteinViewSnapshot(spec: ProteinViewSpec) {
   const { structures, ...view } = spec
+  checkedFigure({ marks: view.marks, distances: view.distances }, structures)
   return {
     type: 'ProteinView' as const,
     ...view,

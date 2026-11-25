@@ -1,13 +1,13 @@
+import { formatViewName } from '../utils/launchViewUtils'
 import { setupProteinAssembly } from './proteinAssemblySetup'
 import {
   fetchUniProtFeatureTypes,
   proteinTrackConfs,
 } from './proteinTrackSetup'
-import { formatViewName } from '../utils/launchViewUtils'
 
+import type { Protein1DLinkage } from '../../Protein1DLinkage'
 import type { TemporaryAssemblySession } from './proteinAssemblySetup'
 import type { ProteinTrackConf } from './proteinTrackSetup'
-import type { Protein1DLinkage } from '../../Protein1DLinkage'
 import type { Feature } from '@jbrowse/core/util'
 
 interface TrackLaunchingView {

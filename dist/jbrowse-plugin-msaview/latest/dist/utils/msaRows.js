@@ -1,3 +1,6 @@
+function sanitize(name) {
+    return name.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
 function makeId(h, taxonomyInfo) {
     let speciesName = h.sciname.replaceAll(' ', '_');
     if (h.taxid && taxonomyInfo?.has(h.taxid)) {
@@ -9,7 +12,7 @@ function makeId(h, taxonomyInfo) {
                 .join('_');
         }
     }
-    return `${h.accession}-${speciesName}`;
+    return `${h.accession.replace(/[\s()[\]:;,'"]+/g, '_')}-${sanitize(speciesName)}`;
 }
 /**
  * Turning search results into the rows the view is given, kept free of any

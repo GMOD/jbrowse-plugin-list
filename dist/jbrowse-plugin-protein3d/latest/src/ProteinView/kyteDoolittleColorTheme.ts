@@ -1,7 +1,7 @@
+import { MmcifFormat } from 'molstar/lib/mol-model-formats/structure/mmcif'
 import { Sequence } from 'molstar/lib/mol-model/sequence'
 import { getProteinOneLetterCode } from 'molstar/lib/mol-model/sequence/constants'
 import { StructureProperties } from 'molstar/lib/mol-model/structure'
-import { MmcifFormat } from 'molstar/lib/mol-model-formats/structure/mmcif'
 import { ColorThemeCategory } from 'molstar/lib/mol-theme/color/categories'
 import { Color } from 'molstar/lib/mol-util/color'
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'

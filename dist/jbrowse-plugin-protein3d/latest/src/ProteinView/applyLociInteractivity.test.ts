@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { expect, test } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
 import { setMolstarLoci } from './applyLociInteractivity'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
 
 // Mol*'s Picking Level widens whatever it is handed. A user who set it to
 // Chain in the Mol* controls saw one hovered codon, and one clicked residue's

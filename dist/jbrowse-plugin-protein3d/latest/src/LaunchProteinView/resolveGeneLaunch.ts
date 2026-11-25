@@ -7,14 +7,14 @@ import {
   searchUniProtEntries,
 } from 'p2s_mapper'
 
-import { codingTranscripts, flaggedTranscriptId } from './codingFeature'
 import {
   rankIsoforms,
   rankedTranscriptId,
 } from '../AlignTranscriptRpc/isoformRanking'
+import { alignOffThread } from '../ProteinView/alignOffThread'
+import { codingTranscripts, flaggedTranscriptId } from './codingFeature'
 import { fetchTranscriptProteinSeqs } from './utils/translateTranscripts'
 import { extractFeatureIdentifiers, extractTaxonId } from './utils/util'
-import { alignOffThread } from '../ProteinView/alignOffThread'
 
 import type { IsoformRanking } from '../AlignTranscriptRpc/isoformRanking'
 import type { TranscriptTranslation } from './utils/translateTranscripts'

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { QueryRowMatch } from '../detectQueryRow';
+import type { SequenceStatus } from './SequenceStatus';
 /**
  * Which MSA row corresponds to the selected transcript. Clicking and hovering in
  * the alignment reach the genome only through this name, and a wrong one fails
@@ -7,11 +8,12 @@ import type { QueryRowMatch } from '../detectQueryRow';
  * itself in from the pasted alignment and offers that alignment's own row names
  * rather than a free text box the user can typo.
  */
-declare const QueryRowSelector: ({ names, detected, querySeqName, setQuerySeqName, isAutoDetected, }: {
+declare const QueryRowSelector: ({ names, detected, querySeqName, setQuerySeqName, isAutoDetected, sequenceStatus, }: {
     names: string[];
     detected?: QueryRowMatch;
     querySeqName: string;
     setQuerySeqName: (arg: string) => void;
     isAutoDetected: boolean;
+    sequenceStatus: SequenceStatus;
 }) => React.JSX.Element;
 export default QueryRowSelector;

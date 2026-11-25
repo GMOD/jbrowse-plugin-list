@@ -1,4 +1,4 @@
-import { isAbortError, textfetch } from './fetch';
+import { HttpError, isAbortError, textfetch, timeout } from './fetch';
 import { pollLoop } from './poll';
 import { readLocalStorage } from './useLocalStorage';
 /**
@@ -7,9 +7,9 @@ import { readLocalStorage } from './useLocalStorage';
  * each tool only supplies its own parameters and result types.
  *
  * Unlike NCBI's Blast.cgi these endpoints send `Access-Control-Allow-Origin: *`,
- * which is why the BLAST backend moved here — see docs/blast.md.
+ * which is why the BLAST backend moved here — see agent-docs/blast-design.md.
  */
-export const EBI_BASE = 'https://www.ebi.ac.uk/Tools/services/rest';
+const EBI_BASE = 'https://www.ebi.ac.uk/Tools/services/rest';
 /**
  * EBI asks for a contact address on every submission so they can reach whoever
  * is generating the load. The default is the project's mailbox; a deployment
@@ -37,7 +37,7 @@ async function submitEbiJob({ tool, params, signal, }) {
  * it is not a reason to abandon one. A job the server has accepted keeps running
  * whatever happens to the poller's connection, and EBI's cluster has answered
  * status checks with a 502 for ten minutes on jobs that then finished (see
- * docs/blast.md).
+ * agent-docs/blast-design.md).
  *
  * So the poll gives up only once checks have failed without a break for this
  * long: an endpoint that has genuinely gone away must not be polled forever.
@@ -81,6 +81,27 @@ export async function waitForEbiJob({ tool, jobId, intervalSeconds = 10, onCount
         },
     });
 }
+const RESULT_ATTEMPTS = 4;
+const RESULT_RETRY_DELAY_MS = 3000;
+function isTransient(e) {
+    return !isAbortError(e) && !(e instanceof HttpError && e.status < 500);
+}
+async function fetchResult(url, attempts, signal) {
+    for (let attempt = 1;; attempt++) {
+        try {
+            return await textfetch(url, { signal });
+        }
+        catch (e) {
+            if (attempt < attempts && isTransient(e)) {
+                console.warn('[msaview] EBI result download failed, retrying:', e);
+                await timeout(RESULT_RETRY_DELAY_MS * attempt, signal);
+            }
+            else {
+                throw e;
+            }
+        }
+    }
+}
 export async function runEbiJob({ tool, label, params, onProgress, onRid, signal, }) {
     onProgress(`Submitting ${label} to EBI...`);
     const jobId = await submitEbiJob({ tool, params, signal });
@@ -95,6 +116,6 @@ export async function runEbiJob({ tool, label, params, onProgress, onRid, signal
     });
     return {
         jobId,
-        result: (type) => textfetch(`${EBI_BASE}/${tool}/result/${jobId}/${type}`, { signal }),
+        result: (type, { retry = true } = {}) => fetchResult(`${EBI_BASE}/${tool}/result/${jobId}/${type}`, retry ? RESULT_ATTEMPTS : 1, signal),
     };
 }

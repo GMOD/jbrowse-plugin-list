@@ -35,41 +35,54 @@ const ProteinAlignmentHelpDialog = observer(
       >
         <DialogContent>
           <Typography2>
-            This panel shows the computed pairwise alignment of the reference
-            genome sequence to the structure sequence. The structure file (PDB
-            file, mmCIF file, etc) has a stored representation of the e.g. amino
-            acid sequence but the sequence in the structure file can differ from
-            the sequence from the gene on the genome browser
+            The panel aligns the protein the genome&apos;s transcript translates
+            to the sequence the structure file spells, which can differ. The
+            alignment runs in the browser: Smith-Waterman with BLOSUM62 and
+            EMBOSS-style gap penalties, or Needleman-Wunsch when the view was
+            launched with <code>alignmentAlgorithm</code> set to it. A residue
+            that falls in a gap is unmapped and does not highlight. An alignment
+            always returns something, so a low-similarity warning on the
+            structure&apos;s header row means the mapping may be chance: check
+            the chain picker or the transcript isoform first.
           </Typography2>
           <Typography2>
-            In order to resolve this, we align the two sequences in the browser
-            (Smith-Waterman by default, or Needleman-Wunsch, both with BLOSUM62
-            and EMBOSS-style gap penalties) to get a pairwise alignment of the
-            genome&apos;s representation of the protein and the structure
-            file&apos;s representation of the protein. Positions that fall in a
-            gap are unmapped and will not highlight. Each structure&apos;s row
-            in the header reports the identity and how much of the transcript it
-            covers; an alignment always comes back with something, so a
-            low-similarity warning there means the mapped positions may be
-            chance rather than homology, and the chain picker or a different
-            isoform is the first thing to check.
+            A structure opened without a transcript shows its own protein chain:
+            there is no GENOME row, and a click selects in 3D only.
           </Typography2>
-          <Typography2>
-            The GENOME row is the transcript&apos;s translation and the STRUCT
-            row is the structure file&apos;s own sequence, shaded amber where it
-            differs from the transcript by a similar amino acid and red where it
-            differs by a dissimilar one. The ruler under them counts residues
-            the way the structure&apos;s authors numbered them, which for a PDB
-            entry is the numbering papers and UniProt cite (p53&apos;s R248 is
-            residue 248 in 1TUP even though the crystallised fragment starts at
-            residue 94). Click a residue to select it and jump the genome view
-            to its codon; hover one to light it in the 3D view.
-          </Typography2>
-          <Typography2>
-            If you need a 100% fidelity protein, you can do a folding with e.g.
-            AlphaFold to make sure the structure you are using matches exactly
-            the sequence of the transcript
-          </Typography2>
+          <ul style={{ margin: 4, paddingLeft: 20 }}>
+            <li>
+              <strong>GENOME</strong> is the transcript&apos;s translation;{' '}
+              <strong>STRUCT</strong> is the structure file&apos;s sequence,
+              shaded amber where it differs by a similar amino acid and red
+              where it differs by a dissimilar one.
+            </li>
+            <li>
+              <strong>residue</strong> counts the way the structure&apos;s
+              authors numbered it, as papers do: p53&apos;s R248 is 248 in 1TUP,
+              whose fragment starts at 94.
+            </li>
+            <li>
+              Below them, rows <strong>from the alignment</strong> are domains
+              and sites a connected multiple alignment draws, then UniProt
+              features, <strong>pLDDT</strong> (AlphaFold&apos;s confidence) and{' '}
+              <strong>hydro</strong> (Kyte-Doolittle hydrophobicity). Click a
+              bar to select its residues.
+            </li>
+            <li>
+              <strong>×</strong> hides a feature track, which the view
+              menu&apos;s Restore hidden feature tracks brings back; the expand
+              button beside it lays overlapping features on rows of their own.
+            </li>
+            <li>
+              Bands across the rows: pink is the hovered residue, orange a
+              hovered bar&apos;s residues, blue the selection, and green the
+              residues aligned to the transcript while that highlight is on.
+            </li>
+            <li>
+              Click a residue to select it and move the genome view to its
+              codon; hover one to light it in the 3D view.
+            </li>
+          </ul>
         </DialogContent>
         <DialogActions>
           <Button

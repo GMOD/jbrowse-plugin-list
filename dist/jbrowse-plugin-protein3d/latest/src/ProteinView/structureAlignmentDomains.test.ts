@@ -2,6 +2,7 @@ import { types } from '@jbrowse/mobx-state-tree'
 import { autorun, observable, runInAction } from 'mobx'
 import { expect, test, vi } from 'vitest'
 
+import { parseStructure } from '../test_data/molstarStructure'
 import Structure from './structureModel'
 
 import type { ConnectedDomain } from './alignmentDomains'
@@ -32,6 +33,10 @@ vi.mock('@jbrowse/core/util', async importActual => {
     }),
   }
 })
+
+const LOADED_STRUCTURES = [
+  await parseStructure([{ asym: 'A', entity: '1', residues: ['MET'] }]),
+]
 
 const TestParent = types
   .model({ structures: types.array(Structure) })
@@ -131,8 +136,8 @@ function setup() {
         chains: ['A'],
       },
     ],
+    molstarStructures: LOADED_STRUCTURES,
   })
-  structure.setLoadedToMolstar(true)
   return { parent, structure, msa }
 }
 

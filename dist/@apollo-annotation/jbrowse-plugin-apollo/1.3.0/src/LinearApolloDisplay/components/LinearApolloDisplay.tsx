@@ -1,0 +1,159 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+
+/* eslint-disable @typescript-eslint/no-misused-promises */
+
+import { Menu, type MenuItem } from '@jbrowse/core/ui'
+import { getContainingView } from '@jbrowse/core/util'
+import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
+import LockIcon from '@mui/icons-material/Lock'
+import { Alert, CircularProgress, Tooltip, useTheme } from '@mui/material'
+import { observer } from 'mobx-react'
+import React, { useCallback, useEffect, useState } from 'react'
+
+import { FeatureDensityHistogram } from '../../components/FeatureDensityHistogram'
+import { type Coord, useStyles } from '../../util/displayUtils'
+import type { LinearApolloDisplay as LinearApolloDisplayI } from '../stateModel'
+
+import { CheckResultWarnings } from './CheckResultWarnings'
+import { OverlayCanvas } from './OverlayCanvas'
+
+interface LinearApolloDisplayProps {
+  model: LinearApolloDisplayI
+}
+
+// Lock icon when isLocked === true
+
+export const LinearApolloDisplay = observer(function LinearApolloDisplay(
+  props: LinearApolloDisplayProps,
+) {
+  const theme = useTheme()
+  const { model } = props
+  const {
+    loading,
+    contextMenuItems: getContextMenuItems,
+    featuresHeight: getFeaturesHeight,
+    isShown,
+    densityMessage,
+    displayMode,
+    session,
+    setCanvas,
+    setCollaboratorCanvas,
+    setTheme,
+  } = model
+  const { classes } = useStyles()
+  const lgv = getContainingView(model) as unknown as LinearGenomeViewModel
+
+  useEffect(() => {
+    setTheme(theme)
+  }, [theme, setTheme])
+  // Stable ref callbacks so React doesn't call them with null and then the node
+  // again on every render, which would set the canvas twice and redraw it.
+  // Promise.resolve() in these 2 callbacks is to avoid infinite rendering loop
+  // https://github.com/mobxjs/mobx/issues/3728#issuecomment-1715400931
+  const collaboratorCanvasRef = useCallback(
+    async (node: HTMLCanvasElement | null) => {
+      await Promise.resolve()
+      setCollaboratorCanvas(node)
+    },
+    [setCollaboratorCanvas],
+  )
+  const canvasRef = useCallback(
+    async (node: HTMLCanvasElement | null) => {
+      await Promise.resolve()
+      setCanvas(node)
+    },
+    [setCanvas],
+  )
+  const [contextCoord, setContextCoord] = useState<Coord>()
+  const [contextMenuItems, setContextMenuItems] = useState<MenuItem[]>([])
+  const message = densityMessage
+  const showHistogram = !message && displayMode !== 'features'
+  if (!isShown) {
+    return null
+  }
+  const featuresHeight = getFeaturesHeight(lgv.assemblyNames[0])
+  return (
+    <div
+      className={classes.canvasContainer}
+      style={{
+        width: lgv.dynamicBlocks.totalWidthPx,
+        // The histogram fills the track
+        height: showHistogram ? '100%' : featuresHeight,
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        if (contextMenuItems.length > 0) {
+          // There's already a context menu open, so close it
+          setContextMenuItems([])
+        } else {
+          const coord: [number, number] = [event.clientX, event.clientY]
+          setContextCoord(coord)
+          setContextMenuItems(getContextMenuItems(event))
+        }
+      }}
+    >
+      {session.isLocked ? (
+        <div className={classes.locked} data-testid="lock-icon">
+          <LockIcon />
+        </div>
+      ) : null}
+      {loading ? (
+        <div className={classes.loading}>
+          <CircularProgress size="18px" />
+        </div>
+      ) : null}
+      {message ? (
+        <Alert
+          severity="warning"
+          classes={{ message: classes.ellipses }}
+          slotProps={{ root: { className: classes.center } }}
+        >
+          <Tooltip title={message}>
+            <div>{message}</div>
+          </Tooltip>
+        </Alert>
+      ) : null}
+      {showHistogram ? <FeatureDensityHistogram model={model} /> : null}
+      {message || showHistogram ? null : (
+        <>
+          <canvas
+            ref={collaboratorCanvasRef}
+            className={classes.canvas}
+            data-testid="collaboratorCanvas"
+          />
+          <canvas
+            ref={canvasRef}
+            className={classes.canvas}
+            data-testid="canvas"
+          />
+          <OverlayCanvas model={model} />
+          <CheckResultWarnings display={model} />
+          <Menu
+            open={contextMenuItems.length > 0}
+            onMenuItemClick={(_, callback) => {
+              callback()
+              setContextMenuItems([])
+            }}
+            onClose={() => {
+              setContextMenuItems([])
+            }}
+            slotProps={{
+              transition: {
+                onExit: () => {
+                  setContextMenuItems([])
+                },
+              },
+            }}
+            anchorReference="anchorPosition"
+            anchorPosition={
+              contextCoord
+                ? { top: contextCoord[1], left: contextCoord[0] }
+                : undefined
+            }
+            menuItems={contextMenuItems}
+          />
+        </>
+      )}
+    </div>
+  )
+})

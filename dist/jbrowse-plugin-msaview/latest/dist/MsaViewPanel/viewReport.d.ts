@@ -39,7 +39,7 @@ interface ReportedView {
 }
 /**
  * What a view resolved to, as plain JSON: the header's facts, for a script or
- * an agent to read instead of the model's internals. docs/reading-the-view.md
+ * an agent to read instead of the model's internals. docs/launching.md
  * describes each field.
  */
 export declare function viewReport(view: ReportedView): {

@@ -5,13 +5,13 @@ import {
 import { Color } from 'molstar/lib/mol-util/color'
 import { beforeAll, expect, test } from 'vitest'
 
+import { parseStructure } from '../test_data/molstarStructure'
 import { rgbScaleOf } from './colorScale'
 import {
   KyteDoolittleColorThemeProvider,
   NON_AMINO_ACID_COLOR,
 } from './kyteDoolittleColorTheme'
 import { RESIDUE_COLORS } from './residueColors'
-import { parseStructure } from '../test_data/molstarStructure'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
 

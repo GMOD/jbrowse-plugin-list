@@ -1,4 +1,4 @@
-import type { DBSchema, IDBPDatabase, OpenDBCallbacks } from 'idb';
+import type { DBSchema, IDBPDatabase, OpenDBCallbacks, StoreKey, StoreNames, StoreValue } from 'idb';
 /**
  * Memoized `openDB` for a typed schema, shared by this plugin's caches.
  *
@@ -23,3 +23,5 @@ export declare function createDbOpener<T extends DBSchema>(name: string, version
  * is skipped: neither may cost the user a search that already finished.
  */
 export declare function bestEffort<R>(what: string, operation: () => Promise<R>, fallback: R): Promise<R>;
+export declare function getMany<T extends DBSchema, Name extends StoreNames<T>>(what: string, getDB: () => Promise<IDBPDatabase<T>>, store: Name, keys: StoreKey<T, Name>[]): Promise<(Awaited<StoreValue<T, Name>> | undefined)[]>;
+export declare function putMany<T extends DBSchema, Name extends StoreNames<T>>(what: string, getDB: () => Promise<IDBPDatabase<T>>, store: Name, values: StoreValue<T, Name>[]): Promise<void | undefined>;

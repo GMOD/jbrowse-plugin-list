@@ -1,6 +1,11 @@
 import { expect, test } from 'vitest'
 
-import { checkedFigure, distanceProblems, markProblems } from './markProblems'
+import {
+  checkedFigure,
+  checkedStoredFigure,
+  distanceProblems,
+  markProblems,
+} from './markProblems'
 
 test('a partner chain drawn as its own cartoon passes', () => {
   expect(
@@ -42,17 +47,20 @@ test('the spelling 1.24 read is migrated to the encoding spelling', () => {
 })
 
 test('a color that is not a string is left for the check to name', () => {
-  expect(markProblems([{ site: 'A:1', color: { value: '#d1007a' } }])).toEqual([
-    "marks[0].color is now encoding: { color: { value: '#rrggbb' } }",
-  ])
+  expect(
+    markProblems([{ site: 'A:1', color: { value: '#d1007a' } }], [{}]),
+  ).toEqual(["marks[0].color is now encoding: { color: { value: '#rrggbb' } }"])
 })
 
 test('a site, mark or color that does not parse is named', () => {
   expect(
-    markProblems([
-      { site: 'not a site!', mark: { type: 'cartoon' } },
-      { site: 'A:12', encoding: { color: { value: 'green' } } },
-    ]),
+    markProblems(
+      [
+        { site: 'not a site!', mark: { type: 'cartoon' } },
+        { site: 'A:12', encoding: { color: { value: 'green' } } },
+      ],
+      [{}],
+    ),
   ).toEqual([
     'marks[0].site is a site such as A:248, A:248@NH2, MOV or G:*, not not a site!',
     'marks[0].mark is one of spheres, sticks, cartoon, none, not {"type":"cartoon"}',
@@ -79,24 +87,79 @@ test('a cartoon over a chain the structure already draws is refused', () => {
 
 test('checkedFigure throws every problem at once', () => {
   expect(() =>
-    checkedFigure({
-      marks: [{ site: 'A:1', style: 'balls' }],
-      distances: [{ a: 'A:1', b: '??' }],
-    }),
+    checkedFigure(
+      {
+        marks: [{ site: 'A:1', style: 'balls' }],
+        distances: [{ a: 'A:1', b: '??' }],
+      },
+      [{}],
+    ),
   ).toThrow(
     'marks[0].mark is one of spheres, sticks, cartoon, none, not "balls"; distances[0].b is a site such as A:248, A:248@NH2, MOV or G:*, not ??',
   )
 })
 
 test('a distance needs both sites', () => {
-  expect(distanceProblems([{ a: 'A:46@NZ' }])).toEqual([
+  expect(distanceProblems([{ a: 'A:46@NZ' }], [{}])).toEqual([
     'distances[0].b is a site such as A:248, A:248@NH2, MOV or G:*, not undefined',
   ])
 })
 
+test('a mark or distance on a structure the view does not have is refused', () => {
+  const structures = [{}, {}]
+  expect(
+    markProblems(
+      [
+        { site: 'A:1', structure: 1 },
+        { site: 'A:1', structure: 2 },
+        { site: 'A:1', structure: 0.5 },
+      ],
+      structures,
+    ),
+  ).toEqual([
+    "marks[1].structure is the index of one of the view's 2 structures, not 2",
+    "marks[2].structure is the index of one of the view's 2 structures, not 0.5",
+  ])
+  expect(
+    distanceProblems(
+      [
+        { a: 'A:1', b: 'A:2', structure: 1 },
+        { a: 'A:1', b: 'A:2', structure: '1' },
+      ],
+      structures,
+    ),
+  ).toEqual([
+    `distances[1].structure is the index of one of the view's 2 structures, not "1"`,
+  ])
+})
+
+test('a saved session drops a mark or distance past its structures, and refuses one that is no index', () => {
+  const structures = [{}, {}]
+  expect(
+    checkedStoredFigure(
+      {
+        marks: [
+          { site: 'A:1', structure: 0 },
+          { site: 'A:2', structure: 2 },
+        ],
+        distances: [{ a: 'A:1', b: 'A:2', structure: 3 }],
+      },
+      structures,
+    ),
+  ).toEqual({ marks: [{ site: 'A:1', structure: 0 }], distances: [] })
+  expect(() =>
+    checkedStoredFigure(
+      { marks: [{ site: 'A:1', structure: '0' }] },
+      structures,
+    ),
+  ).toThrow(
+    `marks[0].structure is the index of one of the view's 2 structures, not "0"`,
+  )
+})
+
 test('a label is text to write', () => {
-  expect(markProblems([{ site: 'A:*', label: 'VHL' }])).toEqual([])
-  expect(markProblems([{ site: 'A:*', label: ' ' }])).toEqual([
+  expect(markProblems([{ site: 'A:*', label: 'VHL' }], [{}])).toEqual([])
+  expect(markProblems([{ site: 'A:*', label: ' ' }], [{}])).toEqual([
     'marks[0].label is the text to write, not " "',
   ])
 })

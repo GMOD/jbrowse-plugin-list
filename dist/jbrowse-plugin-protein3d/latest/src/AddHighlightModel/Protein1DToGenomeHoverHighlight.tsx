@@ -3,12 +3,12 @@ import React from 'react'
 import { getSession } from '@jbrowse/core/util'
 import { observer } from 'mobx-react'
 
-import Highlight from './Highlight'
 import {
   findProteinLinkedViews,
   genomeHighlightsForUniProtPosition,
 } from '../Protein1DLinkage'
 import { checkHovered } from '../ProteinView/util'
+import Highlight from './Highlight'
 
 import type { LinearGenomeViewModel } from '@jbrowse/plugin-linear-genome-view'
 
@@ -51,6 +51,7 @@ const Protein1DToGenomeHoverHighlight = observer(
           <Highlight
             key={`${r.start}-${r.end}`}
             model={model}
+            kind="hover"
             region={{ ...r, assemblyName }}
           />
         ))}

@@ -1,5 +1,10 @@
 import { coerceAlignmentAlgorithm } from 'p2s_mapper'
 
+import { describeMissingStructure } from '../LaunchProteinView/resolveGeneLaunch'
+import { maybeLaunchSideBySide } from '../LaunchProteinView/utils/sideBySide'
+import { addProteinView } from '../ProteinView/addProteinView'
+import { checkedColor, colorOfScheme } from '../ProteinView/proteinColor'
+import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec'
 import { resolveDatasetStructures } from './datasetLaunch'
 import { resolveLaunchVariant } from './launchVariant'
 import { normalizeLaunch } from './normalizeLaunch'
@@ -7,20 +12,14 @@ import {
   resolveTranscriptLinkage,
   withConnectedGenomeView,
 } from './transcriptLinkage'
-import { describeMissingStructure } from '../LaunchProteinView/resolveGeneLaunch'
-import { maybeLaunchSideBySide } from '../LaunchProteinView/utils/sideBySide'
-import { addProteinView } from '../ProteinView/addProteinView'
-import { checkedColor, colorOfScheme } from '../ProteinView/proteinColor'
-import { proteinViewSnapshot } from '../ProteinView/proteinViewSpec'
-import { viewAssemblyName } from '../ProteinView/util'
 
+import type { ProteinStructureSpec } from '../ProteinView/proteinViewSpec'
 import type {
   LaunchStructure,
   LaunchViewSettings,
   NormalizedLaunch,
 } from './normalizeLaunch'
 import type { ConnectedViewSpec } from './resolveShortLaunch'
-import type { ProteinStructureSpec } from '../ProteinView/proteinViewSpec'
 import type { AbstractSessionModel } from '@jbrowse/core/util'
 
 /**
@@ -123,24 +122,26 @@ export async function launchProteinView(args: LaunchArgs) {
   // structure, transcript or locus the spec names wins over those. The
   // short form instead derives the feature and sequence from the
   // connected track, and the same mapping applies to every structure.
-  const { named, resolved, connectedView } = await resolveTranscriptLinkage(
-    session,
-    {
-      gene,
-      transcriptId,
-      uniprotId,
-      userProvidedTranscriptSequence,
-      connectedView: givenConnectedView,
-      connectedViewId,
-    },
-    { findStructure: geneModel === 'required' },
-  )
+  const { named, resolved, connectedView, assemblyName } =
+    await resolveTranscriptLinkage(
+      session,
+      {
+        gene,
+        transcriptId,
+        uniprotId,
+        feature,
+        userProvidedTranscriptSequence,
+        connectedView: givenConnectedView,
+        connectedViewId,
+      },
+      { findStructure: geneModel === 'required' },
+    )
   if (gene && named && geneModel === 'required' && !named.url) {
     throw new Error(
       `${describeMissingStructure(gene, named)}; name a ${named.uniprotId ? 'pdbId or url' : 'uniprotId or pdbId'}`,
     )
   }
-  const launchFeature = resolved?.feature ?? feature
+  const launchFeature = feature ?? resolved?.feature
   const withTranscripts = withGeneModel(normalized, named).map(s => ({
     ...s,
     userProvidedTranscriptSequence:
@@ -155,9 +156,7 @@ export async function launchProteinView(args: LaunchArgs) {
         variant,
         structures: withTranscripts,
         launchFeature,
-        assemblyName: connectedViewId
-          ? viewAssemblyName(session, connectedViewId)
-          : connectedView?.assembly,
+        assemblyName,
       })
     : undefined
   const requested = placedVariant?.structures ?? withTranscripts

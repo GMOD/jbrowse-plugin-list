@@ -1,7 +1,9 @@
 import { destroy, types } from '@jbrowse/mobx-state-tree'
 import { afterEach, expect, test, vi } from 'vitest'
 
-import { reportPluginFailure } from './reportPluginFailure'
+import { reportFigureNotices, reportPluginFailure } from './reportPluginFailure'
+
+import type { FigureNoticeKind } from './reportPluginFailure'
 
 function noPlugin(): object | undefined {
   return undefined
@@ -12,6 +14,7 @@ const Host = types
   .volatile(() => ({
     molstarPluginContext: noPlugin(),
     errors: new Array<unknown>(),
+    figureNotices: new Array<[FigureNoticeKind, readonly string[]]>(),
   }))
   .actions(self => ({
     setPlugin(plugin?: object) {
@@ -19,6 +22,9 @@ const Host = types
     },
     addNotice(error: unknown) {
       self.errors.push(error)
+    },
+    setFigureNotices(kind: FigureNoticeKind, notices: readonly string[]) {
+      self.figureNotices.push([kind, notices])
     },
   }))
 
@@ -59,4 +65,19 @@ test('a failure after the view is destroyed reaches the console alone', () => {
     report(new Error('destroyed'))
   }).not.toThrow()
   expect(consoleError).toHaveBeenCalledTimes(1)
+})
+
+test('figure notices replace their kind only while their plugin is the view’s', () => {
+  const plugin = {}
+  const host = Host.create()
+  host.setPlugin(plugin)
+  const report = reportFigureNotices(host, plugin, 'marks')
+  report(['mark A:999 is not in the structure'])
+  expect(host.figureNotices).toEqual([
+    ['marks', ['mark A:999 is not in the structure']],
+  ])
+  host.setPlugin({})
+  report(['mark B:1 is not in the structure'])
+  expect(host.figureNotices).toHaveLength(1)
+  expect(consoleError).not.toHaveBeenCalled()
 })

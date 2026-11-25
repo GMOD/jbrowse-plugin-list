@@ -1,9 +1,9 @@
 import { SimpleFeature } from '@jbrowse/core/util'
 import { expect, test } from 'vitest'
 
-import { defaultTranscriptId } from './useTranscriptSelection'
 import { rankIsoforms } from '../../AlignTranscriptRpc/isoformRanking'
 import { rankableIsoforms } from '../utils/util'
+import { defaultTranscriptId } from './useTranscriptSelection'
 
 const transcript = (id: string) =>
   new SimpleFeature({

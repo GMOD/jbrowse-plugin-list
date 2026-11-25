@@ -1,8 +1,9 @@
+import { BgzfFilehandle } from '@gmod/bgzf-filehandle';
 import { readConfObject } from '@jbrowse/core/configuration';
 import { BaseAdapter } from '@jbrowse/core/data_adapters/BaseAdapter';
 import { openLocation } from '@jbrowse/core/util/io';
 import { firstValueFrom, toArray } from 'rxjs';
-import { parseMsaIndex, readMsaBlock } from '../utils/msaIndex';
+import { parseMsaIndex, readMsaEntry } from '../utils/msaIndex';
 export default class BgzipFastaMsaAdapter extends BaseAdapter {
     async configurePre() {
         const getSubAdapter = this.getSubAdapter;
@@ -73,37 +74,42 @@ export default class BgzipFastaMsaAdapter extends BaseAdapter {
     async getMSAList() {
         return [...((await this.getMsaIndex()) ?? (await this.getMSARows())).keys()];
     }
-    async readIndexedMSA(index, id) {
+    async getBgzf() {
         const adapter = await this.configure();
-        const entry = index.get(id);
-        return entry
-            ? readMsaBlock({
-                filehandle: openLocation(adapter.getConf('fastaLocation'), this.pluginManager),
-                gziFilehandle: openLocation(adapter.getConf('gziLocation'), this.pluginManager),
-                entry,
-            })
-            : '';
+        this.bgzf ??= new BgzfFilehandle({
+            filehandle: openLocation(adapter.getConf('fastaLocation'), this.pluginManager),
+            gziFilehandle: openLocation(adapter.getConf('gziLocation'), this.pluginManager),
+        });
+        return this.bgzf;
     }
-    async readRowsMSA(id) {
+    async readRowsMSA(rows) {
         const adapter = await this.configure();
-        const rows = (await this.getMSARows()).get(id) ?? [];
-        const features = await firstValueFrom(adapter
-            .getFeaturesInMultipleRegions(rows.map(refName => ({
+        const features = await Promise.all(rows.map(refName => firstValueFrom(adapter
+            .getFeatures({
             refName,
             start: 0,
             end: 1_000_000_000,
             assemblyName: '',
-        })))
-            .pipe(toArray()));
-        return features.map(f => `>${f.get('refName')}\n${f.get('seq')}`).join('\n');
+        })
+            .pipe(toArray()))));
+        return features
+            .flat()
+            .map(f => `>${f.get('refName')}\n${f.get('seq')}`)
+            .join('\n');
     }
     async getMSA(id) {
         const index = await this.getMsaIndex();
-        return {
-            msa: await (index
-                ? this.readIndexedMSA(index, id)
-                : this.readRowsMSA(id)),
-        };
+        const entry = index?.get(id);
+        const rows = index ? undefined : (await this.getMSARows()).get(id);
+        if (entry) {
+            return { msa: await readMsaEntry(await this.getBgzf(), entry) };
+        }
+        else if (rows) {
+            return { msa: await this.readRowsMSA(rows) };
+        }
+        else {
+            throw new Error(`${id} is not an alignment in this dataset`);
+        }
     }
 }
 function withSuffix(location, suffix) {

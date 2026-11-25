@@ -20,7 +20,7 @@
 // know which source ran. `protein` is the UniProt accession, which is what the
 // CDD overlay reads through efetch (Swiss-Prot rows only; see the PANTHER note
 // in docs/alignments-from-a-gene.md).
-import { handleFetch, isAbortError, jsonfetch } from './fetch';
+import { HttpError, handleFetch, jsonfetch } from './fetch';
 import { cleanGeneCandidate, dedupeLabels, defaultMaxSpecies, } from './ncbiOrthologs';
 const UNIPROT = 'https://rest.uniprot.org';
 // the "Reference proteome" keyword, KW-1185: one well-annotated proteome per
@@ -79,7 +79,7 @@ export async function resolveUniProtEntry(candidates, taxId, signal) {
                 }
             }
             catch (e) {
-                if (isAbortError(e)) {
+                if (!(e instanceof HttpError && (e.status === 400 || e.status === 404))) {
                     throw e;
                 }
             }
@@ -96,15 +96,14 @@ export async function resolveUniProtEntry(candidates, taxId, signal) {
 /** `uniref/search` -> the id of the cluster an accession belongs to at `identity`. */
 async function fetchClusterId(accession, identity, signal) {
     const query = `(uniprot_id:${accession}) AND (identity:${identity / 100})`;
-    const json = await jsonfetch(`${UNIPROT}/uniref/search?query=${encodeURIComponent(query)}&fields=id,count&size=1`, { signal });
-    const cluster = json.results?.[0];
-    return cluster?.id
-        ? { id: cluster.id, memberCount: cluster.memberCount }
-        : undefined;
+    const json = await jsonfetch(`${UNIPROT}/uniref/search?query=${encodeURIComponent(query)}&fields=id&size=1`, { signal });
+    return json.results?.[0]?.id;
 }
-// a page per request, followed through the Link header; the scan stops once
-// enough species have been seen, so a ten-thousand-member cluster of a kinase
-// domain does not have to be read to the end
+// a page per request, followed through the Link header, to at most
+// MAX_SCANNED members, so a ten-thousand-member cluster of a kinase domain is
+// not read to the end. A launch naming its species stops sooner, once each has
+// its reviewed entry; one naming none reads to the cap, since any later member
+// may be a new species or outrank one already seen
 const PAGE = 500;
 const MAX_SCANNED = 5000;
 function nextLink(response) {
@@ -169,12 +168,12 @@ export async function fetchUnirefHomologs({ candidates, taxId, identity = 50, re
         throw new Error(`UniProt has no entry for ${candidates.join(', ')} in taxon ${taxId}. Try the BLAST tab, which needs no gene identifier.`);
     }
     onProgress(`Finding the UniRef${identity} cluster of ${query.id}...`);
-    const cluster = await fetchClusterId(query.accession, identity, signal);
-    if (!cluster) {
+    const clusterId = await fetchClusterId(query.accession, identity, signal);
+    if (!clusterId) {
         throw new Error(`${query.accession} is in no UniRef${identity} cluster`);
     }
     const { total, scanned, truncated, rows: members, } = await fetchClusterMembers({
-        clusterId: cluster.id,
+        clusterId,
         identity,
         referenceProteomesOnly,
         taxa,
@@ -184,15 +183,15 @@ export async function fetchUnirefHomologs({ candidates, taxId, identity = 50, re
         signal,
     });
     if (members.length < 1) {
-        throw new Error(`${cluster.id} has no other ${referenceProteomesOnly ? 'reference-proteome ' : ''}member to align ${query.id} against`);
+        throw new Error(`${clusterId} has no other ${referenceProteomesOnly ? 'reference-proteome ' : ''}member to align ${query.id} against`);
     }
     const labels = dedupeLabels(members.map(m => m.commonName ?? m.scientificName));
     return {
         query,
-        clusterId: cluster.id,
+        clusterId,
         total,
         warning: truncated
-            ? `${cluster.id} lists ${total ?? 'more than ' + scanned} UniProtKB entries and the first ${scanned} were read, so species whose only entries come later are missing.`
+            ? `${clusterId} lists ${total ?? 'more than ' + scanned} UniProtKB entries and the first ${scanned} were read, so species whose only entries come later are missing.`
             : undefined,
         rows: members.map((m, i) => ({
             taxId: m.taxId,

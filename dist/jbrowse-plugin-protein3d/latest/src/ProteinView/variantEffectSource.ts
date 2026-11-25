@@ -1,13 +1,13 @@
 import { SimpleFeature } from '@jbrowse/core/util'
 import { HttpError, myfetch } from 'p2s_mapper'
 
+import { parseAlphaMissense } from '../AlphaMissensePathogenicityAdapter/parseAlphaMissense'
 import { clinVarBuild, isUnnumberedMitochondrion } from './clinVar'
 import { fetchTrackScores } from './trackScoresSource'
 import {
   VARIANT_EFFECT_SOURCE_NAMES,
   meanScoreByPosition,
 } from './variantEffects'
-import { parseAlphaMissense } from '../AlphaMissensePathogenicityAdapter/parseAlphaMissense'
 
 import type { ClinVarBuild } from './clinVar'
 import type { FeatureFilter } from './featureFields'

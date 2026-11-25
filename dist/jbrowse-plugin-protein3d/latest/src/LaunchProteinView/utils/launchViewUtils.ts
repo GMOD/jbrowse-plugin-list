@@ -1,14 +1,14 @@
-import { maybeLaunchSideBySide } from './sideBySide'
-import { getGeneDisplayName, getTranscriptDisplayName } from './util'
 import { addProteinView } from '../../ProteinView/addProteinView'
 import { proteinViewSnapshot } from '../../ProteinView/proteinViewSpec'
 import { clinVarTrackConfFor } from '../components/clinVarTrackSource'
 import { launchProteinAnnotationView } from '../components/launchProteinAnnotationView'
 import { canAddTemporaryAssembly } from '../components/proteinAssemblySetup'
+import { maybeLaunchSideBySide } from './sideBySide'
+import { getGeneDisplayName, getTranscriptDisplayName } from './util'
 
-import type { LaunchingGenomeView } from './genomeView'
 import type { ProteinStructureSpec } from '../../ProteinView/proteinViewSpec'
 import type { TemporaryAssemblySession } from '../components/proteinAssemblySetup'
+import type { LaunchingGenomeView } from './genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 
 interface LaunchViewParams {
@@ -23,7 +23,7 @@ interface LaunchViewParams {
  * structure from a url is a model of, when its source says */
 export type StructureSource = Pick<
   ProteinStructureSpec,
-  'url' | 'data' | 'alphaFoldComplexId' | 'uniprotId'
+  'url' | 'data' | 'fileName' | 'alphaFoldComplexId' | 'uniprotId'
 >
 
 interface Launch3DExtraParams {

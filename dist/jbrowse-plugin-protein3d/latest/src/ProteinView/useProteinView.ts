@@ -134,7 +134,7 @@ export default function useProteinView({
       state.plugin?.dispose()
       state.host?.remove()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Show/hide the Mol* controls panel at runtime without rebuilding the plugin.

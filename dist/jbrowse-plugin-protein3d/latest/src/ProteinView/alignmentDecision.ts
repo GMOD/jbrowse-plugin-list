@@ -9,6 +9,7 @@ import type { Entity, PairwiseAlignment } from 'p2s_mapper'
  */
 export type AlignmentDecision =
   | { kind: 'nothingToAlign' }
+  | { kind: 'skip'; reason: string }
   | { kind: 'keep' }
   | { kind: 'adopt'; entityId: string }
   | { kind: 'discard'; problem: string }
@@ -46,8 +47,11 @@ export function decideAlignment(state: AlignmentState): AlignmentDecision {
     entities,
     pairwiseAlignment,
   } = state
-  if (!transcript || !entities?.length) {
+  if (!transcript || !entities) {
     return { kind: 'nothingToAlign' }
+  }
+  if (entities.length === 0) {
+    return { kind: 'skip', reason: 'This structure has no chain to align' }
   }
   if (pairwiseAlignment) {
     if (!state.alignmentImported) {

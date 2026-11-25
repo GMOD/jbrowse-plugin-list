@@ -1,6 +1,7 @@
 import { StructureProperties } from 'molstar/lib/mol-model/structure'
 import { Color } from 'molstar/lib/mol-util/color'
 
+import { NO_VALUE_CSS } from './colorScale'
 import { atomicLocationReader } from './themeLocation'
 
 import type { PlacedValueScheme } from './applyColorTheme'
@@ -8,7 +9,7 @@ import type { PlacedValues } from './variantEffects'
 import type { Location } from 'molstar/lib/mol-model/location'
 import type { Model, Structure } from 'molstar/lib/mol-model/structure'
 
-export const NO_VALUE_COLOR = Color(0xcccccc)
+export const NO_VALUE_COLOR = Color.fromHexStyle(NO_VALUE_CSS)
 
 // Per-residue arrays do not belong in a theme's serialized params, so the
 // theme looks its values up here by the Mol* model a residue belongs to. A

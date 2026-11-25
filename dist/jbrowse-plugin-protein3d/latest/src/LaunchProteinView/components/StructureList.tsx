@@ -5,8 +5,9 @@ import { Link, Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 import { makeStyles } from 'tss-react/mui'
 
+import { SECTIONS, firstRowsAndChecked } from '../utils/structureList'
+import NoticeLine from './NoticeLine'
 import StructureListRow from './StructureListRow'
-import { SECTIONS } from '../utils/structureList'
 
 import type { SectionStatus } from '../hooks/useGeneStructures'
 import type { StructureRow, StructureSection } from '../utils/structureList'
@@ -44,24 +45,30 @@ const useStyles = makeStyles()(theme => ({
 }))
 
 // the protein on its own is mostly the same crystal again, so the section
-// shows its best few and the partners start above the fold
-const ALONE_SHOWN = 5
+// shows its best few and the partners start above the fold; the partners fold
+// to as many, so two dozen complexes do not bury the fragments
+const SHOWN = 5
 
 function sectionText(section: StructureSection, geneName: string) {
-  return section === 'alone'
+  return section === 'added'
     ? {
-        title: `${geneName} on its own`,
-        note: 'whole protein or most of it, with any bound nucleotide or drug',
+        title: 'Added by PDB ID',
+        note: 'any entry, whichever protein RCSB files it under',
       }
-    : section === 'partner'
+    : section === 'alone'
       ? {
-          title: `${geneName} with another protein`,
-          note: 'experimental complexes first, then AlphaFold DB predictions',
+          title: `${geneName} on its own`,
+          note: 'whole protein or most of it, with any bound nucleotide or drug',
         }
-      : {
-          title: 'Short fragments',
-          note: 'under half the protein, so each opens on its own',
-        }
+      : section === 'partner'
+        ? {
+            title: `${geneName} with another protein`,
+            note: 'experimental complexes first, then AlphaFold DB predictions',
+          }
+        : {
+            title: 'Short fragments',
+            note: 'under half the protein, so each opens on its own',
+          }
 }
 
 const Section = observer(function Section({
@@ -89,7 +96,9 @@ const Section = observer(function Section({
     !expanded &&
     !rows.some(r => checked.includes(r.key))
   const shown =
-    section === 'alone' && !expanded ? rows.slice(0, ALONE_SHOWN) : rows
+    (section === 'alone' || section === 'partner') && !expanded
+      ? firstRowsAndChecked(rows, checked, SHOWN)
+      : rows
   const hidden = rows.length - shown.length
   const loading = status?.loading ?? []
   const notices = status?.notices ?? []
@@ -150,15 +159,15 @@ const Section = observer(function Section({
           <LoadingEllipses variant="body2" message={message} />
         </div>
       ))}
-      {notices.map(message => (
-        <Typography
-          key={message}
+      {notices.map(notice => (
+        <NoticeLine
+          key={notice.message}
           className={classes.line}
-          variant="body2"
           color="textSecondary"
-        >
-          {message}
-        </Typography>
+          message={notice.message}
+          onRetry={notice.retry}
+          retrying={notice.retrying}
+        />
       ))}
     </div>
   )
@@ -169,6 +178,8 @@ const StructureList = observer(function StructureList({
   rows,
   sections,
   geneName,
+  empty,
+  sourceFailed,
   checked,
   uniprotLength,
   onToggle,
@@ -176,6 +187,10 @@ const StructureList = observer(function StructureList({
   rows: readonly StructureRow[]
   sections?: Record<StructureSection, SectionStatus>
   geneName: string
+  /** every source has answered and none listed a structure */
+  empty: boolean
+  /** a source failed, and says so in its section */
+  sourceFailed: boolean
   checked: readonly string[]
   uniprotLength: number
   onToggle: (row: StructureRow) => void
@@ -183,6 +198,19 @@ const StructureList = observer(function StructureList({
   const { classes } = useStyles()
   return (
     <div className={classes.list} data-testid="structure-list">
+      {empty ? (
+        <Typography
+          className={classes.line}
+          variant="body2"
+          data-testid="structure-list-empty"
+        >
+          {sourceFailed
+            ? `No structures found for ${geneName} so far: a source below did not answer.`
+            : `No structures listed for ${geneName}.`}{' '}
+          Pick a UniProt entry above, add one by PDB ID, or use the Similar
+          structures (Foldseek) or Your file or URL tab.
+        </Typography>
+      ) : null}
       {SECTIONS.map(section => (
         <Section
           key={section}

@@ -2,9 +2,18 @@ import { codonGenomeSpan, residueNumber, structurePos } from 'p2s_mapper'
 
 import type { CoordinateMapper, Entity } from 'p2s_mapper'
 
+function withSeparators(locus: string) {
+  const coords = locus.lastIndexOf(':') + 1
+  return (
+    locus.slice(0, coords) +
+    locus.slice(coords).replace(/\d+/g, n => Number(n).toLocaleString('en-US'))
+  )
+}
+
 /**
  * A transcript residue's codon as a 1-based locString on the transcript's own
- * refName, outer bounds included when an intron splits it.
+ * refName, outer bounds included when an intron splits it. Plain digits: scripts
+ * and the e2e parse it off the model's `hoverGenomeLocus`.
  */
 export function codonLocus(
   mapping: { refName: string; p2gCodon: Record<number, number[]> } | undefined,
@@ -18,9 +27,11 @@ export function codonLocus(
 }
 
 /**
- * The header's readout of the hovered residue: author number, the transcript
- * residue when it differs, letters, chain, codon locus and, when given, its
- * exon. A modified residue (MSE, TPO) shows its parent's letter.
+ * The header's readout of the hovered residue as a biologist writes it:
+ * `R248 · chain A · chr17:7,674,220-7,674,222`, the structure's letter and
+ * author number, then the transcript's residue in parentheses where its letter
+ * or number differs, the chain, the codon locus and, when given, the exon. A
+ * modified residue (MSE, TPO) shows its parent's letter.
  */
 export function hoverReadout({
   hover,
@@ -43,28 +54,22 @@ export function hoverReadout({
   const structureLetter = pos === undefined ? undefined : entity?.seq[pos]
   const genomeLetter =
     transcriptPos === undefined ? undefined : transcript[transcriptPos]
-  const parts = []
-  if (pos !== undefined) {
-    const residue = residueNumber(entity, pos)
-    parts.push(`${residue}`)
-    if (transcriptPos !== undefined && transcriptPos + 1 !== residue) {
-      parts.push(`Transcript residue: ${transcriptPos + 1}`)
-    }
-  }
-  if (structureLetter) {
-    parts.push(`Structure: ${structureLetter}`)
-  }
-  if (genomeLetter && structureLetter && genomeLetter !== structureLetter) {
-    parts.push(`Genome: ${genomeLetter}`)
-  }
-  if (hover.chain) {
-    parts.push(`Chain: ${hover.chain}`)
-  }
-  if (locus) {
-    parts.push(locus)
-  }
-  if (exon) {
-    parts.push(exon)
-  }
-  return parts.join(', ')
+  const residue = pos === undefined ? undefined : residueNumber(entity, pos)
+  const transcriptDiffers =
+    transcriptPos !== undefined &&
+    (transcriptPos + 1 !== residue ||
+      (!!genomeLetter && !!structureLetter && genomeLetter !== structureLetter))
+  const transcriptResidue = transcriptDiffers
+    ? ` (transcript ${genomeLetter ?? ''}${transcriptPos + 1})`
+    : ''
+  return [
+    residue === undefined
+      ? undefined
+      : `${structureLetter ?? ''}${residue}${transcriptResidue}`,
+    hover.chain ? `chain ${hover.chain}` : undefined,
+    locus === undefined ? undefined : withSeparators(locus),
+    exon,
+  ]
+    .filter(part => !!part)
+    .join(' · ')
 }

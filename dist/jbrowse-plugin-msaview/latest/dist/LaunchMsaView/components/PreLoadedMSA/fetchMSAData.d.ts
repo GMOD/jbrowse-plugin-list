@@ -1,6 +1,6 @@
 import type PluginManager from '@jbrowse/core/PluginManager';
 import type { AnyConfigurationModel } from '@jbrowse/core/configuration';
-export interface DatasetMsa {
+interface DatasetMsa {
     msa: string;
     tree?: string;
     /** the row the dataset names as the protein's own, preferred over a row that matches it equally */
@@ -17,3 +17,4 @@ export declare function fetchMSA({ config, pluginManager, msaId, assemblyName, }
     msaId: string;
     assemblyName?: string;
 }): Promise<DatasetMsa>;
+export {};

@@ -51,6 +51,15 @@ const KeyRow = observer(function KeyRow({
   )
 })
 
+const KeyEntry = observer(function KeyEntry({ label, color }: ColorKeyEntry) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      <span style={{ ...swatch, background: color }} />
+      {label}
+    </span>
+  )
+})
+
 export const ColorKey = observer(function ColorKey({
   title,
   entries,
@@ -64,14 +73,8 @@ export const ColorKey = observer(function ColorKey({
 }) {
   return (
     <KeyRow title={title} testId={testId} color={color}>
-      {entries.map(({ label, color }, i) => (
-        <span
-          key={`${i}-${label}`}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
-        >
-          <span style={{ ...swatch, background: color }} />
-          {label}
-        </span>
+      {entries.map((entry, i) => (
+        <KeyEntry key={`${i}-${entry.label}`} {...entry} />
       ))}
     </KeyRow>
   )
@@ -82,6 +85,7 @@ export const GradientKey = observer(function GradientKey({
   minLabel,
   maxLabel,
   colors,
+  noValue,
   testId = 'track-legend',
   color = 'textSecondary',
 }: {
@@ -89,6 +93,7 @@ export const GradientKey = observer(function GradientKey({
   minLabel: string
   maxLabel: string
   colors: string[]
+  noValue?: ColorKeyEntry
   testId?: string
   color?: KeyColor
 }) {
@@ -103,6 +108,7 @@ export const GradientKey = observer(function GradientKey({
         }}
       />
       {maxLabel}
+      {noValue ? <KeyEntry {...noValue} /> : null}
     </KeyRow>
   )
 })
@@ -125,9 +131,11 @@ export function words(name: string) {
 export const MolstarLegendKey = observer(function MolstarLegendKey({
   title,
   legend,
+  noValue,
 }: {
   title: string
   legend: Legend
+  noValue?: ColorKeyEntry
 }) {
   return legend.kind === 'table-legend' ? (
     <ColorKey
@@ -144,6 +152,7 @@ export const MolstarLegendKey = observer(function MolstarLegendKey({
       testId="structure-legend"
       minLabel={legend.minLabel}
       maxLabel={legend.maxLabel}
+      noValue={noValue}
       colors={legend.colors.map(entry =>
         Array.isArray(entry)
           ? `${cssColor(entry[0])} ${100 * entry[1]}%`

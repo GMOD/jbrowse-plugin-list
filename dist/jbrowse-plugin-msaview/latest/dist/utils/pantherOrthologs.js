@@ -15,8 +15,8 @@
 // `protein` is the UniProt accession; efetch serves UniProt accessions as
 // GenPept records with CDD Region features, so the overlay attaches as it does
 // to a RefSeq accession.
-import { isAbortError, jsonfetch } from './fetch';
-import { cleanGeneCandidate, dedupeLabels, defaultMaxSpecies, } from './ncbiOrthologs';
+import { jsonfetch } from './fetch';
+import { cleanGeneCandidate, dedupeLabels, defaultMaxSpecies, droppedRowsWarning, } from './ncbiOrthologs';
 import { fetchTaxonomyInfo } from './taxonomyNames';
 const PANTHER = 'https://pantherdb.org/services/oai/pantherdb';
 const UNIPROT = 'https://rest.uniprot.org/uniprotkb';
@@ -143,9 +143,7 @@ async function matchOrthologs(candidates, taxId, targets, signal) {
         if (targets) {
             params.set('targetOrganism', targets.map(t => t.taxId).join(','));
         }
-        const parsed = parseMatches(await jsonfetch(`${PANTHER}/ortholog/matchortho?${params.toString()}`, {
-            signal,
-        }));
+        const parsed = parseMatches(await jsonfetch(`${PANTHER}/ortholog/matchortho?${params.toString()}`, { signal }));
         if (!parsed.unmapped) {
             matched ??= query;
             if (parsed.query) {
@@ -204,60 +202,43 @@ export async function fetchPantherOrthologs({ candidates, taxId, taxa, exclude, 
     }
     onProgress(`Fetching ${picks.length} protein sequences from UniProt...`);
     const [names, sequences] = await Promise.all([
-        taxonomyNames(picks.map(p => p.genome.taxId), signal),
+        fetchTaxonomyInfo(picks.map(p => p.genome.taxId), signal),
         fetchSequences([
             ...(match.query ? [match.query.accession] : []),
             ...picks.map(p => p.hit.accession),
         ], signal),
     ]);
-    const described = picks.map(({ hit, genome }) => {
+    const described = picks.flatMap(({ hit, genome }) => {
         const info = names.get(genome.taxId);
-        return {
-            hit,
-            genome,
-            name: info?.commonName || info?.sciname || genome.name,
-            scientificName: info?.sciname || genome.longName,
-            commonName: info?.commonName,
-        };
+        const sequence = sequences.get(hit.accession);
+        return sequence
+            ? [
+                {
+                    name: info?.commonName || info?.sciname || genome.name,
+                    taxId: genome.taxId,
+                    scientificName: info?.sciname || genome.longName,
+                    commonName: info?.commonName,
+                    geneId: hit.geneRef,
+                    protein: hit.accession,
+                    sequence,
+                },
+            ]
+            : [];
     });
-    const labels = dedupeLabels(described.map(d => d.name));
-    const rows = described
-        .map(({ hit, genome, scientificName, commonName }, i) => ({
-        taxId: genome.taxId,
-        label: labels[i],
-        scientificName,
-        commonName,
-        geneId: hit.geneRef,
-        protein: hit.accession,
-        sequence: sequences.get(hit.accession) ?? '',
-    }))
-        .filter(r => r.sequence);
-    if (rows.length < 2) {
+    if (described.length < 2) {
         throw new Error('Could not fetch protein sequences for the orthologs');
     }
+    const labels = dedupeLabels(described.map(d => d.name));
     const querySequence = match.query && sequences.get(match.query.accession);
     return {
         matched: match.matched,
         query: match.query && querySequence
             ? { ...match.query, sequence: querySequence }
             : undefined,
-        rows,
+        rows: described.map(({ name, ...row }, i) => ({
+            ...row,
+            label: labels[i],
+        })),
+        warning: droppedRowsWarning(picks.length - described.length, picks.length),
     };
-}
-/**
- * NCBI's names for the taxa, so PANTHER rows are labelled exactly as NCBI rows
- * are. A failed lookup only costs the labels, which fall back to PANTHER's own
- * short names, so it is logged rather than thrown.
- */
-async function taxonomyNames(taxIds, signal) {
-    try {
-        return await fetchTaxonomyInfo(taxIds, signal);
-    }
-    catch (e) {
-        if (isAbortError(e)) {
-            throw e;
-        }
-        console.warn('[msaview-orthologs] taxonomy name lookup failed:', e);
-        return new Map();
-    }
 }

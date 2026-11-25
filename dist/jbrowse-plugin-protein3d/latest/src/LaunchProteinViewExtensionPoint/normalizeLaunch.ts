@@ -1,19 +1,19 @@
 import { isPairwiseAlignment, resolveStructureUrl } from 'p2s_mapper'
 
-import { VARIANT_SPELLING, parseLaunchVariant } from './launchVariant'
 import { cameraProblems, surfaceProblems } from '../ProteinView/markProblems'
+import { VARIANT_SPELLING, parseLaunchVariant } from './launchVariant'
 
-import type { LaunchVariant } from './launchVariant'
-import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type { DistanceMeasurement } from '../ProteinView/measurements'
 import type {
   ProteinStructureSpec,
   ProteinViewSpec,
 } from '../ProteinView/proteinViewSpec'
-import type { StructureFilter } from '../ProteinView/residueFilter'
+import type { FilterPredicate } from '../ProteinView/residueFilter'
 import type { ResidueMark } from '../ProteinView/residueMarks'
 import type { SavedCamera } from '../ProteinView/savedCamera'
 import type { ProteinSurface } from '../ProteinView/surface'
+import type { LaunchVariant } from './launchVariant'
+import type { ConnectedViewSpec } from './resolveShortLaunch'
 import type { SimpleFeatureSerialized } from '@jbrowse/core/util'
 import type { ResidueRange, ResidueRanges } from 'p2s_mapper'
 
@@ -32,6 +32,7 @@ type TopLevelRole = 'source' | 'selection' | 'setting' | 'launchWide'
 const STRUCTURE_KEY_ROLES = {
   url: 'source',
   data: 'source',
+  fileName: 'setting',
   uniprotId: 'source',
   alphaFoldComplexId: 'source',
   pdbId: 'source',
@@ -87,19 +88,9 @@ function isFeature(value: unknown): value is SimpleFeatureSerialized {
   return isRecord(value)
 }
 
-// the shape only: the view model refuses a predicate that does not read, with
-// the reason, as it does a color
-function isPredicateList(value: unknown): value is StructureFilter {
-  return Array.isArray(value) && value.every(isRecord)
-}
-
-// the shape only, as for a filter: the view model refuses a site that does
-// not parse, with the reason
-function isMarkList(value: unknown): value is ResidueMark[] {
-  return Array.isArray(value) && value.every(isRecord)
-}
-
-function isDistanceList(value: unknown): value is DistanceMeasurement[] {
+// the shape only: the view model refuses, with the reason, a filter predicate,
+// mark or distance that does not read, as it does a color
+function isRecordList<T extends object>(value: unknown): value is T[] {
   return Array.isArray(value) && value.every(isRecord)
 }
 
@@ -148,7 +139,7 @@ const RANGES = '{ start, end } numbers or an array of them'
  * property, so the reader reports a value of the wrong type under the name
  * `at` gives it and leaves it out.
  */
-function fieldReader<K extends string>(
+export function fieldReader<K extends string>(
   fields: ReadonlyMap<string, unknown>,
   at: (key: K) => string,
   warnings: string[],
@@ -211,6 +202,48 @@ export interface LaunchLinkage {
   feature?: SimpleFeatureSerialized
   userProvidedTranscriptSequence?: string
   variant?: LaunchVariant
+}
+
+/**
+ * The key that spells the launch's transcript out. Neither `gene` nor
+ * `transcriptId` is looked up beside it, since the model, translation and
+ * genome view a lookup picks all follow the transcript it finds.
+ */
+export function spelledTranscriptKey({
+  feature,
+  userProvidedTranscriptSequence,
+}: Pick<LaunchLinkage, 'feature' | 'userProvidedTranscriptSequence'>) {
+  return feature
+    ? 'feature'
+    : userProvidedTranscriptSequence
+      ? 'userProvidedTranscriptSequence'
+      : undefined
+}
+
+const TRANSCRIPT_LOOKUPS = [
+  'gene',
+  'transcriptId',
+] satisfies (keyof LaunchLinkage)[]
+
+function skippedLookups(linkage: LaunchLinkage) {
+  const spelledBy = spelledTranscriptKey(linkage)
+  const missing = [
+    linkage.feature
+      ? undefined
+      : '`feature` (the transcript that maps the structure to the genome)',
+    linkage.userProvidedTranscriptSequence
+      ? undefined
+      : '`userProvidedTranscriptSequence` (the translation the structure is aligned to)',
+    linkage.connectedView || linkage.connectedViewId
+      ? undefined
+      : 'a `connectedView` or `connectedViewId` (the genome view it links to)',
+  ].filter(need => need !== undefined)
+  const advice = missing.length > 0 ? `; give ${missing.join(' and ')}` : ''
+  return spelledBy
+    ? TRANSCRIPT_LOOKUPS.filter(key => linkage[key]).map(
+        key => `\`${key}\` is not looked up beside \`${spelledBy}\`${advice}`,
+      )
+    : []
 }
 
 const LAUNCH_KEYS = [
@@ -292,12 +325,12 @@ function readViewSettings(
     surface: readLayer('surface', isSurface, surfaceProblems),
     distances: read(
       'distances',
-      isDistanceList,
+      isRecordList<DistanceMeasurement>,
       "a list such as [{ a: 'A:46@NZ', b: 'A:80@NZ' }]",
     ),
     marks: read(
       'marks',
-      isMarkList,
+      isRecordList<ResidueMark>,
       "a list such as [{ site: 'A:248', mark: 'spheres' }]",
     ),
     silhouettes: flag('silhouettes'),
@@ -314,6 +347,12 @@ function readStructure(
   return {
     url: read('url', isString, 'a string'),
     data: read('data', isString, 'a string'),
+    fileName: read(
+      'fileName',
+      (value): value is string =>
+        isString(value) && isString(fields.get('data')),
+      'a string beside `data`',
+    ),
     uniprotId: read('uniprotId', isString, 'a string'),
     alphaFoldComplexId: read('alphaFoldComplexId', isString, 'a string'),
     pdbId: read('pdbId', isString, 'a string'),
@@ -336,7 +375,7 @@ function readStructure(
     chains: read('chains', isStringArray, 'a list of chain ids'),
     filter: read(
       'filter',
-      isPredicateList,
+      isRecordList<FilterPredicate>,
       "a list of predicates such as [{ field: 'residue', lte: 184 }]",
     ),
     feature: read('feature', isFeature, 'a feature object'),
@@ -409,9 +448,10 @@ export function normalizeLaunch(
       warnings,
     }
   }
-  const looksUpGene = !!linkage.gene && !linkage.userProvidedTranscriptSequence
+  const spelledBy = spelledTranscriptKey(linkage)
+  const looksUpGene = !!linkage.gene && !spelledBy
   const noStructure = linkage.gene
-    ? 'the launch names no structure, and `gene` is not looked up beside `userProvidedTranscriptSequence`'
+    ? `the launch names no structure, and \`gene\` is not looked up beside \`${spelledBy}\``
     : 'No url, data, uniprotId, alphaFoldComplexId, pdbId or gene provided when launching protein view'
 
   const given = top.get('structures')
@@ -436,7 +476,7 @@ export function normalizeLaunch(
         requested: [withUrl(structure)],
         settings,
         linkage,
-        warnings,
+        warnings: [...warnings, ...skippedLookups(linkage)],
         geneModel:
           looksUpGene &&
           !!structure.uniprotId &&
@@ -498,7 +538,12 @@ export function normalizeLaunch(
     return [withUrl(structure)]
   })
   if (requested.length > 0) {
-    return { requested, settings, linkage, warnings }
+    return {
+      requested,
+      settings,
+      linkage,
+      warnings: [...warnings, ...skippedLookups(linkage)],
+    }
   }
   return looksUpGene
     ? {

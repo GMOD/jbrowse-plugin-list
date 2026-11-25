@@ -1,4 +1,5 @@
 import { getSession } from '@jbrowse/core/util';
+import { proteinPositionsInRange } from './transcriptMap';
 import { hasQueryRow } from './util';
 /** The `transientHighlights` owner the session's highlights draw under */
 export const SESSION_HIGHLIGHT_OWNER = 'session-highlights';
@@ -15,11 +16,8 @@ function rowPositions({ start, end }, onGenome, querySeqOffset) {
         }
     }
     else {
-        for (let base = start; base < end; base++) {
-            const residue = onGenome.map.g2p[base];
-            if (residue !== undefined) {
-                positions.add(residue - querySeqOffset);
-            }
+        for (const residue of proteinPositionsInRange(onGenome.map, start, end)) {
+            positions.add(residue - querySeqOffset);
         }
     }
     return [...positions].filter(p => p >= 0).sort((a, b) => a - b);

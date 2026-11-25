@@ -15,10 +15,12 @@ import { observer } from 'mobx-react'
 import { foldseekHits, getStructureUrlFromTarget } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
+import ExternalLink from '../../components/ExternalLink'
+import { foldseekTarget } from '../utils/foldseekTarget'
 import FoldseekActionMenu from './FoldseekActionMenu'
 
-import type { FlattenedHit } from './FoldseekActionMenu'
 import type { LaunchingGenomeView } from '../utils/genomeView'
+import type { FlattenedHit } from './FoldseekActionMenu'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 import type { FoldseekResult } from 'p2s_mapper'
 
@@ -42,9 +44,41 @@ const useStyles = makeStyles()(theme => ({
     padding: 16,
     textAlign: 'center',
   },
+  targetId: {
+    fontFamily: 'monospace',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
 }))
 
 const MAX_HITS = 100
+
+const FoldseekTarget = observer(function FoldseekTarget({
+  target,
+  db,
+}: {
+  target: string
+  db: string
+}) {
+  const { classes } = useStyles()
+  const { label, href, description } = foldseekTarget(target, db)
+  return (
+    <>
+      {href ? (
+        <ExternalLink href={href} variant="body2" className={classes.targetId}>
+          {label}
+        </ExternalLink>
+      ) : (
+        <span className={classes.targetId}>{label}</span>
+      )}
+      {description ? (
+        <Typography variant="body2" color="textSecondary">
+          {description}
+        </Typography>
+      ) : null}
+    </>
+  )
+})
 
 function flattenResults(results: FoldseekResult): FlattenedHit[] {
   return foldseekHits(results)
@@ -122,7 +156,9 @@ const FoldseekResultsTable = observer(function FoldseekResultsTable({
             {flatHits.map((hit, idx) => (
               <TableRow key={`${hit.db}-${hit.target}-${idx}`}>
                 <TableCell>{hit.db}</TableCell>
-                <TableCell>{hit.target}</TableCell>
+                <TableCell>
+                  <FoldseekTarget target={hit.target} db={hit.db} />
+                </TableCell>
                 <TableCell>{hit.taxName ?? '-'}</TableCell>
                 <TableCell>
                   {hit.prob != null ? `${(hit.prob * 100).toFixed(1)}%` : '-'}

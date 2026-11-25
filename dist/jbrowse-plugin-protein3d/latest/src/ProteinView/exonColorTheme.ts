@@ -23,7 +23,7 @@ const ExonColorThemeParams = {
 
 type Params = typeof ExonColorThemeParams
 
-export function exonLegend(color: ExonColor) {
+function exonLegend(color: ExonColor) {
   return TableLegend([
     ...exonKeyEntries(color).map(({ label, color: c }): [string, Color] => {
       const [r, g, b] = rgbOf(c)

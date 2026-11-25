@@ -1,5 +1,5 @@
 import React from 'react';
-export interface BlastSettings {
+interface BlastSettings {
     ebiEmail: string;
 }
 declare const BlastSettingsDialog: ({ handleClose, ebiEmail, }: {

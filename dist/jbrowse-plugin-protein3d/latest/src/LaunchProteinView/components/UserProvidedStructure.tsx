@@ -3,21 +3,24 @@ import React, { useState } from 'react'
 import { ErrorMessage, LoadingEllipses } from '@jbrowse/core/ui'
 import { Button, DialogActions, DialogContent } from '@mui/material'
 import { observer } from 'mobx-react'
-import { sameProtein } from 'p2s_mapper'
 import { makeStyles } from 'tss-react/mui'
 
-import PartialFailureNotice from './PartialFailureNotice'
-import SequenceMismatchNotice from './SequenceMismatchNotice'
-import StructureSourcePicker from './StructureSourcePicker'
-import TranscriptSelector from './TranscriptSelector'
 import ExternalLink from '../../components/ExternalLink'
 import useDebouncedValue from '../hooks/useDebouncedValue'
 import { useSafeLaunch } from '../hooks/useSafeLaunch'
-import useStructureFileSequence from '../hooks/useStructureFileSequence'
-import useTranscriptIsoformSelection from '../hooks/useTranscriptIsoformSelection'
+import useStructureLaunch from '../hooks/useStructureLaunch'
 import { launch3DProteinView } from '../utils/launchViewUtils'
-import { readStructureFile } from '../utils/readStructureFile'
+import {
+  LARGE_STRUCTURE_TEXT,
+  formatFileSize,
+} from '../utils/readStructureFile'
+import IsoformMatchNotice from './IsoformMatchNotice'
+import NoticeLine from './NoticeLine'
+import StructureSourcePicker from './StructureSourcePicker'
+import TranscriptSelector from './TranscriptSelector'
+import UncodedTranscriptNotice from './UncodedTranscriptNotice'
 
+import type { LaunchStructure } from '../hooks/useStructureLaunch'
 import type { LaunchingGenomeView } from '../utils/genomeView'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'
 
@@ -69,69 +72,57 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
   // so clicking inside the window opens what the user typed rather than the
   // url as it stood 600 ms ago.
   const debouncedURL = useDebouncedValue(activeURL, 600)
-
-  const {
-    sequences: structureSequences,
-    isLoading: isStructureLoading,
-    error: fileError,
-  } = useStructureFileSequence({ file: activeFile, url: debouncedURL })
-
-  const {
-    transcripts: options,
-    isoformSequences,
-    // the chain the isoforms are compared against — not blindly chain 0, which
-    // mismatched every heteromer the view itself went on to map correctly
-    structureSequence,
-    ranking,
-    isRanking,
-    selectedTranscriptId: userSelection,
-    setSelectedTranscriptId: setUserSelection,
-    selectedTranscript,
-    selectedIsoform: protein,
-    error: isoformError,
-    partialFailure: isoformPartialFailure,
-  } = useTranscriptIsoformSelection({
+  const structure: LaunchStructure | undefined = activeFile
+    ? {
+        key: `file:${activeFile.name}:${activeFile.size}:${activeFile.lastModified}`,
+        kind: 'file',
+        file: activeFile,
+      }
+    : debouncedURL
+      ? { key: `url:${debouncedURL}`, kind: 'url', url: debouncedURL }
+      : undefined
+  const launch = useStructureLaunch({
+    structures: structure ? [structure] : [],
     feature,
     view,
-    structureSequences,
     preferredTranscriptId,
   })
+  const {
+    selectedTranscript,
+    selectedIsoform: protein,
+    ranking,
+    structureSequence,
+  } = launch
 
-  const error = launchError ?? isoformError ?? fileError
-  // a structure that failed to read would open an empty view; an error from
-  // the url as it stood before the latest typing does not count
-  const readFailed = !!fileError && activeURL === debouncedURL
-
-  // Until the structure is read the ranking has none and orders the isoforms
-  // by length, so a launch that takes the ranked default waits. The
-  // right-clicked isoform needs no ranking and launches at once.
-  const awaitsStructure =
-    (isStructureLoading || activeURL !== debouncedURL || isRanking) &&
-    userSelection !== preferredTranscriptId
+  const error = launchError ?? launch.error
+  // the right-clicked isoform launches without waiting for the url typed last
+  const typing =
+    activeURL !== debouncedURL &&
+    launch.selectedTranscriptId !== preferredTranscriptId
   const canLaunch =
     !!(activeURL || activeFile) &&
     !!protein &&
     !!selectedTranscript &&
-    !awaitsStructure &&
-    !readFailed &&
+    !launch.isLoading &&
+    !typing &&
+    !launch.failed &&
+    (!activeFile || launch.fileTextLength !== undefined) &&
     !launching
-  const sequencesDiffer =
-    !!protein?.seq &&
-    !!structureSequence &&
-    !sameProtein(protein.seq, structureSequence)
+  const textSize = launch.fileTextLength ?? activeFile?.size ?? 0
 
   const handleLaunch = runLaunch(async () => {
     if (protein && selectedTranscript) {
-      const structureData = activeFile
-        ? await readStructureFile(activeFile)
-        : undefined
       await launch3DProteinView({
         session,
         view,
         feature,
         selectedTranscript,
         sources: [
-          { url: activeURL ? activeURL : undefined, data: structureData },
+          {
+            url: activeURL ? activeURL : undefined,
+            data: activeFile ? await launch.readFileText?.() : undefined,
+            fileName: activeFile?.name,
+          },
         ],
         userProvidedTranscriptSequence: protein.seq,
       })
@@ -153,37 +144,52 @@ const UserProvidedStructure = observer(function UserProvidedStructure({
           setFile={setFile}
         />
         <div style={{ margin: 20 }}>
-          {isStructureLoading ? (
+          <NoticeLine
+            message={
+              activeFile && textSize > LARGE_STRUCTURE_TEXT
+                ? `The session stores this file's ${formatFileSize(textSize)} of text, so it reopens without the file but saves and shares slowly; a URL keeps it small`
+                : undefined
+            }
+          />
+          {launch.loadingStatuses.map(status => (
             <LoadingEllipses
+              key={status}
               variant="subtitle2"
-              message="Reading residues from the structure"
+              message={status}
             />
-          ) : null}
-          <PartialFailureNotice message={isoformPartialFailure} />
-          {isRanking ? (
-            <LoadingEllipses
-              variant="subtitle2"
-              message="Aligning isoforms to the structure"
-            />
-          ) : null}
-          {isoformSequences ? (
-            ranking ? (
+          ))}
+          <NoticeLine
+            message={launch.partialFailure}
+            onRetry={launch.retryIsoforms}
+            retrying={launch.isoformsRetrying}
+          />
+          {ranking ? (
+            <>
+              <UncodedTranscriptNotice
+                feature={feature}
+                preferredTranscriptId={preferredTranscriptId}
+                selectedTranscript={selectedTranscript}
+              />
               <TranscriptSelector
-                val={userSelection}
-                setVal={setUserSelection}
+                val={launch.selectedTranscriptId}
+                setVal={launch.setSelectedTranscriptId}
                 structureSequence={structureSequence}
-                isoforms={options}
+                isoforms={launch.transcripts}
+                isoformSequences={launch.isoformSequences}
                 feature={feature}
                 ranking={ranking}
               />
-            ) : null
-          ) : (
-            <LoadingEllipses title="Loading protein sequences" variant="h6" />
-          )}
+            </>
+          ) : null}
         </div>
       </DialogContent>
       <DialogActions>
-        {sequencesDiffer ? <SequenceMismatchNotice /> : null}
+        <IsoformMatchNotice
+          ranking={ranking}
+          selectedTranscript={selectedTranscript}
+          structureSequence={structureSequence}
+          feature={feature}
+        />
         <Button
           variant="contained"
           color="secondary"

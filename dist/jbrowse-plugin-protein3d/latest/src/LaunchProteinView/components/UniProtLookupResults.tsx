@@ -3,8 +3,8 @@ import React from 'react'
 import { Typography } from '@mui/material'
 import { observer } from 'mobx-react'
 
-import UniProtResultsTable from './UniProtResultsTable'
 import ExternalLink from '../../components/ExternalLink'
+import UniProtResultsTable from './UniProtResultsTable'
 
 import type { UniProtIdLookup } from '../hooks/useUniProtIdLookup'
 
@@ -12,9 +12,9 @@ const UniProtLink = observer(function UniProtLink() {
   return <ExternalLink href="https://www.uniprot.org/">UniProt</ExternalLink>
 })
 
-// What the identifier search found, shared by the search tabs for the same
-// reason UniProtLookupControls is. A failed search shows neither: the tab
-// reports the error, and "no entries" would call an outage an empty answer.
+// What the identifier search found. A failed search shows neither the table
+// nor "no entries": the chooser reports the error, and "no entries" would
+// call an outage an empty answer.
 const UniProtLookupResults = observer(function UniProtLookupResults({
   lookup,
 }: {

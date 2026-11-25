@@ -123,6 +123,27 @@ function atomLoci(molstar: Molstar, structure: Structure, atom: AtomRef) {
   ])
 }
 
+const NOT_LOADED = 'the structure is not loaded'
+
+/**
+ * The distances that will not draw on a structure that has loaded, one line
+ * each, naming the structure as `structures[i]` in a view of
+ * `structureCount` > 1; one whose structure is still loading draws once it
+ * has.
+ */
+export function measurementNotices(
+  results: readonly MeasurementResult[],
+  structureCount: number,
+) {
+  return results.flatMap(({ measurement: { a, b, structure = 0 }, error }) =>
+    error === undefined || error === NOT_LOADED
+      ? []
+      : [
+          `distance ${a} to ${b}${structureCount > 1 ? ` on structures[${structure}]` : ''}: ${error}`,
+        ],
+  )
+}
+
 function keyOf(structure: Structure, m: DistanceMeasurement) {
   return `${KEY_PREFIX}${structure.model.id}|${m.a}|${m.b}|${m.encoding?.color?.value ?? ''}`
 }
@@ -174,7 +195,7 @@ export function syncMeasurements({
     const results = measurements.map((measurement): MeasurementResult => {
       const structure = structures[measurement.structure ?? 0]
       if (!structure) {
-        return { measurement, error: 'the structure is not loaded' }
+        return { measurement, error: NOT_LOADED }
       }
       const pair = closestAtoms(
         molstar,

@@ -6,7 +6,11 @@ import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore'
 import { IconButton, Tooltip } from '@mui/material'
 import { observer } from 'mobx-react'
 
-import { HIDE_BUTTON_COLOR, NORMAL_TRACK_HEIGHT } from '../constants'
+import {
+  HIDE_BUTTON_COLOR,
+  LABEL_ELLIPSIS,
+  NORMAL_TRACK_HEIGHT,
+} from '../constants'
 
 import type { JBrowsePluginProteinStructureModel } from '../model'
 
@@ -61,7 +65,7 @@ const FeatureTypeLabel = observer(function FeatureTypeLabel({
             )}
           </IconButton>
         ) : null}
-        <span>{type}</span>
+        <span style={LABEL_ELLIPSIS}>{type}</span>
       </div>
     </Tooltip>
   )

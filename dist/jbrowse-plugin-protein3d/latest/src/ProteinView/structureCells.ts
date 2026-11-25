@@ -1,7 +1,7 @@
 import type { Structure } from 'molstar/lib/mol-model/structure'
-import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
 import type { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
+import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { StateObjectCell, StateSelection } from 'molstar/lib/mol-state'
 
 export const SITES_TAG = 'jbrowse-alignment-sites'

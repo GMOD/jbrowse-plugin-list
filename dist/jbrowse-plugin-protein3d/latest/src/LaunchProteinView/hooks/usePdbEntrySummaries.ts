@@ -3,18 +3,23 @@ import useSWR from 'swr'
 
 import { STATIC_SWR_OPTIONS } from './swrOptions'
 
-import type { ExperimentalStructure } from 'p2s_mapper'
-
-/** Title, partners and ligands of every listed entry, in one request */
+/** Title, partners and ligands of every entry, in one request */
 export default function usePdbEntrySummaries(
-  entries: readonly ExperimentalStructure[] | undefined,
+  pdbIds: readonly string[] | undefined,
 ) {
-  const ids = entries?.map(e => e.pdbId).join(',')
-  const { data, error, isLoading } = useSWR(
+  const ids = pdbIds?.join(',')
+  const { data, error, isLoading, mutate } = useSWR(
     ids ? (['pdb-entry-summaries', ids] as const) : null,
     ([, list]) => fetchPdbEntrySummaries(list.split(',')),
     STATIC_SWR_OPTIONS,
   )
   const summariesError: unknown = error
-  return { summaries: data, error: summariesError, isLoading }
+  return {
+    summaries: data,
+    error: summariesError,
+    isLoading,
+    retry: () => {
+      void mutate()
+    },
+  }
 }

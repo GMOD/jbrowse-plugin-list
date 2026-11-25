@@ -140,8 +140,12 @@ test('says why a structure stays grey', () => {
       ...structure,
       ask: clinVar,
       state: { key: requestKey(clinVar), error: new Error('HTTP 503') },
-    }).message,
-  ).toBe('Could not fetch ClinVar variants for NM_000546.6: HTTP 503')
+    }),
+  ).toEqual({
+    pending: false,
+    message: 'Could not fetch ClinVar variants for NM_000546.6: HTTP 503',
+    severity: 'error',
+  })
 })
 
 test('asks GRCh37 for an hg19 transcript, keyed apart from GRCh38', () => {

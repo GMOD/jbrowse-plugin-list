@@ -1,8 +1,8 @@
 import { identityUniProtPositionMap, makeUniProtPositionMap } from 'p2s_mapper'
 import { expect, test } from 'vitest'
 
-import { layoutFeature } from './useProteinFeatureTrackData'
 import { toAlignment } from '../../test_data/positionLookups'
+import { layoutFeature } from './useProteinFeatureTrackData'
 
 import type { UniProtFeature } from './useUniProtFeatures'
 

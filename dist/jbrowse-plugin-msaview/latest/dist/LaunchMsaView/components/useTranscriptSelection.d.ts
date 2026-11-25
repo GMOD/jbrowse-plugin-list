@@ -17,7 +17,7 @@ export declare function useTranscriptSelection({ feature, view, hasData, preferr
 }): {
     options: Feature[];
     selectedId: string;
-    setSelectedId: import("react").Dispatch<import("react").SetStateAction<string>>;
+    setSelectedId: import("react").Dispatch<import("react").SetStateAction<string | undefined>>;
     selectedTranscript: Feature | undefined;
     proteinSequence: string;
     error: unknown;

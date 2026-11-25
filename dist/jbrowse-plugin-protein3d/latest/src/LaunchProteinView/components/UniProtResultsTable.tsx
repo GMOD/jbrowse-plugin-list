@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useId } from 'react'
 
 import {
   Chip,
@@ -66,6 +66,8 @@ const UniProtResultsTable = observer(function UniProtResultsTable({
   onSelect,
 }: UniProtResultsTableProps) {
   const { classes, cx } = useStyles()
+  // one name makes the radios one group, so arrow keys move between them
+  const radioName = useId()
 
   return entries.length === 0 ? null : (
     <div>
@@ -100,6 +102,14 @@ const UniProtResultsTable = observer(function UniProtResultsTable({
                   <Radio
                     checked={selectedAccession === entry.accession}
                     size="small"
+                    name={radioName}
+                    value={entry.accession}
+                    onChange={() => {
+                      onSelect(entry.accession)
+                    }}
+                    slotProps={{
+                      input: { 'aria-label': `Use ${entry.accession}` },
+                    }}
                   />
                 </TableCell>
                 <TableCell>

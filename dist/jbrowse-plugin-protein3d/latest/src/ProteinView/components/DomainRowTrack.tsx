@@ -1,33 +1,41 @@
-import React, { useState } from 'react'
+import React from 'react'
 
-import { Tooltip } from '@mui/material'
 import { observer } from 'mobx-react'
 
-import { HOVERED_BORDER, SELECTED_BORDER } from '../constants'
+import RangeBar, { RangeBarTrack, rangeText } from './RangeBar'
 
-import type { DomainBar, DomainRow } from '../alignmentDomains'
+import type { DomainBar as DomainBarRun, DomainRow } from '../alignmentDomains'
 import type { JBrowsePluginProteinStructureModel } from '../model'
 
 const KIND_LABEL = { domain: 'Domain', site: 'Site' }
 
-const Bar = observer(function Bar({
+const DomainBar = observer(function DomainBar({
   row,
   bar,
   selected,
+  tabStop,
   model,
 }: {
   row: DomainRow
-  bar: DomainBar
+  bar: DomainBarRun
   selected: boolean
+  tabStop: boolean
   model: JBrowsePluginProteinStructureModel
 }) {
-  const [isHovered, setIsHovered] = useState(false)
-  const { columnWidth, trackGap } = model
-  const first = model.residueNumber(bar.structureStart)
-  const last = model.residueNumber(bar.structureEnd - 1)
+  const residues = rangeText(
+    model.residueNumber(bar.structureStart),
+    model.residueNumber(bar.structureEnd - 1),
+  )
   return (
-    <Tooltip
-      title={
+    <RangeBar
+      alignmentStart={bar.alignmentStart}
+      alignmentEnd={bar.alignmentEnd}
+      top={0}
+      height={`calc(100% - ${model.trackGap}px)`}
+      color={row.color}
+      selected={selected}
+      tabStop={tabStop}
+      tooltip={
         <div>
           <div>
             <strong>{row.label}</strong>
@@ -35,49 +43,19 @@ const Bar = observer(function Bar({
           <div>
             {KIND_LABEL[row.kind]} from the alignment, {row.accession}
           </div>
-          <div>
-            Structure residue: {first === last ? first : `${first}-${last}`}
-          </div>
+          <div>Structure residue: {residues}</div>
         </div>
       }
-      followCursor
-    >
-      <div
-        data-testid={`alignment-domain-${row.kind}`}
-        data-accession={row.accession}
-        onClick={() => {
-          model.toggleDomainRow(row)
-        }}
-        onMouseEnter={() => {
-          setIsHovered(true)
-          model.setAlignmentHoverRange({
-            start: bar.alignmentStart,
-            end: bar.alignmentEnd,
-          })
-        }}
-        onMouseLeave={() => {
-          setIsHovered(false)
-          model.setAlignmentHoverRange(undefined)
-        }}
-        style={{
-          position: 'absolute',
-          left: bar.alignmentStart * columnWidth,
-          top: 0,
-          width: (bar.alignmentEnd - bar.alignmentStart + 1) * columnWidth,
-          height: `calc(100% - ${trackGap}px)`,
-          backgroundColor: row.color,
-          opacity: isHovered || selected ? 0.9 : 0.6,
-          cursor: 'pointer',
-          borderRadius: 2,
-          border: selected
-            ? SELECTED_BORDER
-            : isHovered
-              ? HOVERED_BORDER
-              : 'none',
-          boxSizing: 'border-box',
-        }}
-      />
-    </Tooltip>
+      ariaLabel={`${row.label} ${residues}`}
+      dataAttributes={{
+        'data-testid': `alignment-domain-${row.kind}`,
+        'data-accession': row.accession,
+      }}
+      onClick={() => {
+        model.toggleDomainRow(row)
+      }}
+      model={model}
+    />
   )
 })
 
@@ -90,15 +68,21 @@ const DomainRowTrack = observer(function DomainRowTrack({
   model: JBrowsePluginProteinStructureModel
 }) {
   const selected = model.selectedFeatureId === `alignment:${row.accession}`
-  return row.bars.map(bar => (
-    <Bar
-      key={bar.alignmentStart}
-      row={row}
-      bar={bar}
-      selected={selected}
-      model={model}
-    />
-  ))
+  const first = Math.min(...row.bars.map(bar => bar.alignmentStart))
+  return (
+    <RangeBarTrack>
+      {row.bars.map(bar => (
+        <DomainBar
+          key={bar.alignmentStart}
+          row={row}
+          bar={bar}
+          selected={selected}
+          tabStop={bar.alignmentStart === first}
+          model={model}
+        />
+      ))}
+    </RangeBarTrack>
+  )
 })
 
 export default DomainRowTrack

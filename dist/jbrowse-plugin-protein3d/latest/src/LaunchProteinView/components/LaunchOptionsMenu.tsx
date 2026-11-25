@@ -11,6 +11,7 @@ interface LaunchOption {
   key: string
   title: string
   description: string
+  disabled: boolean
   onClick: () => void
 }
 
@@ -34,6 +35,7 @@ const LaunchOptionsMenu = observer(function LaunchOptionsMenu({
         <MenuItem
           key={opt.key}
           data-testid={`protein-launch-option-${opt.key}`}
+          disabled={opt.disabled}
           onClick={opt.onClick}
         >
           <ListItemText primary={opt.title} secondary={opt.description} />

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CachedBlastResult } from '../../../utils/blastCache';
+import type { useLaunchSubmit } from '../launchConnectedView';
 import type { useCachedBlastResults } from './useCachedBlastResults';
 import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
 /**
@@ -13,9 +14,9 @@ import type { AbstractTrackModel, Feature } from '@jbrowse/core/util';
  * queried NCBI directly and blastp/quick-blastp was a real choice.
  */
 export declare function describeSearch(result: CachedBlastResult): string;
-declare const CachedBlastResults: ({ model, handleClose, feature, cached: { results, handleDelete, handleClearAll }, }: {
+declare const CachedBlastResults: ({ model, submit, feature, cached: { results, handleDelete, handleClearAll }, }: {
     model: AbstractTrackModel;
-    handleClose: () => void;
+    submit: ReturnType<typeof useLaunchSubmit>["submit"];
     feature: Feature;
     /** the panel's own listing, so clearing it here empties it there too */
     cached: ReturnType<typeof useCachedBlastResults>;

@@ -1,8 +1,8 @@
 import { identityUniProtPositionMap, makeUniProtPositionMap } from 'p2s_mapper'
 import { expect, test } from 'vitest'
 
-import { meanScoreByPosition, placeValues } from './variantEffects'
 import { parseAlphaMissense } from '../AlphaMissensePathogenicityAdapter/parseAlphaMissense'
+import { meanScoreByPosition, placeValues } from './variantEffects'
 
 test('averages every substitution at a residue, keyed by 1-based position', () => {
   const rows = parseAlphaMissense(

@@ -25,7 +25,7 @@ export interface RowHighlight {
  */
 export type QueryOnGenome = {
     kind: 'transcript';
-    map: Pick<TranscriptMap, 'g2p' | 'refName'>;
+    map: Pick<TranscriptMap, 'g2p' | 'refName' | 'codingPositions'>;
 } | {
     kind: 'maf';
     refName: string;

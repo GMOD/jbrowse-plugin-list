@@ -219,7 +219,7 @@ export async function resolveLaunchVariant({
   }
   if (!assemblyName) {
     throw new Error(
-      `\`variant\` ${variant.text} is highlighted on the connected genome view, and this launch connects none with an assembly`,
+      `\`variant\` ${variant.text} is placed on one assembly, and this launch names none while the session holds several; give \`connectedView.assembly\` or a \`connectedViewId\``,
     )
   }
   const assembly = await session.assemblyManager.waitForAssembly(assemblyName)

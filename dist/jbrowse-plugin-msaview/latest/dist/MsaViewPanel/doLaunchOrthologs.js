@@ -107,13 +107,13 @@ async function findNcbiOrthologs({ taxId, geneCandidates, onProgress, signal, ..
         throw new Error(`Could not resolve any of ${geneCandidates.join(', ')} to an NCBI gene in taxon ${taxId}. Try the NCBI BLAST tab, which needs no gene identifier.`);
     }
     const representative = await fetchRepresentativeQueryProtein(resolved.geneId, signal);
-    const rows = await fetchOrthologRows({
+    const { rows, warning } = await fetchOrthologRows({
         geneId: resolved.geneId,
         onProgress,
         signal,
         ...rest,
     });
-    return { geneId: resolved.geneId, representative, rows };
+    return { geneId: resolved.geneId, representative, rows, warning };
 }
 const sourceNames = {
     ncbi: 'NCBI',
@@ -156,6 +156,7 @@ async function findPantherOrthologs({ geneCandidates, ...rest }) {
         geneId: found.query?.geneRef ?? found.matched,
         representative: found.query,
         rows: found.rows,
+        warning: found.warning,
     };
 }
 /**
@@ -164,17 +165,8 @@ async function findPantherOrthologs({ geneCandidates, ...rest }) {
  * take down the launch.
  */
 async function queryRowLabel(taxId, rows, signal) {
-    let name;
-    try {
-        const info = (await fetchTaxonomyInfo([taxId], signal)).get(taxId);
-        name = info?.commonName ?? info?.sciname;
-    }
-    catch (e) {
-        if (isAbortError(e)) {
-            throw e;
-        }
-        console.warn('[msaview-orthologs] taxonomy name lookup failed:', e);
-    }
+    const info = (await fetchTaxonomyInfo([taxId], signal)).get(taxId);
+    const name = info?.commonName ?? info?.sciname;
     return dedupeLabels([
         ...rows.map(r => r.label),
         `${name ?? 'query'}_query`,

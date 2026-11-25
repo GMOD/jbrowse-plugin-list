@@ -5,16 +5,16 @@ import {
   StructureElement,
   StructureProperties,
 } from 'molstar/lib/mol-model/structure'
-import { PluginCommands } from 'molstar/lib/mol-plugin/commands'
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
+import { PluginCommands } from 'molstar/lib/mol-plugin/commands'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test, vi } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
+import { caOnlyMmcif, residuesOf } from '../test_data/molstarStructure'
 import { loadStructureData } from './loadStructureData'
 import { DEPOSITED_MODEL, parseStructureTrajectory } from './structurePipeline'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
-import { caOnlyMmcif, residuesOf } from '../test_data/molstarStructure'
 
 import type { FilterPredicate } from './residueFilter'
 import type { Structure } from 'molstar/lib/mol-model/structure'
@@ -41,7 +41,9 @@ test('an ensemble load returns every model it made', async () => {
     const loaded = await loadCaOnly(plugin, [chain], { models: 4 })
     expect(plugin.managers.structure.hierarchy.current.models).toHaveLength(4)
     expect(loaded.structures).toHaveLength(4)
-    expect(new Set(loaded.modelIds).size).toBe(4)
+    expect(
+      new Set(loaded.structures.flatMap(s => s.models.map(m => m.id))).size,
+    ).toBe(4)
   })
 })
 

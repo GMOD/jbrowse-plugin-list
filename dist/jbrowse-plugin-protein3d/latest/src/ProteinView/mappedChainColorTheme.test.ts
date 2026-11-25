@@ -4,12 +4,12 @@ import {
 } from 'molstar/lib/mol-model/structure'
 import { beforeAll, expect, test } from 'vitest'
 
+import { parseStructure } from '../test_data/molstarStructure'
 import {
   MAPPED_CHAIN_COLOR,
   MappedChainColorThemeProvider,
   OTHER_CHAIN_COLOR,
 } from './mappedChainColorTheme'
-import { parseStructure } from '../test_data/molstarStructure'
 
 import type { Structure } from 'molstar/lib/mol-model/structure'
 

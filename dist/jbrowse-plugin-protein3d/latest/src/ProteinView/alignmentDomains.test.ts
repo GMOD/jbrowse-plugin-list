@@ -1,6 +1,8 @@
 import { genomeToTranscriptSeqMapping } from 'g2p_mapper'
 import { describe, expect, test } from 'vitest'
 
+import { literalNaming } from '../test_data/naming'
+import { toAlignment, toStructure } from '../test_data/positionLookups'
 import {
   alignmentDomainStatus,
   domainLegend,
@@ -9,8 +11,6 @@ import {
   placeOnTranscript,
   readConnectedDomains,
 } from './alignmentDomains'
-import { literalNaming } from '../test_data/naming'
-import { toAlignment, toStructure } from '../test_data/positionLookups'
 
 import type { ConnectedDomains } from './alignmentDomains'
 import type { GenomeNaming } from './util'

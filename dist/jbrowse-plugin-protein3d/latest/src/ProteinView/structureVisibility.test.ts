@@ -3,11 +3,11 @@ import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { StateSelection } from 'molstar/lib/mol-state'
 import { expect, test } from 'vitest'
 
+import { loadCaOnly } from '../test_data/molstarPlugin'
 import loadMolstar from './loadMolstar'
 import { structureRootCell } from './structureCells'
 import { setStructuresHidden } from './structureVisibility'
 import { withTemporaryMolstarPlugin } from './withTemporaryMolstarPlugin'
-import { loadCaOnly } from '../test_data/molstarPlugin'
 
 // with Mol*'s controls shown, a user can hide one representation by its eye
 test('a shown structure keeps a representation the user hid in Mol*', async () => {

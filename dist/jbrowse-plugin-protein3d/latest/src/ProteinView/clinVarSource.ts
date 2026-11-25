@@ -2,6 +2,8 @@ import { TabixIndexedFile } from '@gmod/tabix'
 import { getGeneticCode } from '@jbrowse/core/util/geneticCodes'
 import { transcriptGeneticCodeId } from '@jbrowse/core/util/translateTranscript'
 
+import { fetchRegionSequence } from '../LaunchProteinView/utils/translateTranscripts'
+import { genomeToTranscriptSeqMapping } from '../mappings'
 import {
   clinVarRefName,
   clinVarVcfUrl,
@@ -12,8 +14,6 @@ import {
   substitutionCountByResidue,
 } from './clinVar'
 import { VariantEffectRefusal } from './variantEffects'
-import { fetchRegionSequence } from '../LaunchProteinView/utils/translateTranscripts'
-import { genomeToTranscriptSeqMapping } from '../mappings'
 
 import type { ClinVarBuild, ClinVarMissense } from './clinVar'
 import type { AbstractSessionModel, Feature } from '@jbrowse/core/util'

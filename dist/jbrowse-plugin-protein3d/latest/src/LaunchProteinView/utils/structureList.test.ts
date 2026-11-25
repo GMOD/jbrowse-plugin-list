@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  addPdbId,
+  addedRows,
+  checkedKeys,
   defaultChecked,
+  firstRowsAndChecked,
   ligandTags,
   listOrder,
   matchesFilter,
   partnerTags,
   sentenceCase,
+  splitChecked,
   structureRows,
   toggleStructure,
 } from './structureList'
 
+import type { AddedEntry } from './structureList'
 import type {
   AlphaFoldComplex,
   ExperimentalStructure,
@@ -306,6 +312,113 @@ describe('structureRows', () => {
   })
 })
 
+describe('addedRows', () => {
+  const listed = nrasRows()
+  const added = (summaries?: ReadonlyMap<string, PdbEntrySummary>) =>
+    addedRows({
+      pdbIds: ['9btm', '1abc', '6zio'],
+      summaries,
+      listed,
+      geneName: 'NRAS',
+      uniprotId: NRAS,
+    })
+
+  it('lists an entry under its id until RCSB describes it', () => {
+    expect(added().rows.map(r => [r.key, r.section, r.title])).toEqual([
+      ['pdb:1abc', 'added', 'PDB entry 1ABC'],
+    ])
+    expect(added().unknown).toEqual([])
+  })
+
+  it('leaves out the entries the listing holds and those RCSB does not know', () => {
+    const shoc2 = SUMMARIES.get('9btm')!
+    const { rows, unknown } = addedRows({
+      pdbIds: ['9btm', '1abc'],
+      summaries: new Map([['9btm', shoc2]]),
+      listed: [],
+      geneName: 'NRAS',
+      uniprotId: NRAS,
+    })
+    expect(rows).toEqual([
+      expect.objectContaining({
+        key: 'pdb:9btm',
+        kind: 'added',
+        title: 'NRas 1-169 Q61R in Complex with Shoc2 80-582',
+        partners: [
+          { label: 'Leucine-rich repeat protein SHOC-2', title: 'Q9UQ13' },
+        ],
+      }),
+    ])
+    expect(unknown).toEqual(['1abc'])
+    expect(added(SUMMARIES).rows).toEqual([])
+  })
+
+  it('opens beside the checked rows rather than in place of them', () => {
+    const [row] = added().rows
+    expect(toggleStructure(['alphafold'], row!, listed)).toEqual([
+      'alphafold',
+      'pdb:1abc',
+    ])
+  })
+})
+
+describe('addPdbId', () => {
+  const rows = nrasRows()
+  const add = (
+    pdbId: string,
+    added: AddedEntry[] = [],
+    checked: string[] = ['alphafold'],
+    unknown: string[] = [],
+  ) => addPdbId({ pdbId, added, unknown, checked, rows })
+
+  it('adds a new id checked and last, leaving the listed pick alone', () => {
+    expect(
+      add('1abc', [{ pdbId: '2xyz', checked: false }], ['alphafold']),
+    ).toEqual({
+      listed: ['alphafold'],
+      added: [
+        { pdbId: '2xyz', checked: false },
+        { pdbId: '1abc', checked: true },
+      ],
+    })
+  })
+
+  it('checks an id added before again rather than adding it twice', () => {
+    expect(add('1abc', [{ pdbId: '1abc', checked: false }]).added).toEqual([
+      { pdbId: '1abc', checked: true },
+    ])
+  })
+
+  it('checks a listed entry in its section, and keeps it as added', () => {
+    const { listed, added } = add('9btm')
+    expect(listed).toEqual(['alphafold'])
+    expect(added).toEqual([{ pdbId: '9btm', checked: true }])
+    expect(checkedKeys(listed, added)).toEqual(['alphafold', 'pdb:9btm'])
+  })
+
+  it('drops ids RCSB has no entry for', () => {
+    expect(
+      add('1abc', [{ pdbId: '9zzz', checked: true }], [], ['9zzz']).added,
+    ).toEqual([{ pdbId: '1abc', checked: true }])
+  })
+
+  it('unchecks a checked short fragment, which opens alone', () => {
+    expect(add('1abc', [], ['pdb:7ow4']).listed).toEqual([])
+  })
+
+  it('keeps an added entry checked when the accession changes', () => {
+    // added while the lookup ran, so the listed pick was empty
+    const { added } = add('6zio', [], [])
+    // the lookup lands: the listed pick resets to the default
+    expect(checkedKeys(defaultChecked(rows), added)).toEqual([
+      'alphafold',
+      'pdb:6zio',
+    ])
+    const unchecked = splitChecked(['alphafold'], added)
+    expect(unchecked.added).toEqual([{ pdbId: '6zio', checked: false }])
+  })
+})
+
 describe('checking rows', () => {
   const rows = nrasRows()
   const row = (key: string) => rows.find(r => r.key === key)!
@@ -326,6 +439,15 @@ describe('checking rows', () => {
     expect(
       toggleStructure(['alphafold', 'pdb:9btm'], row('alphafold'), rows),
     ).toEqual(['pdb:9btm'])
+  })
+
+  it('folds a section to its first rows, never hiding a checked one', () => {
+    expect(firstRowsAndChecked(rows, ['pdb:7ow4'], 2).map(r => r.key)).toEqual([
+      'alphafold',
+      'pdb:6zio',
+      'pdb:7ow4',
+    ])
+    expect(firstRowsAndChecked(rows, [], 10)).toHaveLength(rows.length)
   })
 
   it('opens a short fragment alone', () => {
