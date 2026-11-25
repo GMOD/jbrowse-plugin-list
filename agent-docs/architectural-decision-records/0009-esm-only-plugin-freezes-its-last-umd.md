@@ -60,3 +60,18 @@ records the UMD as deleted from `dist/`. That is the staging area, not S3.
 - **The next plugin to go ESM-only takes the same three steps:** `esmPath` plus
   `jbrowseRange: ">=5.0.0"` here; the jb2hubs fallback url pinned to its last
   UMD version directory; and `latest/` left alone.
+
+## Amendment 2026-11-25 — Hubs is the third, and jb2hubs names `latest/` again
+
+Hubs 2.0.0 took `esmPath` and `jbrowseRange: ">=5.0.0"`; 4.x hosts keep 1.0.18.
+Measured after the upload:
+`latest/dist/jbrowse-plugin-hubs.umd.production.min.js` and its `1.0.18/` copy
+hash the same, v4.3.0 opens hg38 on that build, and v5.0.0-beta.18, beta.23 and
+`main` load `2.0.0/dist/jbrowse-plugin-hubs.esm.js`.
+
+The second of the three steps no longer happens. jb2hubs went back to naming
+`latest/` for every default plugin (its `60a3fe946dd`), so each deployed config
+depends on invariant 3 for all three plugins, for good: `copy` must never become
+`sync`, and no release of Hubs, Protein3d or MsaView may carry a file named
+`jbrowse-plugin-<name>.umd.production.min.js`. Hubs' `pnpm host-compat` refuses
+a `dist/` that holds one.
