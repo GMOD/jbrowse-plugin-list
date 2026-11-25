@@ -351,6 +351,8 @@ export const paneBase = types
     abridged: [] as AbridgedWalk[],
     // the reference window the graph on screen was cut for, set with it
     graphRegion: undefined as SubgraphRegion | undefined,
+    // the haplotypes the graph on screen was cut for, set with it
+    graphHaplotypes: undefined as readonly string[] | undefined,
     cutKeyOnRecord: undefined as string | undefined,
     haplotypeNames: undefined as string[] | undefined,
     // The walk the track's graph lies on for the region's assembly, which

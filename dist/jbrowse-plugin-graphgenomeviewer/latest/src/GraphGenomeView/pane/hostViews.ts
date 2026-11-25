@@ -124,9 +124,9 @@ export const withHostViews = withWalkRowViews
       })
       const focus = self.walkLift ? undefined : self.openBubbleFocus
       return focus
-        ? blocks.map(b =>
+        ? blocks.map(({ pieces, ...b }) =>
             focus.nodeIds.has(b.node)
-              ? b
+              ? { ...b, ...(pieces ? { pieces } : {}) }
               : { ...b, colors: [LIFT_BACKDROP_CSS], faded: true },
           )
         : blocks

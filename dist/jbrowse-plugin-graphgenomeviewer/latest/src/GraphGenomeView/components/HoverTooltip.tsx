@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
 
+import { againstHoverText } from '@jbrowse/bandage-core/againstReference'
 import { isBackbone } from '@jbrowse/bandage-core/anchoredNodes'
 import { genesOverNode } from '@jbrowse/bandage-core/genes/geneNames'
 import {
   edgeHoverText,
   placeholderHoverText,
   regionLabel,
+  skipAt,
 } from '@jbrowse/bandage-core/hoverText'
 import { referenceLabel } from '@jbrowse/bandage-core/reference'
 import {
@@ -122,6 +124,14 @@ function hoverTip(
       region && span && !isBackbone(node)
         ? `${region.assemblyName} ${regionLabel({ refName: region.refName, ...span })}`
         : undefined
+    const graph = model.drawnGraph
+    const against =
+      graph &&
+      againstHoverText(
+        graph,
+        node.id,
+        referenceLabel(graph, region) ?? undefined,
+      )
     const genes = genesOverNode(model.genePins, node.id)
     const genesLine =
       genes.length > 0 ? (
@@ -158,8 +168,19 @@ function hoverTip(
                   Reference {onReference}
                 </>
               ) : null}
+              {against ? (
+                <>
+                  <br />
+                  {against}
+                </>
+              ) : null}
               {genesLine}
-              {foldedNodeLines(model, node.id, node.members?.length)}
+              {foldedNodeLines(
+                model,
+                node.id,
+                node.members?.filter(name => !model.notLoadedNames.has(name))
+                  .length,
+              )}
               {/* gfa-to-tabix --max-component left its component off the
               reference, so the cut holds only its ends */}
               {node.moved ? (
@@ -172,25 +193,28 @@ function hoverTip(
           ),
         }
   }
-  const edge =
-    model.hoveredEdge === null
-      ? undefined
-      : model.graph?.edges[model.hoveredEdge]
-  if (edge) {
+  const graph = model.graph
+  const hovered = model.hoveredEdge
+  const edge = hovered === null ? undefined : graph?.edges[hovered]
+  if (graph && hovered !== null && edge) {
     const text = edgeHoverText(
       edge,
-      model.deletions.find(d => d.edgeIndex === model.hoveredEdge),
+      skipAt(graph, hovered, model.deletions, model.deletionRoutes),
       id => model.nodeById?.get(id)?.name ?? id,
     )
     // a link that skips reference sequence says how much, naming the
     // reference as the key does, and no event
-    const reference = model.graph ? referenceLabel(model.graph) : undefined
+    const reference = referenceLabel(graph)
     return {
       body: text.deletion ? (
         <>
-          {`skips ${text.deletion.bp} of ${reference ?? 'the reference'} sequence`}
-          <br />
-          {text.deletion.where}
+          {`skips ${text.deletion.bp ? `${text.deletion.bp} of ` : ''}${reference ?? 'the reference'} sequence`}
+          {text.deletion.where ? (
+            <>
+              <br />
+              {text.deletion.where}
+            </>
+          ) : null}
         </>
       ) : (
         <>

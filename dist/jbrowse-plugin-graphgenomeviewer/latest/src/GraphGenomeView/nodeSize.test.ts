@@ -8,9 +8,14 @@ test('a number is a uniform thickness, an object scales by its field', () => {
     links: 'uniform',
   })
   expect(nodeSizeOf(undefined)).toEqual({
-    width: 'depth',
+    width: 'walks',
     px: 6,
-    links: 'uniform',
+    links: 'walks',
+  })
+  expect(nodeSizeOf({ field: 'walks', value: 6, links: 'walks' })).toEqual({
+    width: 'walks',
+    px: 6,
+    links: 'walks',
   })
   expect(nodeSizeOf({ value: 5, links: 'walks' })).toEqual({
     width: 'uniform',
@@ -20,6 +25,8 @@ test('a number is a uniform thickness, an object scales by its field', () => {
 })
 
 test.each([
+  ['walks', 'walks'],
+  ['walks', 'uniform'],
   ['depth', 'uniform'],
   ['uniform', 'uniform'],
   ['depth', 'walks'],

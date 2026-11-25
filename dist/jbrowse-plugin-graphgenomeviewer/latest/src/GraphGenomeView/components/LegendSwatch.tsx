@@ -139,7 +139,14 @@ export function SvgSwatch({
       )
     }
     case 'line':
-      return swatch.short ? (
+      return swatch.arch ? (
+        <path
+          d={`M${x + 2},${mid + 4} Q${x + SWATCH_PX / 2},${mid - 8} ${x + SWATCH_PX - 2},${mid + 4}`}
+          fill="none"
+          stroke={swatch.color}
+          strokeWidth={1.5}
+        />
+      ) : swatch.short ? (
         <line
           x1={x + 5}
           x2={x + SWATCH_PX - 5}

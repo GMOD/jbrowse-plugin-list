@@ -409,17 +409,30 @@ export const withSettingActions = withTubeMapViews
       ) {
         self.legendSize = size
       }
+      // within one fit the frame only grows: the key of a drawing fitted
+      // beside it can lose a mark at the new scale, and shrinking the frame
+      // would move the fit back and forth
       const frame = self.keyFrame
+      const next =
+        !frame || self.viewportOwner !== 'fit'
+          ? size
+          : {
+              width: Math.max(frame.width, size.width),
+              height: Math.max(frame.height, size.height),
+            }
       if (
         !frame ||
         (!self.keyFrameHeld &&
-          (size.width !== frame.width || size.height !== frame.height))
+          (next.width !== frame.width || next.height !== frame.height))
       ) {
-        self.keyFrame = size
+        self.keyFrame = next
       }
     },
     setKeyFrameHeld(held: boolean) {
       self.keyFrameHeld = held
+    },
+    resetKeyFrame() {
+      self.keyFrame = undefined
     },
     setHoveredEdge(edgeIdx: number | null) {
       self.hoveredEdge = self.hoverLightsEverything ? edgeIdx : null

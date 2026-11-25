@@ -16,9 +16,10 @@ import { isRecord } from '../isRecord'
 //   stretches both walk through the same nodes
 // - `walkBlocks`: on walk rows, a lettered box round each stretch of nodes off
 //   the reference's path that two or more rows walk
-// - `smallSites`: every node and skip at any zoom. Off by default, so a site
-//   too small to see at the current zoom is left out, counted in the key,
-//   and drawn again as a zoom reaches it
+// - `smallSites`: every node at any zoom. Off by default, so a site too small
+//   to see at the current zoom is left out, counted in the key, and drawn
+//   again as a zoom reaches it. A skip too short on screen to arch is counted
+//   in the key either way
 export type GraphLayer =
   | 'paths'
   | 'bubbles'

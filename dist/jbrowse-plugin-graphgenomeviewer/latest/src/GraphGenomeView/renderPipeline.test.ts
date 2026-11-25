@@ -313,9 +313,10 @@ test('a layout switch builds the drawing once', async () => {
   expect(uploads).toHaveLength(2)
 })
 
-// 3 bp between 1 and 2, laid a hair's width long, so the fit folds it and
-// the key gains a row saying so
-const FOLDED_GFA = `${GFA}S\t3\tACG\nL\t1\t+\t3\t+\t0M\nL\t3\t+\t2\t+\t0M\nW\tGRCh38\t0\tchr1\t0\t8\t>1>2\nW\tA\t1\tctg\t0\t11\t>1>3>2\n`
+// 3 bp between two 4 kb reference nodes, under SMALL_SITE_PX at the
+// reference's px a bp at the fit, so the fit folds it and the key gains a row
+// saying so
+const FOLDED_GFA = `H\tVN:Z:1.0\nS\t1\t${'A'.repeat(4000)}\nS\t2\t${'C'.repeat(4000)}\nL\t1\t+\t2\t+\t0M\nS\t3\tACG\nL\t1\t+\t3\t+\t0M\nL\t3\t+\t2\t+\t0M\nW\tGRCh38\t0\tchr1\t0\t8000\t>1>2\nW\tA\t1\tctg\t0\t8003\t>1>3>2\n`
 const at = (x0: number, x1: number, y: number) => [
   { x: x0, y },
   { x: x1, y },

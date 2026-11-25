@@ -447,10 +447,7 @@ export const withGraphViews = paneBase
     // a fact about the graph (measured 6.9 ms an allocation on a 30k-node cut).
     get nodeLengths() {
       const graph = self.drawnGraph
-      const lengths = labelledNodeLengths(
-        graph?.nodes ?? [],
-        self.layerSet.has('lengths'),
-      )
+      const lengths = labelledNodeLengths(graph, self.layerSet.has('lengths'))
       return graph
         ? lengthsInWindow(lengths, graph, self.outsideView, self.viewWindow)
         : lengths
@@ -852,17 +849,28 @@ export const withGraphViews = paneBase
       }
       return bubbles
     },
-    // what the legend says the drawing leaves out, when it was folded
+    // what the legend says the drawing leaves out, when it was folded: for a
+    // graph without walks, here; for one folded to threads, the walks the
+    // fold left out, beside the line core's key gives what it folded
     get foldNote() {
       const bp = self.foldedBelowBp
       const stepless = self.graph?.threadFold?.stepless ?? 0
       return bp === undefined
         ? undefined
-        : `variants under ${formatBp(bp)} folded into the reference${
-            stepless > 0
-              ? `; ${stepless.toLocaleString()} ${stepless === 1 ? 'walk' : 'walks'} with no steps here not drawn`
-              : ''
-          }`
+        : self.graph?.threadFold
+          ? stepless > 0
+            ? `${stepless.toLocaleString()} ${stepless === 1 ? 'walk' : 'walks'} with no steps here not drawn`
+            : undefined
+          : `variants under ${formatBp(bp)} folded into the reference`
+    },
+    // the stretches the cut a fold was made of did not load, by node name,
+    // which a folded node's count of the nodes it holds leaves out
+    get notLoadedNames() {
+      return new Set(
+        (self.unfoldedGraph?.nodes ?? []).flatMap(node =>
+          node.placeholder ? [node.name] : [],
+        ),
+      )
     },
     // why a graph with walks is drawn whole at a zoom that folds one
     get foldRefusalNote() {

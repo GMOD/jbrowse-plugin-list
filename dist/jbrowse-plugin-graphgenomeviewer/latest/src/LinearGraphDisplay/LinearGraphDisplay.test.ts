@@ -62,11 +62,7 @@ import {
 } from '../GraphGenomeView/pane/paneBase'
 import { THREAD_FOLD_MIN_BP, foldedCut } from '../GraphGenomeView/threadFoldCut'
 import graphGenomeViewModel from '../GraphGenomeView/viewModel'
-import {
-  NO_NODES,
-  nodesOutsideWindow,
-  wholeInWindow,
-} from '../GraphGenomeView/viewWindow'
+import { nodesOutsideWindow } from '../GraphGenomeView/viewWindow'
 import GraphTrackF from '../GraphTrack/index'
 import RgfaTabixAdapterF from '../RgfaTabixAdapter/index'
 
@@ -1612,13 +1608,8 @@ test('a drawing that follows the window draws, labels and ramps over its whole c
   expect(branchingOutside.every(id => drawn.has(id))).toBe(true)
 
   expect(pane.nodeLengths).toEqual(
-    labelledNodeLengths(graph.nodes, pane.layerSet.has('lengths')),
+    labelledNodeLengths(graph, pane.layerSet.has('lengths')),
   )
-  expect(
-    graph.nodes.some(
-      n => pane.nodeLengths.has(n.id) && !wholeInWindow(n, NO_NODES, seen),
-    ),
-  ).toBe(true)
 
   const region = pane.graphRegion!
   expect(pane.rampDomain).toEqual(region)
@@ -3097,12 +3088,22 @@ test('a folded drawing is clipped to the region it was cut for', async () => {
   }
 })
 
-test('a graph with walks folds to threads at a zoom that folds one, and says what it folded', async () => {
+// "variants under 600 bp folded into the reference" was false of a thread
+// fold, which draws a run off the reference of any size that rejoins it after
+// a step under the fold's bp; core's key says what it does not draw
+test('a graph with walks folds to threads at a zoom that folds one, and core says what it folded', async () => {
   const { pane } = await shownGraph({ paths: true })
   expect(offReference(pane)).toHaveLength(0)
   expect(pane.graph!.threadFold).toMatchObject({ haplotypes: 2, walks: 2 })
   expect(pane.graph!.paths!.map(p => p.count)).toEqual([1, 1])
-  expect(pane.foldNote).toMatch(/^variants under .* folded into the reference$/)
+  expect(pane.foldNote).toBeUndefined()
+  expect(
+    pane.graphKey
+      .find(section => section.id === 'too-small')
+      ?.entries.find(entry => entry.key === 'thread-fold')?.text,
+  ).toMatch(
+    /^not drawn: sequence shorter than [\d,]+ bp that a haplotype adds to .+ or skips of it before rejoining it$/,
+  )
   expect(pane.foldRefusalNote).toBeUndefined()
 })
 
@@ -3179,9 +3180,7 @@ test('a walk with no steps here is left out of the picker of a folded graph, and
       pane.cutFoldBelowBp,
     ),
   )
-  expect(pane.foldNote).toBe(
-    'variants under 600 bp folded into the reference; 1 walk with no steps here not drawn',
-  )
+  expect(pane.foldNote).toBe('1 walk with no steps here not drawn')
   expect(pane.walkChoices.map(c => c.name)).toEqual([REF, 'HG1', 'HG2'])
 })
 

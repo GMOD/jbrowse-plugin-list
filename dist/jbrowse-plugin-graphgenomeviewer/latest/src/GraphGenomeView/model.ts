@@ -2,6 +2,7 @@ import { sameInkOnPane } from '@jbrowse/bandage-core/drawnInk'
 import { drawnMarks, graphKey } from '@jbrowse/bandage-core/graphKey'
 import { layoutLabels } from '@jbrowse/bandage-core/labelLayout'
 import { FIT_PADDING } from '@jbrowse/bandage-core/layout/fitAssumptions'
+import { resolvePanSNPrefix } from '@jbrowse/bandage-core/pansn'
 import { passLabelCandidates } from '@jbrowse/bandage-core/passLabels'
 import { geometryFold } from '@jbrowse/bandage-core/renderer/GeometryBuilder'
 import { keyedView } from '@jbrowse/bandage-core/viewport'
@@ -27,6 +28,20 @@ import type { Bounds } from '@jbrowse/bandage-core/pipeline'
 import type { Instance } from '@jbrowse/mobx-state-tree'
 
 export { MAX_GRAPH_REGION_BP, fileName, formatSpanBp } from './pane/paneBase'
+
+// The haplotypes a cut was asked for as the PanSN prefixes its walks carry,
+// an assembly name mapped as the adapter maps it
+function askedPrefixes(
+  adapter: Record<string, unknown> | undefined,
+  names: readonly string[] | undefined,
+) {
+  return (
+    adapter &&
+    names?.map(name =>
+      resolvePanSNPrefix({ getConf: slot => adapter[slot] }, name),
+    )
+  )
+}
 
 const NO_LABELS: LabelLayout = {
   bubbles: [],
@@ -134,6 +149,10 @@ export const GraphPane = withLaunchActions
               edgeWidth: self.linkWidth,
               connectorThickness: self.connectorThickness,
               drawsNodes: self.drawsNodes,
+              haplotypes: askedPrefixes(
+                self.sourceAdapter,
+                self.graphHaplotypes,
+              ),
               marks: drawings
                 ? drawnMarks(
                     drawings.flatMap(drawing =>
@@ -372,6 +391,13 @@ export const GraphPane = withLaunchActions
           (now, was) => {
             const moved =
               !sameBounds(now.view, was.view) || now.rebuilt !== was.rebuilt
+            if (
+              now.layout !== was.layout ||
+              now.width !== was.width ||
+              (now.owner === 'fit' && was.owner !== 'fit')
+            ) {
+              self.resetKeyFrame()
+            }
             self.setKeyFrameHeld(
               now.owner !== 'fit' &&
                 now.layout === was.layout &&

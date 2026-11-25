@@ -927,34 +927,24 @@ describe('what the row axis draws, in pixels', () => {
     expect(hidden.hiddenEdgeIndexes!.size).toBe(0)
   })
 
-  // d719794 draws a skip too short on screen to hold three dashes as one
-  // plain stroke, which the key left out
-  test('the legend keys the dashed links and the plain stroke of a short skip only where the drawing holds them', async () => {
+  // this graph has no walks, so its skips keep their dashes; with walks
+  // each is one solid arch (skipStrokes.test.ts)
+  test('the legend keys the dashed links of a graph without walks only where the drawing holds them', async () => {
     const deletionRows = (model: Awaited<ReturnType<typeof fitted>>) =>
       legendSections(model)
         .filter(s => s.testid === 'graph-deletion-legend')
         .flatMap(s => s.rows)
     const shown = await fitted()
     shown.startRenderingBackend(fakeRenderer())
-    const drawn = drawnMarks([shown.drawnBatch])
-    expect(drawn.dashedSkip || drawn.shortSkip).toBe(true)
+    expect(drawnMarks([shown.drawnBatch])).toMatchObject({
+      archSkip: false,
+      dashedSkip: true,
+    })
     expect(deletionRows(shown)).toMatchObject([
-      ...(drawn.dashedSkip
-        ? [
-            {
-              label: expect.stringMatching(/^skips .* sequence/),
-              swatch: { kind: 'line', dashed: true },
-            },
-          ]
-        : []),
-      ...(drawn.shortSkip
-        ? [
-            {
-              label: 'short skip',
-              swatch: { kind: 'line', short: true },
-            },
-          ]
-        : []),
+      {
+        label: expect.stringMatching(/^skips .* sequence/),
+        swatch: { kind: 'line', dashed: true },
+      },
     ])
     expect(
       deletionRows(await fitted({ layers: { deletions: false } })),

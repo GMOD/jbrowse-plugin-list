@@ -55,6 +55,7 @@ test('a graph with walks folds to threads, each with its count, at the view’s 
     haplotypes: 4,
     walks: 4,
     stepless: 0,
+    departing: [],
   })
   expect(cut.unfoldedGraph).toBe(graph)
   expect(

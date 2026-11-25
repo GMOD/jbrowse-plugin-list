@@ -711,7 +711,7 @@ test('the node thickness key draws its two bars as wide as the thickest and thin
   expect(
     rows?.map(r => [r.label, r.swatch?.kind === 'fill' && r.swatch.height]),
   ).toEqual([
-    ['4 walks', drawnPx('1+')],
-    ['1 walk', drawnPx('2+')],
+    ['depth 4', drawnPx('1+')],
+    ['depth 1', drawnPx('2+')],
   ])
 })

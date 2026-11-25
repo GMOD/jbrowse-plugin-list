@@ -98,10 +98,9 @@ test('the labels are laid out without the nodes the drawing on the canvas folds'
   const model = await drawnPlaceholders()
   model.setLayer('lengths', true)
   expect([...model.folded]).toEqual(['small+'])
+  // the reference's nodes carry no length
   expect(model.overlayLabels.sizes.map(l => [l.node, l.text])).toEqual([
     ['large+', '400 bp'],
-    ['r1+', '5 kb'],
-    ['r2+', '5 kb'],
   ])
 })
 
@@ -175,7 +174,7 @@ test('a node inside a run of folded sites is hit and outlined as wide as the run
   }
 })
 
-test('Show small sites, off by default, draws every node and skip and keys nothing as not drawn, on screen and in the SVG, and is saved with the session', async () => {
+test('Show small sites is off by default; turned on, it draws every node and keys as not drawn only the skips too short on screen to arch, on screen and in the SVG, and is saved with the session', async () => {
   const model = await drawnGap571()
   const item = () =>
     (model.showMenuItems() as MenuItem[]).find(
@@ -189,9 +188,32 @@ test('Show small sites, off by default, draws every node and skip and keys nothi
   draw(model)
   expect(item().checked).toBe(true)
   expect(model.drawnFold?.sites).toEqual([])
-  expect(model.graphKey.map(s => s.id)).not.toContain('too-small')
-  expect(model.figure()).not.toMatch(/not drawn/)
+  expect(
+    model.graphKey.find(s => s.id === 'too-small')?.entries.map(e => e.text),
+  ).toEqual(['2 skips under 3 bp not drawn'])
+  expect(model.figure()).toMatch(/2 skips under 3 bp not drawn/)
+  expect(model.figure()).not.toMatch(/nodes? (and \d+ skips? )?under/)
   const snapshot = getSnapshot(model)
   expect(snapshot.layers).toEqual({ lengths: true, smallSites: true })
   expect(stateModelFactory().create(snapshot).smallSites).toBe('nodes')
+})
+
+// BandageJS's chrM:8,000-8,300: a skip drawn at one fit was too short to
+// draw at the next, and a key column that followed the key back and forth
+// re-fitted the drawing without end
+test('while fitted, a key that shrinks keeps the column and the floor its fit was made beside; once the user moves the view, they follow it', async () => {
+  const model = await drawnGap571()
+  expect(model.viewportOwner).toBe('fit')
+  model.setLegendSize({ width: 300, height: 400 })
+  const column = model.keyColumnPx
+  const floor = model.canvasFloor
+  model.setLegendSize({ width: 150, height: 60 })
+  expect(model.keyColumnPx).toBe(column)
+  expect(model.canvasFloor).toBe(floor)
+  model.setLegendSize({ width: 320, height: 420 })
+  expect(model.keyColumnPx).toBeGreaterThan(column)
+  model.setTransform(model.scaleX * 2, model.translateX, model.translateY)
+  expect(model.viewportOwner).not.toBe('fit')
+  model.setLegendSize({ width: 150, height: 60 })
+  expect(model.keyColumnPx).toBeLessThan(column)
 })

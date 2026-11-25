@@ -176,3 +176,172 @@ test('a link skipping reference sequence says the bp it skips of the named refer
   )
   expect(screen.queryByText(/Deletion/)).toBeNull()
 })
+
+// SV-rep-1k-10k: HG01109's 2 bp in place of 1,839 bp of GRCh38, whose
+// routed feet draw in a skip's ink, hovered as "Edge: r1 → x"
+test("a padded foot a force layout routed says what its walk's run skips", () => {
+  const graph = loadGraph(
+    [
+      `S\tr1\t${'A'.repeat(2000)}`,
+      `S\tr2\t${'C'.repeat(1839)}`,
+      `S\tr3\t${'G'.repeat(2000)}`,
+      'S\tx\tTT',
+      'L\tr1\t+\tr2\t+\t0M',
+      'L\tr2\t+\tr3\t+\t0M',
+      'L\tr1\t+\tx\t+\t0M',
+      'L\tx\t+\tr3\t+\t0M',
+      'W\tGRCh38\t0\tchr5\t0\t5839\t>r1>r2>r3',
+      'W\tHG01109\t1\tc\t0\t4002\t>r1>x>r3',
+    ].join('\n'),
+    'replacement',
+    { referencePath: 'GRCh38#0#chr5' },
+  )
+  const id = (name: string) => graph.nodes.find(n => n.name === name)!.id
+  const hoveredEdge = graph.edges.findIndex(
+    e => e.from === id('r1') && e.to === id('x'),
+  )
+  render(
+    <HoverTooltip
+      model={
+        {
+          hoveredNode: null,
+          hoveredEdge,
+          hoveredWalkRowText: undefined,
+          hoveredTubeText: undefined,
+          tooltipRightPx: 8,
+          graph,
+          deletions: deletionEdges(graph),
+          deletionRoutes: { [hoveredEdge]: [{ x: 0, y: 0 }] },
+        } as unknown as GraphPaneModel
+      }
+      chip={undefined}
+    />,
+  )
+  expect(screen.queryByText(/skips/)?.textContent).toBe(
+    'skips 1,839 bp of GRCh38 chr5 sequenceGRCh38#0#chr5:2,001-3,839',
+  )
+})
+
+// walks >r1>x>r3 and >r1>x>y>r4 share r1→x but skip different stretches
+test('a padded foot whose walks skip different stretches says only that it skips reference sequence', () => {
+  const graph = loadGraph(
+    [
+      `S\tr1\t${'A'.repeat(2000)}`,
+      `S\tr2\t${'C'.repeat(1839)}`,
+      `S\tr3\t${'G'.repeat(2000)}`,
+      `S\tr4\t${'G'.repeat(2000)}`,
+      'S\tx\tTT',
+      `S\ty\t${'T'.repeat(500)}`,
+      'L\tr1\t+\tr2\t+\t0M',
+      'L\tr2\t+\tr3\t+\t0M',
+      'L\tr3\t+\tr4\t+\t0M',
+      'L\tr1\t+\tx\t+\t0M',
+      'L\tx\t+\tr3\t+\t0M',
+      'L\tx\t+\ty\t+\t0M',
+      'L\ty\t+\tr4\t+\t0M',
+      'W\tGRCh38\t0\tchr5\t0\t7839\t>r1>r2>r3>r4',
+      'W\tHG01109\t1\tc\t0\t6002\t>r1>x>r3>r4',
+      'W\tHG002\t1\tc\t0\t4502\t>r1>x>y>r4',
+    ].join('\n'),
+    'replacements',
+    { referencePath: 'GRCh38#0#chr5' },
+  )
+  const id = (name: string) => graph.nodes.find(n => n.name === name)!.id
+  const hoveredEdge = graph.edges.findIndex(
+    e => e.from === id('r1') && e.to === id('x'),
+  )
+  render(
+    <HoverTooltip
+      model={
+        {
+          hoveredNode: null,
+          hoveredEdge,
+          hoveredWalkRowText: undefined,
+          hoveredTubeText: undefined,
+          tooltipRightPx: 8,
+          graph,
+          deletions: deletionEdges(graph),
+          deletionRoutes: { [hoveredEdge]: [{ x: 0, y: 0 }] },
+        } as unknown as GraphPaneModel
+      }
+      chip={undefined}
+    />,
+  )
+  expect(screen.queryByText(/skips/)?.textContent).toBe(
+    'skips GRCh38 chr5 sequence',
+  )
+})
+
+// SV-inv-1k-10k: the heads along an inverted stretch name no walk, so the
+// hover counts the walks reading the node against the reference
+test('a reference node some walk reads against the reference says which walks do', () => {
+  const graph = loadGraph(
+    [
+      'S\t1\tAAAAAAAAAA',
+      'S\t2\tCCCCCCCCCC',
+      'S\t3\tGGGGGGGGGG',
+      'L\t1\t+\t2\t+\t0M',
+      'L\t2\t+\t3\t+\t0M',
+      'L\t1\t+\t2\t-\t0M',
+      'L\t2\t-\t3\t+\t0M',
+      'W\tGRCh38\t0\tchr6\t0\t30\t>1>2>3',
+      'W\tinv\t1\tc\t0\t30\t>1<2>3',
+    ].join('\n'),
+    'inversion',
+  )
+  const node = graph.nodes.find(n => n.name === '2')!
+  render(
+    <HoverTooltip
+      model={
+        {
+          hoveredNode: node.id,
+          hoverNodeById: new Map(graph.nodes.map(n => [n.id, n])),
+          hoveredEdge: null,
+          tooltipRightPx: 8,
+          deletions: [],
+          genePins: [],
+          drawnGraph: graph,
+          graphRegion: region,
+        } as unknown as GraphPaneModel
+      }
+      chip={undefined}
+    />,
+  )
+  expect(
+    screen.getByText(/walked against .+'s direction by 1 haplotype: inv#1/),
+  ).toBeTruthy()
+})
+
+// a reference node a fold holds counts the nodes folded into it, not the
+// stretches a cut did not load that ride it
+test('a folded node counts the nodes folded into it, leaving out stretches not loaded', () => {
+  const node = {
+    id: 'a~c+',
+    name: 'a~c',
+    length: 2000,
+    depth: 2,
+    members: ['a', 'b', 'c', 'q', 'HG2#1#c:10-110'],
+    stable: { refName: 'chr', start: 0, rank: 0 },
+  }
+  const model = {
+    hoveredNode: node.id,
+    hoverNodeById: new Map([[node.id, node]]),
+    hoveredEdge: null,
+    hoveredWalkRowText: undefined,
+    hoveredTubeText: undefined,
+    tooltipRightPx: 8,
+    deletions: [],
+    genePins: [],
+    graph: {
+      name: 'fold',
+      nodes: [node],
+      edges: [],
+      paths: [],
+      threadFold: { belowBp: 500, haplotypes: 2, walks: 2, stepless: 0 },
+    },
+    notLoadedNames: new Set(['HG2#1#c:10-110']),
+    walkLabel: (name: string) => name,
+  } as unknown as GraphPaneModel
+  const { container } = render(<HoverTooltip model={model} chip={undefined} />)
+  expect(container.textContent).toContain('4 nodes folded into it')
+})

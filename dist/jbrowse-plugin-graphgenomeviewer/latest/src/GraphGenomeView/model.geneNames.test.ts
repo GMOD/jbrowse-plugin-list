@@ -264,12 +264,14 @@ function alongR2(model: {
 // holds r1 and r3, which every walk steps, beyond it
 test("the key's node thicknesses are those of the nodes the pane shows", async () => {
   const model = await drawn()
+  // depth keys the nodes the pane shows; walks key the graph's one scale
+  model.setNodeWidth('depth')
   model.startRenderingBackend(fakeRenderer())
   const thicknesses = () =>
     model.graphKey
       .find(section => section.id === 'node-width')
       ?.entries.map(entry => entry.text)
-  expect(thicknesses()).toEqual(['9 walks', '1 walk'])
+  expect(thicknesses()).toEqual(['depth 9', 'depth 1'])
   let changes = 0
   const stop = reaction(
     () => model.graphKey,
@@ -282,7 +284,7 @@ test("the key's node thicknesses are those of the nodes the pane shows", async (
   model.setWidth(500)
   const { scale, translateX } = alongR2(model)
   model.setTransform(scale, translateX, model.translateY)
-  expect(thicknesses()).toEqual(['1 walk'])
+  expect(thicknesses()).toEqual(['depth 1'])
   stop()
 })
 
@@ -291,6 +293,8 @@ test("the key's node thicknesses are those of the nodes the pane shows", async (
 // walk steps, lies under a key as wide as the pane less 88 px
 test('a node drawn under the key is keyed', async () => {
   const model = await drawn()
+  // depth keys the nodes the pane shows; walks key the graph's one scale
+  model.setNodeWidth('depth')
   model.startRenderingBackend(fakeRenderer())
   const r2 = model.layoutResult!.nodePositions['r2+']![0]!
   model.setLegendSize({ width: 1500, height: 40 })
@@ -299,13 +303,15 @@ test('a node drawn under the key is keyed', async () => {
     model.graphKey
       .find(section => section.id === 'node-width')
       ?.entries.map(entry => entry.text),
-  ).toEqual(['9 walks', '1 walk'])
+  ).toEqual(['depth 9', 'depth 1'])
 })
 
 // An attached pane keys the view a pan or zoom settles on, so the key, and
 // the labels that wait on its measure, hold still through the gesture
 test('an attached pane keys the view it settles on, not each step of a pan', async () => {
   const model = attachedModel({ layoutMode: 'auto', loadedTrackId: 'graph' })
+  // depth keys the nodes the pane shows; walks key the graph's one scale
+  model.setNodeWidth('depth')
   model.setWidth(500)
   await model.cutSubgraph(
     {},
@@ -319,12 +325,12 @@ test('an attached pane keys the view it settles on, not each step of a pan', asy
   await vi.waitFor(() => {
     expect(model.settledKeyView?.layout).toBe(model.layoutResult)
   })
-  expect(thicknesses()).toEqual(['9 walks', '1 walk'])
+  expect(thicknesses()).toEqual(['depth 9', 'depth 1'])
   const { scale, translateX } = alongR2(model)
   model.setTransform(scale, translateX, model.translateY)
-  expect(thicknesses()).toEqual(['9 walks', '1 walk'])
+  expect(thicknesses()).toEqual(['depth 9', 'depth 1'])
   await vi.waitFor(() => {
-    expect(thicknesses()).toEqual(['1 walk'])
+    expect(thicknesses()).toEqual(['depth 1'])
   })
 })
 
@@ -332,6 +338,8 @@ test('an attached pane keys the view it settles on, not each step of a pan', asy
 // off-reference node in and out of the key, and moved everything below it
 test("a pan or zoom never moves the pane's height, which follows the key a setting changes", async () => {
   const model = attachedModel({ layoutMode: 'auto', loadedTrackId: 'graph' })
+  // depth keys the nodes the pane shows; walks key the graph's one scale
+  model.setNodeWidth('depth')
   model.setWidth(500)
   await model.cutSubgraph(
     {},
@@ -354,7 +362,7 @@ test("a pan or zoom never moves the pane's height, which follows the key a setti
   const { scale, translateX } = alongR2(model)
   model.setTransform(scale, translateX, model.translateY)
   await vi.waitFor(() => {
-    expect(thicknesses()).toEqual(['1 walk'])
+    expect(thicknesses()).toEqual(['depth 1'])
   })
   model.setLegendSize({ width: 180, height: 300 })
   expect(model.canvasHeight).toBe(height)

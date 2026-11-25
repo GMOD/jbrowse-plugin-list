@@ -79,8 +79,8 @@ export type LegendSwatch =
     }
   // the reference strip, a band per lifted walk
   | { kind: 'bands'; bands: Stop[][] }
-  // a link's stroke; `short`, a skip's plain stroke too short to dash
-  | { kind: 'line'; color: string; dashed?: true; short?: true }
+  // a link's stroke; `short`, a plain stroke; `arch`, a skip's arch
+  | { kind: 'line'; color: string; dashed?: true; short?: true; arch?: true }
   | { kind: 'halo'; color: string }
   | {
       kind: 'outline'
@@ -273,9 +273,11 @@ function legendSwatch(swatch: GraphKeySwatch): LegendSwatch {
         rim: css(swatch.rim),
       }
     case 'line':
-      return swatch.dashed
-        ? { kind: 'line', color: css(swatch.ink), dashed: true }
-        : { kind: 'line', color: css(swatch.ink), short: true }
+      return swatch.arch
+        ? { kind: 'line', color: css(swatch.ink), arch: true }
+        : swatch.dashed
+          ? { kind: 'line', color: css(swatch.ink), dashed: true }
+          : { kind: 'line', color: css(swatch.ink), short: true }
     case 'outline':
       return {
         kind: 'outline',
@@ -695,7 +697,7 @@ export function legendSections(model: GraphPaneModel): LegendSection[] {
   const core = (testid: string, id: GraphKeySectionId, group?: string) => ({
     testid,
     rows: model.facetPanels && id === 'walks' ? [] : keyRowsOf(model, id),
-    group,
+    group: model.graphKey.find(section => section.id === id)?.group ?? group,
   })
   const sections: LegendSection[] = [
     { testid: 'graph-open-bubble-legend', rows: openBubbleRows(model) },
@@ -704,6 +706,9 @@ export function legendSections(model: GraphPaneModel): LegendSection[] {
     core('graph-width-legend', 'node-width', 'Node thickness'),
     core('graph-link-width-legend', 'link-width', 'Link thickness'),
     core('graph-halo-legend', 'halo', 'Marks'),
+    ...(model.drawnGraph?.paths?.length
+      ? [core('graph-link-legend', 'links', 'Marks')]
+      : []),
     core('graph-deletion-legend', 'skips', 'Marks'),
     core('graph-not-shown-legend', 'not-shown', 'Marks'),
     core('graph-gene-legend', 'exon', 'Marks'),

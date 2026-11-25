@@ -4,13 +4,21 @@ import type { EdgeWidth } from '@jbrowse/bandage-core/edgeWidths'
 import type { NodeWidth } from '@jbrowse/bandage-core/nodeWidths'
 
 // The mark thickness as a config or session writes it: a px number draws every
-// node that thick; `{ field: 'depth', value }` thickens a node the more paths
-// carry it, around `value` px; `{ field: 'frequency', value }` draws it as wide
-// as the share of haplotypes through it, `value` px at 100%; `links: 'walks'`
-// thickens a link the more walks take it. Unset is nodes by depth around 6,
-// links uniform.
+// node that thick; `{ field: 'walks', value }` draws a node as thick as the
+// passes the walks make through it, the most passes in the graph `value` px;
+// `{ field: 'depth', value }` thickens a node the more paths carry it, around
+// `value` px; `{ field: 'frequency', value }` draws it as wide as the share of
+// haplotypes through it, `value` px at 100%; `links: 'walks'` draws a link as
+// thick as the passes along it, on the scale nodes by walks are drawn on.
+// Unset is nodes and links by walks around 6, which a graph without walks
+// draws by depth.
 export type NodeSize =
-  number | { field?: 'depth' | 'frequency'; value?: number; links?: 'walks' }
+  | number
+  | {
+      field?: 'walks' | 'depth' | 'frequency'
+      value?: number
+      links?: 'walks'
+    }
 
 const DEFAULT_PX = 6
 
@@ -26,13 +34,15 @@ export function nodeSizeOf(size: unknown): MarkSize {
     : isRecord(size)
       ? {
           width:
-            size.field === 'depth' || size.field === 'frequency'
+            size.field === 'walks' ||
+            size.field === 'depth' ||
+            size.field === 'frequency'
               ? size.field
               : 'uniform',
           px: typeof size.value === 'number' ? size.value : DEFAULT_PX,
           links: size.links === 'walks' ? 'walks' : 'uniform',
         }
-      : { width: 'depth', px: DEFAULT_PX, links: 'uniform' }
+      : { width: 'walks', px: DEFAULT_PX, links: 'walks' }
 }
 
 export function sizeOf({ width, px, links }: MarkSize): NodeSize {

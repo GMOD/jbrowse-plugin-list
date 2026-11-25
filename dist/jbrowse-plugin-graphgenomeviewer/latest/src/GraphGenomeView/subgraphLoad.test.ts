@@ -160,6 +160,90 @@ beforeEach(() => {
   mockSession.assemblyManager.assemblyList = []
 })
 
+// R100k-02: none of the haplotypes asked for had a step in the window, and
+// the drawing was the plain reference all of them matching it would draw
+test('the key counts the haplotypes the cut was asked for that it holds no walk of', async () => {
+  const tables = gfaTables(
+    [
+      GFA,
+      'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+      'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+    ].join('\n'),
+  )!
+  mockRpcCall.mockImplementation(
+    (_sid: unknown, method: string, request: EngineRequest) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(cutOf(tables))
+        : method === 'GraphComputeLayout'
+          ? layoutEngine(request)
+          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const model = createView({
+    loadedTrackId: TRACK.trackId,
+    loadedRegion: ON_HG38,
+    subgraphHaplotypes: ['NA20809#2', 'HG002#1', 'HG002#2'],
+  })
+  await model.load()
+  model.startRenderingBackend(fakeRenderer())
+  model.setWidth(800)
+  expect(
+    model.graphKey
+      .flatMap(section => section.entries)
+      .find(entry => entry.key === 'absent')?.text,
+  ).toBe('2 of 3 haplotypes have no walk here')
+})
+
+// review 3: the note read the picker, so picking two others over a drawing
+// cut for three said "2 of 2 haplotypes have no walk here" of a cut that
+// never asked for them, and a stopped load kept it so
+test('the note on haplotypes with no walk counts the ones the drawing on screen was cut for, while the picker asks for others, a cut for them is in flight and once it is stopped', async () => {
+  const tables = gfaTables(
+    [
+      GFA,
+      'W\tGRCh38\t0\tchr6\t32000000\t32001900\t>s1>s3',
+      'W\tNA20809\t2\tCM094351.1\t31900800\t31903000\t>s1>h1>s3',
+    ].join('\n'),
+  )!
+  mockRpcCall.mockImplementation(
+    (_sid: unknown, method: string, request: EngineRequest) =>
+      method === 'GetSubgraph'
+        ? Promise.resolve(cutOf(tables))
+        : method === 'GraphComputeLayout'
+          ? layoutEngine(request)
+          : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  const model = createView({
+    loadedTrackId: TRACK.trackId,
+    loadedRegion: ON_HG38,
+    subgraphHaplotypes: ['NA20809#2', 'HG002#1', 'HG002#2'],
+  })
+  await model.load()
+  model.startRenderingBackend(fakeRenderer())
+  model.setWidth(800)
+  const absent = () =>
+    model.graphKey
+      .flatMap(section => section.entries)
+      .find(entry => entry.key === 'absent')?.text
+  const drawn = '2 of 3 haplotypes have no walk here'
+  expect(absent()).toBe(drawn)
+
+  model.setSubgraphHaplotypes(['HG003#1', 'HG003#2'])
+  expect(model.cutStale).toBe(true)
+  expect(absent()).toBe(drawn)
+
+  mockRpcCall.mockImplementation((_sid: unknown, method: string) =>
+    method === 'GetSubgraph'
+      ? new Promise(() => {})
+      : Promise.reject(new Error(`Unexpected RPC: ${method}`)),
+  )
+  void model.load()
+  expect(model.cutStale).toBe(false)
+  expect(absent()).toBe(drawn)
+  model.stopLoad()
+  expect(model.nodeCount).toBe(3)
+  expect(absent()).toBe(drawn)
+})
+
 test('a cut on the reference draws', async () => {
   const model = await cut(ON_HG38)
   expect(model.error).toBeUndefined()

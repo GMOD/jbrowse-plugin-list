@@ -196,17 +196,14 @@ test('a settled view lays its labels out once on the laid-out graph', async () =
   // the picture the labels laid out again until nothing moved settled on
   expect(picture(model, labels)).toEqual({
     canvasHeight: 160,
-    legendSize: { width: 220, height: 120 },
+    legendSize: { width: 220, height: 135 },
     transform: [26.446666666666665, -26312.066666666666, 70],
     chips: [
       ['CFH', 531.2999999999993, 56],
       ['CFHR3', 491.2999999999993, 52],
     ],
-    sizes: [
-      ['10 bp', 531.2999999999993, 106],
-      ['10 bp', 233.77500000000146, 70],
-      ['10 bp', 828.8250000000007, 70],
-    ],
+    // the reference's nodes carry no length
+    sizes: [['10 bp', 531.2999999999993, 106]],
     bubbles: [],
   })
 })

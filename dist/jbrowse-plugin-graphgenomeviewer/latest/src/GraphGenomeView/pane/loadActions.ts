@@ -79,6 +79,7 @@ interface ParsedCut {
   unfoldedGraph: Graph | undefined
   cutFoldBelowBp: number
   readsShown: { shown: number; total: number } | undefined
+  haplotypes?: readonly string[]
 }
 
 const withEngineSettings = withSettingActions.views(self => ({
@@ -399,6 +400,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     self.walkCut = cut?.walkCut
     self.abridged = cut?.abridged ?? []
     self.graphRegion = cut?.region
+    self.graphHaplotypes = cut?.haplotypes
     self.loadedReferencePath = cut?.loadedReferencePath
     self.foldedBelowBp = cut?.foldedBelowBp
     self.foldRefusal = cut?.foldRefusal
@@ -452,6 +454,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     region: SubgraphRegion | undefined,
     readsOf?: (graph: Graph) => Promise<GafReads>,
     foldBelowBp = 0,
+    haplotypes?: readonly string[],
   ) {
     const { signal } = loadController
     const walkCut =
@@ -493,6 +496,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
       unfoldedGraph,
       cutFoldBelowBp: foldBelowBp,
       readsShown,
+      ...(haplotypes ? { haplotypes } : {}),
     } satisfies ParsedCut
   }
 
@@ -1071,6 +1075,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
               region,
               readsOf,
               foldBelowBp,
+              opts.haplotypes,
             )
           }
         }
