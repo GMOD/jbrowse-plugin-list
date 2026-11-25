@@ -73,5 +73,7 @@ The second of the three steps no longer happens. jb2hubs went back to naming
 `latest/` for every default plugin (its `60a3fe946dd`), so each deployed config
 depends on invariant 3 for all three plugins, for good: `copy` must never become
 `sync`, and no release of Hubs, Protein3d or MsaView may carry a file named
-`jbrowse-plugin-<name>.umd.production.min.js`. Hubs' `pnpm host-compat` refuses
-a `dist/` that holds one.
+`jbrowse-plugin-<name>.umd.production.min.js`. `download` refuses to promote an
+`esmPath` version that carries one (`assertEsmCarriesNoUmd`), leaving the entry
+at its previous version, and Hubs' `pnpm host-compat` refuses a `dist/` that
+holds one.

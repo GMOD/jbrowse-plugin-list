@@ -118,6 +118,26 @@ async function buildVersion(
   }
 }
 
+// A 4.x host opening a jb2hubs config loads an ESM-only plugin's last UMD from
+// `latest/`, which the upload replaces if a later release carries a file of
+// that name (ADR 0009)
+function assertEsmCarriesNoUmd(plugin: SourcePlugin, version: string) {
+  const umd =
+    bundleOf(plugin).kind === 'esm'
+      ? fs
+          .readdirSync(path.join(outputDir, plugin.packageName, version), {
+            recursive: true,
+            encoding: 'utf8',
+          })
+          .filter(file => /\.umd\.(.+\.)?js$/.test(file))
+      : []
+  if (umd.length > 0) {
+    throw new Error(
+      `${plugin.packageName}@${version} is an ES module entry that carries ${umd.join(', ')}: promoting it would replace the UMD build 4.x hosts load from latest/`,
+    )
+  }
+}
+
 // Mirror a plugin's newest version into a stable `latest/` dir so it's served at
 // the version-agnostic `latestRehostedUrl`. Rebuilt from scratch each run so a
 // version with fewer files doesn't leave stale ones behind. Git dedups the
@@ -219,6 +239,7 @@ async function downloadPlugins(): Promise<void> {
         versions.push(await buildVersion(plugin, target, metadata))
       }
       const latest = newestVersion(versions).pluginVersion
+      assertEsmCarriesNoUmd(plugin, latest)
       copyToLatest(plugin.packageName, latest)
       built.push({
         packageName: plugin.packageName,
