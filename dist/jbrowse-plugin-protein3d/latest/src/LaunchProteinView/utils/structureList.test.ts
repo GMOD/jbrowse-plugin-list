@@ -178,6 +178,17 @@ describe('sentenceCase', () => {
     )
   })
 
+  it('starts each sentence of a capitalised title with a capital', () => {
+    expect(
+      sentenceCase('STRUCTURE AT ATOMIC RESOLUTION. PENTAGON RINGS OF WATER'),
+    ).toBe('Structure at atomic resolution. Pentagon rings of water')
+    expect(
+      sentenceCase('PHOTOSYSTEM I FROM SYNECHOCYSTIS SP. PCC 6803', ['I']),
+    ).toBe('Photosystem I from synechocystis sp. pcc 6803')
+    expect(sentenceCase('IN VITRO VS. IN VIVO')).toBe('In vitro vs. in vivo')
+    expect(sentenceCase('LYSOZYME FROM E. COLI')).toBe('Lysozyme from e. coli')
+  })
+
   it("leaves the depositors' own mixed case alone", () => {
     expect(sentenceCase('NRas 1-169 Q61R in Complex with Shoc2 80-582')).toBe(
       'NRas 1-169 Q61R in Complex with Shoc2 80-582',

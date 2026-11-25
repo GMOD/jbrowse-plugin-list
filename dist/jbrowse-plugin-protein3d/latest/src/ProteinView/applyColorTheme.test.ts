@@ -205,6 +205,31 @@ test('a ramp of placed values keys its grey while a drawn residue has no value',
   expect(rampNoValueEntry({ field: 'alphaMissense' }, [{ entity }])).toEqual(
     noValue,
   )
+  expect(
+    rampNoValueEntry({ field: 'alphaMissense' }, [
+      {
+        entity,
+        entities: [
+          { ...entity, chains: ['A'] },
+          { entityId: '2', chains: ['B'] },
+          { entityId: '3', chains: [] },
+        ],
+        placedValues: placed([1, 2, 3]),
+      },
+    ]),
+  ).toEqual(noValue)
+  expect(
+    rampNoValueEntry({ field: 'alphaMissense' }, [
+      {
+        entity,
+        entities: [
+          { ...entity, chains: ['A'] },
+          { entityId: '3', chains: [] },
+        ],
+        placedValues: placed([1, 2, 3]),
+      },
+    ]),
+  ).toBeUndefined()
   for (const field of ['plddt', 'hydrophobicity', 'domain', 'exon'] as const) {
     expect(rampNoValueEntry({ field }, gap)).toBeUndefined()
   }

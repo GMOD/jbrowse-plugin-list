@@ -696,6 +696,38 @@ test('a saved session keeps the marks on its structures and drops one past them'
   expect(view.distances).toEqual([])
 })
 
+test('a saved session with a see-through or unknown range color still opens', () => {
+  const seeThrough = ProteinView.create({
+    type: 'ProteinView',
+    structures: [],
+    color: { field: 'alphaMissense', range: ['#ff000080', '#0000ff'] },
+  })
+  expect(seeThrough.color).toEqual({
+    field: 'alphaMissense',
+    range: ['#ff0000', '#0000ff'],
+  })
+  const unknown = ProteinView.create({
+    type: 'ProteinView',
+    structures: [],
+    color: { field: 'alphaMissense', range: ['bleu', '#0000ff'] },
+  })
+  expect(unknown.color).toEqual({ field: 'alphaMissense' })
+  const unknownField = ProteinView.create({
+    type: 'ProteinView',
+    structures: [],
+    // @ts-expect-error a field no release has offered
+    color: { field: 'nonesuch' },
+  })
+  expect(unknownField.color).toEqual({})
+})
+
+test('setColor still refuses a see-through range color', () => {
+  const view = makeView()
+  expect(() => {
+    view.setColor({ field: 'alphaMissense', range: ['#ff000080', '#0000ff'] })
+  }).toThrow('is see-through')
+})
+
 test('applyFigure refuses a mark on a structure the view lacks', () => {
   const view = makeView()
   expect(() => {

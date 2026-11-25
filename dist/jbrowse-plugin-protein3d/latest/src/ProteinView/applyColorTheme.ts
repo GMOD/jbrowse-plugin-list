@@ -156,13 +156,16 @@ export function applyColorTheme(args: Parameters<typeof recolor>[0]) {
 function hasUnvaluedResidue({
   placedValues,
   entity,
+  entities = [],
 }: {
   placedValues?: PlacedValues
   entity?: { entityId: string; seqIds: readonly number[] }
+  entities?: readonly { entityId: string; chains: readonly string[] }[]
 }) {
   return (
     !entity ||
     placedValues?.entityId !== entity.entityId ||
+    entities.some(e => e.entityId !== entity.entityId && e.chains.length > 0) ||
     entity.seqIds.some(id => !placedValues.byLabelSeqId.has(id))
   )
 }
@@ -170,7 +173,8 @@ function hasUnvaluedResidue({
 /**
  * The grey a ramp's key needs beside it, which Mol*'s scale legend has no slot
  * for: a linear placed-value theme paints it on a residue with no value, so
- * the entry is there while some structure's mapped entity has such a residue.
+ * the entry is there while some structure has such a residue, in its mapped
+ * entity or on another chain, which the theme leaves without values.
  */
 export function rampNoValueEntry(
   color: ProteinColor,

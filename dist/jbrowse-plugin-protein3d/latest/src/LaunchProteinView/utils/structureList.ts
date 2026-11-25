@@ -100,6 +100,18 @@ const ABBREVIATIONS = [
   'tRNA',
 ]
 
+const ABBREVIATED_WORDS = new Set([
+  'al',
+  'cf',
+  'no',
+  'sp',
+  'spp',
+  'st',
+  'subsp',
+  'var',
+  'vs',
+])
+
 /**
  * A title deposited in capitals, in sentence case. Any word holding a digit
  * (C118S, P53, HLA-A*11:01) keeps its capitals, as do the names in `keep` and
@@ -119,7 +131,14 @@ export function sentenceCase(title: string, keep: readonly string[] = []) {
         ),
   )
   return title === title.toUpperCase()
-    ? cased.charAt(0).toUpperCase() + cased.slice(1)
+    ? cased.replace(
+        /(^|(\w+)[.!?]\s+)([a-z])/g,
+        (match, before: string, word: string | undefined, letter: string) =>
+          word === undefined ||
+          (word.length > 1 && !ABBREVIATED_WORDS.has(word))
+            ? before + letter.toUpperCase()
+            : match,
+      )
     : title
 }
 

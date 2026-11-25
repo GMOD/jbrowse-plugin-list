@@ -1,6 +1,7 @@
 import { isCssColor } from '@jbrowse/core/util/colorBits'
 import { colord } from '@jbrowse/core/util/colord'
 
+import { isRecord } from '../LaunchProteinView/utils/isRecord'
 import {
   featureFilterLabel,
   featureFilterProblems,
@@ -381,6 +382,27 @@ export function checkedColor(color: unknown): ProteinColor {
     throw new Error(problems.join('; '))
   }
   return color as ProteinColor
+}
+
+/**
+ * checkedColor for a saved session. Before 1.36.0 any strings passed as
+ * `color.range`: a see-through entry is made opaque, as it was painted, a range
+ * with an entry that is not a color gives way to the field's own, and a color
+ * still refused falls back to the default rather than keep the view from
+ * opening.
+ */
+export function checkedStoredColor(color: unknown) {
+  const repaired = isRecord(color) ? withStoredRange(color) : color
+  return checkedColor(colorProblems(repaired).length > 0 ? {} : repaired)
+}
+
+function withStoredRange(color: Record<string, unknown>) {
+  const { range, ...rest } = color
+  return !isStrings(range)
+    ? color
+    : range.every(isCssColor)
+      ? { ...rest, range: range.map(c => colord(c).alpha(1).toHex()) }
+      : rest
 }
 
 /**
