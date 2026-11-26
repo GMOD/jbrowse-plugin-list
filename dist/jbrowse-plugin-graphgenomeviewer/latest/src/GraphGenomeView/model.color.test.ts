@@ -167,11 +167,12 @@ describe('hoverHighlight', () => {
   })
 
   // Node 3 is rank 1 on stable sequence `alt`, so its own offset means nothing on
-  // chr. It resolves through the backbone it hangs off.
-  test('a hovered off-reference allele highlights where it branches', async () => {
+  // chr, and it hangs off node 1 alone: where it rejoins chr is not given, so
+  // no stretch of chr is its.
+  test('a hovered allele with one flank in the cut highlights nothing', async () => {
     const model = await loadedFromTrack()
     model.setHoveredNode('3+')
-    expect(model.hoverHighlight).toMatchObject({ start: 0, end: 4 })
+    expect(model.hoverHighlight).toBeUndefined()
   })
 
   test('turning hover highlighting off lights nothing', async () => {

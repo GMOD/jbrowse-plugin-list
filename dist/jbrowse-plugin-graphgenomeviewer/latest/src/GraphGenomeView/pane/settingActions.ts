@@ -1,3 +1,4 @@
+import { nodeHoverName } from '@jbrowse/bandage-core/hoverText'
 import { segmentAt } from '@jbrowse/bandage-core/layout/walkStrip'
 import { anchorFromPaths } from '@jbrowse/bandage-core/pathAnchoring'
 import { clampZoom, fittedTranslateY } from '@jbrowse/bandage-core/pipeline'
@@ -58,6 +59,7 @@ export const withSettingActions = withTubeMapViews
       self.foldRefusal = cut.foldRefusal
       self.threadEvents = cut.threadEvents
       self.unfoldedGraph = cut.unfoldedGraph
+      self.cutWalks = cut.cutWalks
     },
   }))
   .actions(() => ({
@@ -478,12 +480,13 @@ export const withSettingActions = withTubeMapViews
         // than a bare id, and they are the same span the linear view
         // highlights on hover.
         const span = region ? self.nodeSpan(nodeId) : undefined
+        const name = nodeHoverName(self.graph, node)
         if (isSessionModelWithWidgets(session)) {
           session.showWidget(
             session.addWidget('BaseFeatureWidget', 'baseFeature', {
               featureData: {
-                id: node.id,
-                name: node.name,
+                uniqueId: node.id,
+                ...(name === undefined ? {} : { id: node.id, name }),
                 length: node.length,
                 depth: node.depth,
                 rank: node.stable?.rank,

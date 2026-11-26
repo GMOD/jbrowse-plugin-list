@@ -1,4 +1,4 @@
-import { structuralForms } from '@jbrowse/graph-walks'
+import { structuralForms } from '@gmod/gfa-tabix'
 
 import {
   OTHER_FORMS,
@@ -8,7 +8,7 @@ import {
   formWarnings,
 } from './formRows.ts'
 
-import type { Departure, HaplotypeDepartures } from '@jbrowse/graph-walks'
+import type { Departure, HaplotypeDepartures } from '@gmod/gfa-tabix'
 
 const window = { start: 0, end: 24_000 }
 

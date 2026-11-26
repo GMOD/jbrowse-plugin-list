@@ -1,4 +1,6 @@
 import { formatBp } from '@jbrowse/bandage-core/graphLabels'
+import { stripInk } from '@jbrowse/bandage-core/referenceStrip'
+import { hexAbgr, packAbgr } from '@jbrowse/bandage-core/renderer/colorBits'
 import { referenceBoxes, rulerBoxes } from '@jbrowse/bandage-core/tubeMap/axis'
 import {
   connectorAt,
@@ -32,7 +34,7 @@ import {
   panelWalksThrough,
 } from '../tubeMapPanels'
 import { withFitViews } from './fitViews'
-import { HOVER_BRIGHTEN } from './paneBase'
+import { HOVER_BRIGHTEN, PAPER, SELECT_BRIGHTEN } from './paneBase'
 import { trackedDpr } from '../trackedDpr'
 
 import type { HoveredTube } from './paneBase'
@@ -88,6 +90,13 @@ function mismatchKindsShown(
   }
   return kinds
 }
+
+const PAPER_ABGR = packAbgr(
+  PAPER[0] * 255,
+  PAPER[1] * 255,
+  PAPER[2] * 255,
+  PAPER[3] * 255,
+)
 
 export const withTubeMapViews = withFitViews
   .views(self => ({
@@ -282,6 +291,13 @@ export const withTubeMapViews = withFitViews
     },
   }))
   .views(self => ({
+    // The node the hover layer lifts: the one the strip outlines, else the
+    // hovered one the selection does not already light
+    get hoverLayerLit() {
+      return self.referenceStripNode ?? self.hoverLayerNode
+    },
+  }))
+  .views(self => ({
     // The hover alone, onto a transparent canvas over the drawing, so a
     // pointer move repaints what it lights rather than every stroke under
     // it. `batch` is what the canvas below holds.
@@ -316,13 +332,26 @@ export const withTubeMapViews = withFitViews
         )
         ctx.setTransform(1, 0, 0, 1, 0, 0)
       } else {
+        const cased = self.referenceStripNode
+        const lit = self.hoverLayerLit
         r.uploadGeometry(batch)
         r.setNodeHighlights(
-          node === null ? new Map() : new Map([[node, HOVER_BRIGHTEN]]),
+          lit === null
+            ? new Map()
+            : new Map([
+                [
+                  lit,
+                  lit === self.selectedNode ? SELECT_BRIGHTEN : HOVER_BRIGHTEN,
+                ],
+              ]),
         )
         r.setEdgeHighlight(self.hoveredEdge, HOVER_BRIGHTEN)
         r.updateTransform(self.paintTransform)
-        r.renderHighlights()
+        r.renderHighlights(
+          cased === null
+            ? undefined
+            : { ink: hexAbgr(stripInk()), paper: PAPER_ABGR },
+        )
       }
     },
   }))

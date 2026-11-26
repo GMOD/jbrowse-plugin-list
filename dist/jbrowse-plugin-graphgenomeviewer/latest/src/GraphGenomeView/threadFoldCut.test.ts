@@ -147,7 +147,7 @@ test('picking a haplotype lights the thread that holds it, once however many of 
   ])
   expect(lift.walks[0]!.members).toEqual(['HG2#1#chr1', 'HG3#2#chr1'])
   expect(lift.walks[0]!.variation).toBe(
-    '2 haplotypes on 2 distinct walks, 1 bp folded away in each',
+    '2 haplotypes, 1 bp folded away in each',
   )
 })
 

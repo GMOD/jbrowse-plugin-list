@@ -24,7 +24,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * `walksUri` takes the prefix of one reference's walk file, `<prefix>.<sample>`,
  * and resolves `<walksUri>.walks.gz` and its directory `<walksUri>.walks.gz.idx`.
  * The adapter reads walk format 8, which gfa-to-tabix writes from 5.0, through
- * @jbrowse/graph-walks.
+ * @gmod/gfa-tabix.
  * Only a window on the anchor is answered.
  *
  * #example
@@ -69,7 +69,8 @@ const WalkTabixSyntenyAdapter = ConfigurationSchema(
      * the most haplotype steps one window keeps; a window whose walks hold
      * more shows a zoom-in notice instead, as does one whose rows hold eight
      * times as many. Counts only the haplotypes asked for. Walk rows draw
-     * runs rather than steps and are bounded by `walkByteBudget` alone.
+     * runs rather than steps, as does a graph folded to threads, which reads
+     * the walks as runs, and both are bounded by `walkByteBudget` alone.
      */
     walkStepBudget: {
       type: 'integer',

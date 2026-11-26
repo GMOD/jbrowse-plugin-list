@@ -1,3 +1,4 @@
+import { WalkFile, refNameLookup, resolveRefName } from '@gmod/gfa-tabix'
 import { TabixIndexedFile } from '@gmod/tabix'
 import {
   panSNContig,
@@ -6,7 +7,6 @@ import {
 } from '@jbrowse/bandage-core/pansn'
 import { cachedSetup } from '@jbrowse/core/data_adapters/BaseAdapter'
 import { openLocation, openTabixIndexFilehandle } from '@jbrowse/core/util/io'
-import { WalkReader, refNameLookup, resolveRefName } from '@jbrowse/graph-walks'
 
 import { locationIsSet, renamed } from './locationName.ts'
 import { bytesForRegions } from './tabixRange.ts'
@@ -21,7 +21,7 @@ import type { FileLocation, Region } from '@jbrowse/core/util/types'
 // What a tabix-indexed graph track answers about its own reference names, for
 // the adapters that read one: `RgfaTabixAdapter` over segments and links or a
 // walk file, `WalkTabixSyntenyAdapter` over a walk file, and
-// `MinigraphBubbleAdapter` over bubbles. @jbrowse/graph-walks builds the name
+// `MinigraphBubbleAdapter` over bubbles. @gmod/gfa-tabix builds the name
 // lookup.
 //
 // A class rather than a base class, for the reason ComparativeAdapterBase.ts
@@ -75,9 +75,9 @@ export function openWalkFile(
   index: FileLocation | undefined,
   pluginManager?: PluginManager,
 ) {
-  return WalkReader.fromFilehandles({
-    data: openLocation(data, pluginManager),
-    directory: openLocation(
+  return new WalkFile({
+    walksFilehandle: openLocation(data, pluginManager),
+    idxFilehandle: openLocation(
       index ?? renamed(data, name => `${name}.idx`),
       pluginManager,
     ),

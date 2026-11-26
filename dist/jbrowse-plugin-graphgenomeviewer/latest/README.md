@@ -122,7 +122,7 @@ Supporting utility libraries
   layout and drawing engine
 - [@jbrowse/tubemap-core](https://github.com/GMOD/tubemap-core) (npm): tube map
   layout
-- [@jbrowse/graph-walks](https://github.com/GMOD/graph-walks) (npm): walk file
+- [@gmod/gfa-tabix](https://github.com/GMOD/gfa-tabix-js) (npm): walk file
   reader
 - [@gmod/gbz-base](https://github.com/GMOD/gbz-base-js) (npm): `.gbz.db` reader
 

@@ -65,6 +65,38 @@ test('forwards the region and context to the adapter', async () => {
   expect(getSubgraph).toHaveBeenCalledWith(region, { hops: 2 })
 })
 
+test('a cut for a fold to threads hands back the runs a walk-indexed adapter reads, buffers to transfer', async () => {
+  const starts = new Float64Array([0, 100])
+  const kinds = new Uint8Array([0, 3])
+  const getSubgraph = vi.fn()
+  const getSubgraphRuns = vi.fn().mockResolvedValue({
+    runs: { stretches: { starts }, walks: { before: { kinds } } },
+  })
+  adapterWith({ getSubgraph, getSubgraphRuns })
+  const result = await makeMethod().execute({
+    ...makeArgs(),
+    opts: { foldRuns: true },
+  })
+  expect(getSubgraphRuns).toHaveBeenCalledWith(region, { foldRuns: true })
+  expect(getSubgraph).not.toHaveBeenCalled()
+  expect(isRpcResult(result)).toBe(true)
+  expect((result as RpcResult).transferables).toEqual([
+    starts.buffer,
+    kinds.buffer,
+  ])
+})
+
+test('a cut for a fold to threads is cut where the adapter reads no runs, or has none to read', async () => {
+  const getSubgraph = vi.fn().mockResolvedValue('H\tVN:Z:1.0')
+  const getSubgraphRuns = vi.fn().mockResolvedValue(undefined)
+  adapterWith({ getSubgraph, getSubgraphRuns })
+  await makeMethod().execute({ ...makeArgs(), opts: { foldRuns: true } })
+  expect(getSubgraph).toHaveBeenCalledWith(region, { foldRuns: true })
+  adapterWith({ getSubgraph })
+  await makeMethod().execute({ ...makeArgs(), opts: { foldRuns: true } })
+  expect(getSubgraph).toHaveBeenCalledTimes(2)
+})
+
 // A GBZ cut of every haplotype is tens of MB of W lines, read here in the
 // worker rather than on the main thread
 test('reads a text cut into tables, buffers to transfer', async () => {

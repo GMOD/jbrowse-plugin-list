@@ -728,6 +728,25 @@ export const withFitViews = withHostViews
         ? keyColumnPx(self)
         : TOOLTIP_INSET_PX
     },
+    // Where the hovered node is drawn on the pane, which the tooltip keeps
+    // clear of
+    get hoveredNodeScreenBox() {
+      const id = self.hoveredNode
+      const points = id === null ? undefined : self.nodePositions?.[id]
+      return points?.reduce<
+        { x0: number; x1: number; y0: number; y1: number } | undefined
+      >((box, p) => {
+        const { x, y } = self.toScreen(p)
+        return box
+          ? {
+              x0: Math.min(box.x0, x),
+              x1: Math.max(box.x1, x),
+              y0: Math.min(box.y0, y),
+              y1: Math.max(box.y1, y),
+            }
+          : { x0: x, x1: x, y0: y, y1: y }
+      }, undefined)
+    },
   }))
   .views(self => ({
     // The zoom and the window the transform shows plus a pane of overscan

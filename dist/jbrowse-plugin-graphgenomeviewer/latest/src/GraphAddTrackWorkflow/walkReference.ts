@@ -17,7 +17,7 @@ export async function readWalkReference(
       loc,
       indexLoc,
       pluginManager,
-    ).header({ signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    ).getHeader({ signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
     return references[0]
   } catch {
     return undefined

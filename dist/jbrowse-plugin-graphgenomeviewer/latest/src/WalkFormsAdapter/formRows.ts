@@ -5,11 +5,11 @@ import {
   formStateAt,
   formTag,
   markTag,
-} from '@jbrowse/graph-walks'
+} from '@gmod/gfa-tabix'
 
 import { DEFAULT_MAX_FORMS } from '../slotDefaults.ts'
 
-import type { Mark, MarkKind, StructuralForms } from '@jbrowse/graph-walks'
+import type { Mark, MarkKind, StructuralForms } from '@gmod/gfa-tabix'
 
 export const CONSEQUENCES = ['loss', 'gain', 'inversion'] as const
 

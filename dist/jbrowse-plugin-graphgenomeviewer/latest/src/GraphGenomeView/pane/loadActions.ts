@@ -38,7 +38,7 @@ import { DrawLimitError } from '../../nodeLimitError'
 import { geneModelsFrom } from '../genes/geneFeatures'
 import { gfaText } from '../gfaText'
 import { repeatArraysFrom } from '../repeats/repeatFeatures'
-import { foldedCut } from '../threadFoldCut'
+import { foldedCut, foldedRuns, foldsThreads } from '../threadFoldCut'
 import {
   graphOfPaths,
   tubeMapPanelGroups,
@@ -48,9 +48,11 @@ import { tubeMapWalksToLoad } from '../unloadedWalks'
 import { walkRowsGraph } from '../walkRowsCut.ts'
 
 import type { SubgraphCutOptions, SubgraphRegion } from '../../GetSubgraph'
-import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
+import type { RunsCut, WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
 import type { GafReads } from '../../gaf/gafFile'
+import type { FoldedCut } from '../threadFoldCut'
 import type { PaneLayout } from '../tubeMapPanels'
+import type { AbridgedWalk } from '@gmod/gfa-tabix'
 import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import type { GeneModel } from '@jbrowse/bandage-core/genes/genePins'
 import type { FitSize } from '@jbrowse/bandage-core/layout/fitAssumptions'
@@ -59,10 +61,13 @@ import type {
   EngineSettings,
 } from '@jbrowse/bandage-core/pipeline'
 import type { ThreadEvent } from '@jbrowse/bandage-core/threadFold'
-import type { Graph, LayoutResult } from '@jbrowse/bandage-core/types'
+import type {
+  Graph,
+  LayoutResult,
+  PathOrigin,
+} from '@jbrowse/bandage-core/types'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation } from '@jbrowse/core/util/types'
-import type { AbridgedWalk } from '@jbrowse/graph-walks'
 
 // a host panning back and forth over a few snapped cuts
 const KEPT_CUTS = 4
@@ -77,6 +82,7 @@ interface ParsedCut {
   foldRefusal: string | undefined
   threadEvents: ThreadEvent[] | undefined
   unfoldedGraph: Graph | undefined
+  cutWalks: PathOrigin[] | undefined
   cutFoldBelowBp: number
   readsShown: { shown: number; total: number } | undefined
   haplotypes?: readonly string[]
@@ -406,6 +412,7 @@ export const withLoadActions = withEngineSettings.actions(self => {
     self.foldRefusal = cut?.foldRefusal
     self.threadEvents = cut?.threadEvents
     self.unfoldedGraph = cut?.unfoldedGraph
+    self.cutWalks = cut?.cutWalks
     self.cutFoldBelowBp = cut?.cutFoldBelowBp ?? 0
     self.readsShown = cut?.readsShown
     self.indexBubbles = undefined
@@ -448,8 +455,9 @@ export const withLoadActions = withEngineSettings.actions(self => {
     }
   }
 
+  // `source` is a cut, or the fold of a cut read as runs
   function* parsedCut(
-    source: string | WalkCut,
+    source: string | WalkCut | FoldedCut,
     name: string,
     region: SubgraphRegion | undefined,
     readsOf?: (graph: Graph) => Promise<GafReads>,
@@ -457,8 +465,9 @@ export const withLoadActions = withEngineSettings.actions(self => {
     haplotypes?: readonly string[],
   ) {
     const { signal } = loadController
-    const walkCut =
-      typeof source !== 'string' && source.walkRowRuns ? source : undefined
+    const tables =
+      typeof source !== 'string' && 'nodes' in source ? source : undefined
+    const walkCut = tables?.walkRowRuns ? tables : undefined
     const {
       graph,
       loadedReferencePath,
@@ -466,7 +475,11 @@ export const withLoadActions = withEngineSettings.actions(self => {
       foldRefusal,
       threadEvents,
       unfoldedGraph,
-    } = deriveGraph(source, name, region, foldBelowBp, !!readsOf)
+      cutWalks,
+    } =
+      typeof source !== 'string' && 'graph' in source
+        ? { ...source, loadedReferencePath: undefined }
+        : deriveGraph(source, name, region, foldBelowBp, !!readsOf)
     let readsShown: { shown: number; total: number } | undefined
     if (readsOf) {
       self.setStatusMessage('Reading alignments')
@@ -487,13 +500,14 @@ export const withLoadActions = withEngineSettings.actions(self => {
     return {
       graph,
       walkCut,
-      abridged: typeof source === 'string' ? [] : (source.abridged ?? []),
+      abridged: tables?.abridged ?? [],
       region,
       loadedReferencePath,
       foldedBelowBp,
       foldRefusal,
       threadEvents,
       unfoldedGraph,
+      cutWalks,
       cutFoldBelowBp: foldBelowBp,
       readsShown,
       ...(haplotypes ? { haplotypes } : {}),
@@ -1043,27 +1057,50 @@ export const withLoadActions = withEngineSettings.actions(self => {
         if (!cut) {
           self.setStatusMessage('Fetching subgraph')
           const fetchStart = performance.now()
-          const source = (yield getSession(self).rpcManager.call(
-            getRpcSessionId(self),
-            'GetSubgraph',
-            {
-              adapterConfig,
-              region,
-              opts,
-              signal,
-              // the cut itself reports nothing, but renaming its region first
-              // can download the adapter's refName index
-              statusCallback: status => {
-                if (isLive()) {
-                  self.setStatusMessage(
-                    statusMessageText(status) ?? 'Fetching subgraph',
-                  )
-                }
+          const fetchCut = (cutOpts: SubgraphCutOptions) =>
+            getSession(self).rpcManager.call(
+              getRpcSessionId(self),
+              'GetSubgraph',
+              {
+                adapterConfig,
+                region,
+                opts: cutOpts,
+                signal,
+                // the cut itself reports nothing, but renaming its region
+                // first can download the adapter's refName index
+                statusCallback: status => {
+                  if (isLive()) {
+                    self.setStatusMessage(
+                      statusMessageText(status) ?? 'Fetching subgraph',
+                    )
+                  }
+                },
               },
-            },
-          )) as string | WalkCut
+            )
+          // A fold to threads of the walks on the file's own reference reads
+          // them as runs, unless the view asked for the nodes of some walks;
+          // where graph-fold refuses the runs, the window is cut so it is
+          // drawn whole with the reason, as a refused cut is
+          const asRuns =
+            !readsOf &&
+            !self.referencePath &&
+            !opts.walkRows &&
+            !opts.expand?.length &&
+            foldsThreads(foldBelowBp ?? 0, self.modeDrawsNodes)
+          const fetched = (yield fetchCut(
+            asRuns ? { ...opts, foldRuns: true } : opts,
+          )) as string | WalkCut | RunsCut
+          const fetchMs = performance.now() - fetchStart
+          const read =
+            typeof fetched === 'string' || !('runs' in fetched)
+              ? fetched
+              : foldedRuns(fetched.runs, foldBelowBp ?? 0, regionLabel(region))
+          const source =
+            typeof read !== 'string' && 'refusal' in read
+              ? ((yield fetchCut(opts)) as string | WalkCut)
+              : read
           if (isLive()) {
-            self.setFetchMs(performance.now() - fetchStart)
+            self.setFetchMs(fetchMs)
             if (!source) {
               throw new Error(
                 'Adapter returned no GFA — region may be outside indexed data or the adapter does not implement getSubgraph',

@@ -1,10 +1,10 @@
+import { WalkFile } from '@gmod/gfa-tabix'
 import { graphTablesGFA } from '@jbrowse/bandage-core/gfa/graphTables'
 import { walkRowsOf } from '@jbrowse/bandage-core/layout/walkRowRuns'
 import { walkRows } from '@jbrowse/bandage-core/layout/walkRows'
 import { loadGraph } from '@jbrowse/bandage-core/pipeline'
 import PluginManager from '@jbrowse/core/PluginManager'
 import { readConfObject } from '@jbrowse/core/configuration'
-import { WalkReader } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -439,13 +439,13 @@ test('getSubgraph cuts the window with the reference walk first', async () => {
 })
 
 test('the lanes read no link, and the graph cut takes the links it is handed', async () => {
-  const cut = vi.spyOn(WalkReader.prototype, 'cut')
+  const cut = vi.spyOn(WalkFile.prototype, 'getCutForRange')
   const adapter = makeAdapter()
   await feats(adapter)
-  expect(cut.mock.calls.map(c => c[2]?.links)).toEqual(['none'])
+  expect(cut.mock.calls.map(c => c[3]?.links)).toEqual(['none'])
   await adapter.getSubgraph(window)
   await adapter.getSubgraph(window, { links: 'between' })
-  expect(cut.mock.calls.map(c => c[2]?.links)).toEqual([
+  expect(cut.mock.calls.map(c => c[3]?.links)).toEqual([
     'none',
     'walked',
     'between',

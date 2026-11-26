@@ -1,4 +1,4 @@
-import { checkRange } from '@jbrowse/graph-walks'
+import { checkRange } from '@gmod/gfa-tabix'
 
 import type { TabixIndexedFile } from '@gmod/tabix'
 

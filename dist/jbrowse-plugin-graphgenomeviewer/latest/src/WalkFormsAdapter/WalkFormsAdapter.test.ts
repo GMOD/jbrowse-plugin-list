@@ -1,5 +1,5 @@
+import { WalkFile } from '@gmod/gfa-tabix'
 import PluginManager from '@jbrowse/core/PluginManager'
-import { formsCut } from '@jbrowse/graph-walks'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 
@@ -7,12 +7,7 @@ import Adapter from './WalkFormsAdapter.ts'
 import configSchema from './configSchema.ts'
 import WalkFormsAdapterF from './index.ts'
 
-import type * as GraphWalks from '@jbrowse/graph-walks'
-
-vi.mock('@jbrowse/graph-walks', async importOriginal => {
-  const actual = await importOriginal<typeof GraphWalks>()
-  return { ...actual, formsCut: vi.fn(actual.formsCut) }
-})
+const formsCut = vi.spyOn(WalkFile.prototype, 'getFormsForRange')
 
 // Four walks over a 3.6 kb reference of six 600 bp nodes, in 1 kb tiles
 // (RgfaTabixAdapter/walkFiles.test.ts builds on the same file):
@@ -119,22 +114,23 @@ test('a query with no change, or off the pinned sequence, gives no features', as
 })
 
 test('a query off the pinned sequence starts no cut', async () => {
-  vi.mocked(formsCut).mockClear()
+  formsCut.mockClear()
   const adapter = makeAdapter({ pinned: pinned(11) })
   expect(await featuresOf(adapter, region(0, 3600, 'chr2'))).toEqual([])
   expect(formsCut).not.toHaveBeenCalled()
 })
 
 test("a window pinned on the assembly's name for a contig cuts by the alias the walk file holds", async () => {
-  vi.mocked(formsCut).mockClear()
+  formsCut.mockClear()
   const window = { refName: '1', start: 12, end: 3600 }
   const adapter = makeAdapter({ pinned: window, pinnedAliases: ['chr1'] })
   const { sources, warnings } = await adapter.getSourcesAndWarnings()
   expect(sources).toHaveLength(3)
   expect(warnings).toEqual([])
   expect(formsCut).toHaveBeenCalledWith(
-    expect.anything(),
-    { ...window, refName: 'GRCh38#0#chr1' },
+    'GRCh38#0#chr1',
+    window.start,
+    window.end,
     expect.anything(),
   )
   expect(
@@ -157,7 +153,7 @@ test('a window pinned on a name the walk file lacks places no haplotype', async 
 })
 
 test('a floor change regroups the cut without cutting again', async () => {
-  vi.mocked(formsCut).mockClear()
+  formsCut.mockClear()
   const fine = makeAdapter({ pinned: pinned(4), floorBp: 50 })
   const coarse = makeAdapter({ pinned: pinned(4), floorBp: 1000 })
   expect((await fine.getSourcesAndWarnings()).sources).toHaveLength(3)

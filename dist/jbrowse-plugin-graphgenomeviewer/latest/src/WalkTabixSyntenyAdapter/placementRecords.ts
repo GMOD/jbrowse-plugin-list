@@ -1,7 +1,7 @@
 import { appendEdit } from './walkLanes.ts'
 
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
-import type { WalkFragment, WalkNode } from '@jbrowse/graph-walks'
+import type { WalkFragment, WalkNode } from '@gmod/gfa-tabix'
 
 interface Place {
   start: number

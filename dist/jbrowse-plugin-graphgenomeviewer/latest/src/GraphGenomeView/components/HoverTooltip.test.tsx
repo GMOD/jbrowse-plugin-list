@@ -65,7 +65,7 @@ test('a node off the reference also says where it sits on the reference', () => 
       hoveredSpan: { start: 1000, end: 2000 },
     }),
   ).toEqual([
-    's7 — 1,200 bp, depth 1.0HG002 h1tg01:501-1,700 (rank 1)Reference GRCh38 chr6:1,001-2,000',
+    's7 — 1,200 bp, depth 1.0HG002 h1tg01:501-1,700 (rank 1)in place of GRCh38 chr6:1,001-2,000',
   ])
 })
 
@@ -346,6 +346,41 @@ test('a folded node counts the nodes folded into it, leaving out stretches not l
   expect(container.textContent).toContain('4 nodes folded into it')
 })
 
+// runs name no node off the reference, so a fold of them holds reference
+// nodes alone and the count says so
+test('a node folded from runs counts the reference nodes folded into it', () => {
+  const node = {
+    id: 'a~c+',
+    name: 'a~c',
+    length: 2000,
+    depth: 2,
+    members: ['a', 'b', 'c'],
+    stable: { refName: 'chr', start: 0, rank: 0 },
+  }
+  const model = {
+    hoveredNode: node.id,
+    hoverNodeById: new Map([[node.id, node]]),
+    hoveredEdge: null,
+    hoveredWalkRowText: undefined,
+    hoveredTubeText: undefined,
+    tooltipRightPx: 8,
+    deletions: [],
+    genePins: [],
+    graph: {
+      name: 'fold',
+      nodes: [node],
+      edges: [],
+      paths: [],
+      threadFold: { belowBp: 500, haplotypes: 2, walks: 2, stepless: 0 },
+    },
+    notLoadedNames: new Set(),
+    cutWalks: [{ name: 'chr', sample: 'chr', start: 0, length: 2000 }],
+    walkLabel: (name: string) => name,
+  } as unknown as GraphPaneModel
+  const { container } = render(<HoverTooltip model={model} chip={undefined} />)
+  expect(container.textContent).toContain('3 reference nodes folded into it')
+})
+
 test("a folded node's hover gives a lone haplotype's thread its count, so it does not read as one of a wider thread's haplotypes", () => {
   const node = { id: 'a+', name: 'a', length: 2000, depth: 5 }
   const model = {
@@ -386,4 +421,90 @@ test("a folded node's hover gives a lone haplotype's thread its count, so it doe
     '4 haplotypes on 2 distinct walks, 1 bp folded away</span>',
   )
   expect(container.innerHTML).toContain('<br>1 haplotype: HG00097#1</span>')
+})
+
+const fold = {
+  threadFold: {
+    belowBp: 944,
+    haplotypes: 464,
+    walks: 464,
+    stepless: 0,
+    departing: [],
+  },
+  nodes: [],
+  edges: [],
+}
+
+test("a fold's own sequence is hovered by its length and the reference it replaces, never by the name the fold gave it", () => {
+  const node = {
+    id: 'open:9:right:8014:900+',
+    name: 'open:9:right:8014:900',
+    length: 8014,
+    depth: 11,
+  }
+  render(
+    <HoverTooltip
+      model={
+        {
+          hoveredNode: node.id,
+          hoverNodeById: new Map([[node.id, node]]),
+          graph: fold,
+          graphRegion: region,
+          hoveredSpan: { start: 196892389, end: 196911638 },
+          tooltipRightPx: 8,
+          deletions: [],
+          genePins: [],
+        } as unknown as GraphPaneModel
+      }
+      chip={undefined}
+    />,
+  )
+  const text = screen.getByText(/depth 11\.0/).textContent
+  expect(text).toBe(
+    '8,014 bp, depth 11.0in place of GRCh38 chr6:196,892,390-196,911,638',
+  )
+  expect(text).not.toContain('open:')
+})
+
+test("a link's ends name a fold's own sequence by its length", () => {
+  const reference = {
+    id: '8~9+',
+    name: '8~9',
+    length: 10,
+    depth: 464,
+    stable: { refName: 'GRCh38#0#chr6', start: 0, rank: 0 },
+  }
+  const branch = {
+    id: 'open:9:right:8014:900+',
+    name: 'open:9:right:8014:900',
+    length: 8014,
+    depth: 11,
+  }
+  render(
+    <HoverTooltip
+      model={
+        {
+          hoveredNode: null,
+          hoveredEdge: 0,
+          graph: {
+            ...fold,
+            edges: [
+              {
+                from: reference.id,
+                fromStrand: '+',
+                to: branch.id,
+                toStrand: '+',
+              },
+            ],
+          },
+          nodeById: new Map([reference, branch].map(n => [n.id, n])),
+          tooltipRightPx: 8,
+          deletions: [],
+          genePins: [],
+        } as unknown as GraphPaneModel
+      }
+      chip={undefined}
+    />,
+  )
+  expect(screen.getByText(/^Edge/).textContent).toBe('Edge: 8~9+ → 8,014 bp')
 })

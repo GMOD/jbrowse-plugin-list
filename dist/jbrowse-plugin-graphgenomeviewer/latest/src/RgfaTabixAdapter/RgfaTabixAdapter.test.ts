@@ -4,17 +4,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
-import { TabixIndexedFile } from '@gmod/tabix'
-import { convertGFAToGraph } from '@jbrowse/bandage-core/gfa/gfaConverter'
-import { parseGFA } from '@jbrowse/bandage-core/gfa-core/index'
-import PluginManager from '@jbrowse/core/PluginManager'
-import { readConfObject } from '@jbrowse/core/configuration'
 import {
   formatSubgraph,
   linkKey,
   parseLinkLine,
   parseSegmentLine,
-} from '@jbrowse/graph-walks'
+} from '@gmod/gfa-tabix'
+import { TabixIndexedFile } from '@gmod/tabix'
+import { convertGFAToGraph } from '@jbrowse/bandage-core/gfa/gfaConverter'
+import { parseGFA } from '@jbrowse/bandage-core/gfa-core/index'
+import PluginManager from '@jbrowse/core/PluginManager'
+import { readConfObject } from '@jbrowse/core/configuration'
 import { firstValueFrom } from 'rxjs'
 import { toArray } from 'rxjs/operators'
 

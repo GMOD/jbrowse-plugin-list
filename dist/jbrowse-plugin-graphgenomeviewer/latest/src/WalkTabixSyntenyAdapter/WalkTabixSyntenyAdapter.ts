@@ -1,3 +1,4 @@
+import { walksKept } from '@gmod/gfa-tabix'
 import {
   assemblyByPanSNPrefix,
   panSNContig,
@@ -9,7 +10,6 @@ import {
 import { updateStatus } from '@jbrowse/core/util'
 import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import { getSamplesTsvSources } from '@jbrowse/core/util/samplesTsv'
-import { walksKept } from '@jbrowse/graph-walks'
 
 import { laneRecords } from './placementRecords.ts'
 import {
@@ -37,10 +37,10 @@ import { sheetColorOf } from '../synteny/sheetColors.ts'
 import type { WalkTabixSyntenyAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions } from '../GetSubgraph.ts'
 import type { LaneFeatureOptions, LanePair } from '../synteny/lanePairs.ts'
+import type { WalkFragment, WalkNode } from '@gmod/gfa-tabix'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature } from '@jbrowse/core/util'
 import type { Region } from '@jbrowse/core/util/types'
-import type { WalkFragment, WalkNode } from '@jbrowse/graph-walks'
 
 const haplotypeOf = ({ name }: { name: string }) => panSNHaplotype(name) ?? name
 
@@ -177,7 +177,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
    */
   async getHeader(opts: HeaderOptions = {}) {
     const [{ haplotypes }, colorOf] = await Promise.all([
-      this.walks.reader.header(opts),
+      this.walks.reader.getHeader(opts),
       this.sheetColors(opts),
     ])
     const { anchor } = this
@@ -244,6 +244,15 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     return this.walks.subgraph(refName, region, opts)
   }
 
+  // The same walks as runs, for a fold to threads, as RgfaTabixAdapter reads
+  // them
+  async getSubgraphRuns(region: Region, opts: SubgraphAdapterOptions = {}) {
+    const refName = await this.refNames.resolveForCut(region, {
+      signal: opts.signal,
+    })
+    return this.walks.runs(refName, region, opts)
+  }
+
   // The window's walks for the haplotypes named and the reference, with
   // every departure from the reference over it and no link read; a window
   // past a budget fails as a zoom-in notice for lanes. Named lanes come back
@@ -259,7 +268,7 @@ export default class WalkTabixSyntenyAdapter extends ComparativeAdapterBase<Walk
     const keep = walksKept(prefixes, refName)
     return updateStatus(status, opts.statusCallback, () =>
       this.walks.reader
-        .cut(refName, region, {
+        .getCutForRange(refName, region.start, region.end, {
           ...this.walks.cutOptions(),
           signal: opts.signal,
           keep,

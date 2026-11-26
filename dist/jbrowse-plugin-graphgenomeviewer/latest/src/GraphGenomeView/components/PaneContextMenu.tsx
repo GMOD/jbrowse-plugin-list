@@ -1,6 +1,6 @@
+import { abridgedText } from '@gmod/gfa-tabix'
 import { regionLabel } from '@jbrowse/bandage-core/hoverText'
 import { ContextMenu } from '@jbrowse/core/ui'
-import { abridgedText } from '@jbrowse/graph-walks'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import FilterListOffIcon from '@mui/icons-material/FilterListOff'
 import InfoIcon from '@mui/icons-material/Info'

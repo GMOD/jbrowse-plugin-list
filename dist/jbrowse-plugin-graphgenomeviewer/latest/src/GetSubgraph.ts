@@ -4,7 +4,7 @@ import { rpcResultWithArrayBuffers } from '@jbrowse/core/util/librpc'
 
 import { adapterImplementing } from './adapterImplementing'
 
-import type { WalkCut } from './RgfaTabixAdapter/walkCut.ts'
+import type { RunsCut, WalkCut } from './RgfaTabixAdapter/walkCut.ts'
 import type { LinksDrawn } from './linksDrawn.ts'
 import type { RpcExecuteArgs } from '@jbrowse/core/rpc/RpcRegistry'
 import type { Region } from '@jbrowse/core/util'
@@ -36,6 +36,10 @@ export interface SubgraphCutOptions {
   // walks, `sample#haplotype#contig`, a walk-file cut fetches every node of
   expand?: string[]
   forcedByteBudget?: number
+  // a cut for a fold to threads: a walk-indexed adapter hands back the
+  // window's walks as runs, bounded by `walkByteBudget` alone, unless the file
+  // does not state that its reference passes no node twice
+  foldRuns?: boolean
 }
 
 // The most walks a view fetches every node of on its own: those a tube map
@@ -61,14 +65,14 @@ export interface GetSubgraphArgs {
   opts?: SubgraphCutOptions
 }
 
-// A cut is tables, whose typed arrays cross to the main thread without a copy,
-// or GFA text the tables cannot hold
+// A cut is tables, or runs, whose typed arrays cross to the main thread
+// without a copy, or GFA text the tables cannot hold
 declare module '@jbrowse/core/rpc/RpcRegistry' {
   interface RpcRegistry {
     GetSubgraph: {
       args: GetSubgraphArgs
-      return: string | WalkCut
-      transferables: WalkCut
+      return: string | WalkCut | RunsCut
+      transferables: WalkCut | RunsCut
     }
   }
 }
@@ -80,6 +84,15 @@ interface SubgraphAdapter {
     region: Region,
     opts?: SubgraphAdapterOptions,
   ): Promise<string | WalkCut>
+}
+
+// The walk-indexed ones also read a window's walks as runs, for a fold to
+// threads, or say the window is to be cut instead
+interface SubgraphRunsAdapter {
+  getSubgraphRuns(
+    region: Region,
+    opts?: SubgraphAdapterOptions,
+  ): Promise<RunsCut | undefined>
 }
 
 // RpcMethodTypeWithRenameRegion, not the plain RpcMethodType: the base class is
@@ -109,6 +122,23 @@ export default class GetSubgraph extends RpcMethodTypeWithRenameRegion<'GetSubgr
       args,
       'getSubgraph',
     )
+    const runsAdapter = opts?.foldRuns
+      ? (
+          await adapterImplementing<SubgraphRunsAdapter>(
+            this.pluginManager,
+            args,
+            'getSubgraphRuns',
+          )
+        ).adapter
+      : undefined
+    const runs = await runsAdapter?.getSubgraphRuns(region, {
+      ...opts,
+      signal,
+    })
+    // runs nest their tables three deep, each array made for this call
+    if (runs) {
+      return rpcResultWithArrayBuffers(runs, { depth: 3 })
+    }
     // A text cut is read into tables here, off the main thread: a GBZ cut of
     // every haplotype is tens of MB of W lines
     if (adapter) {

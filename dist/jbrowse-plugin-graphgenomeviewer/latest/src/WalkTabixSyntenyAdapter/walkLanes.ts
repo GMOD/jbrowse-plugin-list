@@ -7,11 +7,7 @@ import { matchFeature } from '../synteny/matchFeature.ts'
 
 import type { ArrayRecord } from './placementRecords.ts'
 import type { PairChain, PairEdit } from '@gmod/gbz-base/pairAlignment'
-import type {
-  WalkDeparture,
-  WalkFragment,
-  WalkNode,
-} from '@jbrowse/graph-walks'
+import type { WalkDeparture, WalkFragment, WalkNode } from '@gmod/gfa-tabix'
 
 // The longest bubble with equal bases on both sides that is written as
 // mismatches; a longer one stays an insertion and a deletion

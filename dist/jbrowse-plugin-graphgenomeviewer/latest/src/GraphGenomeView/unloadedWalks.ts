@@ -2,9 +2,9 @@ import { rowsNeedingRoutes } from '@jbrowse/bandage-core/layout/walkRowLinks'
 
 import { EXPAND_NAMED_MAX } from '../GetSubgraph'
 
+import type { AbridgedWalk } from '@gmod/gfa-tabix'
 import type { WalkRow } from '@jbrowse/bandage-core/layout/walkRows'
 import type { Graph } from '@jbrowse/bandage-core/types'
-import type { AbridgedWalk } from '@jbrowse/graph-walks'
 
 // The walks a tube map fetches the nodes of: every one holding steps not
 // fetched, while it shows few enough haplotypes to fetch them all

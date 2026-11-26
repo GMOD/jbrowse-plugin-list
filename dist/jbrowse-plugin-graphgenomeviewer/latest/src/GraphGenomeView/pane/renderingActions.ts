@@ -287,7 +287,9 @@ export const withRenderingActions = withLoadActions
               // a row naming a walk is the hover, not the node at its bp,
               // whose band would cover the row's own cells; on a graph folded
               // to threads, a walk of the cut, which lights its threads
-              const rowPaths = (self.unfoldedGraph ?? graph)?.paths
+              const rowPaths = self.unfoldedGraph
+                ? self.unfoldedGraph.paths
+                : (self.cutWalks ?? graph?.paths)
               const rowWalks =
                 inRegion?.featureName && rowPaths
                   ? walksForRow(inRegion.featureName, rowPaths)

@@ -1,8 +1,6 @@
-import { sameBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import { layoutModeByValue } from '@jbrowse/bandage-core/layoutModes'
 import {
   REFERENCE_STRIP_ZONE_PX,
-  nodeAnchor,
   referenceStripBlocks,
   stripBlockAt,
   stripFadedShown,
@@ -163,32 +161,30 @@ export const withHostViews = withWalkRowViews
     },
   }))
   .views(self => ({
-    // The lit span on the strip, and where the graph drew what it is of:
-    // the hovered node, the hovered bubble's name, or the selected node,
-    // unless the drawing folded it
+    // The lit span on the strip: the hovered node's while hover lights
+    // nodes, the hovered bubble's, or the selected node's
     get referenceStripLit() {
-      if (!self.referenceStripShown) {
-        return undefined
-      }
       const bubble = self.hoveredNode === null ? self.hoveredBubble : null
-      if (bubble && !bubble.offReference) {
-        const halo = self.bubbleHalos.find(h => sameBubble(h.bubble, bubble))
-        return {
-          start: bubble.start,
-          end: bubble.end,
-          anchor: halo ? self.toScreen(halo.labelAt) : undefined,
-        }
-      }
-      const nodeId = self.hoveredNode ?? self.selectedNode
-      const span = nodeId === null ? undefined : self.nodeSpan(nodeId)
-      return span && nodeId !== null
-        ? {
-            ...span,
-            anchor: self.folded.has(nodeId)
-              ? undefined
-              : nodeAnchor(self.nodePositions?.[nodeId], self.toScreen),
-          }
-        : undefined
+      const nodeId = self.litNode ?? self.selectedNode
+      const span =
+        bubble && !bubble.offReference
+          ? { start: bubble.start, end: bubble.end }
+          : nodeId === null
+            ? undefined
+            : self.nodeSpan(nodeId)
+      return self.referenceStripShown ? span : undefined
+    },
+    // The node whose span the strip outlines, which the graph outlines in the
+    // same ink, unless the drawing folded it
+    get referenceStripNode() {
+      const bubble = self.hoveredNode === null ? self.hoveredBubble : null
+      const nodeId = self.litNode ?? self.selectedNode
+      return this.referenceStripLit &&
+        !(bubble && !bubble.offReference) &&
+        nodeId !== null &&
+        !self.folded.has(nodeId)
+        ? nodeId
+        : null
     },
     referenceStripNodeAt(sx: number, sy: number) {
       const frame = self.hostBpFrame

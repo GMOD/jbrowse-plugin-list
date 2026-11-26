@@ -1,13 +1,13 @@
-import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
-import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
-import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 import {
+  GfaTabixFile,
   parseGraphHeader,
   parseGraphRow,
   parseSegmentRow,
-  rgfaCut,
   segmentSamples,
-} from '@jbrowse/graph-walks'
+} from '@gmod/gfa-tabix'
+import { BaseFeatureDataAdapter } from '@jbrowse/core/data_adapters/BaseAdapter'
+import { SimpleFeature, updateStatus } from '@jbrowse/core/util'
+import { ObservableCreate } from '@jbrowse/core/util/rxjs'
 
 import { locationIsSet } from '../locationName.ts'
 import {
@@ -22,11 +22,11 @@ import { WalkIndex } from './walkReader.ts'
 import type { RgfaTabixAdapterConfig } from './configSchema.ts'
 import type { SubgraphAdapterOptions, SubgraphTier } from '../GetSubgraph.ts'
 import type { WalkCut } from './walkCut.ts'
+import type { RgfaSegment } from '@gmod/gfa-tabix'
 import type { TabixIndexedFile } from '@gmod/tabix'
 import type { BaseOptions } from '@jbrowse/core/data_adapters/BaseAdapter'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation, Region } from '@jbrowse/core/util/types'
-import type { RgfaSegment } from '@jbrowse/graph-walks'
 
 // gfa-to-tabix's format 1 pair, or format 2's one file
 type GraphIndex = (
@@ -234,7 +234,7 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     )
   }
 
-  // The graph around a region for GraphGenomeView: GFA text (rgfaCut), or a
+  // The graph around a region for GraphGenomeView: GFA text (GfaTabixFile), or a
   // walk-indexed graph's tables (WalkIndex.subgraph). `tier: 'coarse'` reads
   // the `coarse` pair instead, the same way.
   async getSubgraph(
@@ -247,10 +247,21 @@ export default class RgfaTabixAdapter extends BaseFeatureDataAdapter<RgfaTabixAd
     if (index.walks) {
       return index.walks.subgraph(tabixRefName, region, opts)
     }
-    return rgfaCut(
-      index,
-      { refName: tabixRefName, start: region.start, end: region.end },
+    return new GfaTabixFile(index).getGraphForRange(
+      tabixRefName,
+      region.start,
+      region.end,
       { hops, signal },
     )
+  }
+
+  // A walk-indexed graph's walks over a region as runs, for a fold to
+  // threads (WalkIndex.runs); undefined where the region is to be cut
+  async getSubgraphRuns(region: Region, opts: SubgraphAdapterOptions = {}) {
+    const index = this.index(opts.tier)
+    const refName = await index.refNames.resolveForCut(region, {
+      signal: opts.signal,
+    })
+    return index.walks?.runs(refName, region, opts)
   }
 }

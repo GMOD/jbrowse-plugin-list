@@ -35,7 +35,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * `<walksUri>.walks.gz` and its directory `<walksUri>.walks.gz.idx`.
  * `gfa-to-tabix --walks -o <prefix>` writes one per reference sample, so a
  * track names one as `<prefix>.<sample>`. The adapter reads walk format 8,
- * which gfa-to-tabix writes from 5.0, through @jbrowse/graph-walks. Such a
+ * which gfa-to-tabix writes from 5.0, through @gmod/gfa-tabix. Such a
  * graph's cut carries
  * the haplotypes' walks, and `defaultHaplotypes` names the ones it is cut for
  * until the user picks others.
@@ -213,7 +213,8 @@ const RgfaTabixAdapter = ConfigurationSchema(
      * the most haplotype steps a cut keeps; a window whose walks hold more
      * shows a zoom-in notice instead, as does one whose rows hold eight times
      * as many. Counts only the haplotypes the cut is for, so fewer haplotypes
-     * draw a wider window. Walk rows draw runs rather than steps and are
+     * draw a wider window. Walk rows draw runs rather than steps, as does a
+     * graph folded to threads, which reads the walks as runs, and both are
      * bounded by `walkByteBudget` alone.
      */
     walkStepBudget: {

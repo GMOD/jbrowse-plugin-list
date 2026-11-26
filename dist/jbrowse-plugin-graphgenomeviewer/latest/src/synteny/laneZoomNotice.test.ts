@@ -1,11 +1,11 @@
-import { keptStepsError } from '@jbrowse/graph-walks'
+import { keptStepsError } from '@gmod/gfa-tabix'
 
 import { laneZoomFold, laneZoomNotice } from './laneZoomNotice.ts'
 
 const BUDGET = 4_000_000
 
 // A lane fetch over `fetchBp` keeping steps at a density whose fitting span
-// is `fitsBp`, refused as @jbrowse/graph-walks refuses it
+// is `fitsBp`, refused as @gmod/gfa-tabix refuses it
 function refusal(fetchBp: number, fitsBp: number) {
   const kept = Math.round((BUDGET * fetchBp) / fitsBp)
   const fragment = { ids: new Int32Array(kept) }

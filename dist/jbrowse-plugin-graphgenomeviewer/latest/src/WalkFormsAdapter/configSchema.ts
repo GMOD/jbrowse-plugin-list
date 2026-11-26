@@ -12,7 +12,7 @@ import type { Instance } from '@jbrowse/mobx-state-tree'
  * Groups the haplotypes of a
  * [gfa-to-tabix](https://github.com/GMOD/gfa-to-tabix) `--walks` file by the
  * structural changes their walks make over one pinned window, through
- * @jbrowse/graph-walks' `formsCut` and `structuralForms`. Each group is a
+ * @gmod/gfa-tabix's `getFormsForRange` and `structuralForms`. Each group is a
  * form, which `LinearVariantDisplay` draws as one row, and each
  * change a variant whose genotype is `1` in the forms that make it.
  *

@@ -19,6 +19,7 @@ import type { WalkCut } from '../../RgfaTabixAdapter/walkCut.ts'
 import type { RepeatArray } from '../repeats/repeatFeatures'
 import type { PaneLayout } from '../tubeMapPanels'
 import type { SampleRow } from '../walkRowGroups'
+import type { AbridgedWalk } from '@gmod/gfa-tabix'
 import type { MinigraphBubble } from '@jbrowse/bandage-core/bubbles/bubbleLine'
 import type { GeneModel } from '@jbrowse/bandage-core/genes/genePins'
 import type { LayoutModeValue } from '@jbrowse/bandage-core/layoutModes'
@@ -26,11 +27,10 @@ import type { Bounds } from '@jbrowse/bandage-core/pipeline'
 import type { RenderBatch } from '@jbrowse/bandage-core/renderer/types'
 import type { ThreadEvent } from '@jbrowse/bandage-core/threadFold'
 import type { TubeMapMismatch } from '@jbrowse/bandage-core/tubeMap/mismatches'
-import type { Graph } from '@jbrowse/bandage-core/types'
+import type { Graph, PathOrigin } from '@jbrowse/bandage-core/types'
 import type { AxisScale } from '@jbrowse/bandage-core/util/geometry'
 import type { Feature } from '@jbrowse/core/util'
 import type { FileLocation } from '@jbrowse/core/util/types'
-import type { AbridgedWalk } from '@jbrowse/graph-walks'
 
 // Ceiling on the pane, and what it falls back to before there is a layout to
 // size against. A roughly square drawing (FMMM) hits this and keeps the
@@ -401,6 +401,8 @@ export const paneBase = types
     // the graph the one on screen was thread-folded from, and the fold the cut
     // was asked for, so a change of layout or reference can fold it again
     unfoldedGraph: undefined as Graph | undefined,
+    // the walks a fold of runs was made of, which has no unfolded graph
+    cutWalks: undefined as PathOrigin[] | undefined,
     cutFoldBelowBp: 0,
     // the gene track's features over the cut window, read once per cut
     geneTrackFeatures: undefined as Feature[] | undefined,
