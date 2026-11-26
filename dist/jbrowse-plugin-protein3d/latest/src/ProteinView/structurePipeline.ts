@@ -238,6 +238,10 @@ async function applyStructurePreset(
  * A `filter` narrows the ligand component too: a bound ligand is numbered in
  * the same author series as the polymer, well above its last residue, so a
  * residue bound leaves the ligand out as well.
+ *
+ * Mol*'s atomic-detail preset, which it picks for a peptide, a fibril or a
+ * chain with a gap for every three residues or fewer, draws one `all`
+ * component, which keeps both the polymer and the ligands.
  */
 async function drawOnlyPart(
   plugin: PluginContext,
@@ -250,19 +254,23 @@ async function drawOnlyPart(
     StateTransforms,
   } = await loadMolstar()
   const { chainTest, residueTest } = drawnTests(MS, drawn)
-  const entityTest = (polymer: boolean) =>
-    polymer
-      ? MS.core.rel.eq([MS.ammp('entityType'), 'polymer'])
-      : MS.core.logic.and([
-          MS.core.rel.neq([MS.ammp('entityType'), 'polymer']),
-          MS.core.rel.neq([MS.ammp('entityType'), 'water']),
-          MS.core.logic.not([
-            MS.core.set.has([
-              MS.set(...CRYSTALLIZATION_ADDITIVES),
-              MS.ammp('label_comp_id'),
-            ]),
-          ]),
-        ])
+  const polymerTest = MS.core.rel.eq([MS.ammp('entityType'), 'polymer'])
+  const ligandTest = MS.core.logic.and([
+    MS.core.rel.neq([MS.ammp('entityType'), 'polymer']),
+    MS.core.rel.neq([MS.ammp('entityType'), 'water']),
+    MS.core.logic.not([
+      MS.core.set.has([
+        MS.set(...CRYSTALLIZATION_ADDITIVES),
+        MS.ammp('label_comp_id'),
+      ]),
+    ]),
+  ])
+  const entityTest = (component: unknown) =>
+    component === 'polymer'
+      ? polymerTest
+      : component === 'all'
+        ? MS.core.logic.or([polymerTest, ligandTest])
+        : ligandTest
   const update = plugin.state.data.build()
   for (const { ref } of structures) {
     for (const cell of plugin.state.data.select(
@@ -281,7 +289,7 @@ async function drawOnlyPart(
             params: MS.struct.generator.atomGroups({
               ...(chainTest ? { 'chain-test': chainTest } : {}),
               ...(residueTest ? { 'residue-test': residueTest } : {}),
-              'entity-test': entityTest(polymer),
+              'entity-test': entityTest(type.params),
             }),
           },
         }))

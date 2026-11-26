@@ -1061,18 +1061,17 @@ function stateModelFactory() {
       },
       /**
        * #getter
-       * The grey entry a ramp legend shows beside its gradient while a loaded
-       * structure has a residue the theme paints grey
+       * The grey entry a ramp legend shows beside its gradient while a shown
+       * structure draws a residue the theme paints grey
        */
       get colorLegendNoValue() {
         return rampNoValueEntry(
           self.paintColor,
           self.structures
-            .filter(s => s.loadedToMolstar)
+            .filter(s => s.loadedToMolstar && !s.hidden)
             .map(s => ({
               placedValues: s.placedValues,
-              entity: s.mappedEntity,
-              entities: s.entities,
+              drawn: s.drawnResidueIds,
             })),
         )
       },

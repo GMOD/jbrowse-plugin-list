@@ -1,8 +1,10 @@
 import { extractEntities, extractPerResidueConfidence } from 'p2s_mapper'
 
+import { drawnResidueIds } from './drawnResidueIds'
 import loadMolstar from './loadMolstar'
 import { loadStructure } from './structurePipeline'
 
+import type { ResidueIdsByEntity } from './drawnResidueIds'
 import type { DrawnResidues } from './structurePipeline'
 import type { ModelFormat } from 'molstar/lib/mol-model-formats/format'
 import type { Model, Structure } from 'molstar/lib/mol-model/structure'
@@ -28,6 +30,8 @@ export interface StructureData {
    * arbitrary order, so a position in `hierarchy.current.structures`
    * identifies nothing stable. */
   molstarStructures?: Structure[]
+  /** what the representations of `molstarStructures` draw */
+  drawnResidueIds?: ResidueIdsByEntity
   assemblies?: StructureAssembly[]
   /** The `assembly` this load was built with, so a change to it reloads. */
   assembly?: string
@@ -150,6 +154,7 @@ export async function loadStructureData({
     confidence:
       model && !experimental ? extractPerResidueConfidence(model) : undefined,
     molstarStructures,
+    drawnResidueIds: drawnResidueIds(plugin, molstar, molstarStructures),
     assemblies: model?.obj ? structureAssemblies(model.obj.data, molstar) : [],
     assembly,
   }

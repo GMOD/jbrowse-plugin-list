@@ -183,13 +183,14 @@ test("each field's legend is the key of the theme that draws it", async () => {
 })
 
 test('a ramp of placed values keys its grey while a drawn residue has no value', () => {
-  const entity = { entityId: '1', seqIds: [1, 2, 3] }
-  const placed = (labelSeqIds: number[]) => ({
+  const placedValues = {
     entityId: '1',
-    byLabelSeqId: new Map(labelSeqIds.map(id => [id, 0.5])),
-  })
-  const gap = [{ entity, placedValues: placed([1, 3]) }]
+    byLabelSeqId: new Map([1, 2, 3].map(id => [id, 0.5])),
+  }
+  const drawn = (byEntity: Record<string, number[]>) =>
+    new Map(Object.entries(byEntity).map(([id, ids]) => [id, new Set(ids)]))
   const noValue = { label: 'No value', color: Color.toHexStyle(NO_VALUE_COLOR) }
+  const gap = [{ placedValues, drawn: drawn({ '1': [1, 2, 3, 4] }) }]
   for (const color of [
     { field: 'alphaMissense' },
     { field: 'track', trackId: 't' },
@@ -197,39 +198,26 @@ test('a ramp of placed values keys its grey while a drawn residue has no value',
   ] satisfies ProteinColor[]) {
     expect(rampNoValueEntry(color, gap)).toEqual(noValue)
   }
+  const alphaMissense = { field: 'alphaMissense' } satisfies ProteinColor
   expect(
-    rampNoValueEntry({ field: 'alphaMissense' }, [
-      { entity, placedValues: placed([1, 2, 3]) },
+    rampNoValueEntry(alphaMissense, [
+      { placedValues, drawn: drawn({ '1': [1, 3] }) },
     ]),
   ).toBeUndefined()
-  expect(rampNoValueEntry({ field: 'alphaMissense' }, [{ entity }])).toEqual(
-    noValue,
-  )
   expect(
-    rampNoValueEntry({ field: 'alphaMissense' }, [
-      {
-        entity,
-        entities: [
-          { ...entity, chains: ['A'] },
-          { entityId: '2', chains: ['B'] },
-          { entityId: '3', chains: [] },
-        ],
-        placedValues: placed([1, 2, 3]),
-      },
+    rampNoValueEntry(alphaMissense, [{ drawn: drawn({ '1': [1, 2, 3] }) }]),
+  ).toEqual(noValue)
+  expect(
+    rampNoValueEntry(alphaMissense, [
+      { placedValues, drawn: drawn({ '1': [1, 2, 3], '2': [1] }) },
     ]),
   ).toEqual(noValue)
   expect(
-    rampNoValueEntry({ field: 'alphaMissense' }, [
-      {
-        entity,
-        entities: [
-          { ...entity, chains: ['A'] },
-          { entityId: '3', chains: [] },
-        ],
-        placedValues: placed([1, 2, 3]),
-      },
+    rampNoValueEntry(alphaMissense, [
+      { placedValues, drawn: drawn({ '1': [1, 2], '3': [0] }) },
     ]),
-  ).toBeUndefined()
+  ).toEqual(noValue)
+  expect(rampNoValueEntry(alphaMissense, [])).toBeUndefined()
   for (const field of ['plddt', 'hydrophobicity', 'domain', 'exon'] as const) {
     expect(rampNoValueEntry({ field }, gap)).toBeUndefined()
   }

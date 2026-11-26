@@ -870,3 +870,20 @@ test('reading the camera before Mol* has a canvas says so', () => {
     'the view has no Mol* canvas yet',
   )
 })
+
+test('a hidden structure raises no No value swatch', async () => {
+  const view = makeView()
+  view.setColor({ field: 'alphaMissense' })
+  const [first, second] = view.structures
+  const molstarStructures = [
+    await parseStructure([{ asym: 'A', entity: '1', residues: ['MET'] }]),
+  ]
+  first!.setStructureData({
+    molstarStructures,
+    drawnResidueIds: new Map([['2', new Set([0])]]),
+  })
+  second!.setStructureData({ molstarStructures, drawnResidueIds: new Map() })
+  expect(view.colorLegendNoValue?.label).toBe('No value')
+  first!.setHidden(true)
+  expect(view.colorLegendNoValue).toBeUndefined()
+})

@@ -108,6 +108,7 @@ export default class TviewGetPlan extends RpcMethodType {
             highlights: planHighlights(plan),
             region: plan.region,
             hasSubject: plan.subject !== undefined,
+            hasClusters: plan.clusters.size > 0,
             samples: plan.samples,
         };
         // the render is the expensive half and the only part bounded by rows x

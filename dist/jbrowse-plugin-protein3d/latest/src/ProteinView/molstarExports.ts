@@ -10,6 +10,7 @@ export {
   StructureElement,
   StructureProperties,
   StructureSelection,
+  Unit,
 } from 'molstar/lib/mol-model/structure'
 export { ProteinBackboneAtoms } from 'molstar/lib/mol-model/structure/model/types'
 export { tmAlign } from 'molstar/lib/mol-model/structure/structure/util/tm-align'

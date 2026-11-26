@@ -47,7 +47,7 @@ export interface TviewGetPlanArgs {
 
 export interface TviewPlanResult {
   msa: string
-  /** per row name: its sample, and its copies and allele length at the subject */
+  /** per row name: its sample, its allele group, and its copies and allele length at the subject */
   rowData: RowDataInput
   /** a bracket over each insertion site and each array block */
   highlights: Highlight[]
@@ -56,6 +56,8 @@ export interface TviewPlanResult {
   region: { refName: string; start: number; end: number }
   /** whether rows carry a copy count at a subject array */
   hasSubject: boolean
+  /** whether some sample's reads split into allele groups */
+  hasClusters: boolean
   samples: string[]
   /** set when the alignment was over maxCells and `msa` is empty */
   tooLarge?: boolean
@@ -206,6 +208,7 @@ export default class TviewGetPlan extends RpcMethodType<'TviewGetPlan'> {
       highlights: planHighlights(plan),
       region: plan.region,
       hasSubject: plan.subject !== undefined,
+      hasClusters: plan.clusters.size > 0,
       samples: plan.samples,
     }
 

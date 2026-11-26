@@ -8,6 +8,10 @@ import {
 
 import type { FoldseekDatabaseId, FoldseekResult } from 'p2s_mapper'
 
+// p2s_mapper's searchFoldseek runs these three steps too, but returns neither
+// the 3Di string the dialog shows nor the result per database the table reads;
+// folding onto it would save about 30 lines here for a breaking release there,
+// and re-predict on every search with other databases.
 export default function useFoldseekSearch() {
   const [results, setResults] = useState<FoldseekResult>()
   const [predictData, setPredictData] = useState<{

@@ -52,11 +52,22 @@ export const MINOR_FEATURE_TYPES = new Set([
   'Initiator methionine',
 ])
 
+// a clicked selection's hue on every surface, picked to read solid over any
+// Mol* color scheme
+export const SELECTION_HEX = 0xff00ff
+
+export function selectionRgba(alpha: number) {
+  const r = (SELECTION_HEX >> 16) & 0xff
+  const g = (SELECTION_HEX >> 8) & 0xff
+  const b = SELECTION_HEX & 0xff
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 // one color per interaction state, drawn across every row of the panel
 export const HOVER_COLOR = 'rgba(255, 105, 180, 0.5)'
 export const HOVER_RANGE_COLOR = 'rgba(255, 165, 0, 0.35)'
-export const SELECTION_COLOR = 'rgba(0, 120, 255, 0.25)'
-export const SELECTION_OUTLINE = '1px solid rgba(0, 120, 255, 0.6)'
+export const SELECTION_COLOR = selectionRgba(0.2)
+export const SELECTION_OUTLINE = `1px solid ${selectionRgba(0.7)}`
 export const MATCH_COLOR = '#33ff19a0'
 
 // a structure residue that differs from the transcript's, by how much

@@ -15,9 +15,38 @@ const FIT_WIDTH_PX = 3000;
 const GENOME_HOVER = 'genome-hover';
 const LOAD_BRACKETS = 'tview-load';
 const ROW_HEIGHT = 12;
+const MSA_DEFAULT_GAPPYNESS = 100;
+/**
+ * Below this many rows an inserted column only one read has stays on screen,
+ * since one read there is what a reader is looking at, a modification call on
+ * an inserted base included
+ */
+const MIN_ROWS_TO_HIDE = 20;
+/**
+ * The gap threshold, in percent, that hides an inserted column only one row
+ * has a base in: read error, which otherwise costs every other row a column of
+ * gaps. The reference's own columns are kept by `keepReferenceColumns`.
+ */
+function oneRowGappyness(rows) {
+    return rows >= MIN_ROWS_TO_HIDE
+        ? Math.floor((1000 * (rows - 1)) / rows) / 10
+        : MSA_DEFAULT_GAPPYNESS;
+}
 const DNA_COLORS = {
     field: 'residue',
     scale: { scheme: 'jbrowse_dna' },
+};
+const CLUSTER_STRIP = {
+    kind: 'strip',
+    header: 'group',
+    width: 8,
+    encoding: {
+        fill: {
+            field: 'cluster',
+            scale: { type: 'ordinal', scheme: 'okabeito' },
+            legend: { title: 'allele group' },
+        },
+    },
 };
 const COPY_PANELS = [
     {
@@ -35,7 +64,10 @@ const COPY_PANELS = [
 function rowTransform(samples, bySubject) {
     return {
         facet: { field: 'sample', sort: [REFERENCE, ...samples] },
-        ...(bySubject ? { sort: [{ field: 'copies', order: 'descending' }] } : {}),
+        sort: [
+            ...(bySubject ? [{ field: 'copies', order: 'descending' }] : []),
+            { field: 'cluster' },
+        ],
     };
 }
 /**
@@ -62,7 +94,9 @@ export default function stateModelFactory() {
             rowHeight: ROW_HEIGHT,
             labelsAlignRight: true,
             residueColor: DNA_COLORS,
-            turnedOffTracks: { 'position-ruler': false },
+            turnedOffTracks: { 'position-ruler': false, conservation: true },
+            consensusInGaps: true,
+            keepReferenceColumns: true,
         },
     }), types.model({
         type: types.literal('TView'),
@@ -94,6 +128,12 @@ export default function stateModelFactory() {
          * the base modification calls the last load placed, when its reads had any
          */
         loadedModifications: undefined,
+        /**
+         * #volatile
+         * the gap threshold the last load chose, which the next load replaces
+         * unless the reader has changed it since
+         */
+        autoGappyness: undefined,
     }))
         .views(self => ({
         /**
@@ -294,7 +334,7 @@ export default function stateModelFactory() {
          * carries its own copies of them, which are dropped here
          */
         setAlignment(result) {
-            const { region, highlights } = result;
+            const { region, highlights, hasClusters } = result;
             const bySubject = result.hasSubject;
             const rebuilt = new Set(highlights.map(highlightKey));
             self.loadedRegion = region;
@@ -303,7 +343,10 @@ export default function stateModelFactory() {
             self.data.setTree(undefined);
             self.setRowData(result.rowData);
             self.setRowTransform(rowTransform(result.samples, bySubject));
-            self.setRowPanels(bySubject ? COPY_PANELS : []);
+            self.setRowPanels([
+                ...(hasClusters ? [CLUSTER_STRIP] : []),
+                ...(bySubject ? COPY_PANELS : []),
+            ]);
             self.setRowCoordinates([
                 { row: REFERENCE, start: region.start + 1, name: region.refName },
             ]);
@@ -316,6 +359,11 @@ export default function stateModelFactory() {
             }
             if (self.colWidth === MAX_COL_WIDTH) {
                 self.setColWidth(fittedColWidth(result.columnCount));
+            }
+            if (self.allowedGappyness === MSA_DEFAULT_GAPPYNESS ||
+                self.allowedGappyness === self.autoGappyness) {
+                self.autoGappyness = oneRowGappyness(Object.keys(result.rowData).length);
+                self.setAllowedGappyness(self.autoGappyness);
             }
         },
         /**
@@ -392,6 +440,7 @@ export default function stateModelFactory() {
         .actions(self => ({
         afterCreate() {
             self.setImportForm(false);
+            self.setEmbeddedMode(true);
             addDisposer(self, autorun(() => {
                 const { initKey, initRegion, initSources, loadState } = self;
                 if (initKey &&

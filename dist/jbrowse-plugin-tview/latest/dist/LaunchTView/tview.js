@@ -1,5 +1,6 @@
 import { alignInsertionSite } from './align';
 import { buildArrayBlocks, mergeInsertionSites, normalizeInsertions, reanchorInsertions, } from './alleles';
+import { clusterReads } from './clusters';
 import { ABSENT, SPANNED_GAP, byStart, clipInsertions, getReadNames, parseRead, } from './readLayout';
 import { findReferenceArrays, mergeArrays } from './repeats';
 export { clipInsertions, parseCigar, parseRead } from './readLayout';
@@ -261,6 +262,7 @@ export function planTviewMsa({ features, refName, start, end, sequence, sampleOf
         arrays,
         subject,
         referenceName,
+        clusters: clusterReads(aligned, arrays, { start, end }, referenceName),
         samples: [
             ...new Set(features.map((_, i) => sampleOf?.(i)).filter(s => s !== undefined)),
         ],
@@ -276,17 +278,20 @@ export function renderTviewMsa(plan) {
     return toFasta(plan, renderRows(plan));
 }
 /**
- * What each row is, keyed by its name: the sample it came from and, where there
- * is a subject array, the copies it carries there and their length in bp.
+ * What each row is, keyed by its name: the sample it came from, its allele
+ * group within the sample and, where there is a subject array, the copies it
+ * carries there and their length in bp.
  */
-export function planRowData({ reads, subject }) {
+export function planRowData({ reads, subject, clusters, }) {
     return Object.fromEntries(reads.map(({ name, sample }) => {
         const copies = subject?.copiesByName.get(name);
         const alleleBp = subject?.lengthByName.get(name);
+        const cluster = clusters.get(name);
         return [
             name,
             {
                 ...(sample === undefined ? {} : { sample }),
+                ...(cluster === undefined ? {} : { cluster }),
                 ...(copies === undefined ? {} : { copies }),
                 ...(alleleBp === undefined ? {} : { alleleBp }),
             },

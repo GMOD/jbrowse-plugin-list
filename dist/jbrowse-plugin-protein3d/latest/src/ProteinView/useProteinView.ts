@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { isAlive } from '@jbrowse/mobx-state-tree'
 
+import { SELECTION_HEX } from './constants'
 import loadMolstar from './loadMolstar'
 
 import type { JBrowsePluginProteinViewModel } from './model'
@@ -94,10 +95,10 @@ export default function useProteinView({
         await created.initialized
         registerColorThemes(created)
         // molstar's default selection is a faint green tint that a green or
-        // pLDDT cartoon swallows; solid magenta reads over every scheme
+        // pLDDT cartoon swallows
         created.canvas3d?.setProps({
-          renderer: { selectColor: Color(0xff00ff), selectStrength: 1 },
-          marking: { selectEdgeColor: Color(0xff00ff) },
+          renderer: { selectColor: Color(SELECTION_HEX), selectStrength: 1 },
+          marking: { selectEdgeColor: Color(SELECTION_HEX) },
         })
         if (isCancelled()) {
           created.dispose()

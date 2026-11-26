@@ -95,6 +95,7 @@ import type {
   ConnectedDomains,
   DomainRow,
 } from './alignmentDomains'
+import type { ResidueIdsByEntity } from './drawnResidueIds'
 import type { ExonStatus, ResidueExon, TranscriptExons } from './exons'
 import type {
   EntityConfidence,
@@ -176,6 +177,8 @@ export interface ParentProteinView {
 // one instance, so a residue change under a genome or MSA hover leaves
 // hoverGenomeHighlights' consumers alone
 const NO_REGIONS: IRegion[] = []
+
+const NO_RESIDUES: ResidueIdsByEntity = new Map()
 
 const Structure = types
   .model({
@@ -391,6 +394,11 @@ const Structure = types
     molstarStructures: new Array<MolstarStructure>(),
     /**
      * #volatile
+     * The residues the load's representations draw, by entity
+     */
+    drawnResidueIds: NO_RESIDUES,
+    /**
+     * #volatile
      * The biological assemblies the loaded entry lists
      */
     assemblies: new Array<StructureAssembly>(),
@@ -522,6 +530,7 @@ const Structure = types
       self.entities = data.entities
       self.structureConfidence = data.confidence
       self.molstarStructures = data.molstarStructures ?? []
+      self.drawnResidueIds = data.drawnResidueIds ?? NO_RESIDUES
       self.assemblies = data.assemblies ?? []
       self.loadedAssembly = data.assembly
     },
@@ -556,6 +565,7 @@ const Structure = types
      */
     clearMolstarStructures() {
       self.molstarStructures = []
+      self.drawnResidueIds = NO_RESIDUES
     },
   }))
   .views(self => ({

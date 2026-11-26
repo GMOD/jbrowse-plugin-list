@@ -5,6 +5,7 @@ import {
   normalizeInsertions,
   reanchorInsertions,
 } from './alleles'
+import { clusterReads } from './clusters'
 import {
   ABSENT,
   SPANNED_GAP,
@@ -276,6 +277,8 @@ export interface TviewPlan {
   referenceName?: string
   /** samples contributing rows, in the order they were given */
   samples: string[]
+  /** each read's allele group within its sample, by row name */
+  clusters: Map<string, string>
 }
 
 /** Widest spread of allele lengths, i.e. the array the reads disagree most about. */
@@ -382,6 +385,7 @@ export function planTviewMsa({
     arrays,
     subject,
     referenceName,
+    clusters: clusterReads(aligned, arrays, { start, end }, referenceName),
     samples: [
       ...new Set(
         features.map((_, i) => sampleOf?.(i)).filter(s => s !== undefined),
@@ -403,18 +407,25 @@ export function renderTviewMsa(plan: TviewPlan) {
 }
 
 /**
- * What each row is, keyed by its name: the sample it came from and, where there
- * is a subject array, the copies it carries there and their length in bp.
+ * What each row is, keyed by its name: the sample it came from, its allele
+ * group within the sample and, where there is a subject array, the copies it
+ * carries there and their length in bp.
  */
-export function planRowData({ reads, subject }: TviewPlan): RowDataInput {
+export function planRowData({
+  reads,
+  subject,
+  clusters,
+}: TviewPlan): RowDataInput {
   return Object.fromEntries(
     reads.map(({ name, sample }) => {
       const copies = subject?.copiesByName.get(name)
       const alleleBp = subject?.lengthByName.get(name)
+      const cluster = clusters.get(name)
       return [
         name,
         {
           ...(sample === undefined ? {} : { sample }),
+          ...(cluster === undefined ? {} : { cluster }),
           ...(copies === undefined ? {} : { copies }),
           ...(alleleBp === undefined ? {} : { alleleBp }),
         },

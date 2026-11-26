@@ -8,6 +8,7 @@ import { structureRepresentations, structureRootCell } from './structureCells'
 import { VARIANT_EFFECT_SCHEMES } from './variantEffects'
 
 import type { DomainColor } from './alignmentDomains'
+import type { ResidueIdsByEntity } from './drawnResidueIds'
 import type { ExonColor } from './exons'
 import type { ProteinColor } from './proteinColor'
 import type { PlacedValues } from './variantEffects'
@@ -155,26 +156,23 @@ export function applyColorTheme(args: Parameters<typeof recolor>[0]) {
 
 function hasUnvaluedResidue({
   placedValues,
-  entity,
-  entities = [],
+  drawn,
 }: {
   placedValues?: PlacedValues
-  entity?: { entityId: string; seqIds: readonly number[] }
-  entities?: readonly { entityId: string; chains: readonly string[] }[]
+  drawn: ResidueIdsByEntity
 }) {
-  return (
-    !entity ||
-    placedValues?.entityId !== entity.entityId ||
-    entities.some(e => e.entityId !== entity.entityId && e.chains.length > 0) ||
-    entity.seqIds.some(id => !placedValues.byLabelSeqId.has(id))
+  return [...drawn].some(
+    ([entityId, labelSeqIds]) =>
+      placedValues?.entityId !== entityId ||
+      [...labelSeqIds].some(id => !placedValues.byLabelSeqId.has(id)),
   )
 }
 
 /**
  * The grey a ramp's key needs beside it, which Mol*'s scale legend has no slot
- * for: a linear placed-value theme paints it on a residue with no value, so
- * the entry is there while some structure has such a residue, in its mapped
- * entity or on another chain, which the theme leaves without values.
+ * for: a linear placed-value theme paints it on every drawn residue it has no
+ * value for, a ligand and another chain included, so the entry is there while
+ * some structure draws one.
  */
 export function rampNoValueEntry(
   color: ProteinColor,

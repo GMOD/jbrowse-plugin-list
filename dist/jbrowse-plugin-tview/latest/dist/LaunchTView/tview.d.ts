@@ -96,6 +96,8 @@ export interface TviewPlan {
     referenceName?: string;
     /** samples contributing rows, in the order they were given */
     samples: string[];
+    /** each read's allele group within its sample, by row name */
+    clusters: Map<string, string>;
 }
 export interface PlanArgs {
     features: AlignmentFeature[];
@@ -117,10 +119,11 @@ export declare function renderRows({ reads, layout }: TviewPlan): string[];
 export declare function toFasta({ reads }: TviewPlan, rows: string[]): string;
 export declare function renderTviewMsa(plan: TviewPlan): string;
 /**
- * What each row is, keyed by its name: the sample it came from and, where there
- * is a subject array, the copies it carries there and their length in bp.
+ * What each row is, keyed by its name: the sample it came from, its allele
+ * group within the sample and, where there is a subject array, the copies it
+ * carries there and their length in bp.
  */
-export declare function planRowData({ reads, subject }: TviewPlan): RowDataInput;
+export declare function planRowData({ reads, subject, clusters, }: TviewPlan): RowDataInput;
 /**
  * A bracket over the runs of columns that are not one reference base: the
  * insertion sites, and each array block. Columns are the file's, 1-based.

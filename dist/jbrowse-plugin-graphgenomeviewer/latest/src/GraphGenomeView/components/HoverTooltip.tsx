@@ -89,7 +89,7 @@ function foldedNodeLines(
       {threads.slice(0, HOVER_THREADS).map(thread => (
         <span key={thread.name}>
           <br />
-          {thread.count > 1 ? thread.variation : thread.label}
+          {thread.line}
         </span>
       ))}
       {threads.length > HOVER_THREADS ? (

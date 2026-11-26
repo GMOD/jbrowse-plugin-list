@@ -93,6 +93,10 @@ const GutterLabel = observer(function GutterLabel({
   )
 })
 
+// Every residue is a DOM span, unwindowed. Measured 2026-11-25 on a real GPU,
+// RyR1's 5,037 residues hover at one frame per column with no long task and
+// mount once in about 0.3 s, so canvas rows were not worth it; windowing the
+// columns or one shared feature tooltip would come first.
 const ProteinAlignment = observer(function ProteinAlignment({
   model,
 }: {

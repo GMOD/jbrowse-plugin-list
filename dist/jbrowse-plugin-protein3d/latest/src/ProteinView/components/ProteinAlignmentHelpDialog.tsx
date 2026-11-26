@@ -75,7 +75,7 @@ const ProteinAlignmentHelpDialog = observer(
             </li>
             <li>
               Bands across the rows: pink is the hovered residue, orange a
-              hovered bar&apos;s residues, blue the selection, and green the
+              hovered bar&apos;s residues, magenta the selection, and green the
               residues aligned to the transcript while that highlight is on.
             </li>
             <li>

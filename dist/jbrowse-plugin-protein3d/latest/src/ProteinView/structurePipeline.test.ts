@@ -254,6 +254,19 @@ test('chains draws those chains whole', async () => {
   })
 })
 
+// Under ten residues Mol*'s preset draws one atomic-detail component of
+// everything, which the narrowing once kept only the ligands of
+test('chains draws those chains of a peptide', async () => {
+  await withTemporaryMolstarPlugin(async plugin => {
+    await loadCaOnly(
+      plugin,
+      helices.map(h => ({ ...h, residues: h.residues.slice(0, 3) })),
+      { drawChains: ['B'] },
+    )
+    expect(drawnResidues(plugin)).toEqual(['B:1', 'B:2', 'B:3'])
+  })
+})
+
 test.each([
   ['equal', { equal: 3 }, [3]],
   ['lt', { lt: 3 }, [1, 2]],

@@ -345,3 +345,45 @@ test('a folded node counts the nodes folded into it, leaving out stretches not l
   const { container } = render(<HoverTooltip model={model} chip={undefined} />)
   expect(container.textContent).toContain('4 nodes folded into it')
 })
+
+test("a folded node's hover gives a lone haplotype's thread its count, so it does not read as one of a wider thread's haplotypes", () => {
+  const node = { id: 'a+', name: 'a', length: 2000, depth: 5 }
+  const model = {
+    hoveredNode: node.id,
+    hoverNodeById: new Map([[node.id, node]]),
+    hoveredEdge: null,
+    hoveredWalkRowText: undefined,
+    hoveredTubeText: undefined,
+    tooltipRightPx: 8,
+    deletions: [],
+    genePins: [],
+    graph: {
+      name: 'fold',
+      nodes: [node],
+      edges: [],
+      paths: [
+        {
+          name: 'HG002#1#c',
+          nodeIds: ['a+'],
+          count: 4,
+          members: ['HG002#1#c', 'HG002#2#c', 'HG005#1#c', 'HG005#2#c'],
+          variation: '4 haplotypes on 2 distinct walks, 1 bp folded away',
+        },
+        {
+          name: 'HG00097#1#c',
+          nodeIds: ['a+'],
+          count: 1,
+          members: ['HG00097#1#c'],
+        },
+      ],
+      threadFold: { belowBp: 500, haplotypes: 5, walks: 5, stepless: 0 },
+    },
+    notLoadedNames: new Set(),
+    walkLabel: (name: string) => name.split('#').slice(0, 2).join('#'),
+  } as unknown as GraphPaneModel
+  const { container } = render(<HoverTooltip model={model} chip={undefined} />)
+  expect(container.innerHTML).toContain(
+    '4 haplotypes on 2 distinct walks, 1 bp folded away</span>',
+  )
+  expect(container.innerHTML).toContain('<br>1 haplotype: HG00097#1</span>')
+})
