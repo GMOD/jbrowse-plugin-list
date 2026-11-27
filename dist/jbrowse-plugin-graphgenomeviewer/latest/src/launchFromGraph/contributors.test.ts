@@ -308,6 +308,31 @@ test('a walk whose record states no start places no node on its assembly, as its
   ])
 })
 
+test('a walk whose record states a span its own steps do not fill places no node on its assembly, as its visits count bp the record does not state', () => {
+  const allele = node('s7', 'HG002#1#CM1', 500, 300, 1)
+  const g = {
+    ...graph([allele]),
+    paths: [
+      { name: 'HG002#1#CM1', nodeIds: ['s7'], start: 500, end: 800 },
+      { name: 'HG002#2#CM2', nodeIds: ['s7'], start: 9100, end: 9200 },
+    ],
+    pathVisits: PathVisits.from([
+      [
+        's7',
+        [
+          { path: 'HG002#1#CM1', sample: 'HG002', start: 500, strand: '+' },
+          { path: 'HG002#2#CM2', sample: 'HG002', start: 9100, strand: '-' },
+        ],
+      ],
+    ]),
+  }
+  const resolve = (sample: string) =>
+    ({ 'HG002#1': 'HG002.1', 'HG002#2': 'HG002.2' })[sample]
+  expect(nodeAssemblySpans(g, allele, resolve, 'hg38')).toEqual([
+    { assemblyName: 'HG002.1', refName: 'CM1', start: 500, end: 800 },
+  ])
+})
+
 test("a cut with walks reads genes only off its shown haplotypes' sequence", () => {
   const g = {
     ...graph([

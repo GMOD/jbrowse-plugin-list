@@ -4,7 +4,7 @@ import {
   panSNHaplotype,
   panSNSample,
 } from '@jbrowse/bandage-core/pansn'
-import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
+import { pathOrigin, spanStated } from '@jbrowse/bandage-core/pathAnchoring'
 
 import type { AnchoredNode } from '@jbrowse/bandage-core/anchoredNodes'
 import type { Graph, GraphNode } from '@jbrowse/bandage-core/types'
@@ -80,9 +80,15 @@ export function nodeAssemblySpans(
   if (own) {
     add(own)
   }
+  const lengthOf = new Map(graph.nodes.map(n => [n.id, n.length]))
   const unstated = new Set(
     (graph.paths ?? []).flatMap(path =>
-      path.end === undefined ? [pathOrigin(path.name).name] : [],
+      spanStated(
+        path,
+        path.nodeIds.reduce((bp, id) => bp + (lengthOf.get(id) ?? 0), 0),
+      )
+        ? []
+        : [pathOrigin(path.name).name],
     ),
   )
   const visits = graph.threadFold
