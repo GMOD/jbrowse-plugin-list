@@ -4,6 +4,7 @@ import {
   panSNHaplotype,
   panSNSample,
 } from '@jbrowse/bandage-core/pansn'
+import { pathOrigin } from '@jbrowse/bandage-core/pathAnchoring'
 
 import type { AnchoredNode } from '@jbrowse/bandage-core/anchoredNodes'
 import type { Graph, GraphNode } from '@jbrowse/bandage-core/types'
@@ -52,8 +53,10 @@ export interface AssemblySpan {
 }
 
 // Where a node's sequence sits on each loaded assembly: its own rGFA
-// location, and where every walk through it passes it on that walk's contig.
-// `except` is the assembly the reference band is already drawn on.
+// location, and where every walk through it passes it on that walk's contig,
+// which a folded graph does not state, as its node lengths are not the walks'
+// own, nor a walk whose record states no start. `except` is the assembly the
+// reference band is already drawn on.
 export function nodeAssemblySpans(
   graph: Graph,
   node: GraphNode,
@@ -77,7 +80,17 @@ export function nodeAssemblySpans(
   if (own) {
     add(own)
   }
-  for (const visit of graph.pathVisits?.get(node.name) ?? []) {
+  const unstated = new Set(
+    (graph.paths ?? []).flatMap(path =>
+      path.end === undefined ? [pathOrigin(path.name).name] : [],
+    ),
+  )
+  const visits = graph.threadFold
+    ? []
+    : (graph.pathVisits?.get(node.name) ?? []).filter(
+        visit => !unstated.has(pathOrigin(visit.path).name),
+      )
+  for (const visit of visits) {
     add({
       sample: panSNSample(visit.path),
       haplotype: panSNHaplotype(visit.path),

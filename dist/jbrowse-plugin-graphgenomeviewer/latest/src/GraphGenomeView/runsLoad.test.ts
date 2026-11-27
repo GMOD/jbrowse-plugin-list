@@ -111,6 +111,22 @@ test("a cut folded to threads reads the window's walks as runs, and lists the cu
   expect(model.graph?.threadFold?.haplotypes).toBe(4)
 })
 
+test("on a cut folded to threads, a hovered node on a lifted thread says nothing of where it lies on the thread's contig, and one off it says it is not on it", async () => {
+  answer()
+  const model = createView()
+  await model.cutSubgraph(TRACK.adapter, region, {}, 500)
+  model.liftWalks(['HG002#1#chr1'])
+  const walk = model.walkLift?.walks[0]
+  const on = model.graph?.nodes.find(node => walk?.nodeIds.has(node.id))
+  const off = model.graph?.nodes.find(node => !walk?.nodeIds.has(node.id))
+  expect(walk?.members).toEqual(['HG002#1#chr1'])
+  expect([on, off].every(Boolean)).toBe(true)
+  model.setHoveredNode(on?.id ?? null)
+  expect(walk && model.hoveredOn(walk)).toBeUndefined()
+  model.setHoveredNode(off?.id ?? null)
+  expect(walk && model.hoveredOn(walk)).toBe('not on this walk')
+})
+
 test('runs graph-fold refuses are cut instead, and the cut folds as before', async () => {
   answer({ refuse: true })
   const model = createView()

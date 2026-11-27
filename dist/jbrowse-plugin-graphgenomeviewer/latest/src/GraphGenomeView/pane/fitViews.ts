@@ -912,13 +912,13 @@ export const withFitViews = withHostViews
     get facetDrawings() {
       return self.facetPanels?.map(panel => this.buildDrawing(panel, false))
     },
-    // where the hovered node sits on a lifted walk, while one is hovered
+    // where the hovered node sits on a lifted walk, while one is hovered and
+    // the walk's data states it
     hoveredOn(walk: LiftedWalk) {
       const id = self.hoveredNode
       const node = id ? self.nodeById?.get(id) : undefined
-      return node
-        ? (walkPosition(walk, node.id, node.length) ?? 'not on this walk')
-        : undefined
+      const position = node && walkPosition(walk, node.id, node.length)
+      return position && (position.onWalk ? position.at : 'not on this walk')
     },
     // Why the drawing cannot be written as SVG, which draws the canvas's
     // nodes, or walk rows' bars
